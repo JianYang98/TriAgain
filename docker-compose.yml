@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: triagain-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: triagain
+      POSTGRES_USER: triagain
+      POSTGRES_PASSWORD: triagain
+    volumes:
+      - triagain-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  triagain-postgres-data:

@@ -1,0 +1,4 @@
+# Datasource properties are dynamically injected by Testcontainers via @DynamicPropertySource
+spring:
+  jpa:
+    show-sql: false
