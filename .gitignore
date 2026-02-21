@@ -1,2 +1,27 @@
-.DS_Store
+# Gradle
+build/
+.gradle/
+
+# IDE
 .idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.swp
+
+# Java
+*.class
+*.jar
+*.war
+
+# Gradle wrapper jar is required
+!gradle/wrapper/gradle-wrapper.jar
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+src/main/resources/application-local.yml

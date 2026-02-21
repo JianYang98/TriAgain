@@ -1,0 +1,18 @@
+spring:
+  profiles:
+    active: local
+
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        default_batch_fetch_size: 100
+
+  jackson:
+    property-naming-strategy: LOWER_CAMEL_CASE
+    deserialization:
+      fail-on-unknown-properties: false
+
+mybatis:
+  mapper-locations: classpath:mybatis/mapper/**/*.xml
+  config-location: classpath:mybatis/mybatis-config.xml
