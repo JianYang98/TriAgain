@@ -14,6 +14,7 @@ public enum ErrorCode {
 
     // User
     USER_NOT_FOUND(404, "U001", "사용자를 찾을 수 없습니다."),
+    EMAIL_ALREADY_EXISTS(400, "U002", "이미 사용 중인 이메일입니다."),
 
     // Crew
     CREW_NOT_FOUND(404, "CR001", "크루를 찾을 수 없습니다."),
@@ -22,6 +23,7 @@ public enum ErrorCode {
     CREW_ALREADY_JOINED(400, "CR004", "이미 참여 중인 크루입니다."),
     CHALLENGE_NOT_FOUND(404, "CR005", "챌린지를 찾을 수 없습니다."),
     INVALID_INVITE_CODE(400, "CR006", "유효하지 않은 초대 코드입니다."),
+    CREW_NOT_ACTIVE(400, "CR007", "활성 상태의 크루가 아닙니다."),
 
     // Verification
     VERIFICATION_NOT_FOUND(404, "V001", "인증을 찾을 수 없습니다."),
@@ -30,12 +32,16 @@ public enum ErrorCode {
     UPLOAD_SESSION_NOT_FOUND(404, "V004", "업로드 세션을 찾을 수 없습니다."),
     UPLOAD_SESSION_NOT_COMPLETED(400, "V005", "업로드 세션이 완료되지 않았습니다."),
     UPLOAD_SESSION_EXPIRED(400, "V006", "업로드 세션이 만료되었습니다."),
+    INVALID_FILE_TYPE(400, "V007", "지원하지 않는 파일 형식입니다."),
+    FILE_TOO_LARGE(400, "V008", "파일 크기가 너무 큽니다."),
 
     // Moderation
     REPORT_NOT_FOUND(404, "M001", "신고를 찾을 수 없습니다."),
     REPORT_ALREADY_EXISTS(400, "M002", "이미 해당 인증에 신고를 접수했습니다."),
     REVIEW_NOT_FOUND(404, "M003", "검토를 찾을 수 없습니다."),
     REPORT_ALREADY_PROCESSED(400, "M004", "이미 처리된 신고입니다."),
+    SELF_REPORT_NOT_ALLOWED(400, "M005", "자신의 인증을 신고할 수 없습니다."),
+    NOT_CREW_MEMBER(403, "M006", "크루 멤버만 신고할 수 있습니다."),
 
     // Support
     NOTIFICATION_NOT_FOUND(404, "S001", "알림을 찾을 수 없습니다."),
