@@ -25,6 +25,7 @@ public enum ErrorCode {
     INVALID_INVITE_CODE(404, "CR006", "유효하지 않은 초대 코드입니다."),
     CREW_NOT_ACTIVE(400, "CR007", "활성 상태의 크루가 아닙니다."),
     CREW_JOIN_DEADLINE_PASSED(400, "CR008", "크루 참여 마감 기한이 지났습니다."),
+    CREW_ACCESS_DENIED(403, "CR009", "크루 멤버만 조회할 수 있습니다."),
 
     // Verification
     VERIFICATION_NOT_FOUND(404, "V001", "인증을 찾을 수 없습니다."),
