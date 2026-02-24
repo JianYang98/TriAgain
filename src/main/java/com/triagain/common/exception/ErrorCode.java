@@ -18,12 +18,13 @@ public enum ErrorCode {
 
     // Crew
     CREW_NOT_FOUND(404, "CR001", "크루를 찾을 수 없습니다."),
-    CREW_FULL(400, "CR002", "크루 정원이 가득 찼습니다."),
+    CREW_FULL(409, "CR002", "크루 정원이 가득 찼습니다."),
     CREW_NOT_RECRUITING(400, "CR003", "모집 중인 크루가 아닙니다."),
-    CREW_ALREADY_JOINED(400, "CR004", "이미 참여 중인 크루입니다."),
+    CREW_ALREADY_JOINED(409, "CR004", "이미 참여 중인 크루입니다."),
     CHALLENGE_NOT_FOUND(404, "CR005", "챌린지를 찾을 수 없습니다."),
-    INVALID_INVITE_CODE(400, "CR006", "유효하지 않은 초대 코드입니다."),
+    INVALID_INVITE_CODE(404, "CR006", "유효하지 않은 초대 코드입니다."),
     CREW_NOT_ACTIVE(400, "CR007", "활성 상태의 크루가 아닙니다."),
+    CREW_JOIN_DEADLINE_PASSED(400, "CR008", "크루 참여 마감 기한이 지났습니다."),
 
     // Verification
     VERIFICATION_NOT_FOUND(404, "V001", "인증을 찾을 수 없습니다."),
