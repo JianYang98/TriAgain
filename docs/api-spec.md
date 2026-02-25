@@ -127,17 +127,36 @@ Idempotency-Key: <uuid>
 
 **실패 응답**
 ```json
-// 400 Bad Request - 잘못된 요청
+// 400 Bad Request - 잘못된 입력값
 {
-  "code": "INVALID_REQUEST",
-  "message": "필수 입력값이 누락되었습니다.",
+  "code": "INVALID_INPUT",
+  "message": "잘못된 입력값입니다.",
   "field": "challengeId"
 }
 
-// 400 Bad Request - 유효하지 않은 세션
+// 400 Bad Request - 사진 인증 필수
 {
-  "code": "INVALID_UPLOAD_SESSION",
-  "message": "유효하지 않은 업로드 세션입니다."
+  "code": "PHOTO_REQUIRED",
+  "message": "사진 인증이 필요합니다."
+}
+
+// 400 Bad Request - 업로드 세션 미완료
+{
+  "code": "UPLOAD_SESSION_NOT_COMPLETED",
+  "message": "업로드 세션이 완료되지 않았습니다."
+}
+
+// 400 Bad Request - 업로드 세션 만료
+{
+  "code": "UPLOAD_SESSION_EXPIRED",
+  "message": "업로드 세션이 만료되었습니다."
+}
+
+// 400 Bad Request - 인증 마감 시간 초과
+{
+  "code": "VERIFICATION_DEADLINE_EXCEEDED",
+  "message": "인증 마감 시간이 지났습니다.",
+  "deadline": "2026-02-18T23:59:59Z"
 }
 
 // 401 Unauthorized
@@ -146,24 +165,23 @@ Idempotency-Key: <uuid>
   "message": "로그인이 필요합니다."
 }
 
-// 403 Forbidden
+// 403 Forbidden - 크루 멤버 아님
 {
-  "code": "FORBIDDEN",
-  "message": "크루 멤버만 인증할 수 있습니다."
+  "code": "CREW_ACCESS_DENIED",
+  "message": "크루 멤버만 조회할 수 있습니다."
+}
+
+// 404 Not Found - 업로드 세션 없음
+{
+  "code": "UPLOAD_SESSION_NOT_FOUND",
+  "message": "업로드 세션을 찾을 수 없습니다."
 }
 
 // 409 Conflict - 중복 인증
 {
-  "code": "DUPLICATE_VERIFICATION",
-  "message": "이미 해당 날짜에 인증을 완료했습니다.",
+  "code": "VERIFICATION_ALREADY_EXISTS",
+  "message": "이미 해당 날짜에 인증이 존재합니다.",
   "existingVerificationId": "ver_123"
-}
-
-// 422 Unprocessable Entity - 마감 초과
-{
-  "code": "VERIFICATION_DEADLINE_PASSED",
-  "message": "인증 마감 시간이 지났습니다.",
-  "deadline": "2026-02-18T23:59:59Z"
 }
 
 // 429 Too Many Requests
