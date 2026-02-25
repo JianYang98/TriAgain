@@ -1,11 +1,45 @@
-# language: ko
-기능: 업로드 세션 생성
-  사진 인증을 위해 이미지 업로드 세션을 생성한다.
+Feature: 업로드 세션 생성
+  사진 인증 시 S3 Presigned URL을 발급받는다.
 
-  시나리오: 유효한 이미지 파일로 업로드 세션을 생성한다
-    조건 사용자 "user_001"이 로그인되어 있다
-    만일 파일명 "photo.jpg", 타입 "image/jpeg", 크기 2048576으로 업로드 세션 생성을 요청하면
-    그러면 응답 코드는 201이다
-    그리고 응답에 uploadSessionId가 존재한다
-    그리고 응답에 presignedUrl이 존재한다
-    그리고 응답에 imageUrl이 존재한다
+  Background:
+    Given 사용자 "user_001"이 크루 "운동 크루"에 참여 중이다
+    And 크루 "운동 크루"의 인증방식이 "PHOTO"이다
+
+  # ===== Happy Path =====
+
+  Scenario: 업로드 세션 생성 성공
+    When 다음 정보로 업로드 세션을 생성한다
+      | fileName | verification_image.jpg |
+      | fileType | image/jpeg             |
+      | fileSize | 2048576                |
+    Then 응답 코드는 201이다
+    And 응답에 uploadSessionId가 존재한다
+    And 응답에 presignedUrl이 존재한다
+    And 응답에 imageUrl이 존재한다
+    And 응답에 expiresAt이 존재한다
+
+  # ===== 실패 케이스 =====
+
+  Scenario: 지원하지 않는 파일 형식으로 실패
+    When 파일 타입 "image/gif"로 업로드 세션을 생성한다
+    Then 응답 코드는 400이다
+    And 에러 코드는 "INVALID_FILE_TYPE"이다
+
+  Scenario: 파일 크기 초과로 실패
+    When 파일 크기 10485760으로 업로드 세션을 생성한다
+    Then 응답 코드는 400이다
+    And 에러 코드는 "FILE_TOO_LARGE"이다
+
+  Scenario: 마감 시간 이후 업로드 세션 생성 실패
+    Given 인증 마감 시간이 지났다
+    When 업로드 세션을 생성한다
+    Then 응답 코드는 400이다
+    And 에러 코드는 "VERIFICATION_DEADLINE_EXCEEDED"이다
+
+  # ===== 세션 만료 =====
+
+  Scenario: PENDING 상태 세션이 15분 경과 시 만료 처리
+    Given 업로드 세션이 15분 전에 생성되었다
+    And 세션 상태가 "PENDING"이다
+    When 만료 스케줄러가 실행된다
+    Then 세션 상태는 "EXPIRED"이다
