@@ -39,11 +39,13 @@ erDiagram
         string name
         string goal
         enum verification_type "TEXT / PHOTO"
+        boolean allow_late_join "크루장이 중간 가입 허용 여부 설정"
         int min_members
         int max_members
         int current_members
         enum status
         date start_date
+        date end_date
         string invite_code UK
         timestamp created_at
     }
@@ -173,6 +175,7 @@ erDiagram
 | IN_PROGRESS | 진행 중 |
 | SUCCESS | 3일 연속 성공 |
 | FAILED | 실패 (재시작 가능) |
+| ENDED | 크루 기간 종료로 인한 챌린지 종료 |
 
 ### verifications.status
 | 값 | 의미 |
