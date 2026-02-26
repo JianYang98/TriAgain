@@ -12,10 +12,6 @@ public record ApiResponse<T>(boolean success, T data, ErrorResponse error) {
         return new ApiResponse<>(true, null, null);
     }
 
-    public static ApiResponse<Void> fail(ErrorCode errorCode) {
-        return new ApiResponse<>(false, null, ErrorResponse.of(errorCode));
-    }
-
     public static ApiResponse<Void> fail(ErrorCode errorCode, String message) {
         return new ApiResponse<>(false, null, ErrorResponse.of(errorCode, message));
     }

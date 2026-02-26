@@ -42,6 +42,17 @@ public class VerificationClientAdapter implements VerificationPort {
     }
 
     @Override
+    public int incrementReportCount(String verificationId) {
+        return verificationRepositoryPort.findById(verificationId)
+                .map(verification -> {
+                    verification.incrementReportCount();
+                    verificationRepositoryPort.save(verification);
+                    return verification.getReportCount();
+                })
+                .orElse(0);
+    }
+
+    @Override
     public Optional<VerificationInfo> findVerificationById(String verificationId) {
         return verificationRepositoryPort.findById(verificationId)
                 .map(this::toVerificationInfo);

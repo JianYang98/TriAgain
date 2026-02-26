@@ -1,11 +1,14 @@
 package com.triagain.verification.domain.model;
 
+import com.triagain.common.exception.BusinessException;
+import com.triagain.common.exception.ErrorCode;
 import com.triagain.verification.domain.vo.ReviewStatus;
 import com.triagain.verification.domain.vo.VerificationStatus;
 
+import com.triagain.common.util.IdGenerator;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 public class Verification {
 
@@ -45,10 +48,10 @@ public class Verification {
     public static Verification createText(String challengeId, String userId, String crewId,
                                           String textContent, LocalDate targetDate, int attemptNumber) {
         if (textContent == null || textContent.isBlank()) {
-            throw new IllegalArgumentException("텍스트 인증 시 텍스트는 필수입니다.");
+            throw new BusinessException(ErrorCode.TEXT_CONTENT_REQUIRED);
         }
         return new Verification(
-                UUID.randomUUID().toString(),
+                IdGenerator.generate("VRFY"),
                 challengeId, userId, crewId,
                 null, null, textContent,
                 VerificationStatus.APPROVED, 0,
@@ -62,10 +65,10 @@ public class Verification {
                                            Long uploadSessionId, String imageUrl, String textContent,
                                            LocalDate targetDate, int attemptNumber) {
         if (imageUrl == null || imageUrl.isBlank()) {
-            throw new IllegalArgumentException("사진 인증 시 이미지 URL은 필수입니다.");
+            throw new BusinessException(ErrorCode.IMAGE_URL_REQUIRED);
         }
         return new Verification(
-                UUID.randomUUID().toString(),
+                IdGenerator.generate("VRFY"),
                 challengeId, userId, crewId,
                 uploadSessionId, imageUrl, textContent,
                 VerificationStatus.APPROVED, 0,

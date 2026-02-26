@@ -1,10 +1,13 @@
 package com.triagain.moderation.domain.model;
 
+import com.triagain.common.exception.BusinessException;
+import com.triagain.common.exception.ErrorCode;
 import com.triagain.moderation.domain.vo.ReportReason;
 import com.triagain.moderation.domain.vo.ReportStatus;
 
+import com.triagain.common.util.IdGenerator;
+
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 public class Report {
 
@@ -31,13 +34,13 @@ public class Report {
     public static Report create(String verificationId, String reporterId,
                                 ReportReason reason, String description) {
         if (verificationId == null || verificationId.isBlank()) {
-            throw new IllegalArgumentException("인증 ID는 필수입니다.");
+            throw new BusinessException(ErrorCode.VERIFICATION_ID_REQUIRED);
         }
         if (reporterId == null || reporterId.isBlank()) {
-            throw new IllegalArgumentException("신고자 ID는 필수입니다.");
+            throw new BusinessException(ErrorCode.REPORTER_ID_REQUIRED);
         }
         return new Report(
-                UUID.randomUUID().toString(),
+                IdGenerator.generate("REPT"),
                 verificationId,
                 reporterId,
                 reason,
@@ -70,7 +73,7 @@ public class Report {
 
     private void validatePending() {
         if (this.status != ReportStatus.PENDING) {
-            throw new IllegalStateException("대기 중인 신고만 처리할 수 있습니다.");
+            throw new BusinessException(ErrorCode.REPORT_ALREADY_PROCESSED);
         }
     }
 

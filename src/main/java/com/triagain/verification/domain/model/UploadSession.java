@@ -1,5 +1,7 @@
 package com.triagain.verification.domain.model;
 
+import com.triagain.common.exception.BusinessException;
+import com.triagain.common.exception.ErrorCode;
 import com.triagain.verification.domain.vo.UploadSessionStatus;
 
 import java.time.LocalDateTime;
@@ -27,10 +29,10 @@ public class UploadSession {
 
     public static UploadSession create(String userId, String imageKey, String contentType) {
         if (userId == null || userId.isBlank()) {
-            throw new IllegalArgumentException("사용자 ID는 필수입니다.");
+            throw new BusinessException(ErrorCode.USER_ID_REQUIRED);
         }
         if (imageKey == null || imageKey.isBlank()) {
-            throw new IllegalArgumentException("이미지 키는 필수입니다.");
+            throw new BusinessException(ErrorCode.IMAGE_KEY_REQUIRED);
         }
         LocalDateTime now = LocalDateTime.now();
         return new UploadSession(null, userId, imageKey, contentType,
@@ -44,14 +46,14 @@ public class UploadSession {
 
     public void complete() {
         if (this.status != UploadSessionStatus.PENDING) {
-            throw new IllegalStateException("PENDING 상태의 세션만 완료할 수 있습니다.");
+            throw new BusinessException(ErrorCode.UPLOAD_SESSION_NOT_PENDING);
         }
         this.status = UploadSessionStatus.COMPLETED;
     }
 
     public void expire() {
         if (this.status != UploadSessionStatus.PENDING) {
-            throw new IllegalStateException("PENDING 상태의 세션만 만료할 수 있습니다.");
+            throw new BusinessException(ErrorCode.UPLOAD_SESSION_NOT_PENDING);
         }
         this.status = UploadSessionStatus.EXPIRED;
     }

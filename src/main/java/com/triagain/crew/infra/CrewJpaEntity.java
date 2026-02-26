@@ -35,9 +35,6 @@ public class CrewJpaEntity {
     @Column(name = "verification_type", nullable = false)
     private VerificationType verificationType;
 
-    @Column(name = "min_members", nullable = false)
-    private int minMembers;
-
     @Column(name = "max_members", nullable = false)
     private int maxMembers;
 
@@ -51,6 +48,12 @@ public class CrewJpaEntity {
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
+    @Column(name = "end_date", nullable = false)
+    private LocalDate endDate;
+
+    @Column(name = "allow_late_join", nullable = false)
+    private boolean allowLateJoin;
+
     @Column(name = "invite_code", nullable = false, unique = true, length = 6)
     private String inviteCode;
 
@@ -60,21 +63,24 @@ public class CrewJpaEntity {
     protected CrewJpaEntity() {
     }
 
+    /** JPA 엔티티를 도메인 모델로 변환 — 멤버 제외 */
     public Crew toDomain() {
         return Crew.of(id, creatorId, name, goal, verificationType,
-                minMembers, maxMembers, currentMembers, status, startDate,
-                inviteCode, createdAt, Collections.emptyList());
+                maxMembers, currentMembers, status, startDate,
+                endDate, allowLateJoin, inviteCode, createdAt, Collections.emptyList());
     }
 
+    /** JPA 엔티티를 도메인 모델로 변환 — 멤버 포함 */
     public Crew toDomainWithMembers(java.util.List<CrewMemberJpaEntity> memberEntities) {
         var members = memberEntities.stream()
                 .map(CrewMemberJpaEntity::toDomain)
                 .toList();
         return Crew.of(id, creatorId, name, goal, verificationType,
-                minMembers, maxMembers, currentMembers, status, startDate,
-                inviteCode, createdAt, members);
+                maxMembers, currentMembers, status, startDate,
+                endDate, allowLateJoin, inviteCode, createdAt, members);
     }
 
+    /** 도메인 모델을 JPA 엔티티로 변환 — 저장 시 사용 */
     public static CrewJpaEntity fromDomain(Crew crew) {
         CrewJpaEntity entity = new CrewJpaEntity();
         entity.id = crew.getId();
@@ -82,11 +88,12 @@ public class CrewJpaEntity {
         entity.name = crew.getName();
         entity.goal = crew.getGoal();
         entity.verificationType = crew.getVerificationType();
-        entity.minMembers = crew.getMinMembers();
         entity.maxMembers = crew.getMaxMembers();
         entity.currentMembers = crew.getCurrentMembers();
         entity.status = crew.getStatus();
         entity.startDate = crew.getStartDate();
+        entity.endDate = crew.getEndDate();
+        entity.allowLateJoin = crew.isAllowLateJoin();
         entity.inviteCode = crew.getInviteCode();
         entity.createdAt = crew.getCreatedAt();
         return entity;

@@ -199,6 +199,21 @@ com.triagain.verification
 - BDD 스타일 (Given-When-Then) 주석으로 구조화
 - 성공 케이스 + 예외 케이스(Unhappy Path) 반드시 1개 이상 포함
 
+### 주석
+
+- 모든 public 메서드에 한 줄 한국어 Javadoc 주석 작성
+- 단순 getter/accessor는 제외 (메서드명만으로 의미가 명확한 경우)
+- 형식: `/** 무엇을 하는지 — 언제/왜 쓰는지 */`
+- 메서드명이 "뭘 하는지", 주석이 "언제/왜 쓰는지"를 설명
+
+```java
+/** 초대코드로 크루 조회 — 크루 참여 시 사용 */
+Optional<Crew> findByInviteCode(String inviteCode);
+
+/** 비관적 락으로 크루 조회 — 동시 참여 시 정원 초과 방지 */
+Optional<Crew> findByIdWithLock(String id);
+```
+
 ---
 
 ## Anti-Patterns (금지 사항)

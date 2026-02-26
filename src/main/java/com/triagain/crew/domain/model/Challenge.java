@@ -1,10 +1,13 @@
 package com.triagain.crew.domain.model;
 
+import com.triagain.common.exception.BusinessException;
+import com.triagain.common.exception.ErrorCode;
 import com.triagain.crew.domain.vo.ChallengeStatus;
+
+import com.triagain.common.util.IdGenerator;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 public class Challenge {
 
@@ -36,9 +39,10 @@ public class Challenge {
         this.createdAt = createdAt;
     }
 
+    /** 첫 번째 챌린지 생성 — 크루 활성화 시 사이클 1로 시작 */
     public static Challenge createFirst(String userId, String crewId, LocalDate startDate, LocalDateTime deadline) {
         return new Challenge(
-                UUID.randomUUID().toString(),
+                IdGenerator.generate("CHAL"),
                 userId,
                 crewId,
                 1,
@@ -51,10 +55,11 @@ public class Challenge {
         );
     }
 
+    /** 다음 사이클 챌린지 생성 — 이전 사이클 완료 후 연속 도전 시 사용 */
     public static Challenge createNext(String userId, String crewId, int previousCycleNumber,
                                        LocalDate startDate, LocalDateTime deadline) {
         return new Challenge(
-                UUID.randomUUID().toString(),
+                IdGenerator.generate("CHAL"),
                 userId,
                 crewId,
                 previousCycleNumber + 1,
@@ -67,6 +72,7 @@ public class Challenge {
         );
     }
 
+    /** 영속 데이터로 챌린지 복원 — DB 조회 결과를 도메인 객체로 변환 */
     public static Challenge of(String id, String userId, String crewId, int cycleNumber,
                                int targetDays, int completedDays, ChallengeStatus status,
                                LocalDate startDate, LocalDateTime deadline, LocalDateTime createdAt) {
@@ -74,9 +80,10 @@ public class Challenge {
                 completedDays, status, startDate, deadline, createdAt);
     }
 
+    /** 인증 완료 기록 — 일일 인증 성공 시 completedDays 증가 */
     public void recordCompletion() {
         if (this.status != ChallengeStatus.IN_PROGRESS) {
-            throw new IllegalStateException("진행 중인 챌린지만 인증을 기록할 수 있습니다.");
+            throw new BusinessException(ErrorCode.CHALLENGE_NOT_IN_PROGRESS);
         }
         this.completedDays++;
         if (this.completedDays >= this.targetDays) {
@@ -84,13 +91,15 @@ public class Challenge {
         }
     }
 
+    /** 챌린지 실패 처리 — 마감 초과 시 FAILED 상태 전환 */
     public void fail() {
         if (this.status != ChallengeStatus.IN_PROGRESS) {
-            throw new IllegalStateException("진행 중인 챌린지만 실패 처리할 수 있습니다.");
+            throw new BusinessException(ErrorCode.CHALLENGE_NOT_IN_PROGRESS);
         }
         this.status = ChallengeStatus.FAILED;
     }
 
+    /** 마감 초과 여부 확인 — 실패 판정에 사용 */
     public boolean isDeadlineExceeded() {
         return LocalDateTime.now().isAfter(this.deadline);
     }
