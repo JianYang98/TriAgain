@@ -21,19 +21,15 @@ public class CrewJpaAdapter implements CrewRepositoryPort {
         CrewJpaEntity crewEntity = CrewJpaEntity.fromDomain(crew);
         crewJpaRepository.save(crewEntity);
 
-        List<CrewMemberJpaEntity> existingMembers = crewMemberJpaRepository.findByCrewId(crew.getId());
-        List<String> existingMemberIds = existingMembers.stream()
-                .map(m -> m.toDomain().getId())
-                .toList();
-
-        for (CrewMember member : crew.getMembers()) {
-            if (!existingMemberIds.contains(member.getId())) {
-                crewMemberJpaRepository.save(CrewMemberJpaEntity.fromDomain(member));
-            }
-        }
-
         List<CrewMemberJpaEntity> members = crewMemberJpaRepository.findByCrewId(crew.getId());
         return crewEntity.toDomainWithMembers(members);
+    }
+
+    @Override
+    public CrewMember saveMember(CrewMember member) {
+        CrewMemberJpaEntity entity = CrewMemberJpaEntity.fromDomain(member);
+        crewMemberJpaRepository.save(entity);
+        return entity.toDomain();
     }
 
     @Override
@@ -61,5 +57,20 @@ public class CrewJpaAdapter implements CrewRepositoryPort {
                     List<CrewMemberJpaEntity> members = crewMemberJpaRepository.findByCrewId(entity.getId());
                     return entity.toDomainWithMembers(members);
                 });
+    }
+
+    @Override
+    public List<Crew> findAllByUserId(String userId) {
+        List<String> crewIds = crewMemberJpaRepository.findByUserId(userId).stream()
+                .map(m -> m.toDomain().getCrewId())
+                .toList();
+
+        if (crewIds.isEmpty()) {
+            return List.of();
+        }
+
+        return crewJpaRepository.findAllById(crewIds).stream()
+                .map(CrewJpaEntity::toDomain)
+                .toList();
     }
 }

@@ -29,6 +29,7 @@ public class CreateCrewService implements CreateCrewUseCase {
         );
 
         Crew saved = crewRepositoryPort.save(crew);
+        saved.getMembers().forEach(crewRepositoryPort::saveMember);
 
         return new CreateCrewResult(
                 saved.getId(),
@@ -36,7 +37,6 @@ public class CreateCrewService implements CreateCrewUseCase {
                 saved.getName(),
                 saved.getGoal(),
                 saved.getVerificationType(),
-                saved.getMinMembers(),
                 saved.getMaxMembers(),
                 saved.getCurrentMembers(),
                 saved.getStatus(),
