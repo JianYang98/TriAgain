@@ -1,14 +1,17 @@
 package com.triagain.crew.domain.model;
 
+import com.triagain.common.exception.BusinessException;
+import com.triagain.common.exception.ErrorCode;
 import com.triagain.crew.domain.vo.CrewStatus;
 import com.triagain.crew.domain.vo.VerificationType;
+
+import com.triagain.common.util.IdGenerator;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 
 public class Crew {
 
@@ -17,42 +20,48 @@ public class Crew {
     private final String name;
     private final String goal;
     private final VerificationType verificationType;
-    private final int minMembers;
     private final int maxMembers;
     private int currentMembers;
     private CrewStatus status;
     private final LocalDate startDate;
+    private final LocalDate endDate;
+    private final boolean allowLateJoin;
     private final String inviteCode;
     private final LocalDateTime createdAt;
     private final List<CrewMember> members;
 
     private Crew(String id, String creatorId, String name, String goal,
-                 VerificationType verificationType, int minMembers, int maxMembers,
+                 VerificationType verificationType, int maxMembers,
                  int currentMembers, CrewStatus status, LocalDate startDate,
+                 LocalDate endDate, boolean allowLateJoin,
                  String inviteCode, LocalDateTime createdAt, List<CrewMember> members) {
         this.id = id;
         this.creatorId = creatorId;
         this.name = name;
         this.goal = goal;
         this.verificationType = verificationType;
-        this.minMembers = minMembers;
         this.maxMembers = maxMembers;
         this.currentMembers = currentMembers;
         this.status = status;
         this.startDate = startDate;
+        this.endDate = endDate;
+        this.allowLateJoin = allowLateJoin;
         this.inviteCode = inviteCode;
         this.createdAt = createdAt;
         this.members = new ArrayList<>(members);
     }
 
+    /** 새 크루 생성 — 크루장 ID와 설정값으로 초기화 */
     public static Crew create(String creatorId, String name, String goal,
                               VerificationType verificationType,
-                              int minMembers, int maxMembers,
-                              LocalDate startDate) {
-        validateMemberRange(minMembers, maxMembers);
+                              int maxMembers,
+                              LocalDate startDate, LocalDate endDate,
+                              boolean allowLateJoin) {
+        validateMaxMembers(maxMembers);
+        validateDates(startDate, endDate);
 
-        String crewId = UUID.randomUUID().toString();
-        CrewMember leader = CrewMember.createLeader(creatorId, crewId);
+        String crewId = IdGenerator.generate("CREW");
+        CrewMember leader = CrewMember.createLeader(creatorId, crewId); // 리더 생성
 
         return new Crew(
                 crewId,
@@ -60,35 +69,39 @@ public class Crew {
                 name,
                 goal,
                 verificationType,
-                minMembers,
                 maxMembers,
                 1,
                 CrewStatus.RECRUITING,
                 startDate,
+                endDate,
+                allowLateJoin,
                 generateInviteCode(),
                 LocalDateTime.now(),
                 List.of(leader)
         );
     }
 
+    /** 영속 데이터로 크루 복원 — DB 조회 결과를 도메인 객체로 변환 */
     public static Crew of(String id, String creatorId, String name, String goal,
-                          VerificationType verificationType, int minMembers, int maxMembers,
+                          VerificationType verificationType, int maxMembers,
                           int currentMembers, CrewStatus status, LocalDate startDate,
+                          LocalDate endDate, boolean allowLateJoin,
                           String inviteCode, LocalDateTime createdAt, List<CrewMember> members) {
         return new Crew(id, creatorId, name, goal, verificationType,
-                minMembers, maxMembers, currentMembers, status, startDate,
-                inviteCode, createdAt, members);
+                maxMembers, currentMembers, status, startDate,
+                endDate, allowLateJoin, inviteCode, createdAt, members);
     }
 
+    /** 멤버 추가 — 정원·상태·마감일 검증 후 멤버 등록 */
     public CrewMember addMember(String userId) {
-        if (!canJoin()) {
-            throw new IllegalStateException("크루에 참여할 수 없는 상태입니다.");
+        if (canNotJoin()) {
+            throw new BusinessException(ErrorCode.CREW_NOT_RECRUITING);
         }
         if (isFull()) {
-            throw new IllegalStateException("크루 정원이 가득 찼습니다.");
+            throw new BusinessException(ErrorCode.CREW_FULL);
         }
         if (isAlreadyMember(userId)) {
-            throw new IllegalStateException("이미 참여 중인 크루입니다.");
+            throw new BusinessException(ErrorCode.CREW_ALREADY_JOINED);
         }
 
         CrewMember member = CrewMember.createMember(userId, this.id);
@@ -97,24 +110,40 @@ public class Crew {
         return member;
     }
 
+    /** 정원 초과 여부 확인 — 참여 가능 판단에 사용 */
     public boolean isFull() {
         return this.currentMembers >= this.maxMembers;
     }
 
+     /** 참여 가능 상태 확인 — 모집 중이고 정원 미달인지 판단 */
     public boolean canJoin() {
-        return this.status == CrewStatus.RECRUITING && !isFull();
+        if (isFull()) return false;
+        if (status == CrewStatus.RECRUITING) return true;
+        return status == CrewStatus.ACTIVE && allowLateJoin;
     }
 
+    /** 참여 상태 확인 - 불가 **/
+    public boolean canNotJoin() {
+        return !canJoin();
+    }
+
+    /** 참여 마감 여부 확인 — 시작일 이후 늦은 참여 차단에 사용 */
+    public boolean isJoinDeadlinePassed() {
+        return LocalDate.now().isAfter(endDate.minusDays(3));
+    }
+
+    /** 크루 활성화 — RECRUITING → ACTIVE 상태 전환 */
     public void activate() {
         if (this.status != CrewStatus.RECRUITING) {
-            throw new IllegalStateException("모집 중인 크루만 활성화할 수 있습니다.");
+            throw new BusinessException(ErrorCode.CREW_NOT_RECRUITING);
         }
         this.status = CrewStatus.ACTIVE;
     }
 
+    /** 크루 종료 — ACTIVE → COMPLETED 상태 전환 */
     public void complete() {
         if (this.status != CrewStatus.ACTIVE) {
-            throw new IllegalStateException("진행 중인 크루만 완료할 수 있습니다.");
+            throw new BusinessException(ErrorCode.CREW_NOT_ACTIVE);
         }
         this.status = CrewStatus.COMPLETED;
     }
@@ -124,12 +153,18 @@ public class Crew {
                 .anyMatch(m -> m.getUserId().equals(userId));
     }
 
-    private static void validateMemberRange(int minMembers, int maxMembers) {
-        if (minMembers < 2 || maxMembers > 10) {
-            throw new IllegalArgumentException("크루 인원은 2~10명이어야 합니다.");
+    private static void validateMaxMembers(int maxMembers) {
+        if (maxMembers < 1 || maxMembers > 10) {
+            throw new BusinessException(ErrorCode.INVALID_MAX_MEMBERS);
         }
-        if (minMembers > maxMembers) {
-            throw new IllegalArgumentException("최소 인원이 최대 인원보다 클 수 없습니다.");
+    }
+
+    private static void validateDates(LocalDate startDate, LocalDate endDate) {
+        if (!startDate.isAfter(LocalDate.now())) {
+            throw new BusinessException(ErrorCode.INVALID_START_DATE);
+        }
+        if (!endDate.isAfter(startDate)) {
+            throw new BusinessException(ErrorCode.INVALID_END_DATE);
         }
     }
 
@@ -163,10 +198,6 @@ public class Crew {
         return verificationType;
     }
 
-    public int getMinMembers() {
-        return minMembers;
-    }
-
     public int getMaxMembers() {
         return maxMembers;
     }
@@ -181,6 +212,14 @@ public class Crew {
 
     public LocalDate getStartDate() {
         return startDate;
+    }
+
+    public LocalDate getEndDate() {
+        return endDate;
+    }
+
+    public boolean isAllowLateJoin() {
+        return allowLateJoin;
     }
 
     public String getInviteCode() {

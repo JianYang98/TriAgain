@@ -2,8 +2,9 @@ package com.triagain.support.domain.model;
 
 import com.triagain.support.domain.vo.NotificationType;
 
+import com.triagain.common.util.IdGenerator;
+
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 public class Notification {
 
@@ -30,7 +31,7 @@ public class Notification {
     public static Notification create(String userId, NotificationType type,
                                       String title, String content) {
         return new Notification(
-                UUID.randomUUID().toString(),
+                IdGenerator.generate("NTFY"),
                 userId,
                 type,
                 title,

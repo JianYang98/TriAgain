@@ -1,7 +1,11 @@
 package com.triagain.user.domain.model;
 
+import com.triagain.common.exception.BusinessException;
+import com.triagain.common.exception.ErrorCode;
+
+import com.triagain.common.util.IdGenerator;
+
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 public class User {
 
@@ -21,13 +25,13 @@ public class User {
 
     public static User create(String email, String nickname) {
         if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException("이메일은 필수입니다.");
+            throw new BusinessException(ErrorCode.EMAIL_REQUIRED);
         }
         if (nickname == null || nickname.isBlank()) {
-            throw new IllegalArgumentException("닉네임은 필수입니다.");
+            throw new BusinessException(ErrorCode.NICKNAME_REQUIRED);
         }
         return new User(
-                UUID.randomUUID().toString(),
+                IdGenerator.generate("USR"),
                 email,
                 nickname,
                 null,

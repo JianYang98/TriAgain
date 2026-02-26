@@ -16,6 +16,7 @@ public class JoinCrewService implements JoinCrewUseCase {
 
     private final CrewRepositoryPort crewRepositoryPort;
 
+    /** 크루 가입 */
     @Override
     @Transactional
     public JoinCrewResult joinCrew(JoinCrewCommand command) {
@@ -29,7 +30,6 @@ public class JoinCrewService implements JoinCrewUseCase {
         crewRepositoryPort.saveMember(member);
 
         return new JoinCrewResult(
-                member.getId(),
                 member.getUserId(),
                 member.getCrewId(),
                 member.getRole(),
@@ -38,7 +38,7 @@ public class JoinCrewService implements JoinCrewUseCase {
     }
 
     private void validateJoin(Crew crew, String userId) {
-        if (!crew.canJoin()) {
+        if (crew.canNotJoin()) {
             if (crew.isFull()) {
                 throw new BusinessException(ErrorCode.CREW_FULL);
             }

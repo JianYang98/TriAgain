@@ -13,15 +13,17 @@ public class CreateCrewService implements CreateCrewUseCase {
 
     private final CrewRepositoryPort crewRepositoryPort;
 
+    /** 크루 생성 — 크루장을 리더 멤버로 자동 등록 */
     @Override
     @Transactional
     public CreateCrewResult createCrew(CreateCrewCommand command) {
+
+        // 크루 생성 및 , 리더 지정
         Crew crew = Crew.create(
                 command.creatorId(),
                 command.name(),
                 command.goal(),
                 command.verificationType(),
-                Crew.MIN_MEMBERS,
                 command.maxMembers(),
                 command.startDate(),
                 command.endDate(),
@@ -29,7 +31,7 @@ public class CreateCrewService implements CreateCrewUseCase {
         );
 
         Crew saved = crewRepositoryPort.save(crew);
-        saved.getMembers().forEach(crewRepositoryPort::saveMember);
+        saved.getMembers().forEach(crewRepositoryPort::saveMember); // 리더 멤버로 추가
 
         return new CreateCrewResult(
                 saved.getId(),

@@ -8,48 +8,62 @@ import lombok.RequiredArgsConstructor;
 public enum ErrorCode {
 
     // Common
-    INVALID_INPUT(400, "C001", "잘못된 입력값입니다."),
-    INTERNAL_SERVER_ERROR(500, "C002", "서버 내부 오류가 발생했습니다."),
-    RESOURCE_NOT_FOUND(404, "C003", "요청한 리소스를 찾을 수 없습니다."),
+    INVALID_INPUT(400, "C001"),
+    INTERNAL_SERVER_ERROR(500, "C002"),
+    RESOURCE_NOT_FOUND(404, "C003"),
 
     // User
-    USER_NOT_FOUND(404, "U001", "사용자를 찾을 수 없습니다."),
-    EMAIL_ALREADY_EXISTS(400, "U002", "이미 사용 중인 이메일입니다."),
+    USER_NOT_FOUND(404, "U001"),
+    EMAIL_ALREADY_EXISTS(400, "U002"),
+    EMAIL_REQUIRED(400, "U003"),
+    NICKNAME_REQUIRED(400, "U004"),
 
     // Crew
-    CREW_NOT_FOUND(404, "CR001", "크루를 찾을 수 없습니다."),
-    CREW_FULL(409, "CR002", "크루 정원이 가득 찼습니다."),
-    CREW_NOT_RECRUITING(400, "CR003", "모집 중인 크루가 아닙니다."),
-    CREW_ALREADY_JOINED(409, "CR004", "이미 참여 중인 크루입니다."),
-    CHALLENGE_NOT_FOUND(404, "CR005", "챌린지를 찾을 수 없습니다."),
-    INVALID_INVITE_CODE(404, "CR006", "유효하지 않은 초대 코드입니다."),
-    CREW_NOT_ACTIVE(400, "CR007", "활성 상태의 크루가 아닙니다."),
-    CREW_JOIN_DEADLINE_PASSED(400, "CR008", "크루 참여 마감 기한이 지났습니다."),
-    CREW_ACCESS_DENIED(403, "CR009", "크루 멤버만 조회할 수 있습니다."),
+    CREW_NOT_FOUND(404, "CR001"),
+    CREW_FULL(409, "CR002"),
+    CREW_NOT_RECRUITING(400, "CR003"),
+    CREW_ALREADY_JOINED(409, "CR004"),
+    CHALLENGE_NOT_FOUND(404, "CR005"),
+    INVALID_INVITE_CODE(404, "CR006"),
+    CREW_NOT_ACTIVE(400, "CR007"),
+    CREW_JOIN_DEADLINE_PASSED(400, "CR008"),
+    CREW_ACCESS_DENIED(403, "CR009"),
+    INVALID_MAX_MEMBERS(400, "CR010"),
+    INVALID_START_DATE(400, "CR011"),
+    INVALID_END_DATE(400, "CR012"),
+    CHALLENGE_NOT_IN_PROGRESS(400, "CR013"),
 
     // Verification
-    VERIFICATION_NOT_FOUND(404, "V001", "인증을 찾을 수 없습니다."),
-    VERIFICATION_DEADLINE_EXCEEDED(400, "V002", "인증 마감 시간이 지났습니다."),
-    VERIFICATION_ALREADY_EXISTS(400, "V003", "이미 해당 날짜에 인증이 존재합니다."),
-    UPLOAD_SESSION_NOT_FOUND(404, "V004", "업로드 세션을 찾을 수 없습니다."),
-    UPLOAD_SESSION_NOT_COMPLETED(400, "V005", "업로드 세션이 완료되지 않았습니다."),
-    UPLOAD_SESSION_EXPIRED(400, "V006", "업로드 세션이 만료되었습니다."),
-    INVALID_FILE_TYPE(400, "V007", "지원하지 않는 파일 형식입니다."),
-    FILE_TOO_LARGE(400, "V008", "파일 크기가 너무 큽니다."),
+    VERIFICATION_NOT_FOUND(404, "V001"),
+    VERIFICATION_DEADLINE_EXCEEDED(400, "V002"),
+    VERIFICATION_ALREADY_EXISTS(409, "V003"),
+    UPLOAD_SESSION_NOT_FOUND(404, "V004"),
+    UPLOAD_SESSION_NOT_COMPLETED(400, "V005"),
+    UPLOAD_SESSION_EXPIRED(400, "V006"),
+    INVALID_FILE_TYPE(400, "V007"),
+    FILE_TOO_LARGE(400, "V008"),
+    PHOTO_REQUIRED(400, "V009"),
+    TEXT_CONTENT_REQUIRED(400, "V010"),
+    IMAGE_URL_REQUIRED(400, "V011"),
+    USER_ID_REQUIRED(400, "V012"),
+    IMAGE_KEY_REQUIRED(400, "V013"),
+    UPLOAD_SESSION_NOT_PENDING(400, "V014"),
 
     // Moderation
-    REPORT_NOT_FOUND(404, "M001", "신고를 찾을 수 없습니다."),
-    REPORT_ALREADY_EXISTS(400, "M002", "이미 해당 인증에 신고를 접수했습니다."),
-    REVIEW_NOT_FOUND(404, "M003", "검토를 찾을 수 없습니다."),
-    REPORT_ALREADY_PROCESSED(400, "M004", "이미 처리된 신고입니다."),
-    SELF_REPORT_NOT_ALLOWED(400, "M005", "자신의 인증을 신고할 수 없습니다."),
-    NOT_CREW_MEMBER(403, "M006", "크루 멤버만 신고할 수 있습니다."),
+    REPORT_NOT_FOUND(404, "M001"),
+    REPORT_ALREADY_EXISTS(400, "M002"),
+    REVIEW_NOT_FOUND(404, "M003"),
+    REPORT_ALREADY_PROCESSED(400, "M004"),
+    SELF_REPORT_NOT_ALLOWED(400, "M005"),
+    NOT_CREW_MEMBER(403, "M006"),
+    VERIFICATION_ID_REQUIRED(400, "M007"),
+    REPORTER_ID_REQUIRED(400, "M008"),
 
     // Support
-    NOTIFICATION_NOT_FOUND(404, "S001", "알림을 찾을 수 없습니다."),
-    REACTION_NOT_FOUND(404, "S002", "반응을 찾을 수 없습니다.");
+    NOTIFICATION_NOT_FOUND(404, "S001"),
+    REACTION_NOT_FOUND(404, "S002"),
+    EMOJI_REQUIRED(400, "S003");
 
     private final int status;
     private final String code;
-    private final String message;
 }

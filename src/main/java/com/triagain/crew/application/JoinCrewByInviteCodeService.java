@@ -23,6 +23,7 @@ public class JoinCrewByInviteCodeService implements JoinCrewByInviteCodeUseCase 
     private final CrewRepositoryPort crewRepositoryPort;
     private final ChallengeRepositoryPort challengeRepositoryPort;
 
+    /** 초대코드로 크루 참여 — 공유 링크를 통해 참여할 때 사용 */
     @Override
     @Transactional
     public JoinByInviteCodeResult joinByInviteCode(JoinByInviteCodeCommand command) {
@@ -51,7 +52,6 @@ public class JoinCrewByInviteCodeService implements JoinCrewByInviteCodeUseCase 
         }
 
         return new JoinByInviteCodeResult(
-                member.getId(),
                 member.getUserId(),
                 member.getCrewId(),
                 member.getRole(),
@@ -60,7 +60,7 @@ public class JoinCrewByInviteCodeService implements JoinCrewByInviteCodeUseCase 
     }
 
     private void validateJoin(Crew crew, String userId) {
-        if (!crew.canJoin()) {
+        if (crew.canNotJoin()) {
             if (crew.isFull()) {
                 throw new BusinessException(ErrorCode.CREW_FULL);
             }

@@ -20,6 +20,15 @@ public class ChallengeClientAdapter implements ChallengePort {
                 .map(this::toChallengeInfo);
     }
 
+    @Override
+    public void recordCompletion(String challengeId) {
+        challengeRepositoryPort.findById(challengeId)
+                .ifPresent(challenge -> {
+                    challenge.recordCompletion();
+                    challengeRepositoryPort.save(challenge);
+                });
+    }
+
     private ChallengeInfo toChallengeInfo(Challenge challenge) {
         return new ChallengeInfo(
                 challenge.getId(),

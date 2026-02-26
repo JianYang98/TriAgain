@@ -1,7 +1,11 @@
 package com.triagain.support.domain.model;
 
+import com.triagain.common.exception.BusinessException;
+import com.triagain.common.exception.ErrorCode;
+
+import com.triagain.common.util.IdGenerator;
+
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 public class Reaction {
 
@@ -22,10 +26,10 @@ public class Reaction {
 
     public static Reaction create(String verificationId, String userId, String emoji) {
         if (emoji == null || emoji.isBlank()) {
-            throw new IllegalArgumentException("이모지는 필수입니다.");
+            throw new BusinessException(ErrorCode.EMOJI_REQUIRED);
         }
         return new Reaction(
-                UUID.randomUUID().toString(),
+                IdGenerator.generate("RCTN"),
                 verificationId,
                 userId,
                 emoji,

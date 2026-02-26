@@ -3,8 +3,9 @@ package com.triagain.moderation.domain.model;
 import com.triagain.moderation.domain.vo.ReviewDecision;
 import com.triagain.moderation.domain.vo.ReviewerType;
 
+import com.triagain.common.util.IdGenerator;
+
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 public class Review {
 
@@ -30,7 +31,7 @@ public class Review {
 
     public static Review createAutoReview(String reportId, ReviewDecision decision, String comment) {
         return new Review(
-                UUID.randomUUID().toString(),
+                IdGenerator.generate("RVEW"),
                 reportId,
                 "SYSTEM",
                 ReviewerType.AUTO,
@@ -43,7 +44,7 @@ public class Review {
     public static Review createCrewLeaderReview(String reportId, String reviewerId,
                                                 ReviewDecision decision, String comment) {
         return new Review(
-                UUID.randomUUID().toString(),
+                IdGenerator.generate("RVEW"),
                 reportId,
                 reviewerId,
                 ReviewerType.CREW_LEADER,

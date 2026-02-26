@@ -8,6 +8,8 @@ public interface ChallengePort {
 
     Optional<ChallengeInfo> findChallengeById(String challengeId);
 
+    void recordCompletion(String challengeId);
+
     record ChallengeInfo(
             String id,
             String userId,

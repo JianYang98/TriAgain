@@ -51,11 +51,13 @@ public class ChallengeJpaEntity {
     protected ChallengeJpaEntity() {
     }
 
+    /** JPA 엔티티를 도메인 모델로 변환 */
     public Challenge toDomain() {
         return Challenge.of(id, userId, crewId, cycleNumber, targetDays,
                 completedDays, status, startDate, deadline, createdAt);
     }
 
+    /** 도메인 모델을 JPA 엔티티로 변환 — 저장 시 사용 */
     public static ChallengeJpaEntity fromDomain(Challenge challenge) {
         ChallengeJpaEntity entity = new ChallengeJpaEntity();
         entity.id = challenge.getId();

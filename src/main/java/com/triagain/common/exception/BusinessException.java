@@ -6,14 +6,18 @@ import lombok.Getter;
 public class BusinessException extends RuntimeException {
 
     private final ErrorCode errorCode;
+    private final Object[] args;
 
     public BusinessException(ErrorCode errorCode) {
-        super(errorCode.getMessage());
+        super(errorCode.name());
         this.errorCode = errorCode;
+        this.args = null;
     }
 
-    public BusinessException(ErrorCode errorCode, String message) {
-        super(message);
+    /** 메시지 인자 바인딩용 — properties의 {0},{1} 플레이스홀더에 매핑 */
+    public BusinessException(ErrorCode errorCode, Object... args) {
+        super(errorCode.name());
         this.errorCode = errorCode;
+        this.args = args;
     }
 }

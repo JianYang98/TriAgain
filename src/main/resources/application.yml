@@ -8,6 +8,10 @@ spring:
       hibernate:
         default_batch_fetch_size: 100
 
+  messages:
+    basename: error-messages
+    encoding: UTF-8
+
   jackson:
     property-naming-strategy: LOWER_CAMEL_CASE
     deserialization:

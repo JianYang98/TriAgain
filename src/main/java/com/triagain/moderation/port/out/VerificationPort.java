@@ -11,6 +11,8 @@ public interface VerificationPort {
 
     void approveVerification(String verificationId);
 
+    int incrementReportCount(String verificationId);
+
     Optional<VerificationInfo> findVerificationById(String verificationId);
 
     record VerificationInfo(
