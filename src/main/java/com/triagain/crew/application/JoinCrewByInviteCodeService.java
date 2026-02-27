@@ -55,6 +55,7 @@ public class JoinCrewByInviteCodeService implements JoinCrewByInviteCodeUseCase 
                 member.getUserId(),
                 member.getCrewId(),
                 member.getRole(),
+                lockedCrew.getCurrentMembers(),
                 member.getJoinedAt()
         );
     }

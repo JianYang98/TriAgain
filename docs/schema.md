@@ -26,8 +26,9 @@ erDiagram
     users ||--o{ reactions : "남김"
 
     users {
-        string id PK
-        string email UK
+        string id PK "카카오 고유 ID (String 변환)"
+        string provider "KAKAO"
+        string email "nullable"
         string nickname
         string profile_image_url
         timestamp created_at

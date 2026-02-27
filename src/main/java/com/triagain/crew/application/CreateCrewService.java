@@ -31,7 +31,7 @@ public class CreateCrewService implements CreateCrewUseCase {
         );
 
         Crew saved = crewRepositoryPort.save(crew);
-        saved.getMembers().forEach(crewRepositoryPort::saveMember); // 리더 멤버로 추가
+        crew.getMembers().forEach(crewRepositoryPort::saveMember); // 리더 멤버로 추가
 
         return new CreateCrewResult(
                 saved.getId(),
