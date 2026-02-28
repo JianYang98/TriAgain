@@ -19,4 +19,14 @@ public class UploadSessionTestAdapter extends BaseTestAdapter {
                 .log().ifError()
                 .extract();
     }
+
+    /** Lambda 콜백 — PUT /internal/upload-sessions/{id}/complete */
+    public ExtractableResponse<Response> completeUploadSession(Long id) {
+        return givenRequest()
+                .when()
+                .put("/internal/upload-sessions/" + id + "/complete")
+                .then()
+                .log().ifError()
+                .extract();
+    }
 }

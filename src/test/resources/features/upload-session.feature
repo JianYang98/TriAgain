@@ -1,4 +1,3 @@
-@wip
 Feature: 업로드 세션 생성
   사진 인증 시 S3 Presigned URL을 발급받는다.
 
@@ -44,3 +43,21 @@ Feature: 업로드 세션 생성
     And 세션 상태가 "PENDING"이다
     When 만료 스케줄러가 실행된다
     Then 세션 상태는 "EXPIRED"이다
+
+  # ===== Lambda 콜백 (Internal API) =====
+
+  Scenario: Lambda 콜백으로 세션이 COMPLETED 처리된다
+    Given 업로드 세션이 생성되어 PENDING 상태이다
+    When Lambda가 업로드 완료를 알린다
+    Then 세션 상태는 "COMPLETED"이다
+
+  Scenario: 이미 완료된 세션에 Lambda가 다시 콜백하면 무시된다
+    Given 업로드 세션이 이미 "COMPLETED" 상태이다
+    When Lambda가 업로드 완료를 알린다
+    Then 세션 상태는 "COMPLETED"이다
+
+  Scenario: 업로드 완료 시 SSE로 알림을 받는다
+    Given 업로드 세션이 생성되어 PENDING 상태이다
+    And SSE로 세션 이벤트를 구독 중이다
+    When Lambda가 업로드 완료를 알린다
+    Then SSE로 "COMPLETED" 이벤트를 수신한다

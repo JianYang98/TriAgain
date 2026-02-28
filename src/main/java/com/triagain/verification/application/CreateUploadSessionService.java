@@ -4,6 +4,8 @@ import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
 import com.triagain.verification.domain.model.UploadSession;
 import com.triagain.verification.port.in.CreateUploadSessionUseCase;
+import com.triagain.verification.port.out.ChallengePort;
+import com.triagain.verification.port.out.ChallengePort.ChallengeInfo;
 import com.triagain.verification.port.out.StoragePort;
 import com.triagain.verification.port.out.UploadSessionRepositoryPort;
 import lombok.RequiredArgsConstructor;
@@ -24,10 +26,12 @@ public class CreateUploadSessionService implements CreateUploadSessionUseCase {
 
     private final UploadSessionRepositoryPort uploadSessionRepositoryPort;
     private final StoragePort storagePort;
+    private final ChallengePort challengePort;
 
     @Override
     @Transactional
     public UploadSessionResult createUploadSession(CreateUploadSessionCommand command) {
+        validateDeadline(command.challengeId());
         validateFileType(command.fileType());
         validateFileSize(command.fileSize());
 
@@ -47,6 +51,15 @@ public class CreateUploadSessionService implements CreateUploadSessionUseCase {
                 MAX_FILE_SIZE,
                 List.copyOf(ALLOWED_TYPES)
         );
+    }
+
+    /** 챌린지 마감 시간 검증 — 마감 이후 업로드 세션 생성 차단 */
+    private void validateDeadline(String challengeId) {
+        ChallengeInfo challenge = challengePort.findChallengeById(challengeId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHALLENGE_NOT_FOUND));
+        if (LocalDateTime.now().isAfter(challenge.deadline())) {
+            throw new BusinessException(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
+        }
     }
 
     private void validateFileType(String fileType) {

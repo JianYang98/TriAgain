@@ -280,15 +280,17 @@ public class CrewFeedSteps {
     }
 
     private void ensureChallengeExists(String userId, String crewId) {
-        if (challengeRepositoryPort.findByUserIdAndCrewIdAndStatus(
-                userId, crewId, ChallengeStatus.IN_PROGRESS).isEmpty()) {
-            Challenge challenge = Challenge.of(
-                    IdGenerator.generate("CHAL"), userId, crewId, 1,
-                    3, 0, ChallengeStatus.IN_PROGRESS,
-                    LocalDate.now(), LocalDateTime.now().plusDays(3), LocalDateTime.now()
-            );
-            challengeRepositoryPort.save(challenge);
-        }
+        Challenge challenge = challengeRepositoryPort.findByUserIdAndCrewIdAndStatus(
+                userId, crewId, ChallengeStatus.IN_PROGRESS)
+                .orElseGet(() -> {
+                    Challenge c = Challenge.of(
+                            IdGenerator.generate("CHAL"), userId, crewId, 1,
+                            3, 0, ChallengeStatus.IN_PROGRESS,
+                            LocalDate.now(), LocalDateTime.now().plusDays(3), LocalDateTime.now()
+                    );
+                    return challengeRepositoryPort.save(c);
+                });
+        scenarioContext.setChallengeId(challenge.getId());
     }
 
     private String generateInviteCode() {
