@@ -29,7 +29,6 @@ public class VerificationController {
                 userId,
                 request.challengeId(),
                 request.uploadSessionId(),
-                request.imageUrl(),
                 request.textContent()
         );
 

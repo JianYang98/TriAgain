@@ -44,7 +44,11 @@ public class UploadSession {
         return new UploadSession(id, userId, imageKey, contentType, status, requestedAt, createdAt);
     }
 
+    /** 업로드 세션 완료 처리 — Lambda 콜백 시 호출, 이미 COMPLETED면 멱등 처리 */
     public void complete() {
+        if (this.status == UploadSessionStatus.COMPLETED) {
+            return;
+        }
         if (this.status != UploadSessionStatus.PENDING) {
             throw new BusinessException(ErrorCode.UPLOAD_SESSION_NOT_PENDING);
         }
@@ -60,6 +64,10 @@ public class UploadSession {
 
     public boolean isPending() {
         return this.status == UploadSessionStatus.PENDING;
+    }
+
+    public boolean isCompleted() {
+        return this.status == UploadSessionStatus.COMPLETED;
     }
 
     public Long getId() {

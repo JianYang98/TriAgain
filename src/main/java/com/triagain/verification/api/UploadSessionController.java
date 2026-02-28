@@ -4,7 +4,7 @@ import com.triagain.common.response.ApiResponse;
 import com.triagain.verification.port.in.CreateUploadSessionUseCase;
 import com.triagain.verification.port.in.CreateUploadSessionUseCase.CreateUploadSessionCommand;
 import com.triagain.verification.port.in.CreateUploadSessionUseCase.UploadSessionResult;
-import com.triagain.verification.port.out.SsePort;
+import com.triagain.verification.port.in.SubscribeUploadSessionUseCase;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -23,7 +23,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class UploadSessionController {
 
     private final CreateUploadSessionUseCase createUploadSessionUseCase;
-    private final SsePort ssePort;
+    private final SubscribeUploadSessionUseCase subscribeUploadSessionUseCase;
 
     @PostMapping("/upload-sessions")
     public ResponseEntity<ApiResponse<UploadSessionResult>> createUploadSession(
@@ -46,8 +46,6 @@ public class UploadSessionController {
     /** SSE 구독 — 클라이언트가 업로드 완료 이벤트를 실시간 수신 */
     @GetMapping(value = "/upload-sessions/{id}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter subscribe(@PathVariable Long id) {
-        SseEmitter emitter = new SseEmitter(60_000L);
-        ssePort.subscribe(id, emitter);
-        return emitter;
+        return (SseEmitter) subscribeUploadSessionUseCase.subscribe(id);
     }
 }

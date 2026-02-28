@@ -1,6 +1,9 @@
 package com.triagain.verification.infra;
 
+import com.triagain.common.exception.BusinessException;
+import com.triagain.common.exception.ErrorCode;
 import com.triagain.crew.domain.model.Challenge;
+import com.triagain.crew.domain.vo.ChallengeStatus;
 import com.triagain.crew.port.out.ChallengeRepositoryPort;
 import com.triagain.verification.port.out.ChallengePort;
 import lombok.RequiredArgsConstructor;
@@ -22,11 +25,26 @@ public class ChallengeClientAdapter implements ChallengePort {
 
     @Override
     public void recordCompletion(String challengeId) {
-        challengeRepositoryPort.findById(challengeId)
-                .ifPresent(challenge -> {
-                    challenge.recordCompletion();
-                    challengeRepositoryPort.save(challenge);
-                });
+        Challenge challenge = challengeRepositoryPort.findById(challengeId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHALLENGE_NOT_FOUND));
+        challenge.recordCompletion();
+        challengeRepositoryPort.save(challenge);
+    }
+
+    /** 유저의 활성 챌린지 조회 — IN_PROGRESS 상태만 반환 */
+    @Override
+    public Optional<ActiveChallengeInfo> findActiveByUserIdAndCrewId(String userId, String crewId) {
+        return challengeRepositoryPort.findByUserIdAndCrewIdAndStatus(userId, crewId, ChallengeStatus.IN_PROGRESS)
+                .map(this::toActiveChallengeInfo);
+    }
+
+    private ActiveChallengeInfo toActiveChallengeInfo(Challenge challenge) {
+        return new ActiveChallengeInfo(
+                challenge.getId(),
+                challenge.getStatus().name(),
+                challenge.getCompletedDays(),
+                challenge.getTargetDays()
+        );
     }
 
     private ChallengeInfo toChallengeInfo(Challenge challenge) {
