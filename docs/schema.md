@@ -41,7 +41,7 @@ erDiagram
         string goal
         enum verification_type "TEXT / PHOTO"
         boolean allow_late_join "크루장이 중간 가입 허용 여부 설정"
-        int min_members
+        int min_members "DEFAULT 1"
         int max_members
         int current_members
         enum status
