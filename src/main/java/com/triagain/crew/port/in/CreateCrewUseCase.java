@@ -5,6 +5,7 @@ import com.triagain.crew.domain.vo.VerificationType;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 public interface CreateCrewUseCase {
 
@@ -19,7 +20,8 @@ public interface CreateCrewUseCase {
             int maxMembers,
             LocalDate startDate,
             LocalDate endDate,
-            boolean allowLateJoin
+            boolean allowLateJoin,
+            LocalTime deadlineTime
     ) {
     }
 
@@ -36,7 +38,8 @@ public interface CreateCrewUseCase {
             LocalDate endDate,
             boolean allowLateJoin,
             String inviteCode,
-            LocalDateTime createdAt
+            LocalDateTime createdAt,
+            LocalTime deadlineTime
     ) {
     }
 }

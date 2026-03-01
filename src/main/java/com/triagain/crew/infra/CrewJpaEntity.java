@@ -12,6 +12,7 @@ import jakarta.persistence.Table;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Collections;
 
 @Entity
@@ -63,6 +64,9 @@ public class CrewJpaEntity {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "deadline_time", nullable = false, columnDefinition = "time default '23:59:59'")
+    private LocalTime deadlineTime;
+
     protected CrewJpaEntity() {
     }
 
@@ -70,7 +74,8 @@ public class CrewJpaEntity {
     public Crew toDomain() {
         return Crew.of(id, creatorId, name, goal, verificationType,
                 maxMembers, currentMembers, status, startDate,
-                endDate, allowLateJoin, inviteCode, createdAt, Collections.emptyList());
+                endDate, allowLateJoin, inviteCode, createdAt,
+                deadlineTime, Collections.emptyList());
     }
 
     /** JPA 엔티티를 도메인 모델로 변환 — 멤버 포함 */
@@ -80,7 +85,8 @@ public class CrewJpaEntity {
                 .toList();
         return Crew.of(id, creatorId, name, goal, verificationType,
                 maxMembers, currentMembers, status, startDate,
-                endDate, allowLateJoin, inviteCode, createdAt, members);
+                endDate, allowLateJoin, inviteCode, createdAt,
+                deadlineTime, members);
     }
 
     /** 도메인 모델을 JPA 엔티티로 변환 — 저장 시 사용 */
@@ -99,6 +105,7 @@ public class CrewJpaEntity {
         entity.allowLateJoin = crew.isAllowLateJoin();
         entity.inviteCode = crew.getInviteCode();
         entity.createdAt = crew.getCreatedAt();
+        entity.deadlineTime = crew.getDeadlineTime();
         return entity;
     }
 

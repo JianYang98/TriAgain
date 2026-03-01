@@ -9,11 +9,14 @@ import com.triagain.common.util.IdGenerator;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 public class Crew {
+
+    public static final LocalTime DEFAULT_DEADLINE_TIME = LocalTime.of(23, 59, 59);
 
     private final String id;
     private final String creatorId;
@@ -28,13 +31,15 @@ public class Crew {
     private final boolean allowLateJoin;
     private final String inviteCode;
     private final LocalDateTime createdAt;
+    private final LocalTime deadlineTime;
     private final List<CrewMember> members;
 
     private Crew(String id, String creatorId, String name, String goal,
                  VerificationType verificationType, int maxMembers,
                  int currentMembers, CrewStatus status, LocalDate startDate,
                  LocalDate endDate, boolean allowLateJoin,
-                 String inviteCode, LocalDateTime createdAt, List<CrewMember> members) {
+                 String inviteCode, LocalDateTime createdAt,
+                 LocalTime deadlineTime, List<CrewMember> members) {
         this.id = id;
         this.creatorId = creatorId;
         this.name = name;
@@ -48,6 +53,7 @@ public class Crew {
         this.allowLateJoin = allowLateJoin;
         this.inviteCode = inviteCode;
         this.createdAt = createdAt;
+        this.deadlineTime = deadlineTime;
         this.members = new ArrayList<>(members);
     }
 
@@ -56,12 +62,12 @@ public class Crew {
                               VerificationType verificationType,
                               int maxMembers,
                               LocalDate startDate, LocalDate endDate,
-                              boolean allowLateJoin) {
+                              boolean allowLateJoin, LocalTime deadlineTime) {
         validateMaxMembers(maxMembers);
         validateDates(startDate, endDate);
 
         String crewId = IdGenerator.generate("CREW");
-        CrewMember leader = CrewMember.createLeader(creatorId, crewId); // 리더 생성
+        CrewMember leader = CrewMember.createLeader(creatorId, crewId);
 
         return new Crew(
                 crewId,
@@ -77,6 +83,7 @@ public class Crew {
                 allowLateJoin,
                 generateInviteCode(),
                 LocalDateTime.now(),
+                deadlineTime != null ? deadlineTime : DEFAULT_DEADLINE_TIME,
                 List.of(leader)
         );
     }
@@ -86,10 +93,12 @@ public class Crew {
                           VerificationType verificationType, int maxMembers,
                           int currentMembers, CrewStatus status, LocalDate startDate,
                           LocalDate endDate, boolean allowLateJoin,
-                          String inviteCode, LocalDateTime createdAt, List<CrewMember> members) {
+                          String inviteCode, LocalDateTime createdAt,
+                          LocalTime deadlineTime, List<CrewMember> members) {
         return new Crew(id, creatorId, name, goal, verificationType,
                 maxMembers, currentMembers, status, startDate,
-                endDate, allowLateJoin, inviteCode, createdAt, members);
+                endDate, allowLateJoin, inviteCode, createdAt,
+                deadlineTime, members);
     }
 
     /** 멤버 추가 — 정원·상태·마감일 검증 후 멤버 등록 */
@@ -228,6 +237,10 @@ public class Crew {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public LocalTime getDeadlineTime() {
+        return deadlineTime;
     }
 
     public List<CrewMember> getMembers() {

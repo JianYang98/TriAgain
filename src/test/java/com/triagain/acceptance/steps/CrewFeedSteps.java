@@ -272,7 +272,7 @@ public class CrewFeedSteps {
                 VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
                 LocalDate.now(), LocalDate.now().plusDays(14), true,
                 generateInviteCode(), LocalDateTime.now(),
-                java.util.List.of()
+                Crew.DEFAULT_DEADLINE_TIME, java.util.List.of()
         );
         crewRepositoryPort.save(crew);
         crewRepositoryPort.saveMember(CrewMember.createLeader(creatorId, crewId));

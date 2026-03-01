@@ -18,7 +18,7 @@ public class CreateCrewService implements CreateCrewUseCase {
     @Transactional
     public CreateCrewResult createCrew(CreateCrewCommand command) {
 
-        // 크루 생성 및 , 리더 지정
+        // 크루 생성 및 리더 지정
         Crew crew = Crew.create(
                 command.creatorId(),
                 command.name(),
@@ -27,7 +27,8 @@ public class CreateCrewService implements CreateCrewUseCase {
                 command.maxMembers(),
                 command.startDate(),
                 command.endDate(),
-                command.allowLateJoin()
+                command.allowLateJoin(),
+                command.deadlineTime()
         );
 
         Crew saved = crewRepositoryPort.save(crew);
@@ -46,7 +47,8 @@ public class CreateCrewService implements CreateCrewUseCase {
                 saved.getEndDate(),
                 saved.isAllowLateJoin(),
                 saved.getInviteCode(),
-                saved.getCreatedAt()
+                saved.getCreatedAt(),
+                saved.getDeadlineTime()
         );
     }
 }

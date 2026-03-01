@@ -41,7 +41,7 @@ public class JoinCrewByInviteCodeService implements JoinCrewByInviteCodeUseCase 
 
         if (lockedCrew.getStatus() == CrewStatus.ACTIVE) {
             LocalDate startDate = LocalDate.now();
-            LocalDateTime deadline = startDate.plusDays(3).atTime(23, 59, 59);
+            LocalDateTime deadline = startDate.plusDays(3).atTime(lockedCrew.getDeadlineTime());
             Challenge challenge = Challenge.createFirst(
                     command.userId(),
                     lockedCrew.getId(),

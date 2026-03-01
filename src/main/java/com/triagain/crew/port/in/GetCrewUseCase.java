@@ -6,6 +6,7 @@ import com.triagain.crew.domain.vo.VerificationType;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 public interface GetCrewUseCase {
@@ -27,6 +28,7 @@ public interface GetCrewUseCase {
             boolean allowLateJoin,
             String inviteCode,
             LocalDateTime createdAt,
+            LocalTime deadlineTime,
             List<MemberResult> members
     ) {
     }

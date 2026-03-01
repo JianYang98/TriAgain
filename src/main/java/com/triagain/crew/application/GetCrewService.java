@@ -48,6 +48,7 @@ public class GetCrewService implements GetCrewUseCase {
                 crew.isAllowLateJoin(),
                 crew.getInviteCode(),
                 crew.getCreatedAt(),
+                crew.getDeadlineTime(),
                 members
         );
     }

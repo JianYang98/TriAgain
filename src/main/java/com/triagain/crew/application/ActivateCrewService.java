@@ -36,7 +36,7 @@ public class ActivateCrewService implements ActivateCrewUseCase {
         crewRepositoryPort.save(crew);
 
         LocalDate startDate = crew.getStartDate();
-        LocalDateTime deadline = startDate.plusDays(3).atTime(23, 59, 59);
+        LocalDateTime deadline = startDate.plusDays(3).atTime(crew.getDeadlineTime());
 
         crew.getMembers().forEach(member -> {
             Challenge challenge = Challenge.createFirst(
