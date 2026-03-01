@@ -47,6 +47,7 @@ erDiagram
         enum status
         date start_date
         date end_date
+        time deadline_time "마감 시간 (DEFAULT 23:59:59)"
         string invite_code UK
         timestamp created_at
     }
@@ -79,7 +80,7 @@ erDiagram
         string crew_id FK
         string upload_session_id FK "nullable, 사진 인증 시에만"
         string image_url
-        string text_content
+        varchar(500) text_content "최대 500자"
         enum status
         int report_count
         date target_date
