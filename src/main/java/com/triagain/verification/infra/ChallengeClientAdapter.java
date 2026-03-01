@@ -23,6 +23,7 @@ public class ChallengeClientAdapter implements ChallengePort {
                 .map(this::toChallengeInfo);
     }
 
+    /** 챌린지 완료 기록 — 같은 트랜잭션 내 findChallengeById 호출 시 JPA 1차 캐시로 DB 재조회 없음 */
     @Override
     public void recordCompletion(String challengeId) {
         Challenge challenge = challengeRepositoryPort.findById(challengeId)
