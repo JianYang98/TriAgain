@@ -24,7 +24,7 @@ public interface CreateCrewUseCase {
     }
 
     record CreateCrewResult(
-            String id,
+            String crewId,
             String creatorId,
             String name,
             String goal,

@@ -35,6 +35,9 @@ public class CrewJpaEntity {
     @Column(name = "verification_type", nullable = false)
     private VerificationType verificationType;
 
+    @Column(name = "min_members", nullable = false, columnDefinition = "int default 1")
+    private int minMembers = 1;
+
     @Column(name = "max_members", nullable = false)
     private int maxMembers;
 

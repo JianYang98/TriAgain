@@ -26,8 +26,9 @@ erDiagram
     users ||--o{ reactions : "남김"
 
     users {
-        string id PK
-        string email UK
+        string id PK "카카오 고유 ID (String 변환)"
+        string provider "KAKAO"
+        string email "nullable"
         string nickname
         string profile_image_url
         timestamp created_at
@@ -40,12 +41,13 @@ erDiagram
         string goal
         enum verification_type "TEXT / PHOTO"
         boolean allow_late_join "크루장이 중간 가입 허용 여부 설정"
-        int min_members
+        int min_members "DEFAULT 1"
         int max_members
         int current_members
         enum status
         date start_date
         date end_date
+        time deadline_time "마감 시간 (DEFAULT 23:59:59)"
         string invite_code UK
         timestamp created_at
     }
@@ -78,7 +80,7 @@ erDiagram
         string crew_id FK
         string upload_session_id FK "nullable, 사진 인증 시에만"
         string image_url
-        string text_content
+        varchar(500) text_content "최대 500자"
         enum status
         int report_count
         date target_date

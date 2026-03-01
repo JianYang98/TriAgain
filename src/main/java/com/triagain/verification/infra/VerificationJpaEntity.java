@@ -39,7 +39,7 @@ public class VerificationJpaEntity {
     @Column(name = "image_url")
     private String imageUrl;
 
-    @Column(name = "text_content")
+    @Column(name = "text_content", length = 500)
     private String textContent;
 
     @Enumerated(EnumType.STRING)

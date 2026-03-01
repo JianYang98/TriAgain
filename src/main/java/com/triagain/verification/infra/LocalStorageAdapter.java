@@ -1,11 +1,13 @@
 package com.triagain.verification.infra;
 
 import com.triagain.verification.port.out.StoragePort;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
 
 @Component
+@Profile("!prod")
 public class LocalStorageAdapter implements StoragePort {
 
     private static final String LOCAL_BASE_URL = "http://localhost:8080/local-storage";
@@ -18,7 +20,7 @@ public class LocalStorageAdapter implements StoragePort {
     @Override
     public String generateImageKey(String userId, String fileName) {
         String extension = extractExtension(fileName);
-        return "verifications/" + userId + "/" + UUID.randomUUID() + extension;
+        return "upload-sessions/" + userId + "/" + UUID.randomUUID() + extension;
     }
 
     @Override
