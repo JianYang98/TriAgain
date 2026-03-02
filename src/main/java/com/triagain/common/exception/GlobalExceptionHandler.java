@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSource;
 import org.springframework.http.ResponseEntity;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -44,6 +45,26 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .badRequest()
                 .body(ApiResponse.fail(ErrorCode.INVALID_INPUT, message));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    protected ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(
+            DataIntegrityViolationException e) {
+        ErrorCode errorCode = ErrorCode.VERIFICATION_ALREADY_EXISTS;
+
+        Throwable cause = e.getCause();
+        if (cause instanceof org.hibernate.exception.ConstraintViolationException cve) {
+            String constraintName = cve.getConstraintName();
+            if (constraintName != null && constraintName.contains("upload_session_id")) {
+                errorCode = ErrorCode.UPLOAD_SESSION_ALREADY_USED;
+            }
+        }
+
+        log.warn("데이터 무결성 위반: {}", e.getMessage());
+        String message = resolveMessage(errorCode, null);
+        return ResponseEntity
+                .status(errorCode.getStatus())
+                .body(ApiResponse.fail(errorCode, message));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
