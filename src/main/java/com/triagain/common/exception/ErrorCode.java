@@ -7,6 +7,12 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum ErrorCode {
 
+    // Auth
+    INVALID_KAKAO_TOKEN(401, "A001"),
+    KAKAO_API_ERROR(502, "A002"),
+    UNAUTHORIZED(401, "A003"),
+    INVALID_REFRESH_TOKEN(401, "A004"),
+
     // Common
     INVALID_INPUT(400, "C001"),
     INTERNAL_SERVER_ERROR(500, "C002"),
@@ -48,6 +54,7 @@ public enum ErrorCode {
     USER_ID_REQUIRED(400, "V012"),
     IMAGE_KEY_REQUIRED(400, "V013"),
     UPLOAD_SESSION_NOT_PENDING(400, "V014"),
+    UPLOAD_SESSION_ALREADY_USED(409, "V015"),
 
     // Moderation
     REPORT_NOT_FOUND(404, "M001"),

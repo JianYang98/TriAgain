@@ -23,6 +23,7 @@ public class GetUserService implements GetUserUseCase {
 
         return new UserResult(
                 user.getId(),
+                user.getProvider(),
                 user.getEmail(),
                 user.getNickname(),
                 user.getProfileImageUrl(),

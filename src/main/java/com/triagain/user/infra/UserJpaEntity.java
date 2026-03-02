@@ -16,7 +16,10 @@ public class UserJpaEntity {
     @Column(length = 36)
     private String id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, length = 20)
+    private String provider;
+
+    @Column
     private String email;
 
     @Column(nullable = false)
@@ -32,12 +35,13 @@ public class UserJpaEntity {
     }
 
     public User toDomain() {
-        return User.of(id, email, nickname, profileImageUrl, createdAt);
+        return User.of(id, provider, email, nickname, profileImageUrl, createdAt);
     }
 
     public static UserJpaEntity fromDomain(User user) {
         UserJpaEntity entity = new UserJpaEntity();
         entity.id = user.getId();
+        entity.provider = user.getProvider();
         entity.email = user.getEmail();
         entity.nickname = user.getNickname();
         entity.profileImageUrl = user.getProfileImageUrl();

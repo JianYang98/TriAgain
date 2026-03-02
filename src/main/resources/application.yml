@@ -17,6 +17,11 @@ spring:
     deserialization:
       fail-on-unknown-properties: false
 
+jwt:
+  secret: ${JWT_SECRET:dGVzdC1zZWNyZXQta2V5LWZvci1sb2NhbC1kZXZlbG9wbWVudC1vbmx5LXRyaWFnYWlu}
+  access-token-expiration: 1800000
+  refresh-token-expiration: 1209600000
+
 mybatis:
   mapper-locations: classpath:mybatis/mapper/**/*.xml
   config-location: classpath:mybatis/mybatis-config.xml
