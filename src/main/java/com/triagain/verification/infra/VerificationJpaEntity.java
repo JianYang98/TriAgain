@@ -33,7 +33,7 @@ public class VerificationJpaEntity {
     @Column(name = "crew_id", nullable = false, length = 36)
     private String crewId;
 
-    @Column(name = "upload_session_id")
+    @Column(name = "upload_session_id", unique = true)
     private Long uploadSessionId;
 
     @Column(name = "image_url")
