@@ -25,8 +25,8 @@ public class FailExpiredChallengesScheduler {
     private final ChallengeRepositoryPort challengeRepositoryPort;
     private final CrewRepositoryPort crewRepositoryPort;
 
-    /** 마감 초과 챌린지 실패 처리 — 매 1분마다 크루별 deadlineTime 기준으로 판정 */
-    @Scheduled(fixedRate = 60_000)
+    /** 마감 초과 챌린지 실패 처리 — 매 5분마다 크루별 deadlineTime 기준으로 판정 */
+    @Scheduled(fixedRate = 300_000)
     @Transactional
     public void failExpiredChallenges() {
         List<Challenge> expired = challengeRepositoryPort.findExpiredWithoutVerification();
