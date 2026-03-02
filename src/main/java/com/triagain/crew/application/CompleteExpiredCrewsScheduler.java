@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -41,6 +42,9 @@ public class CompleteExpiredCrewsScheduler {
             crew.complete();
             crewRepositoryPort.save(crew);
         }
-        log.info("크루 종료 처리: {}건", expiredCrews.size());
+        String crewIds = expiredCrews.stream()
+                .map(Crew::getId)
+                .collect(Collectors.joining(", "));
+        log.info("크루 종료 처리: {}건 | {}", expiredCrews.size(), crewIds);
     }
 }

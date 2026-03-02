@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -33,6 +34,7 @@ public class FailExpiredChallengesScheduler {
         if (expired.isEmpty()) return;
 
         Map<String, Crew> crewMap = loadCrewMap(expired);
+        Map<String, Integer> failCountByCrewId = new HashMap<>();
         int failedCount = 0;
         int newCount = 0;
 
@@ -40,6 +42,7 @@ public class FailExpiredChallengesScheduler {
             challenge.fail();
             challengeRepositoryPort.save(challenge);
             failedCount++;
+            failCountByCrewId.merge(challenge.getCrewId(), 1, Integer::sum);
 
             Crew crew = crewMap.get(challenge.getCrewId());
             if (crew == null) continue;
@@ -58,7 +61,10 @@ public class FailExpiredChallengesScheduler {
             challengeRepositoryPort.save(next);
             newCount++;
         }
-        log.info("챌린지 실패 처리: {}건, 새 챌린지 생성: {}건", failedCount, newCount);
+        String crewSummary = failCountByCrewId.entrySet().stream()
+                .map(e -> e.getKey() + ": " + e.getValue() + "건")
+                .collect(Collectors.joining(", "));
+        log.info("챌린지 실패 처리: {}건, 새 챌린지 생성: {}건 | {}", failedCount, newCount, crewSummary);
     }
 
     private Map<String, Crew> loadCrewMap(List<Challenge> challenges) {
