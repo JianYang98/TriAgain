@@ -99,6 +99,14 @@ public class Challenge {
         this.status = ChallengeStatus.FAILED;
     }
 
+    /** 크루 기간 종료에 의한 챌린지 종료 — IN_PROGRESS → ENDED */
+    public void end() {
+        if (this.status != ChallengeStatus.IN_PROGRESS) {
+            throw new BusinessException(ErrorCode.CHALLENGE_NOT_IN_PROGRESS);
+        }
+        this.status = ChallengeStatus.ENDED;
+    }
+
     /** 마감 초과 여부 확인 — 실패 판정에 사용 */
     public boolean isDeadlineExceeded() {
         return LocalDateTime.now().isAfter(this.deadline);
