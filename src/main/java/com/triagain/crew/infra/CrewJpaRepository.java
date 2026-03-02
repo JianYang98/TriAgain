@@ -1,11 +1,14 @@
 package com.triagain.crew.infra;
 
+import com.triagain.crew.domain.vo.CrewStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 public interface CrewJpaRepository extends JpaRepository<CrewJpaEntity, String> {
@@ -17,4 +20,7 @@ public interface CrewJpaRepository extends JpaRepository<CrewJpaEntity, String> 
 
     /** 초대코드로 크루 조회 */
     Optional<CrewJpaEntity> findByInviteCode(String inviteCode);
+
+    /** 기간 만료된 특정 상태 크루 조회 — 크루 종료 스케줄러에서 사용 */
+    List<CrewJpaEntity> findAllByStatusAndEndDateBefore(CrewStatus status, LocalDate date);
 }

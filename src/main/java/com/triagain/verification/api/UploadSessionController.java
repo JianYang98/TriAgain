@@ -1,5 +1,6 @@
 package com.triagain.verification.api;
 
+import com.triagain.common.auth.AuthenticatedUser;
 import com.triagain.common.response.ApiResponse;
 import com.triagain.verification.port.in.CreateUploadSessionUseCase;
 import com.triagain.verification.port.in.CreateUploadSessionUseCase.CreateUploadSessionCommand;
@@ -14,7 +15,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -27,7 +27,7 @@ public class UploadSessionController {
 
     @PostMapping("/upload-sessions")
     public ResponseEntity<ApiResponse<UploadSessionResult>> createUploadSession(
-            @RequestHeader("X-User-Id") String userId,
+            @AuthenticatedUser String userId,
             @Valid @RequestBody CreateUploadSessionRequest request
     ) {
         CreateUploadSessionCommand command = new CreateUploadSessionCommand(

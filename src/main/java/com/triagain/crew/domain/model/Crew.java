@@ -103,11 +103,11 @@ public class Crew {
 
     /** 멤버 추가 — 정원·상태·마감일 검증 후 멤버 등록 */
     public CrewMember addMember(String userId) {
-        if (canNotJoin()) {
-            throw new BusinessException(ErrorCode.CREW_NOT_RECRUITING);
-        }
         if (isFull()) {
             throw new BusinessException(ErrorCode.CREW_FULL);
+        }
+        if (canNotJoin()) {
+            throw new BusinessException(ErrorCode.CREW_NOT_RECRUITING);
         }
         if (isAlreadyMember(userId)) {
             throw new BusinessException(ErrorCode.CREW_ALREADY_JOINED);

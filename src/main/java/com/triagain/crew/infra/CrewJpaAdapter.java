@@ -2,10 +2,12 @@ package com.triagain.crew.infra;
 
 import com.triagain.crew.domain.model.Crew;
 import com.triagain.crew.domain.model.CrewMember;
+import com.triagain.crew.domain.vo.CrewStatus;
 import com.triagain.crew.port.out.CrewRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -76,6 +78,22 @@ public class CrewJpaAdapter implements CrewRepositoryPort {
         }
 
         return crewJpaRepository.findAllById(crewIds).stream()
+                .map(CrewJpaEntity::toDomain)
+                .toList();
+    }
+
+    /** 여러 크루 ID로 일괄 조회 — 스케줄러 배치 처리에 사용 */
+    @Override
+    public List<Crew> findAllByIds(List<String> ids) {
+        return crewJpaRepository.findAllById(ids).stream()
+                .map(CrewJpaEntity::toDomain)
+                .toList();
+    }
+
+    /** 기간 만료된 ACTIVE 크루 조회 — 크루 종료 스케줄러에서 사용 */
+    @Override
+    public List<Crew> findActiveCrewsEndedBefore(LocalDate date) {
+        return crewJpaRepository.findAllByStatusAndEndDateBefore(CrewStatus.ACTIVE, date).stream()
                 .map(CrewJpaEntity::toDomain)
                 .toList();
     }

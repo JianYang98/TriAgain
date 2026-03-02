@@ -33,6 +33,21 @@ public interface GetCrewUseCase {
     ) {
     }
 
-    record MemberResult(String userId, CrewRole role, LocalDateTime joinedAt) {
+    record MemberResult(
+            String userId,
+            String nickname,
+            String profileImageUrl,
+            CrewRole role,
+            LocalDateTime joinedAt,
+            ChallengeProgress challengeProgress
+    ) {
+    }
+
+    record ChallengeProgress(
+            String challengeStatus,
+            int completedDays,
+            int targetDays,
+            int successCount
+    ) {
     }
 }
