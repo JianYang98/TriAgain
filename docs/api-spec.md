@@ -210,7 +210,7 @@ Idempotency-Key: <uuid>
 - POST /crews — 크루 생성 (deadlineTime: 선택, 기본값 23:59:59)
 - POST /crews/{crewId}/join — 크루 참여
 - GET /crews — 크루 목록 조회
-- GET /crews/{crewId} — 크루 상세 조회 (응답에 deadlineTime 포함)
+- GET /crews/{crewId} — 크루 상세 조회 (응답에 deadlineTime, 멤버별 nickname/profileImageUrl 포함)
 
 ### Verification Context
 - GET /crews/{crewId}/feed — 크루 피드 조회
