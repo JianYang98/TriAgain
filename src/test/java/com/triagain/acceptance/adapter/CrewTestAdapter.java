@@ -11,8 +11,7 @@ public class CrewTestAdapter extends BaseTestAdapter {
 
     /** 크루 생성 — POST /crews */
     public ExtractableResponse<Response> createCrew(String userId, Object request) {
-        return givenRequest()
-                .header("X-User-Id", userId)
+        return givenAuthRequest(userId)
                 .body(request)
                 .when()
                 .post("/crews")
@@ -23,8 +22,7 @@ public class CrewTestAdapter extends BaseTestAdapter {
 
     /** 초대코드로 크루 참여 — POST /crews/join */
     public ExtractableResponse<Response> joinByInviteCode(String userId, Object request) {
-        return givenRequest()
-                .header("X-User-Id", userId)
+        return givenAuthRequest(userId)
                 .body(request)
                 .when()
                 .post("/crews/join")
@@ -35,8 +33,7 @@ public class CrewTestAdapter extends BaseTestAdapter {
 
     /** 내 크루 목록 조회 — GET /crews */
     public ExtractableResponse<Response> getMyCrews(String userId) {
-        return givenRequest()
-                .header("X-User-Id", userId)
+        return givenAuthRequest(userId)
                 .when()
                 .get("/crews")
                 .then()
@@ -46,8 +43,7 @@ public class CrewTestAdapter extends BaseTestAdapter {
 
     /** 크루 상세 조회 — GET /crews/{crewId} */
     public ExtractableResponse<Response> getCrew(String userId, String crewId) {
-        return givenRequest()
-                .header("X-User-Id", userId)
+        return givenAuthRequest(userId)
                 .when()
                 .get("/crews/" + crewId)
                 .then()

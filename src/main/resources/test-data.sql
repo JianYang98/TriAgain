@@ -14,11 +14,11 @@ DELETE FROM users WHERE id IN ('test-user-1', 'test-user-2', 'test-user-3', 'tes
 -- -------------------------------------------------------------
 -- 1. Users (4명)
 -- -------------------------------------------------------------
-INSERT INTO users (id, email, nickname, profile_image_url, created_at) VALUES
-('test-user-1', 'test1@triagain.com', '테스트유저1', NULL, '2026-02-20 10:00:00'),
-('test-user-2', 'test2@triagain.com', '테스트유저2', NULL, '2026-02-20 10:00:00'),
-('test-user-3', 'test3@triagain.com', '테스트유저3', NULL, '2026-02-20 10:00:00'),
-('test-user-4', 'test4@triagain.com', '테스트유저4', NULL, '2026-02-20 10:00:00');
+INSERT INTO users (id, provider, email, nickname, profile_image_url, created_at) VALUES
+('test-user-1', 'KAKAO', 'test1@triagain.com', '테스트유저1', NULL, '2026-02-20 10:00:00'),
+('test-user-2', 'KAKAO', 'test2@triagain.com', '테스트유저2', NULL, '2026-02-20 10:00:00'),
+('test-user-3', 'KAKAO', 'test3@triagain.com', '테스트유저3', NULL, '2026-02-20 10:00:00'),
+('test-user-4', 'KAKAO', 'test4@triagain.com', '테스트유저4', NULL, '2026-02-20 10:00:00');
 
 -- -------------------------------------------------------------
 -- 2. Crew (1개, ACTIVE, TEXT 인증)

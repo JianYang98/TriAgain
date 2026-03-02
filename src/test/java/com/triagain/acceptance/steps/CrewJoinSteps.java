@@ -7,6 +7,8 @@ import com.triagain.crew.domain.vo.ChallengeStatus;
 import com.triagain.crew.domain.vo.VerificationType;
 import com.triagain.crew.port.in.ActivateCrewUseCase;
 import com.triagain.crew.port.out.ChallengeRepositoryPort;
+import com.triagain.user.domain.model.User;
+import com.triagain.user.port.out.UserRepositoryPort;
 import io.cucumber.java.Before;
 import io.cucumber.java.ko.그리고;
 import io.cucumber.java.ko.만일;
@@ -35,6 +37,9 @@ public class CrewJoinSteps {
     @Autowired
     private ChallengeRepositoryPort challengeRepositoryPort;
 
+    @Autowired
+    private UserRepositoryPort userRepositoryPort;
+
     private CrewTestAdapter crewAdapter;
 
     @Before
@@ -45,6 +50,8 @@ public class CrewJoinSteps {
     @조건("사용자 {string}이/가 크루를 생성했다")
     public void 사용자가_크루를_생성했다(String userId) {
         scenarioContext.setUserId(userId);
+        ensureUserExists(userId);
+
         CreateCrewRequest request = new CreateCrewRequest(
                 "테스트 크루", "테스트 목표", VerificationType.TEXT,
                 10, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true, null
@@ -98,11 +105,13 @@ public class CrewJoinSteps {
         scenarioContext.setCrewId(crewId);
         scenarioContext.setInviteCode(inviteCode);
 
+        ensureUserExists("filler_user");
         crewAdapter.joinByInviteCode("filler_user", Map.of("inviteCode", inviteCode));
     }
 
     @조건("사용자 {string}가/이 크루에 참여했다")
     public void 사용자가_크루에_참여했다(String userId) {
+        ensureUserExists(userId);
         crewAdapter.joinByInviteCode(userId, Map.of("inviteCode", scenarioContext.getInviteCode()));
     }
 
@@ -156,5 +165,12 @@ public class CrewJoinSteps {
         assertThat(challengeRepositoryPort.findByUserIdAndCrewIdAndStatus(
                 userId, scenarioContext.getCrewId(), ChallengeStatus.IN_PROGRESS
         )).isPresent();
+    }
+
+    private void ensureUserExists(String userId) {
+        if (userRepositoryPort.findById(userId).isEmpty()) {
+            User user = User.createFromKakao(userId, "테스트유저", userId + "@test.com", null);
+            userRepositoryPort.save(user);
+        }
     }
 }

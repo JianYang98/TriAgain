@@ -24,6 +24,12 @@ public abstract class BaseTestAdapter {
                 .log().ifValidationFails();
     }
 
+    /** 인증된 요청 — X-User-Id 헤더로 테스트 환경 인증 */
+    protected RequestSpecification givenAuthRequest(String userId) {
+        return givenRequest()
+                .header("X-User-Id", userId);
+    }
+
     protected ExtractableResponse<Response> get(String path) {
         return givenRequest()
                 .when()

@@ -11,8 +11,7 @@ public class VerificationTestAdapter extends BaseTestAdapter {
 
     /** 인증 생성 — POST /verifications */
     public ExtractableResponse<Response> createVerification(String userId, Object request) {
-        return givenRequest()
-                .header("X-User-Id", userId)
+        return givenAuthRequest(userId)
                 .body(request)
                 .when()
                 .post("/verifications")

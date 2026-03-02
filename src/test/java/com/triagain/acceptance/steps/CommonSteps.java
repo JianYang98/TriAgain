@@ -3,6 +3,8 @@ package com.triagain.acceptance.steps;
 import com.triagain.acceptance.DatabaseCleanup;
 import com.triagain.acceptance.ScenarioContext;
 import com.triagain.common.exception.ErrorCode;
+import com.triagain.user.domain.model.User;
+import com.triagain.user.port.out.UserRepositoryPort;
 import io.cucumber.java.Before;
 import io.cucumber.java.ko.그러면;
 import io.cucumber.java.ko.그리고;
@@ -19,6 +21,9 @@ public class CommonSteps {
     @Autowired
     private DatabaseCleanup databaseCleanup;
 
+    @Autowired
+    private UserRepositoryPort userRepositoryPort;
+
     @Before(order = 0)
     public void cleanupDatabase() {
         databaseCleanup.execute();
@@ -27,6 +32,11 @@ public class CommonSteps {
     @조건("사용자 {string}이/가 로그인되어 있다")
     public void 사용자가_로그인되어_있다(String userId) {
         scenarioContext.setUserId(userId);
+
+        if (userRepositoryPort.findById(userId).isEmpty()) {
+            User user = User.createFromKakao(userId, "테스트유저", userId + "@test.com", null);
+            userRepositoryPort.save(user);
+        }
     }
 
     @그러면("응답 코드는 {int}이다")

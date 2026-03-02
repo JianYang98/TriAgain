@@ -9,9 +9,9 @@ public class UploadSessionTestAdapter extends BaseTestAdapter {
         super(port);
     }
 
+    /** 업로드 세션 생성 — POST /upload-sessions */
     public ExtractableResponse<Response> createUploadSession(String userId, Object request) {
-        return givenRequest()
-                .header("X-User-Id", userId)
+        return givenAuthRequest(userId)
                 .body(request)
                 .when()
                 .post("/upload-sessions")

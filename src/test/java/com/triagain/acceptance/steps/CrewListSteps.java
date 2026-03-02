@@ -4,6 +4,8 @@ import com.triagain.acceptance.ScenarioContext;
 import com.triagain.acceptance.adapter.CrewTestAdapter;
 import com.triagain.crew.api.CreateCrewRequest;
 import com.triagain.crew.domain.vo.VerificationType;
+import com.triagain.user.domain.model.User;
+import com.triagain.user.port.out.UserRepositoryPort;
 import io.cucumber.java.Before;
 import io.cucumber.java.ko.그리고;
 import io.cucumber.java.ko.만일;
@@ -26,6 +28,9 @@ public class CrewListSteps {
     @Autowired
     private ScenarioContext scenarioContext;
 
+    @Autowired
+    private UserRepositoryPort userRepositoryPort;
+
     private CrewTestAdapter crewAdapter;
 
     @Before
@@ -37,6 +42,8 @@ public class CrewListSteps {
     public void 사용자가_크루_N개를_생성했다(String userId, int count) {
         scenarioContext.setUserId(userId);
         scenarioContext.setCreatorId(userId);
+        ensureUserExists(userId);
+
         for (int i = 0; i < count; i++) {
             CreateCrewRequest request = new CreateCrewRequest(
                     "크루 " + (i + 1), "목표 " + (i + 1), VerificationType.TEXT,
@@ -56,5 +63,12 @@ public class CrewListSteps {
     public void 크루_목록에_N개의_크루가_포함된다(int expectedCount) {
         List<?> crews = scenarioContext.getResponse().jsonPath().getList("data");
         assertThat(crews).hasSize(expectedCount);
+    }
+
+    private void ensureUserExists(String userId) {
+        if (userRepositoryPort.findById(userId).isEmpty()) {
+            User user = User.createFromKakao(userId, "테스트유저", userId + "@test.com", null);
+            userRepositoryPort.save(user);
+        }
     }
 }
