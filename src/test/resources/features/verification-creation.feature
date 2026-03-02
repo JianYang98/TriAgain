@@ -19,9 +19,8 @@ Feature: 인증 생성
     Given 크루 "운동 크루"의 인증방식이 "PHOTO"이다
     And 업로드 세션이 완료되었다
     When 다음 정보로 인증을 생성한다
-      | uploadSessionId | upload_123              |
-      | imageUrl        | https://s3.../image.jpg |
-      | textContent     | 오늘도 운동 완료!       |
+      | uploadSessionId | {uploadSessionId} |
+      | textContent     | 오늘도 운동 완료!  |
     Then 응답 코드는 201이다
     And 인증 상태는 "APPROVED"이다
 
@@ -64,6 +63,13 @@ Feature: 인증 생성
     When 만료된 uploadSessionId로 인증을 생성한다
     Then 응답 코드는 400이다
     And 에러 코드는 "UPLOAD_SESSION_EXPIRED"이다
+
+  Scenario: 아직 완료되지 않은 업로드 세션으로 인증 실패
+    Given 크루 "운동 크루"의 인증방식이 "PHOTO"이다
+    And 업로드 세션이 생성되어 PENDING 상태이다
+    When PENDING 상태의 uploadSessionId로 인증을 생성한다
+    Then 응답 코드는 400이다
+    And 에러 코드는 "UPLOAD_SESSION_NOT_COMPLETED"이다
 
   # ===== Grace Period =====
 

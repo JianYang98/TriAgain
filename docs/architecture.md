@@ -6,6 +6,51 @@ Phase 1은 단일 Spring Boot 애플리케이션을 중심으로 구성된다.
 내부 저장소(Data Layer)와 외부 의존성(External Services)을 명확히 분리하여
 확장성과 장애 대응 전략 수립이 가능하도록 설계하였다.
 
+사진 인증 흐름은 **Pre-signed URL → S3 업로드 → Lambda 감지 → Internal API → SSE 알림** 순서로 동작한다.
+클라이언트는 SSE를 통해 업로드 완료를 실시간으로 전달받으며, 타임아웃(60초) 시 폴링으로 Fallback한다.
+
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        Flutter[Flutter<br/>iOS + Android]
+    end
+
+    subgraph "Application Layer"
+        subgraph SpringBoot[Spring Boot]
+            UC[User Context]
+            CC[Crew Context]
+            VC[Verification Context]
+            MC[Moderation Context]
+            SC[Support Context]
+        end
+        InternalAPI[Internal API<br/>/internal/upload-sessions]
+    end
+
+    subgraph "Data Layer"
+        PG[(PostgreSQL)]
+        Redis[(Redis<br/>Phase 2)]
+    end
+
+    subgraph "External Layer"
+        S3[AWS S3]
+        Lambda[AWS Lambda]
+        FCM[FCM<br/>Phase 2]
+    end
+
+    Flutter <-->|REST API| SpringBoot
+    SpringBoot -->|SSE: 업로드 완료 알림| Flutter
+
+    S3 -->|S3 Event| Lambda
+    Lambda -->|Internal API| InternalAPI
+    InternalAPI --> VC
+
+    SpringBoot --> PG
+    SpringBoot -.-> Redis
+
+    VC -->|Pre-signed URL 발급| S3
+    SC -.-> FCM
+```
+
 ## 2. 헥사고날 아키텍처 (간략)
 
 ```mermaid

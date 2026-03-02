@@ -7,7 +7,7 @@ public interface CreateUploadSessionUseCase {
 
     UploadSessionResult createUploadSession(CreateUploadSessionCommand command);
 
-    record CreateUploadSessionCommand(String userId, String fileName, String fileType, long fileSize) {
+    record CreateUploadSessionCommand(String userId, String challengeId, String fileName, String fileType, long fileSize) {
     }
 
     record UploadSessionResult(

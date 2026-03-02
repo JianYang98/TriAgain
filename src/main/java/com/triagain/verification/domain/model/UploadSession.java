@@ -44,7 +44,12 @@ public class UploadSession {
         return new UploadSession(id, userId, imageKey, contentType, status, requestedAt, createdAt);
     }
 
+    /** 업로드 세션 완료 처리 — Lambda 콜백 시 호출, 이미 COMPLETED/USED면 멱등 처리 */
     public void complete() {
+        if (this.status == UploadSessionStatus.COMPLETED
+                || this.status == UploadSessionStatus.USED) {
+            return;
+        }
         if (this.status != UploadSessionStatus.PENDING) {
             throw new BusinessException(ErrorCode.UPLOAD_SESSION_NOT_PENDING);
         }
@@ -58,8 +63,24 @@ public class UploadSession {
         this.status = UploadSessionStatus.EXPIRED;
     }
 
+    /** 인증 생성에 사용 처리 — 동일 트랜잭션 내에서 호출 */
+    public void use() {
+        if (this.status != UploadSessionStatus.COMPLETED) {
+            throw new BusinessException(ErrorCode.UPLOAD_SESSION_ALREADY_USED);
+        }
+        this.status = UploadSessionStatus.USED;
+    }
+
     public boolean isPending() {
         return this.status == UploadSessionStatus.PENDING;
+    }
+
+    public boolean isCompleted() {
+        return this.status == UploadSessionStatus.COMPLETED;
+    }
+
+    public boolean isUsed() {
+        return this.status == UploadSessionStatus.USED;
     }
 
     public Long getId() {

@@ -51,6 +51,8 @@
 - **ORM:** Spring Data JPA + MyBatis
 - **Database:** PostgreSQL 16
 - **Storage:** AWS S3 (Pre-signed URL)
+- **Serverless:** AWS Lambda (S3 업로드 완료 감지 → session COMPLETED 처리)
+- **실시간 통신:** SSE (Server-Sent Events) — 업로드 완료 알림
 - **Infra:** AWS (EC2 + RDS), GitHub Actions CI/CD
 
 ### ORM 전략
@@ -82,6 +84,7 @@
 | Port | Adapter | 용도 |
 |------|---------|------|
 | REST Input Port | REST Controllers | HTTP 요청 → UseCase 위임 |
+| Internal Input Port | InternalUploadSessionController | Lambda → session COMPLETED + SSE 발행 |
 
 #### Output Ports (아웃바운드)
 
@@ -96,6 +99,7 @@
 | NotificationRepositoryPort | 알림 저장/조회 | NotificationJpaAdapter |
 | ReactionRepositoryPort | 반응(이모지) 저장/조회 | ReactionJpaAdapter |
 | StoragePort | S3 presigned URL 발급/키 생성 | S3PresignAdapter |
+| SsePort | SSE 이벤트 전송 (업로드 완료 알림) | SseEmitterAdapter |
 | ChallengePort | Verification → Crew 챌린지 정보 조회 | ChallengeClientAdapter |
 | VerificationPort | Moderation → Verification 인증 상태 변경 | VerificationClientAdapter |
 | CrewPort | Moderation → Crew 크루장 조회 | CrewClientAdapter |
@@ -110,6 +114,7 @@
 - **StoragePort**: 파일 업로드/관리를 추상화. S3 외 다른 스토리지로 교체 시 어댑터만 구현
 - **컨텍스트 간 통신 Port**: 바운디드 컨텍스트 간 참조는 직접 의존이 아닌 Port를 통해 통신
 - **External Port**: Phase별 확장 시 어댑터만 추가 (FCM, OpenAI 등)
+- **SsePort**: SSE 이벤트 전송을 추상화. 향후 WebSocket 등으로 교체 가능
 
 ---
 
@@ -130,6 +135,7 @@ com.triagain
 // 각 컨텍스트 내부 구조
 com.triagain.verification
 ├── api/               // Controller, Request/Response DTO
+│   └── internal/      // Lambda 전용 Internal Controller
 ├── application/       // UseCase 구현체
 ├── domain/
 │   ├── model/         // Entity, Aggregate Root
@@ -137,7 +143,7 @@ com.triagain.verification
 ├── port/
 │   ├── in/            // UseCase 인터페이스
 │   └── out/           // Repository Port, External Port
-└── infra/             // JPA, MyBatis, S3 Adapter
+└── infra/             // JPA, MyBatis, S3, SSE Adapter
 ```
 
 ### 계층별 규약
@@ -147,6 +153,7 @@ com.triagain.verification
 - 비즈니스 로직 금지, 요청값 검증(@Valid) + UseCase 위임만 수행한다
 - 모든 응답은 공통 응답 DTO로 래핑한다
 - Request/Response DTO는 여기서 정의한다
+- `/internal/**` 경로는 외부 접근 차단 (Spring Security 설정)
 
 **UseCase (port/in/)**
 - 하나의 유스케이스는 하나의 비즈니스 행위를 표현한다
@@ -241,8 +248,9 @@ Optional<Crew> findByIdWithLock(String id);
 ### Common Pitfalls
 
 - Pre-signed URL 생성은 S3 통신이 아님 (내부 서명 생성)
-- upload_session과 verification은 별도 트랜잭션으로 분리
-- verification INSERT 성공 후에만 upload_session을 COMPLETED로 전환
+- upload_session COMPLETED 처리는 Lambda → /internal API에서 수행 (트랜잭션 분리)
+- /verifications는 session이 COMPLETED인지 확인만 하고 인증 생성에 집중
+- SSE 타임아웃 60초, 클라이언트는 fallback으로 폴링 대비 필요
 
 ---
 
@@ -290,6 +298,39 @@ refactor: Verification 도메인 계층 분리
 
 ---
 
+## 디버깅 & AI 협업 로그 기록 규칙
+
+아래 기준에 해당할 때만 `/docs/debugging-log.md`에 기록한다.
+
+**기록 O:**
+1. 버그/에러를 수정했을 때
+2. 설계 방향을 여러 개 중 하나로 결정했을 때
+3. AI의 제안을 거부하거나 방향을 수정했을 때
+
+**기록 X:** 단순 구현, 오타 수정, 설정 변경 등
+
+```
+### [날짜] 제목 (한 줄)
+
+- 상황: (한 줄)
+- 내 판단: (결정 + 이유)
+- AI 역할: (AI가 도운 것)
+- 배운 점: (한 줄)
+```
+
+**예시:**
+
+```
+### [2026-02-28] JPA @IdClass 복합 PK INSERT 실패
+
+- 상황: DB는 서로게이트 PK인데 JPA는 복합 PK → id 컬럼 누락으로 INSERT 실패
+- 내 판단: @IdClass 제거하고 서로게이트 PK로 통일 (조인 테이블 추가될 때마다 복합 PK 문제 반복될 것 같아서)
+- AI 역할: DTO → 엔티티 → DB 스키마 4개 파일 추적해서 원인 분석
+- 배운 점: 프로젝트 전체 ID 전략은 초기에 통일해야 함
+```
+
+---
+
 ## /docs 참조 가이드
 
 - 상세 비즈니스 규칙은 `/docs/biz-logic.md`를 참고해.
@@ -304,3 +345,6 @@ refactor: Verification 도메인 계층 분리
 | API 명세 | `/docs/api-spec.md` | API 계약서 (요청/응답/에러) |
 | 아키텍처 | `/docs/architecture.md` | 헥사고날 아키텍처 상세 |
 | 시퀀스 다이어그램 | `/docs/sequence/` | 크루 가입, 인증 업로드 흐름 |
+| 디버깅 로그 | `/docs/debugging-log.md` | 버그 수정, 설계 판단, AI 방향 수정 기록 |
+
+

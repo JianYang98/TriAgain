@@ -10,6 +10,9 @@ public interface ChallengePort {
 
     void recordCompletion(String challengeId);
 
+    /** 유저의 활성 챌린지 조회 — 피드 myProgress 표시에 사용 */
+    Optional<ActiveChallengeInfo> findActiveByUserIdAndCrewId(String userId, String crewId);
+
     record ChallengeInfo(
             String id,
             String userId,
@@ -18,6 +21,14 @@ public interface ChallengePort {
             int targetDays,
             LocalDate startDate,
             LocalDateTime deadline
+    ) {
+    }
+
+    record ActiveChallengeInfo(
+            String id,
+            String status,
+            int completedDays,
+            int targetDays
     ) {
     }
 }

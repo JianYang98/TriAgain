@@ -52,7 +52,8 @@ public class CrewController {
                 request.maxMembers(),
                 request.startDate(),
                 request.endDate(),
-                request.allowLateJoin()
+                request.allowLateJoin(),
+                request.deadlineTime()
         );
 
         CreateCrewResult result = createCrewUseCase.createCrew(command);

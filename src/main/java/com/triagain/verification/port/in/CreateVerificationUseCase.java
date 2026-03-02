@@ -14,7 +14,6 @@ public interface CreateVerificationUseCase {
             String userId,
             String challengeId,
             Long uploadSessionId,
-            String imageUrl,
             String textContent
     ) {
     }

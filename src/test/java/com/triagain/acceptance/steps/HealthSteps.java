@@ -3,7 +3,6 @@ package com.triagain.acceptance.steps;
 import com.triagain.acceptance.ScenarioContext;
 import com.triagain.acceptance.adapter.HealthTestAdapter;
 import io.cucumber.java.Before;
-import io.cucumber.java.ko.그러면;
 import io.cucumber.java.ko.그리고;
 import io.cucumber.java.ko.만일;
 import io.cucumber.java.ko.조건;
@@ -35,11 +34,6 @@ public class HealthSteps {
     @만일("헬스 체크 API를 호출하면")
     public void 헬스_체크_API를_호출하면() {
         scenarioContext.setResponse(healthAdapter.getHealth());
-    }
-
-    @그러면("응답 코드는 {int}이다")
-    public void 응답_코드는_이다(int statusCode) {
-        assertThat(scenarioContext.getResponse().statusCode()).isEqualTo(statusCode);
     }
 
     @그리고("데이터베이스 상태는 {string}이다")

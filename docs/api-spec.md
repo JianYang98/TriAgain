@@ -202,11 +202,15 @@ Idempotency-Key: <uuid>
 
 ## TODO (구현 시 추가 예정)
 
+### User Context (Auth)
+- POST /auth/kakao — 카카오 로그인/자동회원가입 (상세: [docs/user.md](user.md))
+- POST /auth/refresh — 토큰 갱신 (상세: [docs/user.md](user.md))
+
 ### Crew Context
-- POST /crews — 크루 생성
+- POST /crews — 크루 생성 (deadlineTime: 선택, 기본값 23:59:59)
 - POST /crews/{crewId}/join — 크루 참여
 - GET /crews — 크루 목록 조회
-- GET /crews/{crewId} — 크루 상세 조회
+- GET /crews/{crewId} — 크루 상세 조회 (응답에 deadlineTime 포함)
 
 ### Verification Context
 - GET /crews/{crewId}/feed — 크루 피드 조회

@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 public record CreateCrewRequest(
         @NotBlank String name,
@@ -15,6 +16,7 @@ public record CreateCrewRequest(
         @Min(1) @Max(10) int maxMembers,
         @NotNull LocalDate startDate,
         @NotNull LocalDate endDate,
-        boolean allowLateJoin
+        boolean allowLateJoin,
+        LocalTime deadlineTime
 ) {
 }

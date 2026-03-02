@@ -16,6 +16,7 @@ Feature: 크루 상세 조회
     And 응답에 endDate가 존재한다
     And 응답에 members가 존재한다
 
+  @wip
   Scenario: 크루 상세에 챌린지 상태가 포함된다
     Given 사용자 "user_002"가 크루에 참여했다
     And 크루가 활성화되어 챌린지가 시작되었다

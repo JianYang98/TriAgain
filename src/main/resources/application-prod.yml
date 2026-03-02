@@ -10,6 +10,11 @@ spring:
       ddl-auto: validate
     show-sql: false
 
+aws:
+  s3:
+    bucket: triagain-verifications
+    region: ap-northeast-2
+
 logging:
   level:
     root: WARN

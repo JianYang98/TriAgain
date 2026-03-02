@@ -12,6 +12,6 @@ public interface JoinCrewByInviteCodeUseCase {
     record JoinByInviteCodeCommand(String userId, String inviteCode) {
     }
 
-    record JoinByInviteCodeResult(String userId, String crewId, CrewRole role, LocalDateTime joinedAt) {
+    record JoinByInviteCodeResult(String userId, String crewId, CrewRole role, int currentMembers, LocalDateTime joinedAt) {
     }
 }

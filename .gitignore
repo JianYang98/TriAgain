@@ -22,6 +22,19 @@ build/
 .DS_Store
 Thumbs.db
 
+# Backup files
+*.bak
+*.bak.md
+CODEX.md
+
+# Personal docs
+docs/blog-ai-pair-debugging.md
+docs/blog-jpa-idclass-pitfall.md
+docs/intellij-shortcuts-guide.md
+docs/java7-to-17-guide.md
+docs/java7-to-17-guide_bak.md
+docs/progress-analysis.md
+
 # Environment
 .env
 src/main/resources/application-local.yml
