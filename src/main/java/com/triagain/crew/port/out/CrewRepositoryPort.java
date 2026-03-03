@@ -3,6 +3,7 @@ package com.triagain.crew.port.out;
 import com.triagain.crew.domain.model.Crew;
 import com.triagain.crew.domain.model.CrewMember;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,4 +26,10 @@ public interface CrewRepositoryPort {
 
     /** 유저의 크루 목록 조회 — 홈 화면 크루 리스트에 사용 */
     List<Crew> findAllByUserId(String userId);
+
+    /** 여러 크루 ID로 일괄 조회 — 스케줄러 배치 처리에 사용 */
+    List<Crew> findAllByIds(List<String> ids);
+
+    /** 기간 만료된 ACTIVE 크루 조회 — 크루 종료 스케줄러에서 사용 */
+    List<Crew> findActiveCrewsEndedBefore(LocalDate date);
 }

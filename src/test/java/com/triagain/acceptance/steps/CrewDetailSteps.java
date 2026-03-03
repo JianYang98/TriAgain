@@ -4,12 +4,15 @@ import com.triagain.acceptance.ScenarioContext;
 import com.triagain.acceptance.adapter.CrewTestAdapter;
 import com.triagain.crew.port.in.ActivateCrewUseCase;
 import io.cucumber.java.Before;
+import io.cucumber.java.ko.그리고;
 import io.cucumber.java.ko.만일;
 import io.cucumber.java.ko.조건;
 import io.restassured.response.ExtractableResponse;
 import io.restassured.response.Response;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class CrewDetailSteps {
 
@@ -44,5 +47,40 @@ public class CrewDetailSteps {
     @조건("크루가 활성화되어 챌린지가 시작되었다")
     public void 크루가_활성화되어_챌린지가_시작되었다() {
         activateCrewUseCase.activateCrew(scenarioContext.getCrewId(), scenarioContext.getCreatorId());
+    }
+
+    @그리고("멤버 {string}의 닉네임이 존재한다")
+    public void 멤버의_닉네임이_존재한다(String userId) {
+        String nickname = scenarioContext.getResponse().jsonPath()
+                .get("data.members.find { it.userId == '" + userId + "' }.nickname");
+        assertThat(nickname).isNotNull();
+    }
+
+    @그리고("멤버 {string}의 챌린지 진행도가 존재한다")
+    public void 멤버의_챌린지_진행도가_존재한다(String userId) {
+        Object progress = scenarioContext.getResponse().jsonPath()
+                .get("data.members.find { it.userId == '" + userId + "' }.challengeProgress");
+        assertThat(progress).isNotNull();
+    }
+
+    @그리고("멤버 {string}의 챌린지 상태는 {string}이다")
+    public void 멤버의_챌린지_상태는_이다(String userId, String expectedStatus) {
+        String status = scenarioContext.getResponse().jsonPath()
+                .get("data.members.find { it.userId == '" + userId + "' }.challengeProgress.challengeStatus");
+        assertThat(status).isEqualTo(expectedStatus);
+    }
+
+    @그리고("멤버 {string}의 완료일수는 {int}이다")
+    public void 멤버의_완료일수는_이다(String userId, int expectedDays) {
+        int completedDays = scenarioContext.getResponse().jsonPath()
+                .get("data.members.find { it.userId == '" + userId + "' }.challengeProgress.completedDays");
+        assertThat(completedDays).isEqualTo(expectedDays);
+    }
+
+    @그리고("멤버 {string}의 목표일수는 {int}이다")
+    public void 멤버의_목표일수는_이다(String userId, int expectedDays) {
+        int targetDays = scenarioContext.getResponse().jsonPath()
+                .get("data.members.find { it.userId == '" + userId + "' }.challengeProgress.targetDays");
+        assertThat(targetDays).isEqualTo(expectedDays);
     }
 }

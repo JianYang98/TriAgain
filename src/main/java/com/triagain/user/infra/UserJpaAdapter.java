@@ -5,6 +5,7 @@ import com.triagain.user.port.out.UserRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -26,13 +27,9 @@ public class UserJpaAdapter implements UserRepositoryPort {
     }
 
     @Override
-    public Optional<User> findByEmail(String email) {
-        return userJpaRepository.findByEmail(email)
-                .map(UserJpaEntity::toDomain);
-    }
-
-    @Override
-    public boolean existsByEmail(String email) {
-        return userJpaRepository.existsByEmail(email);
+    public List<User> findAllByIds(List<String> ids) {
+        return userJpaRepository.findAllById(ids).stream()
+                .map(UserJpaEntity::toDomain)
+                .toList();
     }
 }

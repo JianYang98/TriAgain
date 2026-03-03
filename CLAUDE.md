@@ -300,7 +300,7 @@ refactor: Verification 도메인 계층 분리
 
 ## 디버깅 & AI 협업 로그 기록 규칙
 
-아래 기준에 해당할 때만 `/docs/debugging-log.md`에 기록한다.
+아래 기준에 해당할 때만 `/docs/log/debugging-log.md`에 기록한다.
 
 **기록 O:**
 1. 버그/에러를 수정했을 때
@@ -331,20 +331,43 @@ refactor: Verification 도메인 계층 분리
 
 ---
 
+## 추후 고려 사항 기록 규칙
+
+구현 중 "지금은 안 하지만 나중에 필요할 것"을 발견하면 `/docs/log/future-considerations.md`에 기록한다.
+**최신 항목을 파일 상단에 추가한다 (prepend).**
+
+**기록 O:**
+1. Phase 2/3에서 필요한 개선 사항 (성능, 확장성, 보안)
+2. 현재 단계에서 의도적으로 생략한 기능이나 처리
+3. 기술 부채로 인식했지만 당장 해결하지 않기로 한 항목
+
+**기록 X:** 현재 Phase에서 바로 처리할 버그나 기능 → 이슈/TODO로 관리
+
+```
+### [YYYY-MM-DD HH:mm] 제목
+
+- 현재 상태: (지금 어떻게 되어 있는지)
+- 필요 시점: Phase N 또는 조건
+- 이유: (왜 나중으로 미루는지)
+```
+
+---
+
 ## /docs 참조 가이드
 
-- 상세 비즈니스 규칙은 `/docs/biz-logic.md`를 참고해.
-- ERD와 엔티티 설계는 `/docs/schema.md`를 준수해.
-- API 명세는 `/docs/api-spec.md`를 준수해.
+- 상세 비즈니스 규칙은 `/docs/spec/biz-logic.md`를 참고해.
+- ERD와 엔티티 설계는 `/docs/spec/schema.md`를 준수해.
+- API 명세는 `/docs/spec/api-spec.md`를 준수해.
 
 | 문서 | 경로 | 설명 |
 |------|------|------|
-| 비즈니스 규칙 | `/docs/biz-logic.md` | 비즈니스 규칙, 엣지케이스, Fallback 등급 |
-| 컨텍스트 맵 | `/docs/context-map.md` | 바운디드 컨텍스트 관계도 |
-| ERD | `/docs/schema.md` | 전체 엔티티 관계 다이어그램 |
-| API 명세 | `/docs/api-spec.md` | API 계약서 (요청/응답/에러) |
-| 아키텍처 | `/docs/architecture.md` | 헥사고날 아키텍처 상세 |
-| 시퀀스 다이어그램 | `/docs/sequence/` | 크루 가입, 인증 업로드 흐름 |
-| 디버깅 로그 | `/docs/debugging-log.md` | 버그 수정, 설계 판단, AI 방향 수정 기록 |
+| 비즈니스 규칙 | `/docs/spec/biz-logic.md` | 비즈니스 규칙, 엣지케이스, Fallback 등급 |
+| 컨텍스트 맵 | `/docs/spec/context-map.md` | 바운디드 컨텍스트 관계도 |
+| ERD | `/docs/spec/schema.md` | 전체 엔티티 관계 다이어그램 |
+| API 명세 | `/docs/spec/api-spec.md` | API 계약서 (요청/응답/에러) |
+| 아키텍처 | `/docs/spec/architecture.md` | 헥사고날 아키텍처 상세 |
+| 시퀀스 다이어그램 | `/docs/spec/sequence/` | 크루 가입, 인증 업로드 흐름 |
+| 디버깅 로그 | `/docs/log/debugging-log.md` | 버그 수정, 설계 판단, AI 방향 수정 기록 |
+| 추후 고려 사항 | `/docs/log/future-considerations.md` | 스케일업 시 필요한 개선 사항, 미래 참고용 |
 
 

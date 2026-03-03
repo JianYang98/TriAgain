@@ -86,6 +86,9 @@ public class CreateVerificationService implements CreateVerificationUseCase {
                 .orElseThrow(() -> new BusinessException(ErrorCode.UPLOAD_SESSION_NOT_FOUND));
 
         if (!session.isCompleted()) {
+            if (session.isUsed()) {
+                throw new BusinessException(ErrorCode.UPLOAD_SESSION_ALREADY_USED);
+            }
             if (session.isPending()) {
                 throw new BusinessException(ErrorCode.UPLOAD_SESSION_NOT_COMPLETED);
             }
@@ -97,6 +100,9 @@ public class CreateVerificationService implements CreateVerificationUseCase {
         }
 
         String imageUrl = storagePort.getImageUrl(session.getImageKey());
+
+        session.use();
+        uploadSessionRepositoryPort.save(session);
 
         return Verification.createPhoto(
                 challenge.id(),

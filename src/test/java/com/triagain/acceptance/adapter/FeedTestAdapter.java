@@ -11,8 +11,7 @@ public class FeedTestAdapter extends BaseTestAdapter {
 
     /** 크루 피드 조회 — GET /crews/{crewId}/feed */
     public ExtractableResponse<Response> getFeed(String userId, String crewId) {
-        return givenRequest()
-                .header("X-User-Id", userId)
+        return givenAuthRequest(userId)
                 .when()
                 .get("/crews/" + crewId + "/feed")
                 .then()
@@ -22,8 +21,7 @@ public class FeedTestAdapter extends BaseTestAdapter {
 
     /** 크루 피드 페이지 조회 — GET /crews/{crewId}/feed?page={page} */
     public ExtractableResponse<Response> getFeed(String userId, String crewId, int page) {
-        return givenRequest()
-                .header("X-User-Id", userId)
+        return givenAuthRequest(userId)
                 .queryParam("page", page)
                 .when()
                 .get("/crews/" + crewId + "/feed")

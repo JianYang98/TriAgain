@@ -39,4 +39,4 @@ Feed API + Verification API + Upload Session 완성 → Flutter 연동 → E2E �
 
 ## Lambda/SSE 아키텍처
 
-상세 설계: `docs/photo-upload-lambda-sse.md` 참고
+상세 설계: `docs/spec/photo-upload-lambda-sse.md` 참고

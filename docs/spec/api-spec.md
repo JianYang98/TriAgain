@@ -200,17 +200,178 @@ Idempotency-Key: <uuid>
 
 ---
 
-## TODO (구현 시 추가 예정)
+---
 
-### User Context (Auth)
-- POST /auth/kakao — 카카오 로그인/자동회원가입 (상세: [docs/user.md](user.md))
-- POST /auth/refresh — 토큰 갱신 (상세: [docs/user.md](user.md))
+### POST /auth/kakao (카카오 로그인)
+
+카카오 Access Token으로 기존 유저 여부를 확인한다.
+- **기존 유저** → JWT 발급 (로그인 완료)
+- **신규 유저** → `isNewUser=true` + 카카오 프로필 반환 (JWT 미발급, 유저 미생성)
+
+**요청 (Request)**
+```
+POST /auth/kakao HTTP/1.1
+Content-Type: application/json
+```
+```json
+{
+  "kakaoAccessToken": "카카오_SDK에서_받은_access_token"
+}
+```
+
+**시나리오 1: 기존 유저 로그인 성공 (200 OK)**
+```json
+{
+  "status": "OK",
+  "data": {
+    "isNewUser": false,
+    "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiJ9...",
+    "accessTokenExpiresIn": 1800,
+    "user": {
+      "id": "1234567890",
+      "nickname": "김철수",
+      "profileImageUrl": "https://img.kakao.com/profile.jpg"
+    },
+    "kakaoId": null,
+    "kakaoProfile": null
+  }
+}
+```
+
+**시나리오 2: 신규 유저 — 회원가입 필요 (200 OK)**
+```json
+{
+  "status": "OK",
+  "data": {
+    "isNewUser": true,
+    "accessToken": null,
+    "refreshToken": null,
+    "accessTokenExpiresIn": null,
+    "user": null,
+    "kakaoId": "1234567890",
+    "kakaoProfile": {
+      "nickname": "카카오닉네임",
+      "email": "user@kakao.com",
+      "profileImageUrl": "https://img.kakao.com/profile.jpg"
+    }
+  }
+}
+```
+
+**프론트 분기 로직:**
+```
+1. POST /auth/kakao 호출
+2. if (data.isNewUser == false):
+     → accessToken/refreshToken 저장 → 메인 화면 이동
+3. if (data.isNewUser == true):
+     → data.kakaoId, data.kakaoProfile 저장
+     → 약관 동의 + 닉네임 입력 화면 이동
+     → POST /auth/signup 호출
+```
+
+**에러 응답**
+| HTTP | 코드 | 메시지 |
+|------|------|--------|
+| 401 | A001 | 유효하지 않은 카카오 토큰입니다. |
+| 502 | A002 | 카카오 API 호출 중 오류가 발생했습니다. |
+
+---
+
+### POST /auth/signup (회원가입)
+
+카카오 인증 + 약관 동의 + 닉네임으로 신규 유저를 생성하고 JWT를 발급한다.
+
+**요청 (Request)**
+```
+POST /auth/signup HTTP/1.1
+Content-Type: application/json
+```
+```json
+{
+  "kakaoAccessToken": "카카오_SDK에서_받은_access_token",
+  "kakaoId": "1234567890",
+  "nickname": "내닉네임",
+  "termsAgreed": true
+}
+```
+
+**필드 설명:**
+- `kakaoAccessToken`: (필수) 카카오 SDK에서 받은 Access Token
+- `kakaoId`: (필수) POST /auth/kakao 응답의 `kakaoId` 값
+- `nickname`: (필수) 2~12자, 한글/영문/숫자/언더스코어만 허용
+- `termsAgreed`: (필수) 약관 동의 여부 (true만 허용)
+
+**성공 응답 (201 Created)**
+```json
+{
+  "status": "OK",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiJ9...",
+    "accessTokenExpiresIn": 1800,
+    "user": {
+      "id": "1234567890",
+      "nickname": "내닉네임",
+      "profileImageUrl": "https://img.kakao.com/profile.jpg"
+    }
+  }
+}
+```
+
+**에러 응답**
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 400 | U005 | 약관에 동의해야 회원가입이 가능합니다. | termsAgreed=false |
+| 400 | U004 | 닉네임은 필수입니다. | 빈값/null |
+| 400 | U007 | 닉네임은 2~12자의 한글, 영문, 숫자, 언더스코어만 사용할 수 있습니다. | 형식 불일치 |
+| 400 | U008 | 카카오 계정 정보가 일치하지 않습니다. | kakaoId 불일치 |
+| 401 | A001 | 유효하지 않은 카카오 토큰입니다. | 만료/잘못된 토큰 |
+| 409 | U006 | 이미 가입된 사용자입니다. | 중복 가입 |
+
+---
+
+### POST /auth/refresh (토큰 갱신)
+
+Refresh Token으로 새 Access Token을 발급한다.
+
+**요청 (Request)**
+```
+POST /auth/refresh HTTP/1.1
+Content-Type: application/json
+```
+```json
+{
+  "refreshToken": "eyJhbGciOiJIUzI1NiJ9..."
+}
+```
+
+**성공 응답 (200 OK)**
+```json
+{
+  "status": "OK",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+    "accessTokenExpiresIn": 1800
+  }
+}
+```
+
+**에러 응답**
+| HTTP | 코드 | 메시지 |
+|------|------|--------|
+| 401 | A004 | 유효하지 않은 리프레시 토큰입니다. |
+| 404 | U001 | 사용자를 찾을 수 없습니다. |
+
+---
+
+## TODO (구현 시 추가 예정)
 
 ### Crew Context
 - POST /crews — 크루 생성 (deadlineTime: 선택, 기본값 23:59:59)
 - POST /crews/{crewId}/join — 크루 참여
 - GET /crews — 크루 목록 조회
-- GET /crews/{crewId} — 크루 상세 조회 (응답에 deadlineTime 포함)
+- GET /crews/{crewId} — 크루 상세 조회 (응답에 deadlineTime, 멤버별 nickname/profileImageUrl 포함)
 
 ### Verification Context
 - GET /crews/{crewId}/feed — 크루 피드 조회

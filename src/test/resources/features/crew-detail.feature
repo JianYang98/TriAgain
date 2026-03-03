@@ -16,13 +16,16 @@ Feature: 크루 상세 조회
     And 응답에 endDate가 존재한다
     And 응답에 members가 존재한다
 
-  @wip
-  Scenario: 크루 상세에 챌린지 상태가 포함된다
+  Scenario: 크루 상세에 멤버별 프로필과 챌린지 진행도가 포함된다
     Given 사용자 "user_002"가 크루에 참여했다
     And 크루가 활성화되어 챌린지가 시작되었다
     When "user_002"가 크루 상세를 조회한다
     Then 응답 코드는 200이다
-    And 응답에 currentChallenge가 존재한다
+    And 멤버 "user_002"의 닉네임이 존재한다
+    And 멤버 "user_002"의 챌린지 진행도가 존재한다
+    And 멤버 "user_002"의 챌린지 상태는 "IN_PROGRESS"이다
+    And 멤버 "user_002"의 완료일수는 0이다
+    And 멤버 "user_002"의 목표일수는 3이다
 
   # ===== 실패 케이스 =====
 

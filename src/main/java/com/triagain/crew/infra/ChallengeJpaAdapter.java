@@ -6,6 +6,9 @@ import com.triagain.crew.port.out.ChallengeRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Repository
@@ -33,5 +36,32 @@ public class ChallengeJpaAdapter implements ChallengeRepositoryPort {
     public Optional<Challenge> findByUserIdAndCrewIdAndStatus(String userId, String crewId, ChallengeStatus status) {
         return challengeJpaRepository.findByUserIdAndCrewIdAndStatus(userId, crewId, status)
                 .map(ChallengeJpaEntity::toDomain);
+    }
+
+    /** 크루의 특정 상태 챌린지 목록 조회 — 크루 상세에서 멤버별 현황 표시에 사용 */
+    @Override
+    public List<Challenge> findAllByCrewIdAndStatus(String crewId, ChallengeStatus status) {
+        return challengeJpaRepository.findAllByCrewIdAndStatus(crewId, status).stream()
+                .map(ChallengeJpaEntity::toDomain)
+                .toList();
+    }
+
+    /** 마감 초과 + 미인증 챌린지 조회 — 실패 판정 스케줄러에서 사용 */
+    @Override
+    public List<Challenge> findExpiredWithoutVerification() {
+        return challengeJpaRepository.findExpiredWithoutVerification().stream()
+                .map(ChallengeJpaEntity::toDomain)
+                .toList();
+    }
+
+    /** 크루 멤버별 성공 횟수 조회 — 작심삼일 성공 카운트에 사용 */
+    @Override
+    public Map<String, Integer> countSuccessByCrewId(String crewId) {
+        List<Object[]> results = challengeJpaRepository.countSuccessGroupByUserId(crewId);
+        Map<String, Integer> map = new HashMap<>();
+        for (Object[] row : results) {
+            map.put((String) row[0], ((Long) row[1]).intValue());
+        }
+        return map;
     }
 }

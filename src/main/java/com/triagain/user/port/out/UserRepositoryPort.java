@@ -2,6 +2,7 @@ package com.triagain.user.port.out;
 
 import com.triagain.user.domain.model.User;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface UserRepositoryPort {
@@ -10,7 +11,6 @@ public interface UserRepositoryPort {
 
     Optional<User> findById(String id);
 
-    Optional<User> findByEmail(String email);
-
-    boolean existsByEmail(String email);
+    /** 유저 ID 목록으로 일괄 조회 — 크루 상세 참가자 현황에 사용 */
+    List<User> findAllByIds(List<String> ids);
 }

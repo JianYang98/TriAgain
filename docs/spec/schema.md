@@ -32,6 +32,7 @@ erDiagram
         string nickname
         string profile_image_url
         timestamp created_at
+        timestamp terms_agreed_at "nullable — 약관 동의 일시 (NULL이면 기존 유저)"
     }
     
     crews {
@@ -200,6 +201,7 @@ erDiagram
 |----|------|
 | PENDING | presignedUrl 발급, S3 업로드 대기 |
 | COMPLETED | S3 업로드 완료 (verification 생성 가능) |
+| USED | 인증 생성에 사용됨 (재사용 불가) |
 | EXPIRED | 시간 초과 / 만료 |
 
 ### reports.reason
