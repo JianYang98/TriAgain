@@ -36,17 +36,19 @@ public class KakaoLoginService implements KakaoLoginUseCase {
         }
 
         User user = existing.get();
-        user.updateKakaoProfile(kakaoUser.nickname(), kakaoUser.email(), kakaoUser.profileImageUrl());
-        User saved = userRepositoryPort.save(user);
+        boolean profileChanged = user.syncKakaoProfile(kakaoUser.email(), kakaoUser.profileImageUrl());
+        if (profileChanged) {
+            user = userRepositoryPort.save(user);
+        }
 
-        String accessToken = jwtProvider.createAccessToken(saved.getId(), saved.getProvider());
-        String refreshToken = jwtProvider.createRefreshToken(saved.getId());
+        String accessToken = jwtProvider.createAccessToken(user.getId(), user.getProvider());
+        String refreshToken = jwtProvider.createRefreshToken(user.getId());
 
         return KakaoLoginResult.existingUser(
                 accessToken,
                 refreshToken,
                 jwtProvider.getAccessTokenExpirationSeconds(),
-                new LoginUserInfo(saved.getId(), saved.getNickname(), saved.getProfileImageUrl())
+                new LoginUserInfo(user.getId(), user.getNickname(), user.getProfileImageUrl())
         );
     }
 }

@@ -71,15 +71,18 @@ public class User {
         }
     }
 
-    /** 카카오 재로그인 시 프로필 갱신 */
-    public void updateKakaoProfile(String nickname, String email, String profileImageUrl) {
-        if (nickname != null && !nickname.isBlank()) {
-            this.nickname = nickname;
+    /** 카카오 재로그인 시 email/profileImageUrl 동기화 — 닉네임은 서비스 고유값이므로 갱신하지 않음 */
+    public boolean syncKakaoProfile(String email, String profileImageUrl) {
+        boolean changed = false;
+        if (!java.util.Objects.equals(this.email, email)) {
+            this.email = email;
+            changed = true;
         }
-        this.email = email;
-        if (profileImageUrl != null) {
+        if (!java.util.Objects.equals(this.profileImageUrl, profileImageUrl)) {
             this.profileImageUrl = profileImageUrl;
+            changed = true;
         }
+        return changed;
     }
 
     public String getId() {
