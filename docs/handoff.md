@@ -211,6 +211,7 @@ PENDING → EXPIRED (15분 초과 미사용)
 | 10 | PUT | `/internal/upload-sessions/{id}/complete` | Lambda → 세션 완료 (VPC 내부) |
 | 11 | POST | `/verifications` | 인증 생성 (텍스트/사진) |
 | 12 | GET | `/crews/{crewId}/feed` | 크루 피드 조회 (페이지네이션) |
+| 13 | POST | `/auth/test-login` | 테스트 로그인 — userId로 JWT 발급 (`!prod` 전용) |
 
 ### 5.3 스케줄러 (3개)
 
@@ -323,6 +324,7 @@ Redis 캐시, AWS SQS 비동기 이벤트, FCM 푸시 알림, 분산 락(Redis),
 | 항목 | 설명 |
 |------|------|
 | **X-User-Id 헤더** | `!prod` 프로필에서만 허용 (`DevSecurityConfig`). 운영에서는 JWT만 유효 |
+| **`/auth/test-login`** | `@Profile("!prod")` — prod에서는 빈 자체가 로드되지 않음. 카카오 로그인 없이 JWT 발급 |
 | **`/internal/**` 경로** | Spring Security `permitAll()`이지만 **VPC Security Group으로 Lambda만 접근 허용** 필수 |
 | **JWT Secret** | 운영에서 `${JWT_SECRET}` 환경변수 필수. 하드코딩 기본값 절대 금지 |
 | **프로필 분리** | `LocalStorageAdapter`(!prod) / `S3StorageAdapter`(prod) — 프로필에 따라 자동 전환 |
