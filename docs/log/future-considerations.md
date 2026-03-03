@@ -6,6 +6,20 @@
 
 ---
 
+### [2026-03-03 18:00] Logout 토큰 블랙리스트 도입
+
+- 현재 상태: `POST /auth/logout`은 서버 no-op (200 반환만), 클라이언트가 로컬 토큰 삭제로 로그아웃 처리. refreshToken은 순수 JWT stateless.
+- 필요 시점: Phase 2 (Redis 도입 이후)
+- 이유: Phase 1에서는 Redis 미사용, 토큰 탈취 시나리오 대응은 Phase 2 보안 강화 시점에 적합
+- Phase 2 계획:
+  - `token_blacklist` 테이블 또는 Redis SET으로 블랙리스트 관리
+  - `TokenBlacklistPort` (Output Port) + `RedisTokenBlacklistAdapter` 구현
+  - `RefreshTokenService.refresh()` 시 블랙리스트 조회 추가
+  - 만료된 블랙리스트 항목 정리 스케줄러 추가
+  - `LogoutUseCase` 생성하여 블랙리스트 등록 로직 분리
+
+---
+
 ### [2026-03-03 11:14] 예외 핸들러 로그 폭주 대비
 
 - 맥락: GlobalExceptionHandler에 전체 핸들러 request URI 로깅 추가

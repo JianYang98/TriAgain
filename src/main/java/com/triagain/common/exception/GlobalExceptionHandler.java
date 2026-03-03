@@ -8,10 +8,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.util.List;
 import java.util.Locale;
 
 @RequiredArgsConstructor
@@ -37,9 +39,23 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail(errorCode, message));
     }
 
+    /** Validation 예외 — message가 ErrorCode name이면 해당 코드 사용, 아니면 C001 INVALID_INPUT */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     protected ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException e, HttpServletRequest request) {
-        String message = e.getBindingResult().getFieldErrors().stream()
+        List<FieldError> fieldErrors = e.getBindingResult().getFieldErrors();
+
+        for (FieldError error : fieldErrors) {
+            try {
+                ErrorCode mappedCode = ErrorCode.valueOf(error.getDefaultMessage());
+                String message = resolveMessage(mappedCode, null);
+                log.warn("[{} {}] 입력값 검증 실패 [errorCode={}]: {}", request.getMethod(), request.getRequestURI(), mappedCode.getCode(), message);
+                return ResponseEntity.status(mappedCode.getStatus())
+                        .body(ApiResponse.fail(mappedCode, message));
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+
+        String message = fieldErrors.stream()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .reduce((a, b) -> a + ", " + b)
                 .orElse("잘못된 입력값입니다.");

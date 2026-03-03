@@ -60,6 +60,12 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.ok(result));
     }
 
+    /** 로그아웃 — Phase 1: no-op, 클라이언트가 토큰 삭제 */
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout() {
+        return ResponseEntity.ok(ApiResponse.ok(null));
+    }
+
     record KakaoLoginRequest(@NotBlank String kakaoAccessToken) {
     }
 

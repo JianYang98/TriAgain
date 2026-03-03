@@ -365,6 +365,105 @@ Content-Type: application/json
 
 ---
 
+### POST /auth/logout (로그아웃)
+
+Phase 1에서는 서버 no-op. 클라이언트가 로컬 토큰을 삭제하여 로그아웃 처리한다.
+Phase 2에서 Redis 기반 토큰 블랙리스트 도입 예정.
+
+**요청 (Request)**
+```
+POST /auth/logout HTTP/1.1
+Authorization: Bearer <token>
+```
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": null,
+  "error": null
+}
+```
+
+**프론트 처리:**
+1. `POST /auth/logout` 호출
+2. 로컬 저장소에서 accessToken, refreshToken 삭제
+3. 로그인 화면으로 이동
+
+---
+
+### GET /users/me (내 프로필 조회)
+
+인증된 사용자의 프로필 정보를 조회한다.
+
+**요청 (Request)**
+```
+GET /users/me HTTP/1.1
+Authorization: Bearer <token>
+```
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "1234567890",
+    "nickname": "내닉네임",
+    "profileImageUrl": "https://img.kakao.com/profile.jpg",
+    "email": "user@kakao.com"
+  },
+  "error": null
+}
+```
+
+**에러 응답**
+| HTTP | 코드 | 메시지 |
+|------|------|--------|
+| 401 | A003 | 인증이 필요합니다. |
+
+---
+
+### PATCH /users/me/nickname (닉네임 변경)
+
+닉네임을 변경하고 변경된 전체 프로필을 반환한다.
+
+**요청 (Request)**
+```
+PATCH /users/me/nickname HTTP/1.1
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+```json
+{
+  "nickname": "새닉네임"
+}
+```
+
+**필드 설명:**
+- `nickname`: (필수) 2~12자, 한글/영문/숫자/언더스코어만 허용
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "1234567890",
+    "nickname": "새닉네임",
+    "profileImageUrl": "https://img.kakao.com/profile.jpg",
+    "email": "user@kakao.com"
+  },
+  "error": null
+}
+```
+
+**에러 응답**
+| HTTP | 코드 | 메시지 |
+|------|------|--------|
+| 400 | U007 | 닉네임은 2~12자의 한글, 영문, 숫자, 언더스코어만 사용할 수 있습니다. |
+| 401 | A003 | 인증이 필요합니다. |
+
+---
+
 ## TODO (구현 시 추가 예정)
 
 ### Crew Context
