@@ -17,6 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -24,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -49,33 +51,33 @@ class KakaoLoginServiceTest {
     }
 
     @Test
-    @DisplayName("신규 유저 — 카카오 로그인 시 유저 생성 후 JWT 발급")
-    void login_newUser_createsUserAndReturnsJwt() {
+    @DisplayName("신규 유저 — isNewUser=true + 카카오 프로필 반환, JWT 미발급")
+    void login_newUser_returnsKakaoProfileWithoutJwt() {
         // Given
         given(kakaoApiPort.getUserInfo("valid-token")).willReturn(kakaoUserInfo);
         given(userRepositoryPort.findById("12345")).willReturn(Optional.empty());
-        given(userRepositoryPort.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
-        given(jwtProvider.createAccessToken(anyString(), anyString())).willReturn("access-token");
-        given(jwtProvider.createRefreshToken(anyString())).willReturn("refresh-token");
-        given(jwtProvider.getAccessTokenExpirationSeconds()).willReturn(1800L);
 
         // When
         KakaoLoginResult result = kakaoLoginService.login(new KakaoLoginCommand("valid-token"));
 
         // Then
-        assertThat(result.accessToken()).isEqualTo("access-token");
-        assertThat(result.refreshToken()).isEqualTo("refresh-token");
-        assertThat(result.accessTokenExpiresIn()).isEqualTo(1800L);
-        assertThat(result.user().isNewUser()).isTrue();
-        assertThat(result.user().nickname()).isEqualTo("카카오유저");
-        verify(userRepositoryPort).save(any(User.class));
+        assertThat(result.isNewUser()).isTrue();
+        assertThat(result.kakaoId()).isEqualTo("12345");
+        assertThat(result.kakaoProfile().nickname()).isEqualTo("카카오유저");
+        assertThat(result.kakaoProfile().email()).isEqualTo("kakao@test.com");
+        assertThat(result.kakaoProfile().profileImageUrl()).isEqualTo("https://img.kakao.com/profile.jpg");
+        assertThat(result.accessToken()).isNull();
+        assertThat(result.refreshToken()).isNull();
+        assertThat(result.user()).isNull();
+        verify(userRepositoryPort, never()).save(any(User.class));
     }
 
     @Test
-    @DisplayName("기존 유저 — 카카오 로그인 시 프로필 갱신 후 JWT 발급")
+    @DisplayName("기존 유저 — 프로필 갱신 후 JWT 발급, isNewUser=false")
     void login_existingUser_updatesProfileAndReturnsJwt() {
         // Given
-        User existingUser = User.of("12345", "KAKAO", "old@test.com", "기존유저", null, java.time.LocalDateTime.now());
+        User existingUser = User.of("12345", "KAKAO", "old@test.com", "기존유저", null,
+                LocalDateTime.now(), LocalDateTime.now());
         given(kakaoApiPort.getUserInfo("valid-token")).willReturn(kakaoUserInfo);
         given(userRepositoryPort.findById("12345")).willReturn(Optional.of(existingUser));
         given(userRepositoryPort.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
@@ -87,8 +89,14 @@ class KakaoLoginServiceTest {
         KakaoLoginResult result = kakaoLoginService.login(new KakaoLoginCommand("valid-token"));
 
         // Then
-        assertThat(result.user().isNewUser()).isFalse();
+        assertThat(result.isNewUser()).isFalse();
+        assertThat(result.accessToken()).isEqualTo("access-token");
+        assertThat(result.refreshToken()).isEqualTo("refresh-token");
+        assertThat(result.accessTokenExpiresIn()).isEqualTo(1800L);
         assertThat(result.user().nickname()).isEqualTo("카카오유저");
+        assertThat(result.kakaoId()).isNull();
+        assertThat(result.kakaoProfile()).isNull();
+        verify(userRepositoryPort).save(any(User.class));
     }
 
     @Test
@@ -118,21 +126,18 @@ class KakaoLoginServiceTest {
     }
 
     @Test
-    @DisplayName("카카오 email이 null이어도 정상 로그인")
-    void login_nullEmail_succeeds() {
+    @DisplayName("카카오 email이 null인 신규 유저 — 정상적으로 isNewUser 반환")
+    void login_nullEmail_newUser_succeeds() {
         // Given
         KakaoUserInfo noEmailUser = new KakaoUserInfo("12345", "카카오유저", null, null);
         given(kakaoApiPort.getUserInfo("valid-token")).willReturn(noEmailUser);
         given(userRepositoryPort.findById("12345")).willReturn(Optional.empty());
-        given(userRepositoryPort.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
-        given(jwtProvider.createAccessToken(anyString(), anyString())).willReturn("access-token");
-        given(jwtProvider.createRefreshToken(anyString())).willReturn("refresh-token");
-        given(jwtProvider.getAccessTokenExpirationSeconds()).willReturn(1800L);
 
         // When
         KakaoLoginResult result = kakaoLoginService.login(new KakaoLoginCommand("valid-token"));
 
         // Then
-        assertThat(result.user().isNewUser()).isTrue();
+        assertThat(result.isNewUser()).isTrue();
+        assertThat(result.kakaoProfile().email()).isNull();
     }
 }

@@ -32,6 +32,7 @@ erDiagram
         string nickname
         string profile_image_url
         timestamp created_at
+        timestamp terms_agreed_at "nullable — 약관 동의 일시 (NULL이면 기존 유저)"
     }
     
     crews {

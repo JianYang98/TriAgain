@@ -31,11 +31,14 @@ public class UserJpaEntity {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "terms_agreed_at")
+    private LocalDateTime termsAgreedAt;
+
     protected UserJpaEntity() {
     }
 
     public User toDomain() {
-        return User.of(id, provider, email, nickname, profileImageUrl, createdAt);
+        return User.of(id, provider, email, nickname, profileImageUrl, createdAt, termsAgreedAt);
     }
 
     public static UserJpaEntity fromDomain(User user) {
@@ -46,6 +49,7 @@ public class UserJpaEntity {
         entity.nickname = user.getNickname();
         entity.profileImageUrl = user.getProfileImageUrl();
         entity.createdAt = user.getCreatedAt();
+        entity.termsAgreedAt = user.getTermsAgreedAt();
         return entity;
     }
 }

@@ -20,38 +20,33 @@ public class KakaoLoginService implements KakaoLoginUseCase {
     private final UserRepositoryPort userRepositoryPort;
     private final JwtProvider jwtProvider;
 
-    /** 카카오 로그인 — 신규 유저 생성 또는 기존 유저 프로필 갱신 후 JWT 발급 */
+    /** 카카오 로그인 — 기존 유저면 JWT 발급, 신규 유저면 카카오 프로필만 반환 */
     @Override
     @Transactional
     public KakaoLoginResult login(KakaoLoginCommand command) {
         KakaoUserInfo kakaoUser = kakaoApiPort.getUserInfo(command.kakaoAccessToken());
 
         Optional<User> existing = userRepositoryPort.findById(kakaoUser.id());
-        boolean isNewUser;
-        User user;
 
         if (existing.isEmpty()) {
-            user = User.createFromKakao(
-                    kakaoUser.id(), kakaoUser.nickname(),
-                    kakaoUser.email(), kakaoUser.profileImageUrl()
+            return KakaoLoginResult.newUser(
+                    kakaoUser.id(),
+                    new KakaoProfile(kakaoUser.nickname(), kakaoUser.email(), kakaoUser.profileImageUrl())
             );
-            isNewUser = true;
-        } else {
-            user = existing.get();
-            user.updateKakaoProfile(kakaoUser.nickname(), kakaoUser.email(), kakaoUser.profileImageUrl());
-            isNewUser = false;
         }
 
+        User user = existing.get();
+        user.updateKakaoProfile(kakaoUser.nickname(), kakaoUser.email(), kakaoUser.profileImageUrl());
         User saved = userRepositoryPort.save(user);
 
         String accessToken = jwtProvider.createAccessToken(saved.getId(), saved.getProvider());
         String refreshToken = jwtProvider.createRefreshToken(saved.getId());
 
-        return new KakaoLoginResult(
+        return KakaoLoginResult.existingUser(
                 accessToken,
                 refreshToken,
                 jwtProvider.getAccessTokenExpirationSeconds(),
-                new LoginUserInfo(saved.getId(), saved.getNickname(), saved.getProfileImageUrl(), isNewUser)
+                new LoginUserInfo(saved.getId(), saved.getNickname(), saved.getProfileImageUrl())
         );
     }
 }

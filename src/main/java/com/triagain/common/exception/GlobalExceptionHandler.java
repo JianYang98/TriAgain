@@ -1,6 +1,7 @@
 package com.triagain.common.exception;
 
 import com.triagain.common.response.ApiResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,21 +28,23 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(BusinessException.class)
-    protected ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException e) {
+    protected ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException e, HttpServletRequest request) {
         ErrorCode errorCode = e.getErrorCode();
         String message = resolveMessage(errorCode, e.getArgs());
+        log.warn("[{} {}] 비즈니스 예외 [errorCode={}]: {}", request.getMethod(), request.getRequestURI(), errorCode.getCode(), message);
         return ResponseEntity
                 .status(errorCode.getStatus())
                 .body(ApiResponse.fail(errorCode, message));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    protected ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException e) {
+    protected ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException e, HttpServletRequest request) {
         String message = e.getBindingResult().getFieldErrors().stream()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .reduce((a, b) -> a + ", " + b)
                 .orElse("잘못된 입력값입니다.");
 
+        log.warn("[{} {}] 입력값 검증 실패: {}", request.getMethod(), request.getRequestURI(), message);
         return ResponseEntity
                 .badRequest()
                 .body(ApiResponse.fail(ErrorCode.INVALID_INPUT, message));
@@ -49,18 +52,22 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     protected ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(
-            DataIntegrityViolationException e) {
-        ErrorCode errorCode = ErrorCode.VERIFICATION_ALREADY_EXISTS;
+            DataIntegrityViolationException e, HttpServletRequest request) {
+        ErrorCode errorCode = ErrorCode.DATA_CONFLICT;
+        String constraintName = "unknown";
 
         Throwable cause = e.getCause();
         if (cause instanceof org.hibernate.exception.ConstraintViolationException cve) {
-            String constraintName = cve.getConstraintName();
-            if (constraintName != null && constraintName.contains("upload_session_id")) {
+            constraintName = cve.getConstraintName() != null ? cve.getConstraintName() : "unknown";
+            if (constraintName.contains("upload_session_id")) {
                 errorCode = ErrorCode.UPLOAD_SESSION_ALREADY_USED;
+            } else if (constraintName.contains("verification")) {
+                errorCode = ErrorCode.VERIFICATION_ALREADY_EXISTS;
             }
         }
 
-        log.warn("데이터 무결성 위반: {}", e.getMessage());
+        log.warn("데이터 무결성 위반 [{} {}, constraint={}, errorCode={}]",
+                request.getMethod(), request.getRequestURI(), constraintName, errorCode.getCode());
         String message = resolveMessage(errorCode, null);
         return ResponseEntity
                 .status(errorCode.getStatus())
@@ -68,15 +75,16 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    protected ResponseEntity<ApiResponse<Void>> handleIllegalArgumentException(IllegalArgumentException e) {
+    protected ResponseEntity<ApiResponse<Void>> handleIllegalArgumentException(IllegalArgumentException e, HttpServletRequest request) {
+        log.warn("[{} {}] 잘못된 인자: {}", request.getMethod(), request.getRequestURI(), e.getMessage());
         return ResponseEntity
                 .badRequest()
                 .body(ApiResponse.fail(ErrorCode.INVALID_INPUT, e.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
-    protected ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
-        log.error("Unhandled exception", e);
+    protected ResponseEntity<ApiResponse<Void>> handleException(Exception e, HttpServletRequest request) {
+        log.error("[{} {}] 처리되지 않은 예외: {}", request.getMethod(), request.getRequestURI(), e.getMessage(), e);
         String message = resolveMessage(ErrorCode.INTERNAL_SERVER_ERROR, null);
         return ResponseEntity
                 .internalServerError()

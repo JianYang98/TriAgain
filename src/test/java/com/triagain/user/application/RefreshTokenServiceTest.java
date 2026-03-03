@@ -38,7 +38,7 @@ class RefreshTokenServiceTest {
     void refresh_validToken_returnsNewAccessToken() {
         // Given
         String refreshToken = "valid-refresh-token";
-        User user = User.of("user-123", "KAKAO", "test@test.com", "테스트", null, LocalDateTime.now());
+        User user = User.of("user-123", "KAKAO", "test@test.com", "테스트", null, LocalDateTime.now(), LocalDateTime.now());
 
         given(jwtProvider.validateToken(refreshToken)).willReturn(true);
         given(jwtProvider.getTokenType(refreshToken)).willReturn("refresh");

@@ -346,5 +346,6 @@ refactor: Verification 도메인 계층 분리
 | 아키텍처 | `/docs/architecture.md` | 헥사고날 아키텍처 상세 |
 | 시퀀스 다이어그램 | `/docs/sequence/` | 크루 가입, 인증 업로드 흐름 |
 | 디버깅 로그 | `/docs/debugging-log.md` | 버그 수정, 설계 판단, AI 방향 수정 기록 |
+| 추후 고려 사항 | `/docs/future-considerations.md` | 스케일업 시 필요한 개선 사항, 미래 참고용 |
 
 
