@@ -238,7 +238,7 @@ PENDING → EXPIRED (15분 초과 미사용)
 
 ### 6.2 후속 TODO 문서 (3건)
 
-#### `/docs/20260301-upload-session-review-todo.md`
+#### `/docs/archive/20260301-upload-session-review-todo.md`
 
 PR 리뷰 후속 개선 항목 4건:
 1. **[Medium]** `CompleteUploadSessionService`의 `afterCommit` 단위 테스트 추가
@@ -333,18 +333,18 @@ Redis 캐시, AWS SQS 비동기 이벤트, FCM 푸시 알림, 분산 락(Redis),
 
 | 문서 | 경로 | 설명 |
 |------|------|------|
-| ERD | `/docs/schema.md` | 엔티티 관계, 상태 Enum 정의, 인덱스 설계 |
-| API 명세 | `/docs/api-spec.md` | API 계약서 (요청/응답/에러 코드) |
-| 비즈니스 규칙 | `/docs/biz-logic.md` | 엣지케이스, Fallback 등급, Phase 로드맵 |
-| 컨텍스트 맵 | `/docs/context-map.md` | 바운디드 컨텍스트 관계도 |
-| 아키텍처 | `/docs/architecture.md` | 헥사고날 아키텍처 상세 |
+| ERD | `/docs/spec/schema.md` | 엔티티 관계, 상태 Enum 정의, 인덱스 설계 |
+| API 명세 | `/docs/spec/api-spec.md` | API 계약서 (요청/응답/에러 코드) |
+| 비즈니스 규칙 | `/docs/spec/biz-logic.md` | 엣지케이스, Fallback 등급, Phase 로드맵 |
+| 컨텍스트 맵 | `/docs/spec/context-map.md` | 바운디드 컨텍스트 관계도 |
+| 아키텍처 | `/docs/spec/architecture.md` | 헥사고날 아키텍처 상세 |
 | 배포 체크리스트 | `/docs/prod-deploy-checklist.md` | 프로필별 설정 비교, 필수 환경변수 |
-| 리뷰 TODO | `/docs/20260301-upload-session-review-todo.md` | Upload Session PR 후속 개선 항목 |
+| 리뷰 TODO | `/docs/archive/20260301-upload-session-review-todo.md` | Upload Session PR 후속 개선 항목 |
 | 코딩 규칙 | `/CLAUDE.md` | 전체 코딩 컨벤션, Anti-Patterns, 디버깅 로그 규칙 |
 
 ### 8.4 디버깅 로그
 
-버그 수정, 설계 결정, AI 방향 수정 시 `/docs/debugging-log.md`에 기록 필수. 형식:
+버그 수정, 설계 결정, AI 방향 수정 시 `/docs/log/debugging-log.md`에 기록 필수. 형식:
 
 ```
 ### [날짜] 제목
