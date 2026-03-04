@@ -32,4 +32,7 @@ public interface ChallengeRepositoryPort {
 
     /** 유저·크루의 최대 사이클 번호 조회 — 다음 사이클 번호 결정에 사용 */
     int findMaxCycleNumber(String userId, String crewId);
+
+    /** 유저·크루의 SUCCESS 챌린지 수 조회 — 작심삼일 달성 횟수에 사용 */
+    int countSuccessByUserIdAndCrewId(String userId, String crewId);
 }

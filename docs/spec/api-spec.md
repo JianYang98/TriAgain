@@ -108,8 +108,23 @@ Content-Type: application/json
 Idempotency-Key: <uuid>
 
 {
+  "crewId": "crew_123",
   "challengeId": "chal_123",
   "uploadSessionId": 123,
+  "textContent": "오늘도 달리기 완료!"
+}
+```
+
+**필드 설명:**
+- `crewId`: (필수) 크루 ID
+- `challengeId`: (선택) 챌린지 ID — 생략 시 서버가 새 챌린지 자동 생성
+- `uploadSessionId`: (선택) 업로드 세션 ID — 사진 인증 크루에서만 필요
+- `textContent`: (선택) 인증 텍스트
+
+```json
+// challengeId 생략 예시 (새 챌린지 자동 생성)
+{
+  "crewId": "crew_123",
   "textContent": "오늘도 달리기 완료!"
 }
 ```
@@ -689,6 +704,43 @@ Authorization: Bearer <token>
 | 401 | A003 | 인증이 필요합니다. | 미인증 |
 | 403 | CREW_ACCESS_DENIED | 크루 멤버만 조회할 수 있습니다. | 크루 미참여 |
 | 404 | CREW_NOT_FOUND | 존재하지 않는 크루입니다. | 크루 없음 |
+
+---
+
+### GET /crews/{crewId}/my-verifications (내 인증 현황 조회)
+
+크루 내 내 인증 날짜, 연속 스트릭, 작심삼일 달성 횟수를 조회한다.
+
+**요청 (Request)**
+```
+GET /crews/{crewId}/my-verifications HTTP/1.1
+Authorization: Bearer <token>
+```
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": {
+    "verifiedDates": ["2026-03-01", "2026-03-02", "2026-03-03"],
+    "streakCount": 3,
+    "completedChallenges": 2
+  },
+  "error": null
+}
+```
+
+**필드 설명:**
+- `verifiedDates`: APPROVED 인증 날짜 목록 (크루 기간 범위 내, ASC 정렬)
+- `streakCount`: 최근 날짜부터 역방향 연속 인증 일수
+- `completedChallenges`: challenges.status = SUCCESS 개수 (작심삼일 달성 횟수)
+
+**에러 응답**
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 401 | A003 | 인증이 필요합니다. | 미인증 |
+| 403 | CR009 | 크루 멤버만 조회할 수 있습니다. | 크루 미참여 |
+| 404 | CR001 | 크루를 찾을 수 없습니다. | 크루 없음 |
 
 ---
 

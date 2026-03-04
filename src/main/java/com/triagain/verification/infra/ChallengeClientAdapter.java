@@ -57,6 +57,12 @@ public class ChallengeClientAdapter implements ChallengePort {
         );
     }
 
+    /** 유저의 SUCCESS 챌린지 수 조회 — ChallengeRepositoryPort에 위임 */
+    @Override
+    public int countCompletedChallenges(String userId, String crewId) {
+        return challengeRepositoryPort.countSuccessByUserIdAndCrewId(userId, crewId);
+    }
+
     private ChallengeInfo toChallengeInfo(Challenge challenge) {
         return new ChallengeInfo(
                 challenge.getId(),
