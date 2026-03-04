@@ -189,13 +189,13 @@ PENDING → EXPIRED (15분 초과 미사용)
 | Context | 상태 | 구현 범위 |
 |---------|------|-----------|
 | **Common** | ✅ 완료 | Auth(JWT+카카오), SecurityConfig(prod/dev 분리), GlobalExceptionHandler(42 에러코드), ApiResponse, IdGenerator |
-| **User** | ✅ 완료 | 카카오 OAuth 로그인, 토큰 갱신, 프로필 조회/수정 — Controller 1, Service 4, Port 2 |
+| **User** | ✅ 완료 | 카카오 OAuth 로그인, 토큰 갱신, 프로필 조회/수정 — Controller 2, Service 6, Port 2 |
 | **Crew** | ✅ 완료 | 생성/참여/목록/상세/활성화 + 스케줄러 2개 — Controller 1, Service 6, Scheduler 2, Port 3 |
 | **Verification** | ✅ 완료 | 업로드 세션(생성/완료/만료/SSE) + 인증 생성 + 피드 조회 — Controller 3(+Internal 1), Service 4, Scheduler 1, Port 7 |
 | **Moderation** | ⚠️ 도메인만 | Domain Model(Report, Review, ReportPolicy) + VO + Infra Adapter만 구현. API/Service 미구현 |
 | **Support** | ⚠️ 도메인만 | Domain Model(Notification, Reaction) + VO + Infra Adapter만 구현. API/Service 미구현 |
 
-### 5.2 구현 완료 API (10개)
+### 5.2 구현 완료 API (17개)
 
 | # | Method | Path | 설명 |
 |---|--------|------|------|
@@ -211,6 +211,11 @@ PENDING → EXPIRED (15분 초과 미사용)
 | 10 | PUT | `/internal/upload-sessions/{id}/complete` | Lambda → 세션 완료 (VPC 내부) |
 | 11 | POST | `/verifications` | 인증 생성 (텍스트/사진) |
 | 12 | GET | `/crews/{crewId}/feed` | 크루 피드 조회 (페이지네이션) |
+| 13 | POST | `/auth/test-login` | 테스트 로그인 — userId로 JWT 발급 (`!prod` 전용) |
+| 14 | POST | `/auth/signup` | 회원가입 (카카오 인증 + 닉네임 + 약관) |
+| 15 | POST | `/auth/logout` | 로그아웃 (Phase 1: no-op) |
+| 16 | GET | `/users/me` | 내 프로필 조회 |
+| 17 | PATCH | `/users/me/nickname` | 닉네임 변경 |
 
 ### 5.3 스케줄러 (3개)
 
@@ -224,7 +229,7 @@ PENDING → EXPIRED (15분 초과 미사용)
 
 | 구분 | 파일 수 | 설명 |
 |------|---------|------|
-| **Cucumber Feature** | 10개 | health, crew-creation, crew-join, crew-activation, crew-detail, crew-list, crew-feed, challenge-auto-creation, upload-session, verification-creation |
+| **Cucumber Feature** | 11개 | health, crew-creation, crew-join, crew-activation, crew-detail, crew-list, crew-feed, challenge-auto-creation, upload-session, verification-creation, my-profile |
 | **단위 테스트** | 16개 | JWT, 도메인 모델(Crew, Challenge, UploadSession, Verification, Report, ReportPolicy), 서비스(KakaoLogin, RefreshToken, CompleteUploadSession, CreateVerification), 스케줄러 2개, Adapter 2개 |
 | **인프라** | Testcontainers | PostgreSQL 컨테이너 기반 acceptance 테스트 + H2 인메모리 단위 테스트 |
 
@@ -262,6 +267,7 @@ PR 리뷰 후속 개선 항목 4건:
 | Moderation API/Service (신고 접수 → 자동 검토) | 미구현 |
 | Support API/Service (반응/이모지) | 미구현 |
 | 크루 탈퇴 API | 미구현 |
+| Apple 로그인 (앱스토어 필수 요건) | 플랜 작성 중 |
 | 프로덕션 배포 파이프라인 (GitHub Actions → EC2 + RDS) | 미구현 |
 | `/internal/**` VPC 네트워크 접근 제어 | 미구현 |
 
@@ -317,12 +323,14 @@ Redis 캐시, AWS SQS 비동기 이벤트, FCM 푸시 알림, 분산 락(Redis),
 | **Presigned URL** | Presigned URL 생성은 S3 통신이 아님 (로컬 서명 생성). 트랜잭션 내부에서 호출해도 무방 |
 | **session COMPLETED** | Lambda → `/internal/upload-sessions/{id}/complete`에서 처리. 트랜잭션 분리됨 |
 | **SSE 타임아웃** | 60초. 클라이언트는 타임아웃 시 `POST /verifications` 시도로 상태 확인 (폴링 fallback) |
+| **로그인 시 닉네임** | 카카오 재로그인 시 닉네임은 동기화하지 않음. email/profileImageUrl만 변경 시 조건부 save |
 
 ### 8.2 보안 주의
 
 | 항목 | 설명 |
 |------|------|
 | **X-User-Id 헤더** | `!prod` 프로필에서만 허용 (`DevSecurityConfig`). 운영에서는 JWT만 유효 |
+| **`/auth/test-login`** | `@Profile("!prod")` — prod에서는 빈 자체가 로드되지 않음. 카카오 로그인 없이 JWT 발급 |
 | **`/internal/**` 경로** | Spring Security `permitAll()`이지만 **VPC Security Group으로 Lambda만 접근 허용** 필수 |
 | **JWT Secret** | 운영에서 `${JWT_SECRET}` 환경변수 필수. 하드코딩 기본값 절대 금지 |
 | **프로필 분리** | `LocalStorageAdapter`(!prod) / `S3StorageAdapter`(prod) — 프로필에 따라 자동 전환 |

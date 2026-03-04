@@ -2,9 +2,9 @@ package com.triagain.user.application;
 
 import com.triagain.common.auth.JwtProvider;
 import com.triagain.user.domain.model.User;
-import com.triagain.user.port.in.KakaoLoginUseCase;
-import com.triagain.user.port.out.KakaoApiPort;
-import com.triagain.user.port.out.KakaoApiPort.KakaoUserInfo;
+import com.triagain.user.port.in.AppleLoginUseCase;
+import com.triagain.user.port.out.AppleTokenVerifierPort;
+import com.triagain.user.port.out.AppleTokenVerifierPort.AppleUserInfo;
 import com.triagain.user.port.out.UserRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,29 +14,26 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class KakaoLoginService implements KakaoLoginUseCase {
+public class AppleLoginService implements AppleLoginUseCase {
 
-    private final KakaoApiPort kakaoApiPort;
+    private final AppleTokenVerifierPort appleTokenVerifierPort;
     private final UserRepositoryPort userRepositoryPort;
     private final JwtProvider jwtProvider;
 
-    /** 카카오 로그인 — 기존 유저면 JWT 발급, 신규 유저면 카카오 프로필만 반환 */
+    /** Apple 로그인 — 기존 유저면 JWT 발급, 신규 유저면 appleId + email만 반환 */
     @Override
     @Transactional
-    public KakaoLoginResult login(KakaoLoginCommand command) {
-        KakaoUserInfo kakaoUser = kakaoApiPort.getUserInfo(command.kakaoAccessToken());
+    public AppleLoginResult login(AppleLoginCommand command) {
+        AppleUserInfo appleUser = appleTokenVerifierPort.verify(command.identityToken());
 
-        Optional<User> existing = userRepositoryPort.findById(kakaoUser.id());
+        Optional<User> existing = userRepositoryPort.findById(appleUser.sub());
 
         if (existing.isEmpty()) {
-            return KakaoLoginResult.newUser(
-                    kakaoUser.id(),
-                    new KakaoProfile(kakaoUser.nickname(), kakaoUser.email(), kakaoUser.profileImageUrl())
-            );
+            return AppleLoginResult.newUser(appleUser.sub(), appleUser.email());
         }
 
         User user = existing.get();
-        boolean profileChanged = user.syncKakaoProfile(kakaoUser.email(), kakaoUser.profileImageUrl());
+        boolean profileChanged = user.syncAppleProfile(appleUser.email());
         if (profileChanged) {
             user = userRepositoryPort.save(user);
         }
@@ -44,7 +41,7 @@ public class KakaoLoginService implements KakaoLoginUseCase {
         String accessToken = jwtProvider.createAccessToken(user.getId(), user.getProvider());
         String refreshToken = jwtProvider.createRefreshToken(user.getId());
 
-        return KakaoLoginResult.existingUser(
+        return AppleLoginResult.existingUser(
                 accessToken,
                 refreshToken,
                 jwtProvider.getAccessTokenExpirationSeconds(),

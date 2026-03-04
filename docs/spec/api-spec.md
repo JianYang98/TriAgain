@@ -26,6 +26,7 @@ Authorization: Bearer <token>
 Content-Type: application/json
 
 {
+  "challengeId": "chal_123",
   "fileName": "verification_image.jpg",
   "fileType": "image/jpeg",
   "fileSize": 2048576
@@ -35,12 +36,16 @@ Content-Type: application/json
 **성공 응답 (201 Created)**
 ```json
 {
-  "uploadSessionId": "upload_123",
-  "presignedUrl": "https://s3.amazonaws.com/bucket/verifications/user_456/2026-02-18/abc123.jpg?X-Amz-Algorithm=...",
-  "imageUrl": "https://s3.amazonaws.com/bucket/verifications/user_456/2026-02-18/abc123.jpg",
-  "expiresAt": "2026-02-18T15:00:00Z",
-  "maxFileSize": 5242880,
-  "allowedTypes": ["image/jpeg"]
+  "success": true,
+  "data": {
+    "uploadSessionId": 123,
+    "presignedUrl": "https://s3.amazonaws.com/bucket/verifications/user_456/2026-02-18/abc123.jpg?X-Amz-Algorithm=...",
+    "imageUrl": "https://s3.amazonaws.com/bucket/verifications/user_456/2026-02-18/abc123.jpg",
+    "expiresAt": "2026-02-18T15:00:00Z",
+    "maxFileSize": 5242880,
+    "allowedTypes": ["image/jpeg"]
+  },
+  "error": null
 }
 ```
 
@@ -104,8 +109,7 @@ Idempotency-Key: <uuid>
 
 {
   "challengeId": "chal_123",
-  "imageUrl": "https://s3.../abc123.jpg",
-  "uploadSessionId": "upload_123",
+  "uploadSessionId": 123,
   "textContent": "오늘도 달리기 완료!"
 }
 ```
@@ -113,15 +117,21 @@ Idempotency-Key: <uuid>
 **성공 응답 (201 Created)**
 ```json
 {
-  "verificationId": "ver_789",
-  "challengeId": "chal_123",
-  "userId": "user_456",
-  "imageUrl": "https://s3.../image.jpg",
-  "status": "APPROVED",
-  "reviewStatus": "AUTO_APPROVED",
-  "reportCount": 0,
-  "targetDate": "2026-02-18",
-  "createdAt": "2026-02-18T14:30:00Z"
+  "success": true,
+  "data": {
+    "verificationId": "ver_789",
+    "challengeId": "chal_123",
+    "userId": "user_456",
+    "crewId": "crew_123",
+    "imageUrl": "https://s3.../image.jpg",
+    "textContent": "오늘도 달리기 완료!",
+    "status": "APPROVED",
+    "reviewStatus": "NOT_REQUIRED",
+    "reportCount": 0,
+    "targetDate": "2026-02-18",
+    "createdAt": "2026-02-18T14:30:00Z"
+  },
+  "error": null
 }
 ```
 
@@ -222,7 +232,7 @@ Content-Type: application/json
 **시나리오 1: 기존 유저 로그인 성공 (200 OK)**
 ```json
 {
-  "status": "OK",
+  "success": true,
   "data": {
     "isNewUser": false,
     "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
@@ -235,14 +245,15 @@ Content-Type: application/json
     },
     "kakaoId": null,
     "kakaoProfile": null
-  }
+  },
+  "error": null
 }
 ```
 
 **시나리오 2: 신규 유저 — 회원가입 필요 (200 OK)**
 ```json
 {
-  "status": "OK",
+  "success": true,
   "data": {
     "isNewUser": true,
     "accessToken": null,
@@ -255,7 +266,8 @@ Content-Type: application/json
       "email": "user@kakao.com",
       "profileImageUrl": "https://img.kakao.com/profile.jpg"
     }
-  }
+  },
+  "error": null
 }
 ```
 
@@ -305,7 +317,7 @@ Content-Type: application/json
 **성공 응답 (201 Created)**
 ```json
 {
-  "status": "OK",
+  "success": true,
   "data": {
     "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
     "refreshToken": "eyJhbGciOiJIUzI1NiJ9...",
@@ -315,7 +327,8 @@ Content-Type: application/json
       "nickname": "내닉네임",
       "profileImageUrl": "https://img.kakao.com/profile.jpg"
     }
-  }
+  },
+  "error": null
 }
 ```
 
@@ -327,6 +340,138 @@ Content-Type: application/json
 | 400 | U007 | 닉네임은 2~12자의 한글, 영문, 숫자, 언더스코어만 사용할 수 있습니다. | 형식 불일치 |
 | 400 | U008 | 카카오 계정 정보가 일치하지 않습니다. | kakaoId 불일치 |
 | 401 | A001 | 유효하지 않은 카카오 토큰입니다. | 만료/잘못된 토큰 |
+| 409 | U006 | 이미 가입된 사용자입니다. | 중복 가입 |
+
+---
+
+### POST /auth/apple (Apple 로그인)
+
+Apple Identity Token으로 기존 유저 여부를 확인한다.
+- **기존 유저** → JWT 발급 (로그인 완료)
+- **신규 유저** → `isNewUser=true` + appleId/email 반환 (JWT 미발급, 유저 미생성)
+
+**요청 (Request)**
+```
+POST /auth/apple HTTP/1.1
+Content-Type: application/json
+```
+```json
+{
+  "identityToken": "Apple_SDK에서_받은_identity_token"
+}
+```
+
+**시나리오 1: 기존 유저 로그인 성공 (200 OK)**
+```json
+{
+  "success": true,
+  "data": {
+    "isNewUser": false,
+    "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiJ9...",
+    "accessTokenExpiresIn": 1800,
+    "user": {
+      "id": "001234.abcdef.5678",
+      "nickname": "유저닉네임",
+      "profileImageUrl": null
+    },
+    "appleId": null,
+    "email": null
+  },
+  "error": null
+}
+```
+
+**시나리오 2: 신규 유저 — 회원가입 필요 (200 OK)**
+```json
+{
+  "success": true,
+  "data": {
+    "isNewUser": true,
+    "accessToken": null,
+    "refreshToken": null,
+    "accessTokenExpiresIn": null,
+    "user": null,
+    "appleId": "001234.abcdef.5678",
+    "email": "user@privaterelay.appleid.com"
+  },
+  "error": null
+}
+```
+
+**프론트 분기 로직:**
+```
+1. POST /auth/apple 호출
+2. if (data.isNewUser == false):
+     → accessToken/refreshToken 저장 → 메인 화면 이동
+3. if (data.isNewUser == true):
+     → data.appleId 저장
+     → 약관 동의 + 닉네임 입력 화면 이동
+     → POST /auth/apple-signup 호출
+```
+
+**참고:**
+- Apple은 email을 최초 로그인 시에만 제공. 재로그인 시 email은 null일 수 있음
+- Apple은 프로필 이미지를 제공하지 않음 (profileImageUrl은 항상 null)
+
+**에러 응답**
+| HTTP | 코드 | 메시지 |
+|------|------|--------|
+| 401 | A005 | 유효하지 않은 애플 토큰입니다. |
+| 502 | A006 | 애플 토큰 검증 중 오류가 발생했습니다. |
+
+---
+
+### POST /auth/apple-signup (Apple 회원가입)
+
+Apple 인증 + 약관 동의 + 닉네임으로 신규 유저를 생성하고 JWT를 발급한다.
+
+**요청 (Request)**
+```
+POST /auth/apple-signup HTTP/1.1
+Content-Type: application/json
+```
+```json
+{
+  "identityToken": "Apple_SDK에서_받은_identity_token",
+  "appleId": "001234.abcdef.5678",
+  "nickname": "내닉네임",
+  "termsAgreed": true
+}
+```
+
+**필드 설명:**
+- `identityToken`: (필수) Apple SDK에서 받은 Identity Token (JWT)
+- `appleId`: (필수) POST /auth/apple 응답의 `appleId` 값
+- `nickname`: (필수) 2~12자, 한글/영문/숫자/언더스코어만 허용
+- `termsAgreed`: (필수) 약관 동의 여부 (true만 허용)
+
+**성공 응답 (201 Created)**
+```json
+{
+  "success": true,
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiJ9...",
+    "accessTokenExpiresIn": 1800,
+    "user": {
+      "id": "001234.abcdef.5678",
+      "nickname": "내닉네임",
+      "profileImageUrl": null
+    }
+  },
+  "error": null
+}
+```
+
+**에러 응답**
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 400 | U005 | 약관에 동의해야 회원가입이 가능합니다. | termsAgreed=false |
+| 400 | U004 | 닉네임은 필수입니다. | 빈값/null |
+| 400 | U007 | 닉네임은 2~12자의 한글, 영문, 숫자, 언더스코어만 사용할 수 있습니다. | 형식 불일치 |
+| 400 | U009 | 애플 계정 정보가 일치하지 않습니다. | appleId 불일치 |
+| 401 | A005 | 유효하지 않은 애플 토큰입니다. | 만료/잘못된 토큰 |
 | 409 | U006 | 이미 가입된 사용자입니다. | 중복 가입 |
 
 ---
@@ -349,11 +494,12 @@ Content-Type: application/json
 **성공 응답 (200 OK)**
 ```json
 {
-  "status": "OK",
+  "success": true,
   "data": {
     "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
     "accessTokenExpiresIn": 1800
-  }
+  },
+  "error": null
 }
 ```
 
@@ -365,11 +511,154 @@ Content-Type: application/json
 
 ---
 
+### POST /auth/logout (로그아웃)
+
+Phase 1에서는 서버 no-op. 클라이언트가 로컬 토큰을 삭제하여 로그아웃 처리한다.
+Phase 2에서 Redis 기반 토큰 블랙리스트 도입 예정.
+
+**요청 (Request)**
+```
+POST /auth/logout HTTP/1.1
+Authorization: Bearer <token>
+```
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": null,
+  "error": null
+}
+```
+
+**프론트 처리:**
+1. `POST /auth/logout` 호출
+2. 로컬 저장소에서 accessToken, refreshToken 삭제
+3. 로그인 화면으로 이동
+
+---
+
+### GET /users/me (내 프로필 조회)
+
+인증된 사용자의 프로필 정보를 조회한다.
+
+**요청 (Request)**
+```
+GET /users/me HTTP/1.1
+Authorization: Bearer <token>
+```
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "1234567890",
+    "nickname": "내닉네임",
+    "profileImageUrl": "https://img.kakao.com/profile.jpg",
+    "email": "user@kakao.com"
+  },
+  "error": null
+}
+```
+
+**에러 응답**
+| HTTP | 코드 | 메시지 |
+|------|------|--------|
+| 401 | A003 | 인증이 필요합니다. |
+
+---
+
+### PATCH /users/me/nickname (닉네임 변경)
+
+닉네임을 변경하고 변경된 전체 프로필을 반환한다.
+
+**요청 (Request)**
+```
+PATCH /users/me/nickname HTTP/1.1
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+```json
+{
+  "nickname": "새닉네임"
+}
+```
+
+**필드 설명:**
+- `nickname`: (필수) 2~12자, 한글/영문/숫자/언더스코어만 허용
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "1234567890",
+    "nickname": "새닉네임",
+    "profileImageUrl": "https://img.kakao.com/profile.jpg",
+    "email": "user@kakao.com"
+  },
+  "error": null
+}
+```
+
+**에러 응답**
+| HTTP | 코드 | 메시지 |
+|------|------|--------|
+| 400 | U007 | 닉네임은 2~12자의 한글, 영문, 숫자, 언더스코어만 사용할 수 있습니다. |
+| 401 | A003 | 인증이 필요합니다. |
+
+---
+
+### POST /crews/join (초대코드로 크루 참여)
+
+초대코드를 사용하여 크루에 참여한다. 크루가 RECRUITING 상태이고, 정원이 남아있는 경우에만 참여 가능.
+
+**요청 (Request)**
+```
+POST /crews/join HTTP/1.1
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+```json
+{
+  "inviteCode": "ABC123"
+}
+```
+
+**필드 설명:**
+- `inviteCode`: (필수) 크루 초대코드 (6자리)
+
+**성공 응답 (201 Created)**
+```json
+{
+  "success": true,
+  "data": {
+    "userId": "1234567890",
+    "crewId": "crew_123",
+    "role": "MEMBER",
+    "currentMembers": 3,
+    "joinedAt": "2026-03-04T10:00:00Z"
+  },
+  "error": null
+}
+```
+
+**에러 응답**
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 400 | CR003 | 모집 중인 크루가 아닙니다. | 크루 상태가 RECRUITING이 아님 |
+| 400 | CR008 | 크루 참여 마감 기한이 지났습니다. | 중간 가입 불가 시 기한 초과 |
+| 404 | CR006 | 유효하지 않은 초대 코드입니다. | 존재하지 않는 초대코드 |
+| 409 | CR002 | 크루 정원이 가득 찼습니다. | 정원 초과 |
+| 409 | CR004 | 이미 참여 중인 크루입니다. | 중복 참여 |
+
+---
+
 ## TODO (구현 시 추가 예정)
 
 ### Crew Context
 - POST /crews — 크루 생성 (deadlineTime: 선택, 기본값 23:59:59)
-- POST /crews/{crewId}/join — 크루 참여
 - GET /crews — 크루 목록 조회
 - GET /crews/{crewId} — 크루 상세 조회 (응답에 deadlineTime, 멤버별 nickname/profileImageUrl 포함)
 

@@ -26,8 +26,8 @@ erDiagram
     users ||--o{ reactions : "남김"
 
     users {
-        string id PK "카카오 고유 ID (String 변환)"
-        string provider "KAKAO"
+        string id PK "소셜 고유 ID — VARCHAR(64)"
+        string provider "KAKAO | APPLE"
         string email "nullable"
         string nickname
         string profile_image_url
