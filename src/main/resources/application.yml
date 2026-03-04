@@ -22,6 +22,9 @@ jwt:
   access-token-expiration: 1800000
   refresh-token-expiration: 1209600000
 
+apple:
+  client-id: ${APPLE_CLIENT_ID:com.triagain.app}
+
 mybatis:
   mapper-locations: classpath:mybatis/mapper/**/*.xml
   config-location: classpath:mybatis/mybatis-config.xml

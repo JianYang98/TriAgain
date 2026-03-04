@@ -43,6 +43,20 @@ public class User {
         );
     }
 
+    /** Apple 회원가입으로 신규 유저 생성 — appleId(sub)를 PK로 사용, 프로필 이미지 없음 */
+    public static User createFromApple(String appleId, String nickname, String email) {
+        validateNickname(nickname);
+        return new User(
+                appleId,
+                "APPLE",
+                email,
+                nickname,
+                null,
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
+    }
+
     /** DB 조회 결과 → 도메인 객체 복원 */
     public static User of(String id, String provider, String email, String nickname,
                           String profileImageUrl, LocalDateTime createdAt, LocalDateTime termsAgreedAt) {
@@ -69,6 +83,15 @@ public class User {
         if (profileImageUrl != null) {
             this.profileImageUrl = profileImageUrl;
         }
+    }
+
+    /** Apple 재로그인 시 email 동기화 — email이 null이면 기존값 유지 (Apple은 최초 1회만 email 제공) */
+    public boolean syncAppleProfile(String email) {
+        if (email != null && !java.util.Objects.equals(this.email, email)) {
+            this.email = email;
+            return true;
+        }
+        return false;
     }
 
     /** 카카오 재로그인 시 email/profileImageUrl 동기화 — 닉네임은 서비스 고유값이므로 갱신하지 않음 */

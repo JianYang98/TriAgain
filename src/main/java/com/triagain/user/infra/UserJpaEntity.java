@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 public class UserJpaEntity {
 
     @Id
-    @Column(length = 36)
+    @Column(length = 64)
     private String id;
 
     @Column(nullable = false, length = 20)

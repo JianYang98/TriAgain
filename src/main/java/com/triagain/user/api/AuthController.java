@@ -1,6 +1,12 @@
 package com.triagain.user.api;
 
 import com.triagain.common.response.ApiResponse;
+import com.triagain.user.port.in.AppleLoginUseCase;
+import com.triagain.user.port.in.AppleLoginUseCase.AppleLoginCommand;
+import com.triagain.user.port.in.AppleLoginUseCase.AppleLoginResult;
+import com.triagain.user.port.in.AppleSignupUseCase;
+import com.triagain.user.port.in.AppleSignupUseCase.AppleSignupCommand;
+import com.triagain.user.port.in.AppleSignupUseCase.AppleSignupResult;
 import com.triagain.user.port.in.KakaoLoginUseCase;
 import com.triagain.user.port.in.KakaoLoginUseCase.KakaoLoginCommand;
 import com.triagain.user.port.in.KakaoLoginUseCase.KakaoLoginResult;
@@ -27,6 +33,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final KakaoLoginUseCase kakaoLoginUseCase;
+    private final AppleLoginUseCase appleLoginUseCase;
+    private final AppleSignupUseCase appleSignupUseCase;
     private final RefreshTokenUseCase refreshTokenUseCase;
     private final SignupUseCase signupUseCase;
 
@@ -60,6 +68,27 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.ok(result));
     }
 
+    /** Apple 로그인 — 기존 유저면 JWT 발급, 신규 유저면 appleId 반환 */
+    @PostMapping("/apple")
+    public ResponseEntity<ApiResponse<AppleLoginResult>> appleLogin(
+            @Valid @RequestBody AppleLoginRequest request
+    ) {
+        AppleLoginResult result = appleLoginUseCase.login(new AppleLoginCommand(request.identityToken()));
+        return ResponseEntity.ok(ApiResponse.ok(result));
+    }
+
+    /** Apple 회원가입 — Apple 인증 + 약관 동의 + 닉네임으로 신규 유저 생성 */
+    @PostMapping("/apple-signup")
+    public ResponseEntity<ApiResponse<AppleSignupResult>> appleSignup(
+            @Valid @RequestBody AppleSignupRequest request
+    ) {
+        AppleSignupResult result = appleSignupUseCase.signup(new AppleSignupCommand(
+                request.identityToken(), request.appleId(),
+                request.nickname(), request.termsAgreed()
+        ));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(result));
+    }
+
     /** 로그아웃 — Phase 1: no-op, 클라이언트가 토큰 삭제 */
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout() {
@@ -78,5 +107,16 @@ public class AuthController {
     }
 
     record RefreshTokenRequest(@NotBlank String refreshToken) {
+    }
+
+    record AppleLoginRequest(@NotBlank String identityToken) {
+    }
+
+    record AppleSignupRequest(
+            @NotBlank String identityToken,
+            @NotBlank String appleId,
+            @NotBlank String nickname,
+            @NotNull Boolean termsAgreed
+    ) {
     }
 }
