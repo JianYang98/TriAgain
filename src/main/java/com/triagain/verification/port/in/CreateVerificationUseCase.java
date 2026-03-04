@@ -13,6 +13,7 @@ public interface CreateVerificationUseCase {
     record CreateVerificationCommand(
             String userId,
             String challengeId,
+            String crewId,
             Long uploadSessionId,
             String textContent
     ) {

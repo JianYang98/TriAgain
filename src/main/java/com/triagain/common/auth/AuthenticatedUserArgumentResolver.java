@@ -13,7 +13,7 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 public class AuthenticatedUserArgumentResolver implements HandlerMethodArgumentResolver {
 
     @Override
-    public boolean supportsParameter(MethodParameter parameter) {
+    public boolean supportsParameter(MethodParameter parameter) { // Resolver가 이 파라미터를 처리할지 말지 판단하는 메서드
         return parameter.hasParameterAnnotation(AuthenticatedUser.class)
                 && parameter.getParameterType().equals(String.class);
     }
@@ -21,10 +21,11 @@ public class AuthenticatedUserArgumentResolver implements HandlerMethodArgumentR
     @Override
     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
                                   NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
+        // SecurityContext에서 꺼내기
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
             return null;
         }
-        return authentication.getPrincipal();
+        return authentication.getPrincipal();  // principal = userId (Filter에서 넣어둔 것!)
     }
 }

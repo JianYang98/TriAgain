@@ -1,7 +1,9 @@
 package com.triagain.crew.infra;
 
 import com.triagain.crew.domain.vo.ChallengeStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -36,4 +38,16 @@ public interface ChallengeJpaRepository extends JpaRepository<ChallengeJpaEntity
               )
             """)
     List<ChallengeJpaEntity> findExpiredWithoutVerification();
+
+    /** 비관적 락으로 유저·크루·상태 기준 챌린지 조회 — 동시 챌린지 생성 방지 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT c FROM ChallengeJpaEntity c WHERE c.userId = :userId AND c.crewId = :crewId AND c.status = :status")
+    Optional<ChallengeJpaEntity> findByUserIdAndCrewIdAndStatusWithLock(
+            @Param("userId") String userId,
+            @Param("crewId") String crewId,
+            @Param("status") ChallengeStatus status);
+
+    /** 유저·크루의 최대 사이클 번호 조회 — 다음 사이클 번호 결정 */
+    @Query("SELECT COALESCE(MAX(c.cycleNumber), 0) FROM ChallengeJpaEntity c WHERE c.userId = :userId AND c.crewId = :crewId")
+    int findMaxCycleNumber(@Param("userId") String userId, @Param("crewId") String crewId);
 }

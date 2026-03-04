@@ -33,9 +33,11 @@ public class SignupService implements SignupUseCase {
 
         KakaoUserInfo kakaoUser = kakaoApiPort.getUserInfo(command.kakaoAccessToken());
 
+        // 카카오 토큰의 실제 주인과 요청한 kakaoId가 일치하는지 검증 — 타인 명의 계정 생성 방지
         if (!kakaoUser.id().equals(command.kakaoId())) {
             throw new BusinessException(ErrorCode.KAKAO_ID_MISMATCH);
         }
+
 
         if (userRepositoryPort.findById(kakaoUser.id()).isPresent()) {
             throw new BusinessException(ErrorCode.USER_ALREADY_EXISTS);
@@ -49,6 +51,7 @@ public class SignupService implements SignupUseCase {
         String accessToken = jwtProvider.createAccessToken(saved.getId(), saved.getProvider());
         String refreshToken = jwtProvider.createRefreshToken(saved.getId());
 
+        // 회원가입된 유저 + 생성된 토큰  리턴
         return new SignupResult(
                 accessToken,
                 refreshToken,

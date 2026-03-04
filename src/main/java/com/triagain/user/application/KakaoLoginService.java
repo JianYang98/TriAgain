@@ -24,10 +24,14 @@ public class KakaoLoginService implements KakaoLoginUseCase {
     @Override
     @Transactional
     public KakaoLoginResult login(KakaoLoginCommand command) {
+
+        // KAKAO 사용자 정보 조회
         KakaoUserInfo kakaoUser = kakaoApiPort.getUserInfo(command.kakaoAccessToken());
 
+        // 서비스 사용자 조회
         Optional<User> existing = userRepositoryPort.findById(kakaoUser.id());
 
+        // 신규 유저 라면 토큰 발급 x
         if (existing.isEmpty()) {
             return KakaoLoginResult.newUser(
                     kakaoUser.id(),
@@ -35,9 +39,10 @@ public class KakaoLoginService implements KakaoLoginUseCase {
             );
         }
 
+        // 기존 유저라면 액세스토큰/리프레쉬 토큰 발급
         User user = existing.get();
         boolean profileChanged = user.syncKakaoProfile(kakaoUser.email(), kakaoUser.profileImageUrl());
-        if (profileChanged) {
+        if (profileChanged) { // 프로필 변경시 체인지! 프로필 이미지!
             user = userRepositoryPort.save(user);
         }
 

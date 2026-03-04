@@ -41,10 +41,12 @@ public class GetCrewService implements GetCrewUseCase {
             throw new BusinessException(ErrorCode.CREW_ACCESS_DENIED);
         }
 
+        // 크루 상세에서 멤버별 현황 표시에 사용
         Map<String, Challenge> activeChallenges = challengeRepositoryPort
                 .findAllByCrewIdAndStatus(crewId, ChallengeStatus.IN_PROGRESS).stream()
                 .collect(Collectors.toMap(Challenge::getUserId, Function.identity()));
 
+        // 크루 멤버별 성공 횟수 조회 — 작심삼일 성공 카운트에 사용
         Map<String, Integer> successCounts = challengeRepositoryPort.countSuccessByCrewId(crewId);
 
         List<String> memberUserIds = crew.getMembers().stream()
@@ -52,6 +54,7 @@ public class GetCrewService implements GetCrewUseCase {
                 .toList();
         Map<String, UserProfile> profiles = userPort.findProfilesByIds(memberUserIds);
 
+        // 멤버 + 프로필 + 상세 조합
         List<MemberResult> members = crew.getMembers().stream()
                 .map(m -> toMemberResult(m, activeChallenges, successCounts, profiles))
                 .toList();

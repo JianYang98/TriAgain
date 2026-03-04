@@ -23,7 +23,7 @@ public class JwtProvider {
             @Value("${jwt.access-token-expiration}") long accessTokenExpiration,
             @Value("${jwt.refresh-token-expiration}") long refreshTokenExpiration
     ) {
-        this.secretKey = Keys.hmacShaKeyFor(Base64.getDecoder().decode(secret));
+        this.secretKey = Keys.hmacShaKeyFor(Base64.getDecoder().decode(secret)); // HS256 (HMAC-SHA256)
         this.accessTokenExpiration = accessTokenExpiration;
         this.refreshTokenExpiration = refreshTokenExpiration;
     }

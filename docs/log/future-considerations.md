@@ -6,6 +6,19 @@
 
 ---
 
+### [2026-03-04 20:10] Apple 로그인 실제 연동 TODO
+
+- 현재 상태: 코드 구현 완료 (Port/Adapter/UseCase/Controller/테스트), Cucumber @ignore + AdapterTest @Disabled
+- 필요 시점: 앱스토어 출시 전
+- 남은 작업:
+  - Apple Developer 계정에서 Service ID 발급 → APPLE_CLIENT_ID 환경변수 설정
+  - 실제 Apple Identity Token으로 E2E 검증
+  - Cucumber @ignore / AdapterTest @Disabled 해제
+  - Flutter 클라이언트 Apple Sign In 연동
+- 이유: 백엔드 코드는 준비 완료, Apple Developer 계정 설정 + 클라이언트 연동이 별도 작업
+
+---
+
 ### [2026-03-03 18:00] Logout 토큰 블랙리스트 도입
 
 - 현재 상태: `POST /auth/logout`은 서버 no-op (200 반환만), 클라이언트가 로컬 토큰 삭제로 로그아웃 처리. refreshToken은 순수 JWT stateless.

@@ -16,17 +16,17 @@ import org.springframework.web.client.RestClientException;
 public class KakaoApiAdapter implements KakaoApiPort {
 
     private static final Logger log = LoggerFactory.getLogger(KakaoApiAdapter.class);
-    private static final String KAKAO_USER_INFO_URL = "https://kapi.kakao.com/v2/user/me";
+    private static final String KAKAO_USER_INFO_URL = "https://kapi.kakao.com/v2/user/me";  // 카카오 API 주소
 
     private final RestClient restClient;
 
-    /** 카카오 Access Token → 사용자 정보 조회 */
+    /** 카카오 Access Token → KAKAO 사용자 정보 조회 */
     @Override
     public KakaoUserInfo getUserInfo(String kakaoAccessToken) {
         try {
             KakaoUserResponse response = restClient.get()
                     .uri(KAKAO_USER_INFO_URL)
-                    .header("Authorization", "Bearer " + kakaoAccessToken)
+                    .header("Authorization", "Bearer " + kakaoAccessToken) // 토큰을 담아서!
                     .retrieve()
                     .onStatus(status -> status.value() == 401,
                             (req, res) -> { throw new BusinessException(ErrorCode.INVALID_KAKAO_TOKEN); })

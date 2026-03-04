@@ -1,9 +1,8 @@
 package com.triagain.verification.api;
 
-import jakarta.validation.constraints.NotBlank;
-
 public record CreateVerificationRequest(
-        @NotBlank String challengeId,
+        String challengeId,
+        String crewId,
         Long uploadSessionId,
         String textContent
 ) {}
