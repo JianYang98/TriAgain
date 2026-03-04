@@ -6,7 +6,7 @@ Feature: 내 인증 현황 조회
 
   # ===== Happy Path =====
 
-  Scenario: 인증 기록이 있으면 verifiedDates + streakCount + completedChallenges 반환
+  Scenario: 인증 기록이 있으면 verifiedDates + streakCount + completedChallenges + myProgress 반환
     Given "user_001"이 크루 "운동 크루"에 3일 연속 인증을 완료했다
     And "user_001"이 크루 "운동 크루"에 성공한 챌린지가 2개 있다
     When "user_001"이 크루 "운동 크루"의 내 인증 현황을 조회한다
@@ -14,13 +14,16 @@ Feature: 내 인증 현황 조회
     And verifiedDates 개수는 3이다
     And streakCount는 3이다
     And completedChallenges는 2이다
+    And myProgress의 status는 "IN_PROGRESS"이다
+    And myProgress의 targetDays는 3이다
 
-  Scenario: 인증 기록이 없으면 빈 배열 + streak 0 + completedChallenges 0
+  Scenario: 인증 기록이 없어도 활성 챌린지가 있으면 myProgress 반환
     When "user_001"이 크루 "운동 크루"의 내 인증 현황을 조회한다
     Then 응답 코드는 200이다
     And verifiedDates 개수는 0이다
     And streakCount는 0이다
     And completedChallenges는 0이다
+    And myProgress의 status는 "IN_PROGRESS"이다
 
   Scenario: 연속 3일 인증 시 streakCount 3
     Given "user_001"이 크루 "운동 크루"에 3일 연속 인증을 완료했다

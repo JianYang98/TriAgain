@@ -150,6 +150,12 @@ public class MyVerificationsSteps {
         assertThat(actual).isEqualTo(expected);
     }
 
+    @그리고("myProgress의 targetDays는 {int}이다")
+    public void myProgress의_targetDays는_이다(int expected) {
+        int actual = scenarioContext.getResponse().jsonPath().getInt("data.myProgress.targetDays");
+        assertThat(actual).isEqualTo(expected);
+    }
+
     // ===== Helper Methods =====
 
     /** 크루 시작일을 과거로 조정 — 인증 날짜가 크루 기간 내에 포함되도록 */

@@ -33,7 +33,11 @@ public class GetMyVerificationsService implements GetMyVerificationsUseCase {
         int streakCount = calculateStreak(verifiedDates);
         int completedChallenges = challengePort.countCompletedChallenges(userId, crewId);
 
-        return new MyVerificationsResult(verifiedDates, streakCount, completedChallenges);
+        MyProgress myProgress = challengePort.findActiveByUserIdAndCrewId(userId, crewId)
+                .map(info -> new MyProgress(info.id(), info.status(), info.completedDays(), info.targetDays()))
+                .orElse(null);
+
+        return new MyVerificationsResult(verifiedDates, streakCount, completedChallenges, myProgress);
     }
 
     /** 최근 날짜부터 역방향 연속 인증 일수 계산 */

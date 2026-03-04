@@ -724,7 +724,13 @@ Authorization: Bearer <token>
   "data": {
     "verifiedDates": ["2026-03-01", "2026-03-02", "2026-03-03"],
     "streakCount": 3,
-    "completedChallenges": 2
+    "completedChallenges": 2,
+    "myProgress": {
+      "challengeId": "chg_abc123",
+      "status": "IN_PROGRESS",
+      "completedDays": 2,
+      "targetDays": 3
+    }
   },
   "error": null
 }
@@ -734,6 +740,11 @@ Authorization: Bearer <token>
 - `verifiedDates`: APPROVED 인증 날짜 목록 (크루 기간 범위 내, ASC 정렬)
 - `streakCount`: 최근 날짜부터 역방향 연속 인증 일수
 - `completedChallenges`: challenges.status = SUCCESS 개수 (작심삼일 달성 횟수)
+- `myProgress`: 나의 현재 챌린지 현황 (**nullable** — 활성 챌린지가 없으면 null)
+  - `challengeId`: 챌린지 ID
+  - `status`: 챌린지 상태 (IN_PROGRESS, COMPLETED, FAILED)
+  - `completedDays`: 완료한 일수
+  - `targetDays`: 목표 일수 (3)
 
 **에러 응답**
 | HTTP | 코드 | 메시지 | 설명 |
