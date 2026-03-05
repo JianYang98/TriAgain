@@ -25,6 +25,9 @@ jwt:
 apple:
   client-id: ${APPLE_CLIENT_ID:com.triagain.app}
 
+crew:
+  max-duration-days: 30
+
 mybatis:
   mapper-locations: classpath:mybatis/mapper/**/*.xml
   config-location: classpath:mybatis/mybatis-config.xml

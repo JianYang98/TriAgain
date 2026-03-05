@@ -2,26 +2,19 @@ package com.triagain.crew.application;
 
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
-import com.triagain.crew.domain.model.Challenge;
 import com.triagain.crew.domain.model.Crew;
 import com.triagain.crew.domain.model.CrewMember;
-import com.triagain.crew.domain.vo.CrewStatus;
 import com.triagain.crew.port.in.JoinCrewByInviteCodeUseCase;
-import com.triagain.crew.port.out.ChallengeRepositoryPort;
 import com.triagain.crew.port.out.CrewRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
 public class JoinCrewByInviteCodeService implements JoinCrewByInviteCodeUseCase {
 
     private final CrewRepositoryPort crewRepositoryPort;
-    private final ChallengeRepositoryPort challengeRepositoryPort;
 
     /** 초대코드로 크루 참여 — 공유 링크를 통해 참여할 때 사용 */
     @Override
@@ -30,26 +23,14 @@ public class JoinCrewByInviteCodeService implements JoinCrewByInviteCodeUseCase 
         Crew crew = crewRepositoryPort.findByInviteCode(command.inviteCode())
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INVITE_CODE));
 
-        Crew lockedCrew = crewRepositoryPort.findByIdWithLock(crew.getId())
+        Crew lockedCrew = crewRepositoryPort.findByIdWithLock(crew.getId()) //  락 획득 (SELECT FOR UPDATE)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CREW_NOT_FOUND));
 
         validateJoin(lockedCrew, command.userId());
 
         CrewMember member = lockedCrew.addMember(command.userId());
         crewRepositoryPort.save(lockedCrew);
-        crewRepositoryPort.saveMember(member);
-
-        if (lockedCrew.getStatus() == CrewStatus.ACTIVE) {
-            LocalDate startDate = LocalDate.now();
-            LocalDateTime deadline = startDate.plusDays(3).atTime(lockedCrew.getDeadlineTime());
-            Challenge challenge = Challenge.createFirst(
-                    command.userId(),
-                    lockedCrew.getId(),
-                    startDate,
-                    deadline
-            );
-            challengeRepositoryPort.save(challenge);
-        }
+        crewRepositoryPort.saveMember(member); // UPDATE
 
         return new JoinByInviteCodeResult(
                 member.getUserId(),
@@ -58,7 +39,7 @@ public class JoinCrewByInviteCodeService implements JoinCrewByInviteCodeUseCase 
                 lockedCrew.getCurrentMembers(),
                 member.getJoinedAt()
         );
-    }
+    } // 메서드 끝 = 트랜잭션 커밋 = 락 자동 해제
 
     private void validateJoin(Crew crew, String userId) {
         if (crew.canNotJoin()) {

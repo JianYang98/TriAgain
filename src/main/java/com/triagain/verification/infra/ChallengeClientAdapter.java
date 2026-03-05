@@ -2,6 +2,7 @@ package com.triagain.verification.infra;
 
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
+import com.triagain.crew.application.FindOrCreateActiveChallengeService;
 import com.triagain.crew.domain.model.Challenge;
 import com.triagain.crew.domain.vo.ChallengeStatus;
 import com.triagain.crew.port.out.ChallengeRepositoryPort;
@@ -16,6 +17,7 @@ import java.util.Optional;
 public class ChallengeClientAdapter implements ChallengePort {
 
     private final ChallengeRepositoryPort challengeRepositoryPort;
+    private final FindOrCreateActiveChallengeService findOrCreateActiveChallengeService;
 
     @Override
     public Optional<ChallengeInfo> findChallengeById(String challengeId) {
@@ -39,6 +41,13 @@ public class ChallengeClientAdapter implements ChallengePort {
                 .map(this::toActiveChallengeInfo);
     }
 
+    /** 활성 챌린지 조회 또는 자동 생성 — crew context 서비스에 위임 */
+    @Override
+    public ChallengeInfo findOrCreateActiveChallenge(String userId, String crewId) {
+        Challenge challenge = findOrCreateActiveChallengeService.findOrCreate(userId, crewId);
+        return toChallengeInfo(challenge);
+    }
+
     private ActiveChallengeInfo toActiveChallengeInfo(Challenge challenge) {
         return new ActiveChallengeInfo(
                 challenge.getId(),
@@ -48,6 +57,12 @@ public class ChallengeClientAdapter implements ChallengePort {
         );
     }
 
+    /** 유저의 SUCCESS 챌린지 수 조회 — ChallengeRepositoryPort에 위임 */
+    @Override
+    public int countCompletedChallenges(String userId, String crewId) {
+        return challengeRepositoryPort.countSuccessByUserIdAndCrewId(userId, crewId);
+    }
+
     private ChallengeInfo toChallengeInfo(Challenge challenge) {
         return new ChallengeInfo(
                 challenge.getId(),
@@ -55,6 +70,7 @@ public class ChallengeClientAdapter implements ChallengePort {
                 challenge.getCrewId(),
                 challenge.getCompletedDays(),
                 challenge.getTargetDays(),
+                challenge.getStatus().name(),
                 challenge.getStartDate(),
                 challenge.getDeadline()
         );

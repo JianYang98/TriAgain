@@ -5,6 +5,8 @@ import com.triagain.common.response.ApiResponse;
 import com.triagain.crew.port.in.CreateCrewUseCase;
 import com.triagain.crew.port.in.CreateCrewUseCase.CreateCrewCommand;
 import com.triagain.crew.port.in.CreateCrewUseCase.CreateCrewResult;
+import com.triagain.crew.port.in.GetCrewByInviteCodeUseCase;
+import com.triagain.crew.port.in.GetCrewByInviteCodeUseCase.CrewInvitePreviewResult;
 import com.triagain.crew.port.in.GetCrewUseCase;
 import com.triagain.crew.port.in.GetCrewUseCase.CrewDetailResult;
 import com.triagain.crew.port.in.GetMyCrewsUseCase;
@@ -34,6 +36,7 @@ public class CrewController {
     private final JoinCrewByInviteCodeUseCase joinCrewByInviteCodeUseCase;
     private final GetMyCrewsUseCase getMyCrewsUseCase;
     private final GetCrewUseCase getCrewUseCase;
+    private final GetCrewByInviteCodeUseCase getCrewByInviteCodeUseCase;
 
     /** 크루 생성 API — POST /api/crews */
     @PostMapping
@@ -78,6 +81,17 @@ public class CrewController {
             @AuthenticatedUser String userId
     ) {
         List<CrewSummaryResult> result = getMyCrewsUseCase.getMyCrews(userId);
+
+        return ResponseEntity.ok(ApiResponse.ok(result));
+    }
+
+    /** 초대코드로 크루 미리보기 API — GET /api/crews/invite/{inviteCode} */
+    @GetMapping("/invite/{inviteCode}")
+    public ResponseEntity<ApiResponse<CrewInvitePreviewResult>> getCrewByInviteCode(
+            @AuthenticatedUser String userId,
+            @PathVariable String inviteCode
+    ) {
+        CrewInvitePreviewResult result = getCrewByInviteCodeUseCase.getByInviteCode(inviteCode, userId);
 
         return ResponseEntity.ok(ApiResponse.ok(result));
     }

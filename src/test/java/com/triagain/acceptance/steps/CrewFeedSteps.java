@@ -110,6 +110,19 @@ public class CrewFeedSteps {
         verificationRepositoryPort.save(verification);
     }
 
+    @조건("{string}의 챌린지가 완료 상태이다")
+    public void 사용자의_챌린지가_완료_상태이다(String userId) {
+        String crewId = getFirstCrewId();
+        Challenge challenge = challengeRepositoryPort
+                .findByUserIdAndCrewIdAndStatus(userId, crewId, ChallengeStatus.IN_PROGRESS)
+                .orElseThrow();
+
+        for (int i = 0; i < challenge.getTargetDays(); i++) {
+            challenge.recordCompletion();
+        }
+        challengeRepositoryPort.save(challenge);
+    }
+
     @조건("{string}의 챌린지가 진행 중이다")
     public void 사용자의_챌린지가_진행_중이다(String userId) {
         String crewId = getFirstCrewId();
@@ -231,6 +244,12 @@ public class CrewFeedSteps {
     public void 응답에_hasNext가_true이다() {
         boolean hasNext = scenarioContext.getResponse().jsonPath().getBoolean("data.hasNext");
         assertThat(hasNext).isTrue();
+    }
+
+    @그리고("myProgress는 null이다")
+    public void myProgress는_null이다() {
+        Object myProgress = scenarioContext.getResponse().jsonPath().get("data.myProgress");
+        assertThat(myProgress).isNull();
     }
 
     @그리고("myProgress의 completedDays는 {int}이다")

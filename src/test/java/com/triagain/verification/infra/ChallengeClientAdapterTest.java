@@ -2,6 +2,7 @@ package com.triagain.verification.infra;
 
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
+import com.triagain.crew.application.FindOrCreateActiveChallengeService;
 import com.triagain.crew.domain.model.Challenge;
 import com.triagain.crew.domain.vo.ChallengeStatus;
 import com.triagain.crew.port.out.ChallengeRepositoryPort;
@@ -28,6 +29,9 @@ class ChallengeClientAdapterTest {
 
     @Mock
     private ChallengeRepositoryPort challengeRepositoryPort;
+
+    @Mock
+    private FindOrCreateActiveChallengeService findOrCreateActiveChallengeService;
 
     @InjectMocks
     private ChallengeClientAdapter challengeClientAdapter;
@@ -69,7 +73,7 @@ class ChallengeClientAdapterTest {
     }
 
     @Test
-    @DisplayName("findChallengeById 정상 — ChallengeInfo DTO 반환")
+    @DisplayName("findChallengeById 정상 — ChallengeInfo DTO에 status 포함")
     void findChallengeById_success() {
         // Given
         String challengeId = "CHAL-001";
@@ -87,6 +91,7 @@ class ChallengeClientAdapterTest {
         assertThat(info.crewId()).isEqualTo("crew-1");
         assertThat(info.completedDays()).isEqualTo(1);
         assertThat(info.targetDays()).isEqualTo(3);
+        assertThat(info.status()).isEqualTo("IN_PROGRESS");
     }
 
     @Test
@@ -125,5 +130,23 @@ class ChallengeClientAdapterTest {
 
         // Then
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("findOrCreateActiveChallenge — crew context 서비스에 위임")
+    void findOrCreateActiveChallenge_delegatesToService() {
+        // Given
+        String userId = "user-1";
+        String crewId = "crew-1";
+        Challenge challenge = inProgressChallenge("CHAL-001");
+        given(findOrCreateActiveChallengeService.findOrCreate(userId, crewId)).willReturn(challenge);
+
+        // When
+        ChallengeInfo result = challengeClientAdapter.findOrCreateActiveChallenge(userId, crewId);
+
+        // Then
+        assertThat(result.id()).isEqualTo("CHAL-001");
+        assertThat(result.status()).isEqualTo("IN_PROGRESS");
+        verify(findOrCreateActiveChallengeService).findOrCreate(userId, crewId);
     }
 }

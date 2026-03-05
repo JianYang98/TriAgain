@@ -54,6 +54,25 @@ public class ChallengeJpaAdapter implements ChallengeRepositoryPort {
                 .toList();
     }
 
+    /** 비관적 락으로 IN_PROGRESS 챌린지 조회 — 동시 챌린지 생성 방지에 사용 */
+    @Override
+    public Optional<Challenge> findByUserIdAndCrewIdAndStatusWithLock(String userId, String crewId, ChallengeStatus status) {
+        return challengeJpaRepository.findByUserIdAndCrewIdAndStatusWithLock(userId, crewId, status)
+                .map(ChallengeJpaEntity::toDomain);
+    }
+
+    /** 유저·크루의 최대 사이클 번호 조회 — 다음 사이클 번호 결정에 사용 */
+    @Override
+    public int findMaxCycleNumber(String userId, String crewId) {
+        return challengeJpaRepository.findMaxCycleNumber(userId, crewId);
+    }
+
+    /** 유저·크루의 SUCCESS 챌린지 수 조회 — 작심삼일 달성 횟수에 사용 */
+    @Override
+    public int countSuccessByUserIdAndCrewId(String userId, String crewId) {
+        return challengeJpaRepository.countSuccessByUserIdAndCrewId(userId, crewId);
+    }
+
     /** 크루 멤버별 성공 횟수 조회 — 작심삼일 성공 카운트에 사용 */
     @Override
     public Map<String, Integer> countSuccessByCrewId(String crewId) {

@@ -1,6 +1,8 @@
 package com.triagain.verification.api;
 
 import com.triagain.common.auth.AuthenticatedUser;
+import com.triagain.common.exception.BusinessException;
+import com.triagain.common.exception.ErrorCode;
 import com.triagain.common.response.ApiResponse;
 import com.triagain.verification.port.in.CreateVerificationUseCase;
 import com.triagain.verification.port.in.CreateVerificationUseCase.CreateVerificationCommand;
@@ -25,9 +27,14 @@ public class VerificationController {
             @AuthenticatedUser String userId,
             @Valid @RequestBody CreateVerificationRequest request
     ) {
+        if (request.challengeId() == null && request.crewId() == null) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+
         CreateVerificationCommand command = new CreateVerificationCommand(
                 userId,
                 request.challengeId(),
+                request.crewId(),
                 request.uploadSessionId(),
                 request.textContent()
         );

@@ -23,8 +23,8 @@ public class CompleteExpiredCrewsScheduler {
     private final CrewRepositoryPort crewRepositoryPort;
     private final ChallengeRepositoryPort challengeRepositoryPort;
 
-    /** 기간 만료 크루 종료 처리 — 매일 03:00에 ACTIVE → COMPLETED 전환 + 남은 챌린지 ENDED */
-    @Scheduled(cron = "0 0 3 * * *")
+    /** 기간 만료 크루 종료 처리 — 매일 00:05에 ACTIVE → COMPLETED 전환 + 남은 챌린지 ENDED */
+    @Scheduled(cron = "0 5 0 * * *")
     @Transactional
     public void completeExpiredCrews() {
         List<Crew> expiredCrews = crewRepositoryPort

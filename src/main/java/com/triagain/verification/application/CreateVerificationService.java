@@ -34,10 +34,21 @@ public class CreateVerificationService implements CreateVerificationUseCase {
     @Override
     @Transactional
     public VerificationResult createVerification(CreateVerificationCommand command) {
-        ChallengeInfo challenge = challengePort.findChallengeById(command.challengeId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.CHALLENGE_NOT_FOUND));
+        // crewId가 있으면 먼저 멤버십 검증 — 비회원의 크루 상태 노출 + 챌린지 생성 방지
+        if (command.crewId() != null) {
+            crewPort.validateMembership(command.crewId(), command.userId());
+        }
 
-        crewPort.validateMembership(challenge.crewId(), command.userId());
+        ChallengeInfo challenge = resolveChallenge(command);
+
+        if (!"IN_PROGRESS".equals(challenge.status())) {
+            throw new BusinessException(ErrorCode.CHALLENGE_NOT_IN_PROGRESS);
+        }
+
+        // challengeId-only: challenge에서 crewId를 알아낸 후 검증
+        if (command.crewId() == null) {
+            crewPort.validateMembership(challenge.crewId(), command.userId());
+        }
 
         LocalDate targetDate = LocalDate.now();
 
@@ -76,6 +87,25 @@ public class CreateVerificationService implements CreateVerificationUseCase {
                 saved.getTargetDate(),
                 saved.getCreatedAt()
         );
+    }
+
+    /** 챌린지 결정 — challengeId/crewId 조합에 따라 조회 또는 생성 */
+    private ChallengeInfo resolveChallenge(CreateVerificationCommand command) {
+        if (command.challengeId() != null && command.crewId() != null) {
+            ChallengeInfo challenge = challengePort.findChallengeById(command.challengeId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.CHALLENGE_NOT_FOUND));
+            if (!challenge.crewId().equals(command.crewId())) {
+                throw new BusinessException(ErrorCode.CHALLENGE_CREW_MISMATCH);
+            }
+            return challenge;
+        }
+
+        if (command.challengeId() != null) {
+            return challengePort.findChallengeById(command.challengeId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.CHALLENGE_NOT_FOUND));
+        }
+
+        return challengePort.findOrCreateActiveChallenge(command.userId(), command.crewId());
     }
 
     private Verification createPhotoVerification(CreateVerificationCommand command,
@@ -119,7 +149,7 @@ public class CreateVerificationService implements CreateVerificationUseCase {
     private Verification createTextVerification(CreateVerificationCommand command,
                                                  ChallengeInfo challenge,
                                                  LocalDate targetDate) {
-        if (LocalDateTime.now().isAfter(challenge.deadline())) {
+        if (LocalDateTime.now().isAfter(challenge.deadline().plus(GRACE_PERIOD))) {
             throw new BusinessException(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
         }
 

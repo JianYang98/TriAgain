@@ -28,6 +28,12 @@ Feature: 크루 피드 조회
     Then 응답 코드는 200이다
     And 피드에 0개의 인증이 포함된다
 
+  Scenario: 활성 챌린지가 없으면 myProgress는 null이다
+    Given "user_001"의 챌린지가 완료 상태이다
+    When "user_001"이 크루 "운동 크루"의 피드를 조회한다
+    Then 응답 코드는 200이다
+    And myProgress는 null이다
+
   Scenario: 피드는 최신순으로 정렬된다
     Given "user_002"가 크루 "운동 크루"에 참여 중이다
     And "user_002"가 어제 인증을 완료했다

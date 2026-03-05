@@ -32,4 +32,7 @@ public interface CrewRepositoryPort {
 
     /** 기간 만료된 ACTIVE 크루 조회 — 크루 종료 스케줄러에서 사용 */
     List<Crew> findActiveCrewsEndedBefore(LocalDate date);
+
+    /** 시작일 도래한 RECRUITING 크루 조회 — 서버 시작 시 활성화 보정에 사용 */
+    List<Crew> findRecruitingCrewsStartedOnOrBefore(LocalDate date);
 }

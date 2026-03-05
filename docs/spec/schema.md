@@ -261,6 +261,12 @@ ON verification(crew_id, created_at DESC);
 CREATE UNIQUE INDEX idx_verification_unique
 ON verification(user_id, crew_id, target_date);
 
+-- 동시 챌린지 생성 방지 (유저·크루당 IN_PROGRESS 1개만 허용)
+-- Flyway V6에서 추가
+CREATE UNIQUE INDEX uk_challenges_user_crew_in_progress
+ON challenges(user_id, crew_id)
+WHERE status = 'IN_PROGRESS';
+
 -- 신고 중복 방지
 CREATE UNIQUE INDEX idx_report_unique
 ON report(verification_id, reporter_id);

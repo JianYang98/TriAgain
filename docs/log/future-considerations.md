@@ -6,6 +6,35 @@
 
 ---
 
+### [2026-03-04] StartupCompensationRunner — Phase 2 전환 시 제거 검토
+
+- 현재 상태: 단일 서버 + Spring @Scheduled 기반이라 서버 다운 시 스케줄러 미실행 → 서버 재시작 시 밀린 작업(크루 활성화 → 챌린지 실패 → 크루 종료)을 순서대로 보정
+- 필요 시점: Phase 2 (Quartz 등 persistent scheduler 도입 시)
+- 이유: Quartz의 misfire policy가 자동 보정을 제공하므로 이 Runner 제거 가능. 단, 제거 전에 3단계 순서(활성화 → 실패 → 종료) 보장 여부 확인 필요
+
+---
+
+### [2026-03-04 21:50] 챌린지 Lazy 생성 — 실패 후 미재도전 유저 알림
+
+- 현재 상태: 챌린지 생성을 Eager(크루 활성화/참여 시) → Lazy(첫 인증 시 자동 생성)로 변경. 스케줄러는 FAILED 처리만 수행, 새 챌린지 자동 생성 제거.
+- 필요 시점: Phase 2 (알림 시스템 도입 시)
+- 이유: Lazy 생성이므로 실패 후 재도전하지 않는 유저는 챌린지가 없는 상태로 남음. 리마인더 푸시("다시 도전해보세요!")가 필요하지만 Phase 1에서는 알림 시스템 미구현.
+
+---
+
+### [2026-03-04 20:10] Apple 로그인 실제 연동 TODO
+
+- 현재 상태: 코드 구현 완료 (Port/Adapter/UseCase/Controller/테스트), Cucumber @ignore + AdapterTest @Disabled
+- 필요 시점: 앱스토어 출시 전
+- 남은 작업:
+  - Apple Developer 계정에서 Service ID 발급 → APPLE_CLIENT_ID 환경변수 설정
+  - 실제 Apple Identity Token으로 E2E 검증
+  - Cucumber @ignore / AdapterTest @Disabled 해제
+  - Flutter 클라이언트 Apple Sign In 연동
+- 이유: 백엔드 코드는 준비 완료, Apple Developer 계정 설정 + 클라이언트 연동이 별도 작업
+
+---
+
 ### [2026-03-03 18:00] Logout 토큰 블랙리스트 도입
 
 - 현재 상태: `POST /auth/logout`은 서버 no-op (200 반환만), 클라이언트가 로컬 토큰 삭제로 로그아웃 처리. refreshToken은 순수 JWT stateless.

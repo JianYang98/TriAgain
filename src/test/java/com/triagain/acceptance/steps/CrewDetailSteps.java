@@ -2,7 +2,11 @@ package com.triagain.acceptance.steps;
 
 import com.triagain.acceptance.ScenarioContext;
 import com.triagain.acceptance.adapter.CrewTestAdapter;
+import com.triagain.crew.domain.model.Challenge;
+import com.triagain.crew.domain.model.Crew;
 import com.triagain.crew.port.in.ActivateCrewUseCase;
+import com.triagain.crew.port.out.ChallengeRepositoryPort;
+import com.triagain.crew.port.out.CrewRepositoryPort;
 import io.cucumber.java.Before;
 import io.cucumber.java.ko.그리고;
 import io.cucumber.java.ko.만일;
@@ -11,6 +15,8 @@ import io.restassured.response.ExtractableResponse;
 import io.restassured.response.Response;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
+
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -24,6 +30,12 @@ public class CrewDetailSteps {
 
     @Autowired
     private ActivateCrewUseCase activateCrewUseCase;
+
+    @Autowired
+    private CrewRepositoryPort crewRepositoryPort;
+
+    @Autowired
+    private ChallengeRepositoryPort challengeRepositoryPort;
 
     private CrewTestAdapter crewAdapter;
 
@@ -46,7 +58,16 @@ public class CrewDetailSteps {
 
     @조건("크루가 활성화되어 챌린지가 시작되었다")
     public void 크루가_활성화되어_챌린지가_시작되었다() {
-        activateCrewUseCase.activateCrew(scenarioContext.getCrewId(), scenarioContext.getCreatorId());
+        String crewId = scenarioContext.getCrewId();
+        activateCrewUseCase.activateCrew(crewId, scenarioContext.getCreatorId());
+
+        Crew crew = crewRepositoryPort.findById(crewId).orElseThrow();
+        LocalDateTime deadline = crew.getStartDate().plusDays(3).atTime(crew.getDeadlineTime());
+        crew.getMembers().forEach(member -> {
+            Challenge challenge = Challenge.createFirst(
+                    member.getUserId(), crewId, crew.getStartDate(), deadline);
+            challengeRepositoryPort.save(challenge);
+        });
     }
 
     @그리고("멤버 {string}의 닉네임이 존재한다")

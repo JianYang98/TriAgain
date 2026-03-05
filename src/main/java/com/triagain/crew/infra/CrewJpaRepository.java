@@ -23,4 +23,7 @@ public interface CrewJpaRepository extends JpaRepository<CrewJpaEntity, String> 
 
     /** 기간 만료된 특정 상태 크루 조회 — 크루 종료 스케줄러에서 사용 */
     List<CrewJpaEntity> findAllByStatusAndEndDateBefore(CrewStatus status, LocalDate date);
+
+    /** 시작일 도래한 특정 상태 크루 조회 — 서버 시작 시 활성화 보정에 사용 */
+    List<CrewJpaEntity> findAllByStatusAndStartDateLessThanEqual(CrewStatus status, LocalDate date);
 }

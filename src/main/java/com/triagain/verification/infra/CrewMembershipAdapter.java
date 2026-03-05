@@ -35,4 +35,12 @@ public class CrewMembershipAdapter implements CrewPort {
                 .orElseThrow(() -> new BusinessException(ErrorCode.CREW_NOT_FOUND));
         return crew.getVerificationType().name();
     }
+
+    /** 크루 기간 조회 — 같은 트랜잭션 내 JPA L1 캐시로 중복 DB 호출 없음 */
+    @Override
+    public CrewPeriod getCrewPeriod(String crewId) {
+        Crew crew = crewRepositoryPort.findById(crewId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CREW_NOT_FOUND));
+        return new CrewPeriod(crew.getStartDate(), crew.getEndDate());
+    }
 }

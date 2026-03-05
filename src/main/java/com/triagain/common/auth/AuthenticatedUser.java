@@ -8,5 +8,5 @@ import java.lang.annotation.Target;
 /** 인증된 사용자 ID 주입 — SecurityContext에서 userId를 추출 */
 @Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface AuthenticatedUser {
+public @interface AuthenticatedUser { // 그냥 "여기에 userId 주입해줘" 표시용
 }
