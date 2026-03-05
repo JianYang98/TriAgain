@@ -23,14 +23,14 @@ public class JoinCrewByInviteCodeService implements JoinCrewByInviteCodeUseCase 
         Crew crew = crewRepositoryPort.findByInviteCode(command.inviteCode())
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INVITE_CODE));
 
-        Crew lockedCrew = crewRepositoryPort.findByIdWithLock(crew.getId())
+        Crew lockedCrew = crewRepositoryPort.findByIdWithLock(crew.getId()) //  락 획득 (SELECT FOR UPDATE)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CREW_NOT_FOUND));
 
         validateJoin(lockedCrew, command.userId());
 
         CrewMember member = lockedCrew.addMember(command.userId());
         crewRepositoryPort.save(lockedCrew);
-        crewRepositoryPort.saveMember(member);
+        crewRepositoryPort.saveMember(member); // UPDATE
 
         return new JoinByInviteCodeResult(
                 member.getUserId(),
@@ -39,7 +39,7 @@ public class JoinCrewByInviteCodeService implements JoinCrewByInviteCodeUseCase 
                 lockedCrew.getCurrentMembers(),
                 member.getJoinedAt()
         );
-    }
+    } // 메서드 끝 = 트랜잭션 커밋 = 락 자동 해제
 
     private void validateJoin(Crew crew, String userId) {
         if (crew.canNotJoin()) {
