@@ -755,6 +755,72 @@ Authorization: Bearer <token>
 
 ---
 
+### GET /crews/invite/{inviteCode} (초대코드로 크루 미리보기)
+
+초대코드로 크루 정보를 미리 조회한다. 가입하지 않고 조회만 수행하며, 가입 가능 여부(joinable)와 차단 사유(joinBlockedReason)를 함께 반환한다.
+
+**요청 (Request)**
+```
+GET /crews/invite/ABC123 HTTP/1.1
+Authorization: Bearer <token>
+```
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "crew_123",
+    "name": "작심삼일 크루",
+    "goal": "매일 운동하기",
+    "verificationType": "PHOTO",
+    "maxMembers": 10,
+    "currentMembers": 3,
+    "status": "RECRUITING",
+    "startDate": "2026-03-10",
+    "endDate": "2026-03-24",
+    "allowLateJoin": true,
+    "deadlineTime": "23:59:59",
+    "members": [
+      {
+        "nickname": "크루장닉네임",
+        "profileImageUrl": "https://...",
+        "role": "LEADER"
+      },
+      {
+        "nickname": "멤버닉네임",
+        "profileImageUrl": null,
+        "role": "MEMBER"
+      }
+    ],
+    "joinable": true,
+    "joinBlockedReason": null
+  },
+  "error": null
+}
+```
+
+**필드 설명:**
+- `joinable`: 현재 유저가 이 크루에 가입 가능한지 여부
+- `joinBlockedReason`: 가입 불가 시 사유 (joinable=true이면 null)
+
+**joinBlockedReason 값:**
+
+| 값 | 설명 |
+|------|------|
+| `ALREADY_MEMBER` | 이미 가입한 크루 |
+| `CREW_ENDED` | 크루가 종료(COMPLETED)됨 |
+| `CREW_FULL` | 정원 초과 |
+| `LATE_JOIN_NOT_ALLOWED` | 중간 가입 비허용 (ACTIVE 크루) |
+| `CREW_JOIN_DEADLINE_PASSED` | 참여 마감 기한 초과 |
+
+**에러 응답**
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 404 | CR006 | 유효하지 않은 초대 코드입니다. | 존재하지 않는 초대코드 |
+
+---
+
 ### POST /crews/join (초대코드로 크루 참여)
 
 초대코드를 사용하여 크루에 참여한다. 크루가 RECRUITING 상태이고, 정원이 남아있는 경우에만 참여 가능.

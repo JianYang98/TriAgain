@@ -41,6 +41,16 @@ public class CrewTestAdapter extends BaseTestAdapter {
                 .extract();
     }
 
+    /** 초대코드로 크루 미리보기 — GET /crews/invite/{inviteCode} */
+    public ExtractableResponse<Response> getCrewByInviteCode(String userId, String inviteCode) {
+        return givenAuthRequest(userId)
+                .when()
+                .get("/crews/invite/" + inviteCode)
+                .then()
+                .log().ifError()
+                .extract();
+    }
+
     /** 크루 상세 조회 — GET /crews/{crewId} */
     public ExtractableResponse<Response> getCrew(String userId, String crewId) {
         return givenAuthRequest(userId)
