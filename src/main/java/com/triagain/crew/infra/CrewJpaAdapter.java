@@ -97,4 +97,12 @@ public class CrewJpaAdapter implements CrewRepositoryPort {
                 .map(CrewJpaEntity::toDomain)
                 .toList();
     }
+
+    /** 시작일 도래한 RECRUITING 크루 조회 — 서버 시작 시 활성화 보정에 사용 */
+    @Override
+    public List<Crew> findRecruitingCrewsStartedOnOrBefore(LocalDate date) {
+        return crewJpaRepository.findAllByStatusAndStartDateLessThanEqual(CrewStatus.RECRUITING, date).stream()
+                .map(CrewJpaEntity::toDomain)
+                .toList();
+    }
 }
