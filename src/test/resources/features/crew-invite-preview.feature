@@ -29,6 +29,14 @@ Feature: 초대코드로 크루 미리보기
     And 가입 가능 여부는 false이다
     And 가입 차단 사유는 "CREW_FULL"이다
 
+  Scenario: 이미 가입한 멤버가 미리보기 후 크루 상세도 조회할 수 있다
+    Given 사용자 "user_002"가 크루에 참여했다
+    When "user_002"가 초대코드로 크루 미리보기를 요청한다
+    Then 응답 코드는 200이다
+    And 가입 차단 사유는 "ALREADY_MEMBER"이다
+    When "user_002"가 크루 상세를 조회한다
+    Then 응답 코드는 200이다
+
   # ===== 실패 케이스 =====
 
   Scenario: 잘못된 초대코드로 미리보기 요청 시 404
