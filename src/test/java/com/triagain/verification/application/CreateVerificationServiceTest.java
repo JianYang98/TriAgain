@@ -27,6 +27,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -237,5 +239,43 @@ class CreateVerificationServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
+    }
+
+    @Test
+    @DisplayName("crewId만으로 인증 시 비회원이면 CREW_ACCESS_DENIED + findOrCreateActiveChallenge 미호출")
+    void createVerification_crewIdOnly_nonMember_blocksBeforeChallenge() {
+        // Given
+        CreateVerificationCommand command = new CreateVerificationCommand(
+                USER_ID, null, CREW_ID, null, "텍스트 인증");
+
+        willThrow(new BusinessException(ErrorCode.CREW_ACCESS_DENIED))
+                .given(crewPort).validateMembership(CREW_ID, USER_ID);
+
+        // When & Then
+        assertThatThrownBy(() -> createVerificationService.createVerification(command))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.CREW_ACCESS_DENIED);
+
+        verify(challengePort, never()).findOrCreateActiveChallenge(any(), any());
+    }
+
+    @Test
+    @DisplayName("challengeId+crewId로 인증 시 비회원이면 CREW_ACCESS_DENIED + findChallengeById 미호출")
+    void createVerification_challengeIdAndCrewId_nonMember_blocksBeforeChallenge() {
+        // Given
+        CreateVerificationCommand command = new CreateVerificationCommand(
+                USER_ID, CHALLENGE_ID, CREW_ID, null, "텍스트 인증");
+
+        willThrow(new BusinessException(ErrorCode.CREW_ACCESS_DENIED))
+                .given(crewPort).validateMembership(CREW_ID, USER_ID);
+
+        // When & Then
+        assertThatThrownBy(() -> createVerificationService.createVerification(command))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.CREW_ACCESS_DENIED);
+
+        verify(challengePort, never()).findChallengeById(any());
     }
 }

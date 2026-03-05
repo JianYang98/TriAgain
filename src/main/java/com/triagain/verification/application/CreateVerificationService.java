@@ -34,13 +34,21 @@ public class CreateVerificationService implements CreateVerificationUseCase {
     @Override
     @Transactional
     public VerificationResult createVerification(CreateVerificationCommand command) {
+        // crewId가 있으면 먼저 멤버십 검증 — 비회원의 크루 상태 노출 + 챌린지 생성 방지
+        if (command.crewId() != null) {
+            crewPort.validateMembership(command.crewId(), command.userId());
+        }
+
         ChallengeInfo challenge = resolveChallenge(command);
 
         if (!"IN_PROGRESS".equals(challenge.status())) {
             throw new BusinessException(ErrorCode.CHALLENGE_NOT_IN_PROGRESS);
         }
 
-        crewPort.validateMembership(challenge.crewId(), command.userId());
+        // challengeId-only: challenge에서 crewId를 알아낸 후 검증
+        if (command.crewId() == null) {
+            crewPort.validateMembership(challenge.crewId(), command.userId());
+        }
 
         LocalDate targetDate = LocalDate.now();
 
