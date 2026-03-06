@@ -88,13 +88,13 @@ public class GetCrewService implements GetCrewUseCase {
                 ? new ChallengeProgress(
                         challenge.getStatus().name(),
                         challenge.getCompletedDays(),
-                        challenge.getTargetDays(),
-                        successCounts.getOrDefault(member.getUserId(), 0))
+                        challenge.getTargetDays())
                 : null;
+        int successCount = successCounts.getOrDefault(member.getUserId(), 0);
         UserProfile profile = profiles.get(member.getUserId());
         String nickname = profile != null ? profile.nickname() : null;
         String profileImageUrl = profile != null ? profile.profileImageUrl() : null;
         return new MemberResult(member.getUserId(), nickname, profileImageUrl,
-                member.getRole(), member.getJoinedAt(), progress);
+                member.getRole(), member.getJoinedAt(), successCount, progress);
     }
 }

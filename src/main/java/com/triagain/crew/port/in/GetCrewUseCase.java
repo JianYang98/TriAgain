@@ -39,6 +39,7 @@ public interface GetCrewUseCase {
             String profileImageUrl,
             CrewRole role,
             LocalDateTime joinedAt,
+            int successCount,
             ChallengeProgress challengeProgress
     ) {
     }
@@ -46,8 +47,7 @@ public interface GetCrewUseCase {
     record ChallengeProgress(
             String challengeStatus,
             int completedDays,
-            int targetDays,
-            int successCount
+            int targetDays
     ) {
     }
 }

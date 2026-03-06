@@ -48,7 +48,6 @@ public class GetCrewByInviteCodeService implements GetCrewByInviteCodeUseCase {
                 .toList();
 
         String joinBlockedReason = calculateJoinBlockedReason(crew, userId);
-
         return new CrewInvitePreviewResult(
                 crew.getId(),
                 crew.getCreatorId(),
