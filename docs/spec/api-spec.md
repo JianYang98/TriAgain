@@ -866,12 +866,80 @@ Content-Type: application/json
 
 ---
 
+### GET /crews/{crewId} (크루 상세 조회)
+
+크루 멤버가 상세 화면을 볼 때 사용한다. 멤버가 아니면 403.
+
+**요청 (Request)**
+```
+GET /crews/{crewId} HTTP/1.1
+Authorization: Bearer {accessToken}
+```
+
+**응답 (Response)**
+```json
+{
+  "data": {
+    "id": "crew-uuid",
+    "creatorId": "user-uuid",
+    "name": "새벽 러닝 크루",
+    "goal": "매일 아침 5km 러닝",
+    "verificationType": "PHOTO",
+    "maxMembers": 5,
+    "currentMembers": 3,
+    "status": "ACTIVE",
+    "startDate": "2026-03-10",
+    "endDate": "2026-03-24",
+    "allowLateJoin": true,
+    "inviteCode": "ABC123",
+    "createdAt": "2026-03-01T10:00:00",
+    "deadlineTime": "23:59:59",
+    "members": [
+      {
+        "userId": "user-uuid-1",
+        "nickname": "크루장닉네임",
+        "profileImageUrl": "https://...",
+        "role": "LEADER",
+        "joinedAt": "2026-03-01T10:00:00",
+        "successCount": 2,
+        "challengeProgress": {
+          "challengeStatus": "IN_PROGRESS",
+          "completedDays": 1,
+          "targetDays": 3
+        }
+      },
+      {
+        "userId": "user-uuid-2",
+        "nickname": "멤버닉네임",
+        "profileImageUrl": null,
+        "role": "MEMBER",
+        "joinedAt": "2026-03-02T14:00:00",
+        "successCount": 0,
+        "challengeProgress": null
+      }
+    ]
+  },
+  "error": null
+}
+```
+
+**필드 설명:**
+- `successCount`: 해당 크루에서의 작심삼일(3일 연속 인증) 달성 횟수. 활성 챌린지 유무와 무관하게 항상 표시
+- `challengeProgress`: 현재 활성(IN_PROGRESS) 챌린지 진행 상황. 활성 챌린지가 없으면 `null`
+
+**에러 응답**
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 403 | CR009 | 크루 멤버만 접근할 수 있습니다. | 비멤버 접근 |
+| 404 | CR001 | 크루를 찾을 수 없습니다. | 존재하지 않는 crewId |
+
+---
+
 ## TODO (구현 시 추가 예정)
 
 ### Crew Context
 - POST /crews — 크루 생성 (deadlineTime: 선택, 기본값 23:59:59)
 - GET /crews — 크루 목록 조회
-- GET /crews/{crewId} — 크루 상세 조회 (응답에 deadlineTime, 멤버별 nickname/profileImageUrl 포함)
 
 ### Verification Context
 (구현 완료 — 위 참조)

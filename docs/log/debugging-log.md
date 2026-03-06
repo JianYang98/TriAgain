@@ -5,6 +5,15 @@
 
 ---
 
+### [2026-03-05] Riverpod CircularDependencyError — ApiClient → crewListProvider
+
+- 상황: 로그아웃 시 401 인터셉터에서 `_ref.invalidate(crewListProvider)` 호출 → `CircularDependencyError` 발생
+- 내 판단: ApiClient(apiClientProvider) → CrewService(crewServiceProvider) → crewListProvider 순환 참조. ApiClient에서 crewListProvider를 직접 invalidate하면 안 됨
+- 해결: crewListProvider가 authTokenProvider를 watch하도록 변경 → 토큰 null 시 자동으로 빈 리스트 반환. ApiClient에서 crewListProvider invalidate + import 제거
+- 배운 점: Riverpod에서 하위 레이어(네트워크)가 상위 레이어(비즈니스 provider)를 직접 조작하면 순환 참조 발생. 상태 변경의 전파는 watch 기반 반응형으로 처리하는 게 안전
+
+---
+
 ### [2026-03-04] 서버 시작 시 밀린 스케줄러 보정 (StartupCompensationRunner)
 
 - 상황: 로컬에서 PC 꺼져있는 동안 크루 시작일 지났는데 RECRUITING 상태로 남아있음 발견
