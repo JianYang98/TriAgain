@@ -17,6 +17,10 @@ spring:
     deserialization:
       fail-on-unknown-properties: false
 
+  flyway:
+    baseline-on-migrate: true
+    baseline-version: 6
+
 jwt:
   secret: ${JWT_SECRET:dGVzdC1zZWNyZXQta2V5LWZvci1sb2NhbC1kZXZlbG9wbWVudC1vbmx5LXRyaWFnYWlu}
   access-token-expiration: 1800000
