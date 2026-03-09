@@ -38,3 +38,7 @@ docs/progress-analysis.md
 # Environment
 .env
 src/main/resources/application-local.yml
+
+
+#  pem
+*.pem

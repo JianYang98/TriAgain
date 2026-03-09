@@ -41,8 +41,15 @@ dependencies {
     implementation platform('software.amazon.awssdk:bom:2.31.3')
     implementation 'software.amazon.awssdk:s3'
 
+    // Swagger UI
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
+
     // Database
     runtimeOnly 'org.postgresql:postgresql'
+
+    // Flyway
+    implementation 'org.flywaydb:flyway-core'
+    runtimeOnly 'org.flywaydb:flyway-database-postgresql'
 
     // Lombok
     compileOnly 'org.projectlombok:lombok'
