@@ -5,6 +5,24 @@
 
 ---
 
+### [2026-03-08] 기존 DB에 Flyway 도입 시 baseline 설정 필요
+
+- 상황: Flyway 의존성 추가 후 EC2 배포 시 `Found non-empty schema but no schema history table` 에러. baseline 추가 후에도 V2부터 재실행하며 `column already exists` 에러
+- 내 판단: `baseline-on-migrate: true` + `baseline-version: 6` (최신 마이그레이션 버전)으로 설정. 로컬은 `ddl-auto: update`라 Flyway 불필요 → `application-local.yml`에서 `flyway.enabled: false`
+- AI 역할: baseline-on-migrate 설정 제안, baseline-version을 최신으로 올려야 하는 이유 설명
+- 배운 점: 기존 DB에 Flyway 도입 시 baseline-version을 현재 스키마에 맞춰야 함. 이미 생성된 `flyway_schema_history`가 있으면 DROP 후 재시작 필요 (advisory lock 주의 — 앱 kill 먼저)
+
+---
+
+### [2026-03-08] Swagger UI `/swagger-ui.html` 경로가 permitAll 패턴에 매칭 안 됨
+
+- 상황: SecurityConfig에 `/swagger-ui/**`, `/v3/api-docs/**` permitAll 추가했는데 `swagger-ui.html` 접속 시 401 에러
+- 내 판단: `/swagger-ui.html`은 `/swagger-ui/index.html`로 리다이렉트하는 별도 경로라 `/swagger-ui/**` 패턴에 매칭 안 됨. `/swagger-ui.html`도 명시적으로 추가
+- AI 역할: 리다이렉트 경로와 glob 패턴 불일치 원인 분석
+- 배운 점: springdoc-openapi의 진입점은 `/swagger-ui.html`(리다이렉트)과 `/swagger-ui/**`(실제 리소스) 두 가지. 둘 다 permitAll 필요
+
+---
+
 ### [2026-03-05] Riverpod CircularDependencyError — ApiClient → crewListProvider
 
 - 상황: 로그아웃 시 401 인터셉터에서 `_ref.invalidate(crewListProvider)` 호출 → `CircularDependencyError` 발생
