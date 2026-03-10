@@ -130,7 +130,7 @@ erDiagram
     
     upload_session {
         bigint id PK
-        bigint user_id FK
+        varchar(36) user_id FK
         varchar image_key
         varchar content_type
         varchar status "PENDING / COMPLETED / EXPIRED"

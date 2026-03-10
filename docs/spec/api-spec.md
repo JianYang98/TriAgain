@@ -116,10 +116,18 @@ Idempotency-Key: <uuid>
 ```
 
 **필드 설명:**
-- `crewId`: (필수) 크루 ID
-- `challengeId`: (선택) 챌린지 ID — 생략 시 서버가 새 챌린지 자동 생성
+- `challengeId`: (조건부) 챌린지 ID — `crewId`와 둘 중 하나 이상 필수
+- `crewId`: (조건부) 크루 ID — `challengeId`와 둘 중 하나 이상 필수
 - `uploadSessionId`: (선택) 업로드 세션 ID — 사진 인증 크루에서만 필요
 - `textContent`: (선택) 인증 텍스트
+
+**challengeId / crewId 조합 규칙:**
+| challengeId | crewId | 동작 |
+|:-----------:|:------:|------|
+| O | O | 챌린지 조회 후 crewId 일치 검증 (불일치 시 CHALLENGE_CREW_MISMATCH) |
+| O | X | challengeId로 챌린지 조회, crewId는 챌린지에서 추출 |
+| X | O | crewId로 활성 챌린지 조회 또는 자동 생성 |
+| X | X | 400 Bad Request |
 
 ```json
 // challengeId 생략 예시 (새 챌린지 자동 생성)
@@ -783,14 +791,18 @@ Authorization: Bearer <token>
     "deadlineTime": "23:59:59",
     "members": [
       {
+        "userId": "user_001",
         "nickname": "크루장닉네임",
         "profileImageUrl": "https://...",
-        "role": "LEADER"
+        "role": "LEADER",
+        "joinedAt": "2026-03-01T10:00:00"
       },
       {
+        "userId": "user_002",
         "nickname": "멤버닉네임",
         "profileImageUrl": null,
-        "role": "MEMBER"
+        "role": "MEMBER",
+        "joinedAt": "2026-03-02T14:00:00"
       }
     ],
     "joinable": true,
@@ -935,14 +947,121 @@ Authorization: Bearer {accessToken}
 
 ---
 
+### POST /crews (크루 생성)
+
+새로운 크루를 생성한다. 생성자는 자동으로 LEADER 역할의 첫 번째 멤버로 추가된다.
+
+**요청 (Request)**
+```
+POST /crews HTTP/1.1
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+```json
+{
+  "name": "새벽 러닝 크루",
+  "goal": "매일 아침 5km 러닝",
+  "verificationType": "PHOTO",
+  "maxMembers": 5,
+  "startDate": "2026-03-10",
+  "endDate": "2026-03-24",
+  "allowLateJoin": true,
+  "deadlineTime": "23:59:59"
+}
+```
+
+**필드 설명:**
+- `name`: (필수) 크루 이름
+- `goal`: (필수) 크루 목표
+- `verificationType`: (필수) 인증 방식 — `TEXT` / `PHOTO`
+- `maxMembers`: (필수) 최대 정원 (1~10)
+- `startDate`: (필수) 크루 시작일
+- `endDate`: (필수) 크루 종료일
+- `allowLateJoin`: (선택) 중간 가입 허용 여부 (기본값 false)
+- `deadlineTime`: (선택) 일일 인증 마감 시간 (기본값 23:59:59)
+
+**성공 응답 (201 Created)**
+```json
+{
+  "success": true,
+  "data": {
+    "crewId": "crew_123",
+    "creatorId": "user_456",
+    "name": "새벽 러닝 크루",
+    "goal": "매일 아침 5km 러닝",
+    "verificationType": "PHOTO",
+    "maxMembers": 5,
+    "currentMembers": 1,
+    "status": "RECRUITING",
+    "startDate": "2026-03-10",
+    "endDate": "2026-03-24",
+    "allowLateJoin": true,
+    "inviteCode": "ABC123",
+    "createdAt": "2026-03-09T10:00:00",
+    "deadlineTime": "23:59:59"
+  },
+  "error": null
+}
+```
+
+---
+
+### GET /upload-sessions/{id}/events (SSE 구독 — 업로드 완료 알림)
+
+업로드 세션의 상태 변경을 실시간으로 수신하는 SSE 엔드포인트. 클라이언트가 S3 업로드 후 Lambda가 세션을 COMPLETED로 변경하면 이벤트를 받는다.
+
+**요청 (Request)**
+```
+GET /upload-sessions/{id}/events HTTP/1.1
+Accept: text/event-stream
+```
+
+**파라미터:**
+- `id`: (필수) 업로드 세션 ID (Long)
+
+**성공 응답 (200 OK, `text/event-stream`)**
+```
+event: upload-completed
+data: {"uploadSessionId": 123, "status": "COMPLETED"}
+```
+
+**제약 사항:**
+- SSE 타임아웃: 60초
+- 클라이언트는 fallback으로 폴링 대비 필요
+
+---
+
+### PUT /internal/upload-sessions/{id}/complete (Lambda 콜백 — Internal API)
+
+S3 업로드 완료 시 Lambda가 호출하여 업로드 세션을 COMPLETED 상태로 전환하고 SSE 이벤트를 발행한다.
+
+**요청 (Request)**
+```
+PUT /internal/upload-sessions/{id}/complete HTTP/1.1
+```
+
+**파라미터:**
+- `id`: (필수) 업로드 세션 ID (Long)
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": null,
+  "error": null
+}
+```
+
+**보안:**
+- `/internal/**` 경로는 Spring Security에서 외부 접근 차단 (prod: `denyAll`, dev: `permitAll`)
+- Phase 2에서 `X-Internal-Secret` 헤더 검증 필터 추가 예정
+
+---
+
 ## TODO (구현 시 추가 예정)
 
 ### Crew Context
-- POST /crews — 크루 생성 (deadlineTime: 선택, 기본값 23:59:59)
 - GET /crews — 크루 목록 조회
-
-### Verification Context
-(구현 완료 — 위 참조)
 
 ### Moderation Context
 - POST /verifications/{id}/reports — 신고

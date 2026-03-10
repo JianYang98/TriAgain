@@ -6,6 +6,30 @@
 
 ---
 
+### [2026-03-10] 코드 버그: 크루 최소 기간 미검증 (Crew.validateDates)
+
+- 현재 상태: `Crew.validateDates()`에서 `endDate > startDate`만 체크. biz-logic.md의 "최소 시작일+6일 (작심삼일 2회 보장)" 규칙이 코드에 미반영
+- 필요 시점: 다음 코드 수정 시 즉시
+- 이유: 문서가 정본(source of truth)이며, `endDate >= startDate + 6` 검증 추가 필요. 파일: `crew/domain/model/Crew.java:171-178`
+
+---
+
+### [2026-03-10] 코드 버그: maxMembers 최솟값 불일치 (1 → 2)
+
+- 현재 상태: `Crew.java:165-169`에서 `maxMembers < 1` 체크, `CreateCrewRequest`에서 `@Min(1)`. biz-logic.md 규칙은 "2~10명"
+- 필요 시점: 다음 코드 수정 시 즉시
+- 이유: 문서가 정본. 최솟값을 `@Min(2)` + `maxMembers < 2`로 변경 필요. 파일: `crew/domain/model/Crew.java`, `crew/api/CreateCrewRequest.java`
+
+---
+
+### [2026-03-10] 코드 버그: Upload Session 생성 시 Grace Period 미적용
+
+- 현재 상태: `CreateUploadSessionService:57-63`에서 deadline만 체크, biz-logic.md의 "challenge.deadline + 5분" grace period 미적용
+- 필요 시점: 다음 코드 수정 시 즉시
+- 이유: 문서가 정본. deadline 체크 시 `GRACE_PERIOD(5분)`를 더해야 함. 참고: `CreateVerificationService`에는 `GRACE_PERIOD = Duration.ofMinutes(5)` 상수가 이미 존재
+
+---
+
 ### [2026-03-04] StartupCompensationRunner — Phase 2 전환 시 제거 검토
 
 - 현재 상태: 단일 서버 + Spring @Scheduled 기반이라 서버 다운 시 스케줄러 미실행 → 서버 재시작 시 밀린 작업(크루 활성화 → 챌린지 실패 → 크루 종료)을 순서대로 보정
