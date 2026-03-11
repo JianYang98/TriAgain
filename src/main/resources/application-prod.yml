@@ -10,6 +10,9 @@ spring:
       ddl-auto: validate
     show-sql: false
 
+internal:
+  api-key: ${INTERNAL_API_KEY}
+
 aws:
   s3:
     bucket: triagain-verifications

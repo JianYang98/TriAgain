@@ -11,6 +11,8 @@ public interface UploadSessionJpaRepository extends JpaRepository<UploadSessionJ
 
     Optional<UploadSessionJpaEntity> findByIdAndUserId(Long id, String userId);
 
+    Optional<UploadSessionJpaEntity> findByImageKey(String imageKey);
+
     List<UploadSessionJpaEntity> findByStatusAndCreatedAtBefore(
             UploadSessionStatus status, LocalDateTime threshold);
 }

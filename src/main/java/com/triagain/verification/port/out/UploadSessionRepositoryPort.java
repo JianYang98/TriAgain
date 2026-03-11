@@ -14,6 +14,9 @@ public interface UploadSessionRepositoryPort {
 
     Optional<UploadSession> findByIdAndUserId(Long id, String userId);
 
+    /** imageKey로 업로드 세션 조회 — Lambda 콜백 시 사용 */
+    Optional<UploadSession> findByImageKey(String imageKey);
+
     /** PENDING 상태이고 생성 시각이 threshold 이전인 세션 목록 조회 — 만료 처리용 */
     List<UploadSession> findPendingSessionsBefore(LocalDateTime threshold);
 }
