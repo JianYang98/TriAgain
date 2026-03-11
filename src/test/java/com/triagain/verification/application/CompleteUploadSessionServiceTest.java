@@ -36,18 +36,20 @@ class CompleteUploadSessionServiceTest {
     @InjectMocks
     private CompleteUploadSessionService completeUploadSessionService;
 
+    private static final String IMAGE_KEY = "upload-sessions/user-1/abc123.jpg";
+
     private static UploadSession pendingSession(Long id) {
-        return UploadSession.of(id, "user-1", "images/test.jpg", "image/jpeg",
+        return UploadSession.of(id, "user-1", IMAGE_KEY, "image/jpeg",
                 UploadSessionStatus.PENDING, LocalDateTime.now(), LocalDateTime.now());
     }
 
     private static UploadSession completedSession(Long id) {
-        return UploadSession.of(id, "user-1", "images/test.jpg", "image/jpeg",
+        return UploadSession.of(id, "user-1", IMAGE_KEY, "image/jpeg",
                 UploadSessionStatus.COMPLETED, LocalDateTime.now(), LocalDateTime.now());
     }
 
     private static UploadSession expiredSession(Long id) {
-        return UploadSession.of(id, "user-1", "images/test.jpg", "image/jpeg",
+        return UploadSession.of(id, "user-1", IMAGE_KEY, "image/jpeg",
                 UploadSessionStatus.EXPIRED, LocalDateTime.now(), LocalDateTime.now());
     }
 
@@ -55,15 +57,13 @@ class CompleteUploadSessionServiceTest {
     @DisplayName("정상 완료 시 세션 상태 COMPLETED + afterCommit에서 SSE 전송")
     void complete_success() {
         // Given
-        Long sessionId = 1L;
-        UploadSession session = pendingSession(sessionId);
-        given(uploadSessionRepositoryPort.findById(sessionId)).willReturn(Optional.of(session));
+        UploadSession session = pendingSession(1L);
+        given(uploadSessionRepositoryPort.findByImageKey(IMAGE_KEY)).willReturn(Optional.of(session));
 
-        // TransactionSynchronizationManager 초기화 (단위 테스트에서 afterCommit 콜백 등록 가능하도록)
         TransactionSynchronizationManager.initSynchronization();
         try {
             // When
-            completeUploadSessionService.complete(sessionId);
+            completeUploadSessionService.complete(IMAGE_KEY);
 
             // Then
             assertThat(session.getStatus()).isEqualTo(UploadSessionStatus.COMPLETED);
@@ -72,21 +72,21 @@ class CompleteUploadSessionServiceTest {
             // afterCommit 콜백 수동 실행
             TransactionSynchronizationManager.getSynchronizations()
                     .forEach(sync -> sync.afterCommit());
-            verify(ssePort).send(sessionId, "COMPLETED");
+            verify(ssePort).send(1L, "COMPLETED");
         } finally {
             TransactionSynchronizationManager.clearSynchronization();
         }
     }
 
     @Test
-    @DisplayName("존재하지 않는 세션 ID → UPLOAD_SESSION_NOT_FOUND 예외")
+    @DisplayName("존재하지 않는 imageKey → UPLOAD_SESSION_NOT_FOUND 예외")
     void complete_sessionNotFound() {
         // Given
-        Long sessionId = 999L;
-        given(uploadSessionRepositoryPort.findById(sessionId)).willReturn(Optional.empty());
+        String unknownKey = "upload-sessions/user-1/unknown.jpg";
+        given(uploadSessionRepositoryPort.findByImageKey(unknownKey)).willReturn(Optional.empty());
 
         // When & Then
-        assertThatThrownBy(() -> completeUploadSessionService.complete(sessionId))
+        assertThatThrownBy(() -> completeUploadSessionService.complete(unknownKey))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.UPLOAD_SESSION_NOT_FOUND);
@@ -96,14 +96,13 @@ class CompleteUploadSessionServiceTest {
     @DisplayName("이미 COMPLETED인 세션 → 멱등 처리 (예외 없이 정상)")
     void complete_alreadyCompleted_idempotent() {
         // Given
-        Long sessionId = 1L;
-        UploadSession session = completedSession(sessionId);
-        given(uploadSessionRepositoryPort.findById(sessionId)).willReturn(Optional.of(session));
+        UploadSession session = completedSession(1L);
+        given(uploadSessionRepositoryPort.findByImageKey(IMAGE_KEY)).willReturn(Optional.of(session));
 
         TransactionSynchronizationManager.initSynchronization();
         try {
             // When
-            completeUploadSessionService.complete(sessionId);
+            completeUploadSessionService.complete(IMAGE_KEY);
 
             // Then — 상태 유지, save 호출, 예외 없음
             assertThat(session.getStatus()).isEqualTo(UploadSessionStatus.COMPLETED);
@@ -117,12 +116,11 @@ class CompleteUploadSessionServiceTest {
     @DisplayName("EXPIRED 세션 → UPLOAD_SESSION_NOT_PENDING 예외")
     void complete_expiredSession() {
         // Given
-        Long sessionId = 1L;
-        UploadSession session = expiredSession(sessionId);
-        given(uploadSessionRepositoryPort.findById(sessionId)).willReturn(Optional.of(session));
+        UploadSession session = expiredSession(1L);
+        given(uploadSessionRepositoryPort.findByImageKey(IMAGE_KEY)).willReturn(Optional.of(session));
 
         // When & Then
-        assertThatThrownBy(() -> completeUploadSessionService.complete(sessionId))
+        assertThatThrownBy(() -> completeUploadSessionService.complete(IMAGE_KEY))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.UPLOAD_SESSION_NOT_PENDING);
