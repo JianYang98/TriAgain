@@ -1,0 +1,41 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: TriAgain - S3 Upload Complete Lambda
+
+Parameters:
+  BackendUrl:
+    Type: String
+    Description: Spring Boot backend URL (e.g. https://api.triagain.com)
+  InternalApiKey:
+    Type: String
+    Description: API key for /internal/** endpoints
+    NoEcho: true
+  S3BucketName:
+    Type: String
+    Default: triagain-verifications
+    Description: S3 bucket name for verification uploads
+
+Resources:
+  UploadCompleteFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: triagain-upload-complete
+      Handler: handler.handler
+      Runtime: python3.12
+      CodeUri: upload-complete/
+      Timeout: 15
+      MemorySize: 128
+      Environment:
+        Variables:
+          BACKEND_URL: !Ref BackendUrl
+          INTERNAL_API_KEY: !Ref InternalApiKey
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: s3:GetObject
+              Resource: !Sub arn:aws:s3:::${S3BucketName}/upload-sessions/*
+
+Outputs:
+  UploadCompleteFunctionArn:
+    Description: Upload Complete Lambda ARN
+    Value: !GetAtt UploadCompleteFunction.Arn

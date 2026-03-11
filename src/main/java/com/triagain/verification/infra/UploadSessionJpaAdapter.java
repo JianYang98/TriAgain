@@ -35,6 +35,12 @@ public class UploadSessionJpaAdapter implements UploadSessionRepositoryPort {
     }
 
     @Override
+    public Optional<UploadSession> findByImageKey(String imageKey) {
+        return uploadSessionJpaRepository.findByImageKey(imageKey)
+                .map(UploadSessionJpaEntity::toDomain);
+    }
+
+    @Override
     public List<UploadSession> findPendingSessionsBefore(LocalDateTime threshold) {
         return uploadSessionJpaRepository
                 .findByStatusAndCreatedAtBefore(UploadSessionStatus.PENDING, threshold)

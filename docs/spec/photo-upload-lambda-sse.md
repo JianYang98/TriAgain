@@ -45,7 +45,7 @@ sequenceDiagram
     Note over S3,Lambda: ⚡ 4단계: Lambda 자동 실행
     
     S3->>Lambda: S3 PutObject Event
-    Lambda->>Server: PUT /internal/upload-sessions/{id}/complete
+    Lambda->>Server: PUT /internal/upload-sessions/complete?imageKey={key}
     
     Note over Server: DB: PENDING → COMPLETED
     Note over Server: SSE: "COMPLETED" 이벤트 전송
@@ -66,55 +66,66 @@ sequenceDiagram
 |-----|------|
 | `POST /upload-sessions` | 메타데이터 검증 + session INSERT(PENDING) + presignedUrl 생성 |
 | `GET /upload-sessions/{id}/events` | SSE 엔드포인트 (프론트 구독용) |
-| `PUT /internal/upload-sessions/{id}/complete` | Lambda 전용 내부 API → session COMPLETED + SSE 이벤트 발행 |
+| `PUT /internal/upload-sessions/complete?imageKey={key}` | Lambda 전용 내부 API → session COMPLETED + SSE 이벤트 발행 |
 | `POST /verifications` | 인증 생성 (session COMPLETED 확인 후) |
 
 **SSE 구현:**
 ```java
 // SSE 엔드포인트
 @GetMapping("/upload-sessions/{id}/events")
-public SseEmitter subscribe(@PathVariable String id) {
+public SseEmitter subscribe(@PathVariable Long id) {
     SseEmitter emitter = new SseEmitter(60_000L); // 60초 타임아웃
-    uploadSessionSseManager.add(id, emitter);
+    ssePort.register(id, emitter);
     return emitter;
 }
 
-// Lambda 콜백 시 SSE 전송
-@PutMapping("/internal/upload-sessions/{id}/complete")
-public void complete(@PathVariable String id) {
-    uploadSessionService.complete(id);           // DB: PENDING → COMPLETED
-    uploadSessionSseManager.send(id, "COMPLETED"); // SSE 이벤트 전송
+// Lambda 콜백 시 SSE 전송 (imageKey 기반)
+@PutMapping("/internal/upload-sessions/complete")
+public ResponseEntity<ApiResponse<Void>> complete(@RequestParam String imageKey) {
+    completeUploadSessionUseCase.complete(imageKey); // DB: PENDING → COMPLETED + SSE 전송
+    return ResponseEntity.ok(ApiResponse.ok());
 }
 ```
 
 **내부 API 보안:**
-- `/internal/**` 경로는 외부 접근 차단 (Security 설정)
-- Lambda에서만 호출 가능 (VPC 내부 통신 or API Key)
+- `/internal/**` 경로는 `X-Internal-Api-Key` 헤더로 인증 (`InternalApiKeyFilter`)
+- API Key 불일치 시 403 Forbidden 반환
+- SecurityConfig에서 `/internal/**`는 `permitAll()` (JWT 스킵), API Key 필터에서 검증
 
-### AWS Lambda (Java)
+### AWS Lambda (Python 3.12)
 
-```java
-public class UploadCompleteHandler implements RequestHandler<S3Event, Void> {
+> Java 대신 Python 선택: Lambda는 단순 HTTP 호출만 수행하므로 cold start가 빠른 Python이 적합.
 
-    public Void handleRequest(S3Event event, Context context) {
-        // 1. S3 key 추출
-        String imageKey = event.getRecords().get(0).getS3().getObject().getKey();
-        // imageKey: "upload-sessions/{userId}/{uuid}.{ext}"
+```python
+def handler(event, context):
+    for record in event.get("Records", []):
+        key = urllib.parse.unquote_plus(
+            record["s3"]["object"]["key"]
+        )
+        if not key.startswith("upload-sessions/"):
+            continue
 
-        // 2. Spring Boot 내부 API 호출 (imageKey로 session 조회)
-        httpClient.put(EC2_URL + "/internal/upload-sessions/complete?imageKey=" + imageKey);
+        encoded_key = urllib.parse.quote(key, safe="")
+        url = f"{BACKEND_URL}/internal/upload-sessions/complete?imageKey={encoded_key}"
+        req = urllib.request.Request(
+            url, method="PUT",
+            headers={"X-Internal-Api-Key": INTERNAL_API_KEY},
+            data=b"",
+        )
+        urllib.request.urlopen(req, timeout=10)
 
-        return null;
-    }
-}
+    return {"statusCode": 200, "body": "OK"}
 ```
 
 **Lambda 설정:**
-- Runtime: Java 17
+- Runtime: Python 3.12
 - 트리거: S3 PutObject Event (버킷: triagain-verifications, prefix: upload-sessions/)
-- 타임아웃: 10초
+- 타임아웃: 15초
+- 메모리: 128MB
 - 재시도: 2회 (AWS 기본)
 - 실패 시: DLQ(Dead Letter Queue)로 전달
+- 환경 변수: `BACKEND_URL`, `INTERNAL_API_KEY`
+- 배포: SAM (lambda/template.yaml)
 
 ### S3
 
@@ -122,6 +133,26 @@ public class UploadCompleteHandler implements RequestHandler<S3Event, Void> {
 - **Key 규칙**: `upload-sessions/{userId}/{uuid}.{ext}`
 - **Event Notification**: PutObject → Lambda 트리거
 - **CORS**: Flutter에서 직접 업로드 허용
+
+### Phase 1 이미지 정책
+
+**클라이언트 압축 정책:**
+- maxWidth: 960px, imageQuality: 70
+- 목표 크기: 300KB ~ 700KB, 최대 1MB
+- 서버 허용 최대: 5MB (안전마진)
+
+**Phase 1 업로드 완료(COMPLETED) 정의:**
+- S3 업로드 완료 → Lambda 감지 → 내부 complete 처리 → afterCommit SSE 전송
+- 원본 1장 업로드 완료 = COMPLETED (썸네일 미포함)
+
+**썸네일:** Phase 1에서는 생성하지 않음. Phase 2에서 thumbnailUrl 확장 예정.
+
+**주의사항:**
+- presigned URL은 압축된 최종 파일 기준으로 발급/검증
+- Content-Type 일치 보장
+- auth header 없이 S3 direct upload
+- Lambda는 imageKey 기준으로 session 조회
+- SSE는 afterCommit 이후에만 전송
 
 ### Flutter
 
@@ -204,16 +235,17 @@ POST /verifications 바로 호출 (uploadSessionId = null)
 ## 8. 구현 순서 (Claude Code 작업 단위)
 
 ```
-1단계: Spring Boot
+1단계: Spring Boot (구현 완료)
   - POST /upload-sessions (기존 유지)
-  - GET /upload-sessions/{id}/events (SSE 엔드포인트 신규)
-  - PUT /internal/upload-sessions/{id}/complete (내부 API 신규)
-  - SseEmitter 관리 클래스 (UploadSessionSseManager)
+  - GET /upload-sessions/{id}/events (SSE 엔드포인트)
+  - PUT /internal/upload-sessions/complete?imageKey={key} (내부 API, imageKey 기반)
+  - InternalApiKeyFilter (X-Internal-Api-Key 검증)
+  - SseEmitter 관리 (SsePort/SseEmitterAdapter)
 
-2단계: Lambda
-  - S3 Event 트리거 Handler
-  - EC2 내부 API 호출 로직
-  - 배포 설정 (SAM or Terraform)
+2단계: Lambda (구현 완료)
+  - Python 3.12 핸들러 (lambda/upload-complete/handler.py)
+  - SAM 템플릿 (lambda/template.yaml)
+  - 배포 스크립트 (lambda/deploy.sh)
 
 3단계: Flutter
   - SSE 구독 로직

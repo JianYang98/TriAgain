@@ -19,21 +19,22 @@ public class CompleteUploadSessionService implements CompleteUploadSessionUseCas
     private final UploadSessionRepositoryPort uploadSessionRepositoryPort;
     private final SsePort ssePort;
 
-    /** 업로드 세션 완료 + SSE 알림 — Lambda가 S3 업로드 성공 감지 시 호출 */
+    /** 업로드 세션 완료 + SSE 알림 — Lambda가 S3 업로드 성공 감지 시 imageKey로 호출 */
     @Override
     @Transactional
-    public void complete(Long uploadSessionId) {
-        UploadSession session = uploadSessionRepositoryPort.findById(uploadSessionId)
+    public void complete(String imageKey) {
+        UploadSession session = uploadSessionRepositoryPort.findByImageKey(imageKey)
                 .orElseThrow(() -> new BusinessException(ErrorCode.UPLOAD_SESSION_NOT_FOUND));
 
         session.complete();
         uploadSessionRepositoryPort.save(session);
 
+        Long sessionId = session.getId();
         TransactionSynchronizationManager.registerSynchronization(
                 new TransactionSynchronization() {
                     @Override
                     public void afterCommit() {
-                        ssePort.send(uploadSessionId, "COMPLETED");
+                        ssePort.send(sessionId, "COMPLETED");
                     }
                 }
         );

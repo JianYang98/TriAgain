@@ -8,20 +8,32 @@ sequenceDiagram
     actor Client as Client
     participant Server as Server
     participant S3 as AWS S3
+    participant Lambda as AWS Lambda
 
-    Note over Client,S3: 📸 API 1: 업로드 세션 생성
+    Note over Client,Lambda: 📸 1단계: 업로드 세션 생성
 
     Client->>Server: POST /upload-sessions<br/>(fileName, contentType, fileSize)
     Server-->>Client: sessionId + presignedUrl
 
-    Note over Client,S3: ☁️ S3 직접 업로드
+    Note over Client,Server: 📡 2단계: SSE 구독
 
-    Client->>S3: PUT 이미지 업로드 (Pre-signed URL)
+    Client->>Server: GET /upload-sessions/{id}/events
+
+    Note over Client,S3: ☁️ 3단계: S3 업로드
+
+    Client->>S3: PUT 이미지 업로드 (presignedUrl)
     S3-->>Client: 200 OK
 
-    Note over Client,S3: ✅ API 2: 인증 요청
+    Note over S3,Lambda: ⚡ 4단계: Lambda 자동 실행
 
-    Client->>Server: POST /verifications<br/>(sessionId, challengeId, imageKey)
+    S3->>Lambda: S3 PutObject Event
+    Lambda->>Server: PUT /internal/upload-sessions/complete?imageKey={key}
+    Note over Server: DB: PENDING → COMPLETED
+    Server-->>Client: SSE Event: { status: "COMPLETED" }
+
+    Note over Client,Server: ✅ 5단계: 인증 요청
+
+    Client->>Server: POST /verifications<br/>(sessionId, challengeId,<br/>Idempotency-Key)
     Server-->>Client: 201 Created 🎉
 ```
 
@@ -96,8 +108,8 @@ sequenceDiagram
 
     Facade->>UseCase: execute(command)
 
-    Note over UseCase,DB: 3) 업로드 세션 확인
-    UseCase->>DB: SELECT upload_session<br/>(sessionId, status=PENDING?)
+    Note over UseCase,DB: 3) 업로드 세션 확인 (COMPLETED인지 체크)
+    UseCase->>DB: SELECT upload_session<br/>(sessionId, status=COMPLETED?)
     DB-->>UseCase: session (requested_at 포함)
 
     Note over UseCase,DB: 4) 챌린지 비관적 락
@@ -108,7 +120,6 @@ sequenceDiagram
 
     Note over UseCase,DB: 6) 인증 생성
     UseCase->>DB: INSERT verification<br/>(requested_at=session.requested_at)
-    UseCase->>DB: UPDATE upload_session<br/>(status=COMPLETED)
     UseCase-->>Facade: VerificationResponse
 
     Note over Facade,IdemStore: 7) 멱등성 완료 처리
@@ -165,17 +176,17 @@ sequenceDiagram
             Lock-->>Facade: true
             Facade->>UseCase: execute(command)
 
-            Note over UseCase,DB: 3) 업로드 세션 확인
+            Note over UseCase,DB: 3) 업로드 세션 확인 (COMPLETED인지 체크)
 
-            UseCase->>DB: SELECT upload_session<br/>(sessionId, status=PENDING?)
+            UseCase->>DB: SELECT upload_session<br/>(sessionId, status=COMPLETED?)
             DB-->>UseCase: session (requested_at 포함)
 
-            alt 세션 없음 or EXPIRED
+            alt 세션 없음 or 미완료(PENDING/EXPIRED)
                 UseCase-->>Facade: 400 Bad Request
                 Facade->>Lock: unlock(lockKey)
                 Facade-->>Controller: "유효하지 않은 세션"
                 Controller-->>Client: 400 Bad Request
-            else 세션 유효
+            else 세션 COMPLETED
                 Note over UseCase,DB: 4) 챌린지 비관적 락
 
                 UseCase->>DB: SELECT FOR UPDATE (Challenge)
@@ -192,7 +203,6 @@ sequenceDiagram
                     Note over UseCase,DB: 6) 인증 생성
 
                     UseCase->>DB: INSERT verification<br/>(requested_at=session.requested_at)
-                    UseCase->>DB: UPDATE upload_session<br/>(status=COMPLETED)
 
                     UseCase-->>Facade: VerificationResponse
 
@@ -233,15 +243,22 @@ sequenceDiagram
 |-----------|-----------|---------|
 | S3 업로드 실패 | 클라이언트 | 재시도 → 실패 시 안내 |
 | URL 만료 후 재시도 | 클라이언트 | API 1부터 다시 (새 URL 발급) |
-| PENDING 세션 방치 | 서버 스케줄러 | EXPIRED 처리 |
+| Lambda 실행 실패 | AWS | 자동 재시도 2회 → DLQ |
+| Lambda → EC2 호출 실패 | Lambda | 재시도 → 최종 실패 시 DLQ |
+| SSE 타임아웃 (60초) | 클라이언트 | 폴링 fallback (GET /upload-sessions/{id}) |
+| PENDING 세션 방치 | 서버 스케줄러 | 15분 후 EXPIRED 처리 (5분 주기) |
 
 ## 6. 트랜잭션 규칙
 
-verification INSERT와 upload_session COMPLETED 전환은 동일 트랜잭션에서 처리한다.
+**upload_session COMPLETED 전환** (Lambda → /internal API):
+1. imageKey로 upload_session 조회
+2. 상태 검증: PENDING → COMPLETED
+3. SSE 이벤트 전송
+4. COMMIT
 
-**처리 순서:**
-1. upload_session 조회 + 락 (SELECT ... FOR UPDATE)
-2. 상태 검증: PENDING 아니면 409
-3. verification INSERT (기본 APPROVED, UNIQUE로 중복 방지)
-4. upload_session.status = COMPLETED UPDATE
+**verification INSERT** (POST /verifications):
+1. upload_session 상태 확인 (COMPLETED인지만 체크)
+2. 챌린지 비관적 락 (SELECT FOR UPDATE)
+3. 마감 시간 검증
+4. verification INSERT (기본 APPROVED, UNIQUE로 중복 방지)
 5. COMMIT
