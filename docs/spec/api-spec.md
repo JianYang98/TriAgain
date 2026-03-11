@@ -6,9 +6,11 @@
 → 텍스트만 인증 가능한 크루라면 바로 POST /verifications
 
 ```
-1. POST /upload-sessions → presignedUrl 받음
-2. S3에 직접 업로드 (PUT {presignedUrl})
-3. POST /verifications → 인증 완료
+1. POST /upload-sessions → presignedUrl + sessionId 수신
+2. GET /upload-sessions/{id}/events (SSE 구독)
+3. S3에 직접 업로드 (PUT {presignedUrl})
+4. Lambda → 자동 완료 감지 → SSE "COMPLETED" 수신
+5. POST /verifications → 인증 완료
 ```
 
 ---
@@ -1031,17 +1033,18 @@ data: {"uploadSessionId": 123, "status": "COMPLETED"}
 
 ---
 
-### PUT /internal/upload-sessions/{id}/complete (Lambda 콜백 — Internal API)
+### PUT /internal/upload-sessions/complete (Lambda 콜백 — Internal API)
 
 S3 업로드 완료 시 Lambda가 호출하여 업로드 세션을 COMPLETED 상태로 전환하고 SSE 이벤트를 발행한다.
 
 **요청 (Request)**
 ```
-PUT /internal/upload-sessions/{id}/complete HTTP/1.1
+PUT /internal/upload-sessions/complete?imageKey={key} HTTP/1.1
+X-Internal-Api-Key: {api-key}
 ```
 
-**파라미터:**
-- `id`: (필수) 업로드 세션 ID (Long)
+**쿼리 파라미터:**
+- `imageKey`: (필수) S3 오브젝트 키 (예: `upload-sessions/{userId}/{uuid}.{ext}`)
 
 **성공 응답 (200 OK)**
 ```json
@@ -1052,9 +1055,14 @@ PUT /internal/upload-sessions/{id}/complete HTTP/1.1
 }
 ```
 
+**에러 응답:**
+- `404 Not Found` — 해당 imageKey의 업로드 세션이 없음
+- `403 Forbidden` — API Key 누락 또는 불일치
+
 **보안:**
-- `/internal/**` 경로는 Spring Security에서 외부 접근 차단 (prod: `denyAll`, dev: `permitAll`)
-- Phase 2에서 `X-Internal-Secret` 헤더 검증 필터 추가 예정
+- `/internal/**` 경로는 `X-Internal-Api-Key` 헤더로 인증 (InternalApiKeyFilter)
+- API Key 불일치 시 403 Forbidden 반환
+- prod 환경: `internal.api-key` 속성으로 설정
 
 ---
 
