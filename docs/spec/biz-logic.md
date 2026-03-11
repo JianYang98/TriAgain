@@ -155,7 +155,13 @@
 
 - 사용자의 노력(인증)이 시스템 문제로 무효화되면 안 된다
 - S3 Direct Upload(Pre-signed URL) 방식으로 업로드 경로 단순화
-- 클라이언트에서 이미지 압축 (최대 해상도 1080px, 품질 60~75%, 목표 1MB 이하)
+- 클라이언트에서 이미지 압축 필수 (Phase 1 정책)
+  - maxWidth: 960px
+  - imageQuality: 70
+  - 목표 크기: 300KB ~ 700KB
+  - 최종 업로드 최대 크기: 1MB (클라이언트 기준)
+  - 서버 허용 최대 크기: 5MB (안전마진, MAX_FILE_SIZE)
+- Phase 1에서는 썸네일 생성하지 않음 — 압축된 원본 1장만 업로드
 - 허용 확장자: jpg, jpeg, png, webp
 
 ### 3.2 피드 조회 응답 시간 300ms 이내 (Performance)

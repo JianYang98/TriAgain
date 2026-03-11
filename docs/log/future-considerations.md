@@ -6,6 +6,21 @@
 
 ---
 
+### [2026-03-11] 썸네일 생성은 Phase 2로 보류
+
+- 현재 상태: 클라이언트 압축 이미지 1장만 업로드. 썸네일 미생성. COMPLETED = "원본 1장 업로드 완료"
+- 필요 시점: Phase 2 (피드 성능 최적화 시)
+- 이유: 지금 도입하면 아래 결정이 추가로 필요하여 업로드 플로우 안정화가 지연됨
+  - 썸네일 생성 완료까지를 업로드 완료로 볼지
+  - thumbnailUrl 저장 위치 (upload_session? verification?)
+  - 피드/상세 응답 분기 방법
+  - 썸네일 생성 실패 시 fallback 처리
+- Phase 2 확장 방향:
+  - thumbnailUrl 필드 추가 (피드: 썸네일, 상세: 원본)
+  - 현재 imageUrl 중심 구조에서 thumbnailUrl만 추가하면 큰 변경 없이 확장 가능
+
+---
+
 ### [2026-03-10] 코드 버그: 크루 최소 기간 미검증 (Crew.validateDates)
 
 - 현재 상태: `Crew.validateDates()`에서 `endDate > startDate`만 체크. biz-logic.md의 "최소 시작일+6일 (작심삼일 2회 보장)" 규칙이 코드에 미반영

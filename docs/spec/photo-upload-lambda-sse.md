@@ -134,6 +134,26 @@ def handler(event, context):
 - **Event Notification**: PutObject → Lambda 트리거
 - **CORS**: Flutter에서 직접 업로드 허용
 
+### Phase 1 이미지 정책
+
+**클라이언트 압축 정책:**
+- maxWidth: 960px, imageQuality: 70
+- 목표 크기: 300KB ~ 700KB, 최대 1MB
+- 서버 허용 최대: 5MB (안전마진)
+
+**Phase 1 업로드 완료(COMPLETED) 정의:**
+- S3 업로드 완료 → Lambda 감지 → 내부 complete 처리 → afterCommit SSE 전송
+- 원본 1장 업로드 완료 = COMPLETED (썸네일 미포함)
+
+**썸네일:** Phase 1에서는 생성하지 않음. Phase 2에서 thumbnailUrl 확장 예정.
+
+**주의사항:**
+- presigned URL은 압축된 최종 파일 기준으로 발급/검증
+- Content-Type 일치 보장
+- auth header 없이 S3 direct upload
+- Lambda는 imageKey 기준으로 session 조회
+- SSE는 afterCommit 이후에만 전송
+
 ### Flutter
 
 ```dart
