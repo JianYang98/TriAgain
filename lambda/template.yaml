@@ -29,36 +29,13 @@ Resources:
         Variables:
           BACKEND_URL: !Ref BackendUrl
           INTERNAL_API_KEY: !Ref InternalApiKey
-      Events:
-        S3Upload:
-          Type: S3
-          Properties:
-            Bucket: !Ref VerificationBucket
-            Events: s3:ObjectCreated:Put
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: upload-sessions/
-
-  VerificationBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Ref S3BucketName
-      CorsConfiguration:
-        CorsRules:
-          - AllowedHeaders:
-              - '*'
-            AllowedMethods:
-              - PUT
-            AllowedOrigins:
-              - '*'
-            MaxAge: 3600
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: s3:GetObject
+              Resource: !Sub arn:aws:s3:::${S3BucketName}/upload-sessions/*
 
 Outputs:
   UploadCompleteFunctionArn:
     Description: Upload Complete Lambda ARN
     Value: !GetAtt UploadCompleteFunction.Arn
-  BucketName:
-    Description: S3 Bucket Name
-    Value: !Ref VerificationBucket

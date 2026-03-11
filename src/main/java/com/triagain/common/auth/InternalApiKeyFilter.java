@@ -8,6 +8,7 @@ import org.springframework.http.MediaType;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.security.MessageDigest;
 
 /** /internal/** 경로에 대한 API Key 검증 필터 — Lambda 호출 인증용 */
 public class InternalApiKeyFilter extends OncePerRequestFilter {
@@ -25,7 +26,8 @@ public class InternalApiKeyFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         String requestApiKey = request.getHeader(API_KEY_HEADER);
 
-        if (!expectedApiKey.equals(requestApiKey)) {
+        if (requestApiKey == null || !MessageDigest.isEqual(
+                expectedApiKey.getBytes(), requestApiKey.getBytes())) {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.getWriter().write("{\"code\":\"FORBIDDEN\",\"message\":\"Invalid internal API key\"}");

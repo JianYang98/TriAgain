@@ -40,5 +40,8 @@ docs/progress-analysis.md
 src/main/resources/application-local.yml
 
 
+# Deploy scripts (개인 배포 스크립트, IP 하드코딩)
+deploy.sh
+
 #  pem
 *.pem
