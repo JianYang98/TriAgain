@@ -2,6 +2,7 @@ package com.triagain.verification.application;
 
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
+import com.triagain.verification.domain.DeadlinePolicy;
 import com.triagain.verification.domain.model.UploadSession;
 import com.triagain.verification.domain.model.Verification;
 import com.triagain.verification.port.in.CreateVerificationUseCase;
@@ -15,15 +16,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
 public class CreateVerificationService implements CreateVerificationUseCase {
-
-    private static final Duration GRACE_PERIOD = Duration.ofMinutes(5);
 
     private final VerificationRepositoryPort verificationRepositoryPort;
     private final UploadSessionRepositoryPort uploadSessionRepositoryPort;
@@ -125,7 +123,7 @@ public class CreateVerificationService implements CreateVerificationUseCase {
             throw new BusinessException(ErrorCode.UPLOAD_SESSION_EXPIRED);
         }
 
-        if (session.getRequestedAt().isAfter(challenge.deadline().plus(GRACE_PERIOD))) {
+        if (!DeadlinePolicy.isWithinDeadline(session.getRequestedAt(), challenge.deadline())) {
             throw new BusinessException(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
         }
 
@@ -149,7 +147,7 @@ public class CreateVerificationService implements CreateVerificationUseCase {
     private Verification createTextVerification(CreateVerificationCommand command,
                                                  ChallengeInfo challenge,
                                                  LocalDate targetDate) {
-        if (LocalDateTime.now().isAfter(challenge.deadline().plus(GRACE_PERIOD))) {
+        if (!DeadlinePolicy.isWithinDeadline(LocalDateTime.now(), challenge.deadline())) {
             throw new BusinessException(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
         }
 

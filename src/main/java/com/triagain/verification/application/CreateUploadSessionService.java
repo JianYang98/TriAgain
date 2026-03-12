@@ -2,6 +2,7 @@ package com.triagain.verification.application;
 
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
+import com.triagain.verification.domain.DeadlinePolicy;
 import com.triagain.verification.domain.model.UploadSession;
 import com.triagain.verification.port.in.CreateUploadSessionUseCase;
 import com.triagain.verification.port.out.ChallengePort;
@@ -57,7 +58,7 @@ public class CreateUploadSessionService implements CreateUploadSessionUseCase {
     private void validateDeadline(String challengeId) {
         ChallengeInfo challenge = challengePort.findChallengeById(challengeId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHALLENGE_NOT_FOUND));
-        if (LocalDateTime.now().isAfter(challenge.deadline())) {
+        if (!DeadlinePolicy.isWithinDeadline(LocalDateTime.now(), challenge.deadline())) {
             throw new BusinessException(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
         }
     }
