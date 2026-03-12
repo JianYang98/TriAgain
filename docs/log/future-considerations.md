@@ -29,19 +29,11 @@
 
 ---
 
-### [2026-03-10] 코드 버그: maxMembers 최솟값 불일치 (1 → 2)
+### [2026-03-12] 크루 최소 인원: 백엔드 @Min(1) 유지, 프론트에서 @Min(2) 제한
 
-- 현재 상태: `Crew.java:165-169`에서 `maxMembers < 1` 체크, `CreateCrewRequest`에서 `@Min(1)`. biz-logic.md 규칙은 "2~10명"
-- 필요 시점: 다음 코드 수정 시 즉시
-- 이유: 문서가 정본. 최솟값을 `@Min(2)` + `maxMembers < 2`로 변경 필요. 파일: `crew/domain/model/Crew.java`, `crew/api/CreateCrewRequest.java`
-
----
-
-### [2026-03-10] 코드 버그: Upload Session 생성 시 Grace Period 미적용
-
-- 현재 상태: `CreateUploadSessionService:57-63`에서 deadline만 체크, biz-logic.md의 "challenge.deadline + 5분" grace period 미적용
-- 필요 시점: 다음 코드 수정 시 즉시
-- 이유: 문서가 정본. deadline 체크 시 `GRACE_PERIOD(5분)`를 더해야 함. 참고: `CreateVerificationService`에는 `GRACE_PERIOD = Duration.ofMinutes(5)` 상수가 이미 존재
+- 현재 상태: CreateCrewRequest @Min(1), Crew.java maxMembers < 1. biz-logic.md 규칙은 "2~10명"
+- 필요 시점: 프론트 크루 생성 UI 구현 시
+- 이유: 백엔드는 솔로 테스트 및 향후 솔로 모드 확장을 위해 @Min(1) 유지. 프론트 UI에서 최소 2명 제한으로 정상 사용자 가드. API 직접 호출로 1명 크루 생성 가능하나 Phase 1 규모에서 실질적 위험 낮음
 
 ---
 
