@@ -21,11 +21,10 @@
 
 ---
 
-### [2026-03-10] 코드 버그: 크루 최소 기간 미검증 (Crew.validateDates)
+### [2026-03-10] ~~코드 버그: 크루 최소 기간 미검증 (Crew.validateDates)~~ → 해결 완료 (2026-03-12)
 
-- 현재 상태: `Crew.validateDates()`에서 `endDate > startDate`만 체크. biz-logic.md의 "최소 시작일+6일 (작심삼일 2회 보장)" 규칙이 코드에 미반영
-- 필요 시점: 다음 코드 수정 시 즉시
-- 이유: 문서가 정본(source of truth)이며, `endDate >= startDate + 6` 검증 추가 필요. 파일: `crew/domain/model/Crew.java:171-178`
+- ~~현재 상태: `Crew.validateDates()`에서 `endDate > startDate`만 체크. biz-logic.md의 "최소 시작일+6일 (작심삼일 2회 보장)" 규칙이 코드에 미반영~~
+- **해결**: `Crew.validateDates()`에 `endDate.isBefore(startDate.plusDays(6))` 검증 추가. 단위테스트(경계값+실패) 포함.
 
 ---
 

@@ -175,6 +175,9 @@ public class Crew {
         if (!endDate.isAfter(startDate)) {
             throw new BusinessException(ErrorCode.INVALID_END_DATE);
         }
+        if (endDate.isBefore(startDate.plusDays(6))) {
+            throw new BusinessException(ErrorCode.INVALID_END_DATE);
+        }
     }
 
     private static String generateInviteCode() {
