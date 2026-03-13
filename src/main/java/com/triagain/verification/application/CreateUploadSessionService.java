@@ -6,15 +6,19 @@ import com.triagain.verification.domain.DeadlinePolicy;
 import com.triagain.verification.domain.model.UploadSession;
 import com.triagain.verification.port.in.CreateUploadSessionUseCase;
 import com.triagain.verification.port.out.ChallengePort;
-import com.triagain.verification.port.out.ChallengePort.ChallengeInfo;
+import com.triagain.verification.port.out.ChallengePort.ActiveChallengeInfo;
+import com.triagain.verification.port.out.CrewPort;
+import com.triagain.verification.port.out.CrewPort.CrewVerificationWindowInfo;
 import com.triagain.verification.port.out.StoragePort;
 import com.triagain.verification.port.out.UploadSessionRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -28,17 +32,18 @@ public class CreateUploadSessionService implements CreateUploadSessionUseCase {
     private final UploadSessionRepositoryPort uploadSessionRepositoryPort;
     private final StoragePort storagePort;
     private final ChallengePort challengePort;
+    private final CrewPort crewPort;
 
     @Override
     @Transactional
     public UploadSessionResult createUploadSession(CreateUploadSessionCommand command) {
-        validateDeadline(command.challengeId());
+        validateCrewAndDeadline(command.crewId(), command.userId());
         validateFileType(command.fileType());
         validateFileSize(command.fileSize());
 
         String imageKey = storagePort.generateImageKey(command.userId(), command.fileName());
 
-        UploadSession session = UploadSession.create(command.userId(), imageKey, command.fileType());
+        UploadSession session = UploadSession.create(command.userId(), command.crewId(), imageKey, command.fileType());
         UploadSession saved = uploadSessionRepositoryPort.save(session);
 
         String presignedUrl = storagePort.generatePresignedUrl(imageKey, command.fileType());
@@ -54,12 +59,40 @@ public class CreateUploadSessionService implements CreateUploadSessionUseCase {
         );
     }
 
-    /** 챌린지 마감 시간 검증 — 마감 이후 업로드 세션 생성 차단 */
-    private void validateDeadline(String challengeId) {
-        ChallengeInfo challenge = challengePort.findChallengeById(challengeId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.CHALLENGE_NOT_FOUND));
-        if (!DeadlinePolicy.isWithinDeadline(LocalDateTime.now(), challenge.deadline())) {
-            throw new BusinessException(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
+    /** 크루 상태 + 마감 시간 검증 — 크루 기반으로 업로드 세션 생성 가능 여부 판단 */
+    private void validateCrewAndDeadline(String crewId, String userId) {
+        crewPort.validateMembership(crewId, userId);
+
+        CrewVerificationWindowInfo crewInfo = crewPort.getCrewVerificationWindowInfo(crewId);
+
+        if ("TEXT".equals(crewInfo.verificationType())) {
+            throw new BusinessException(ErrorCode.UPLOAD_SESSION_NOT_REQUIRED);
+        }
+
+        if (!"ACTIVE".equals(crewInfo.status())) {
+            throw new BusinessException(ErrorCode.CREW_NOT_ACTIVE);
+        }
+
+        LocalDate today = LocalDate.now();
+        if (today.isBefore(crewInfo.startDate())) {
+            throw new BusinessException(ErrorCode.CREW_NOT_STARTED);
+        }
+        if (today.isAfter(crewInfo.endDate())) {
+            throw new BusinessException(ErrorCode.CREW_PERIOD_ENDED);
+        }
+
+        Optional<ActiveChallengeInfo> active = challengePort
+                .findActiveByUserIdAndCrewId(userId, crewId);
+
+        if (active.isPresent()) {
+            if (!DeadlinePolicy.isWithinDeadline(LocalDateTime.now(), active.get().deadline())) {
+                throw new BusinessException(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
+            }
+        } else {
+            LocalDateTime todayDeadline = DeadlinePolicy.todayDeadline(crewInfo.deadlineTime());
+            if (!DeadlinePolicy.isWithinDeadline(LocalDateTime.now(), todayDeadline)) {
+                throw new BusinessException(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
+            }
         }
     }
 

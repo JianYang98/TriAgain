@@ -22,7 +22,7 @@ class UploadSessionTest {
         @DisplayName("유효한 값으로 PENDING 상태의 세션을 생성한다")
         void success() {
             // Given & When
-            UploadSession session = UploadSession.create("user1", "images/photo.jpg", "image/jpeg");
+            UploadSession session = UploadSession.create("user1", "crew1", "images/photo.jpg", "image/jpeg");
 
             // Then
             assertThat(session.getId()).isNull();
@@ -35,7 +35,7 @@ class UploadSessionTest {
         @Test
         @DisplayName("userId가 null이면 예외가 발생한다")
         void userIdNull() {
-            assertThatThrownBy(() -> UploadSession.create(null, "key", "image/jpeg"))
+            assertThatThrownBy(() -> UploadSession.create(null, "crew1", "key", "image/jpeg"))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.USER_ID_REQUIRED);
@@ -44,7 +44,7 @@ class UploadSessionTest {
         @Test
         @DisplayName("userId가 빈 문자열이면 예외가 발생한다")
         void userIdBlank() {
-            assertThatThrownBy(() -> UploadSession.create("  ", "key", "image/jpeg"))
+            assertThatThrownBy(() -> UploadSession.create("  ", "crew1", "key", "image/jpeg"))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.USER_ID_REQUIRED);
@@ -53,7 +53,7 @@ class UploadSessionTest {
         @Test
         @DisplayName("imageKey가 null이면 예외가 발생한다")
         void imageKeyNull() {
-            assertThatThrownBy(() -> UploadSession.create("user1", null, "image/jpeg"))
+            assertThatThrownBy(() -> UploadSession.create("user1", "crew1", null, "image/jpeg"))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.IMAGE_KEY_REQUIRED);
@@ -62,7 +62,7 @@ class UploadSessionTest {
         @Test
         @DisplayName("imageKey가 빈 문자열이면 예외가 발생한다")
         void imageKeyBlank() {
-            assertThatThrownBy(() -> UploadSession.create("user1", "  ", "image/jpeg"))
+            assertThatThrownBy(() -> UploadSession.create("user1", "crew1", "  ", "image/jpeg"))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.IMAGE_KEY_REQUIRED);
@@ -97,20 +97,6 @@ class UploadSessionTest {
 
             // Then
             assertThat(session.getStatus()).isEqualTo(UploadSessionStatus.COMPLETED);
-        }
-
-        @Test
-        @DisplayName("USED 상태에서 complete하면 멱등 처리로 상태를 유지한다")
-        void used() {
-            // Given
-            UploadSession session = sessionWithStatus(UploadSessionStatus.COMPLETED);
-            session.use();
-
-            // When
-            session.complete();
-
-            // Then
-            assertThat(session.getStatus()).isEqualTo(UploadSessionStatus.USED);
         }
 
         @Test
@@ -166,61 +152,6 @@ class UploadSessionTest {
     }
 
     @Nested
-    @DisplayName("use — 세션 사용 처리")
-    class Use {
-
-        @Test
-        @DisplayName("COMPLETED → USED 상태 전환에 성공한다")
-        void success() {
-            // Given
-            UploadSession session = sessionWithStatus(UploadSessionStatus.COMPLETED);
-
-            // When
-            session.use();
-
-            // Then
-            assertThat(session.getStatus()).isEqualTo(UploadSessionStatus.USED);
-            assertThat(session.isUsed()).isTrue();
-        }
-
-        @Test
-        @DisplayName("USED 상태에서 use하면 UPLOAD_SESSION_ALREADY_USED 예외")
-        void alreadyUsed() {
-            // Given
-            UploadSession session = sessionWithStatus(UploadSessionStatus.COMPLETED);
-            session.use();
-
-            // When & Then
-            assertThatThrownBy(session::use)
-                    .isInstanceOf(BusinessException.class)
-                    .extracting("errorCode")
-                    .isEqualTo(ErrorCode.UPLOAD_SESSION_ALREADY_USED);
-        }
-
-        @Test
-        @DisplayName("PENDING 상태에서 use하면 UPLOAD_SESSION_ALREADY_USED 예외")
-        void pending() {
-            UploadSession session = pendingSession();
-
-            assertThatThrownBy(session::use)
-                    .isInstanceOf(BusinessException.class)
-                    .extracting("errorCode")
-                    .isEqualTo(ErrorCode.UPLOAD_SESSION_ALREADY_USED);
-        }
-
-        @Test
-        @DisplayName("EXPIRED 상태에서 use하면 UPLOAD_SESSION_ALREADY_USED 예외")
-        void expired() {
-            UploadSession session = sessionWithStatus(UploadSessionStatus.EXPIRED);
-
-            assertThatThrownBy(session::use)
-                    .isInstanceOf(BusinessException.class)
-                    .extracting("errorCode")
-                    .isEqualTo(ErrorCode.UPLOAD_SESSION_ALREADY_USED);
-        }
-    }
-
-    @Nested
     @DisplayName("상태 확인 메서드")
     class StatusChecks {
 
@@ -241,16 +172,6 @@ class UploadSessionTest {
         }
 
         @Test
-        @DisplayName("USED이면 isPending=false, isCompleted=false, isUsed=true")
-        void used() {
-            UploadSession session = sessionWithStatus(UploadSessionStatus.COMPLETED);
-            session.use();
-            assertThat(session.isPending()).isFalse();
-            assertThat(session.isCompleted()).isFalse();
-            assertThat(session.isUsed()).isTrue();
-        }
-
-        @Test
         @DisplayName("EXPIRED이면 isPending=false, isCompleted=false")
         void expired() {
             UploadSession session = sessionWithStatus(UploadSessionStatus.EXPIRED);
@@ -267,6 +188,6 @@ class UploadSessionTest {
 
     private UploadSession sessionWithStatus(UploadSessionStatus status) {
         LocalDateTime now = LocalDateTime.now();
-        return UploadSession.of(1L, "user1", "images/photo.jpg", "image/jpeg", status, now, now);
+        return UploadSession.of(1L, "user1", "crew1", "images/photo.jpg", "image/jpeg", status, now, now);
     }
 }

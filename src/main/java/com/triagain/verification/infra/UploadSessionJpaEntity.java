@@ -24,6 +24,9 @@ public class UploadSessionJpaEntity {
     @Column(name = "user_id", nullable = false, length = 36)
     private String userId;
 
+    @Column(name = "crew_id", length = 36)
+    private String crewId;
+
     @Column(name = "image_key", nullable = false)
     private String imageKey;
 
@@ -44,13 +47,14 @@ public class UploadSessionJpaEntity {
     }
 
     public UploadSession toDomain() {
-        return UploadSession.of(id, userId, imageKey, contentType, status, requestedAt, createdAt);
+        return UploadSession.of(id, userId, crewId, imageKey, contentType, status, requestedAt, createdAt);
     }
 
     public static UploadSessionJpaEntity fromDomain(UploadSession session) {
         UploadSessionJpaEntity entity = new UploadSessionJpaEntity();
         entity.id = session.getId();
         entity.userId = session.getUserId();
+        entity.crewId = session.getCrewId();
         entity.imageKey = session.getImageKey();
         entity.contentType = session.getContentType();
         entity.status = session.getStatus();

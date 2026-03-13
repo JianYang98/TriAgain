@@ -39,17 +39,17 @@ class CompleteUploadSessionServiceTest {
     private static final String IMAGE_KEY = "upload-sessions/user-1/abc123.jpg";
 
     private static UploadSession pendingSession(Long id) {
-        return UploadSession.of(id, "user-1", IMAGE_KEY, "image/jpeg",
+        return UploadSession.of(id, "user-1", "crew-1", IMAGE_KEY, "image/jpeg",
                 UploadSessionStatus.PENDING, LocalDateTime.now(), LocalDateTime.now());
     }
 
     private static UploadSession completedSession(Long id) {
-        return UploadSession.of(id, "user-1", IMAGE_KEY, "image/jpeg",
+        return UploadSession.of(id, "user-1", "crew-1", IMAGE_KEY, "image/jpeg",
                 UploadSessionStatus.COMPLETED, LocalDateTime.now(), LocalDateTime.now());
     }
 
     private static UploadSession expiredSession(Long id) {
-        return UploadSession.of(id, "user-1", IMAGE_KEY, "image/jpeg",
+        return UploadSession.of(id, "user-1", "crew-1", IMAGE_KEY, "image/jpeg",
                 UploadSessionStatus.EXPIRED, LocalDateTime.now(), LocalDateTime.now());
     }
 

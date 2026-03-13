@@ -43,4 +43,19 @@ public class CrewMembershipAdapter implements CrewPort {
                 .orElseThrow(() -> new BusinessException(ErrorCode.CREW_NOT_FOUND));
         return new CrewPeriod(crew.getStartDate(), crew.getEndDate());
     }
+
+    /** 크루 인증 윈도우 정보 조회 — 업로드 세션 마감 검증에 사용 */
+    @Override
+    public CrewVerificationWindowInfo getCrewVerificationWindowInfo(String crewId) {
+        Crew crew = crewRepositoryPort.findById(crewId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CREW_NOT_FOUND));
+        return new CrewVerificationWindowInfo(
+                crew.getVerificationType().name(),
+                crew.getStatus().name(),
+                crew.getStartDate(),
+                crew.getEndDate(),
+                crew.isAllowLateJoin(),
+                crew.getDeadlineTime()
+        );
+    }
 }

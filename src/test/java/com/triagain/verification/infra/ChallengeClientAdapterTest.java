@@ -114,6 +114,7 @@ class ChallengeClientAdapterTest {
         assertThat(info.status()).isEqualTo("IN_PROGRESS");
         assertThat(info.completedDays()).isEqualTo(1);
         assertThat(info.targetDays()).isEqualTo(3);
+        assertThat(info.deadline()).isNotNull();
     }
 
     @Test

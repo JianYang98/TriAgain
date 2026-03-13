@@ -30,7 +30,7 @@ sequenceDiagram
     
     Note over Client,Lambda: 📸 1단계: 업로드 세션 생성
     
-    Client->>Server: POST /upload-sessions<br/>(fileName, contentType, fileSize)
+    Client->>Server: POST /upload-sessions<br/>(crewId, fileName, contentType, fileSize)
     Server-->>Client: sessionId + presignedUrl
     
     Note over Client,Server: 📡 2단계: SSE 구독
@@ -53,8 +53,9 @@ sequenceDiagram
     Server-->>Client: SSE Event: { status: "COMPLETED" }
     
     Note over Client,Server: ✅ 5단계: 인증 요청
-    
-    Client->>Server: POST /verifications<br/>(sessionId, challengeId,<br/>Idempotency-Key)
+
+    Client->>Server: POST /verifications<br/>(sessionId, challengeId/crewId,<br/>Idempotency-Key)
+    Note over Server: session COMPLETED 확인 → verification INSERT
     Server-->>Client: 201 Created 🎉
 ```
 
@@ -64,10 +65,10 @@ sequenceDiagram
 
 | API | 책임 |
 |-----|------|
-| `POST /upload-sessions` | 메타데이터 검증 + session INSERT(PENDING) + presignedUrl 생성 |
+| `POST /upload-sessions` | crewId 기반 검증(멤버십, 크루 상태, 마감) + session INSERT(PENDING) + presignedUrl 생성 |
 | `GET /upload-sessions/{id}/events` | SSE 엔드포인트 (프론트 구독용) |
 | `PUT /internal/upload-sessions/complete?imageKey={key}` | Lambda 전용 내부 API → session COMPLETED + SSE 이벤트 발행 |
-| `POST /verifications` | 인증 생성 (session COMPLETED 확인 후) |
+| `POST /verifications` | 인증 생성 (session COMPLETED 확인 → verification INSERT, 중복 사용은 DB UNIQUE constraint로 방지) |
 
 **SSE 구현:**
 ```java
@@ -225,11 +226,12 @@ POST /verifications 바로 호출 (uploadSessionId = null)
 1. 멱등성 검사
 2. 분산 락 획득
 3. upload_session 상태 확인 (COMPLETED인지만 체크) ← 확인만!
-4. 챌린지 비관적 락
-5. 마감 시간 검증
-6. verification INSERT
-7. 멱등성 완료
-8. 락 해제
+4. cross-crew 검증 (session.crewId == 요청 crewId)
+5. 챌린지 비관적 락
+6. 마감 시간 검증
+7. verification INSERT (upload_session_id UNIQUE constraint가 중복 사용 방지)
+8. 멱등성 완료
+9. 락 해제
 ```
 
 ## 8. 구현 순서 (Claude Code 작업 단위)

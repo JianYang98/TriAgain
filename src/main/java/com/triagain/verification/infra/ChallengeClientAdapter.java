@@ -53,7 +53,8 @@ public class ChallengeClientAdapter implements ChallengePort {
                 challenge.getId(),
                 challenge.getStatus().name(),
                 challenge.getCompletedDays(),
-                challenge.getTargetDays()
+                challenge.getTargetDays(),
+                challenge.getDeadline()
         );
     }
 

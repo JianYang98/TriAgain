@@ -119,7 +119,6 @@
 |------|------|
 | PENDING | presignedUrl 발급, S3 업로드 대기 |
 | COMPLETED | S3 업로드 완료 (verification 생성 가능) |
-| USED | 인증 생성에 사용됨 (재사용 불가) |
 | EXPIRED | 시간 초과 / 만료 |
 
 **verification 상태:**
@@ -132,8 +131,8 @@
 | REJECTED | 검토 후 반려됨 |
 
 **핵심 규칙:**
-- S3 업로드 성공 후에만 verification 생성 (선택 A)
-- verification INSERT 성공 후에만 upload_session을 COMPLETED로 전환 (동일 트랜잭션)
+- S3 업로드 성공 후에만 verification 생성
+- S3 업로드 완료 시 Lambda가 upload_session을 COMPLETED로 전환. verification 생성 시 session COMPLETED 확인만 수행, 중복 사용은 DB UNIQUE constraint(verification.upload_session_id)로 방지
 - upload_session과 verification은 별도 API로 분리
 
 ### 2.4 마감 시간 기준
@@ -200,8 +199,8 @@
 
 - **시나리오:** 클라이언트는 S3 업로드 성공했으나 /verifications 요청이 실패
 - **대응:**
-  - /verifications는 verification INSERT 성공 후에만 upload_session을 COMPLETED로 전환 (동일 트랜잭션)
-  - 실패 시 upload_session은 PENDING 유지, 클라이언트는 Idempotency-Key로 재시도 가능
+  - /verifications는 upload_session이 COMPLETED인지 확인만 하고 인증 생성에 집중. 중복 사용은 DB UNIQUE constraint(verification.upload_session_id)로 방지
+  - 실패 시 upload_session은 COMPLETED 유지, 클라이언트는 Idempotency-Key로 재시도 가능
   - UNIQUE 충돌 등 영구적 오류는 즉시 실패 처리
 
 ### 4.4 신고 시스템 악용
