@@ -28,7 +28,7 @@ Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "challengeId": "chal_123",
+  "crewId": "crew_123",
   "fileName": "verification_image.jpg",
   "fileType": "image/jpeg",
   "fileSize": 2048576
@@ -82,12 +82,42 @@ Content-Type: application/json
   "message": "로그인이 필요합니다."
 }
 
-// 429 Too Many Requests
+// 400 Bad Request - TEXT 크루에서 upload session 생성 시도
 {
-  "code": "UPLOAD_RATE_LIMIT",
-  "message": "업로드 요청이 너무 많습니다.",
-  "retryAfter": 60
+  "code": "UPLOAD_SESSION_NOT_REQUIRED",
+  "message": "텍스트 인증 크루에서는 업로드 세션이 필요하지 않습니다."
 }
+
+// 400 Bad Request - 크루가 ACTIVE 상태가 아님
+{
+  "code": "CREW_NOT_ACTIVE",
+  "message": "활성 상태의 크루가 아닙니다."
+}
+
+// 400 Bad Request - 크루 시작 전
+{
+  "code": "CREW_NOT_STARTED",
+  "message": "크루가 아직 시작되지 않았습니다."
+}
+
+// 400 Bad Request - 크루 기간 종료
+{
+  "code": "CREW_PERIOD_ENDED",
+  "message": "크루 기간이 종료되었습니다."
+}
+
+// 400 Bad Request - 인증 마감 시간 초과
+{
+  "code": "VERIFICATION_DEADLINE_EXCEEDED",
+  "message": "인증 마감 시간이 지났습니다."
+}
+
+// 403 Forbidden - 크루 멤버 아님
+{
+  "code": "CREW_ACCESS_DENIED",
+  "message": "크루 멤버만 접근할 수 있습니다."
+}
+
 ```
 
 **제약 사항:**
@@ -95,7 +125,6 @@ Content-Type: application/json
 - 허용 타입: JPEG, PNG, WebP
 - 파일명: UUID 기반 자동 생성
 - Presigned URL 유효기간: 15분
-- Rate Limit: 사용자당 10건/분
 - 미사용 이미지: 업로드 후 7일 경과 시 자동 삭제
 
 ---
@@ -212,6 +241,12 @@ Idempotency-Key: <uuid>
   "message": "업로드 세션을 찾을 수 없습니다."
 }
 
+// 400 Bad Request - upload session의 crewId와 요청 crewId 불일치
+{
+  "code": "UPLOAD_SESSION_CREW_MISMATCH",
+  "message": "업로드 세션의 크루 정보가 일치하지 않습니다."
+}
+
 // 409 Conflict - 중복 인증
 {
   "code": "VERIFICATION_ALREADY_EXISTS",
@@ -219,17 +254,11 @@ Idempotency-Key: <uuid>
   "existingVerificationId": "ver_123"
 }
 
-// 429 Too Many Requests
-{
-  "code": "TOO_MANY_REQUESTS",
-  "message": "잠시 후 다시 시도해주세요.",
-  "retryAfter": 3
-}
 ```
 
 **핵심 규칙:**
-- S3 업로드 성공 후에만 호출 가능 (upload_session이 PENDING 상태여야 함)
-- verification INSERT 성공 후에만 upload_session을 COMPLETED로 전환 (동일 트랜잭션)
+- upload_session이 COMPLETED 상태여야 함 (Lambda가 S3 업로드 완료 감지 후 COMPLETED 전환)
+- verification 생성 시 session COMPLETED 확인만 수행, 중복 사용은 DB UNIQUE constraint(verification.upload_session_id)로 방지
 - 텍스트 인증 크루인 경우 uploadSessionId, imageUrl 없이 호출 가능
 - 마감 시간 기준: upload_session.requested_at (서버 기록, 조작 불가)
 
@@ -703,7 +732,7 @@ Authorization: Bearer <token>
   - `createdAt`: 인증 생성 시각
 - `myProgress`: 나의 챌린지 현황 (**nullable** — 활성 챌린지가 없으면 null)
   - `challengeId`: 챌린지 ID
-  - `status`: 챌린지 상태 (IN_PROGRESS, COMPLETED, FAILED)
+  - `status`: 챌린지 상태 (IN_PROGRESS, SUCCESS, FAILED, ENDED)
   - `completedDays`: 완료한 일수
   - `targetDays`: 목표 일수 (3)
 - `hasNext`: 다음 페이지 존재 여부
@@ -752,7 +781,7 @@ Authorization: Bearer <token>
 - `completedChallenges`: challenges.status = SUCCESS 개수 (작심삼일 달성 횟수)
 - `myProgress`: 나의 현재 챌린지 현황 (**nullable** — 활성 챌린지가 없으면 null)
   - `challengeId`: 챌린지 ID
-  - `status`: 챌린지 상태 (IN_PROGRESS, COMPLETED, FAILED)
+  - `status`: 챌린지 상태 (IN_PROGRESS, SUCCESS, FAILED, ENDED)
   - `completedDays`: 완료한 일수
   - `targetDays`: 목표 일수 (3)
 
@@ -940,6 +969,9 @@ Authorization: Bearer {accessToken}
 **필드 설명:**
 - `successCount`: 해당 크루에서의 작심삼일(3일 연속 인증) 달성 횟수. 활성 챌린지 유무와 무관하게 항상 표시
 - `challengeProgress`: 현재 활성(IN_PROGRESS) 챌린지 진행 상황. 활성 챌린지가 없으면 `null`
+  - `challengeStatus`: 챌린지 상태 (IN_PROGRESS, SUCCESS, FAILED, ENDED)
+  - `completedDays`: 완료한 일수
+  - `targetDays`: 목표 일수 (3)
 
 **에러 응답**
 | HTTP | 코드 | 메시지 | 설명 |
@@ -1023,8 +1055,8 @@ Accept: text/event-stream
 
 **성공 응답 (200 OK, `text/event-stream`)**
 ```
-event: upload-completed
-data: {"uploadSessionId": 123, "status": "COMPLETED"}
+event: upload-complete
+data: COMPLETED
 ```
 
 **제약 사항:**

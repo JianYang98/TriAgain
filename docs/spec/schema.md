@@ -131,6 +131,7 @@ erDiagram
     upload_session {
         bigint id PK
         varchar(36) user_id FK
+        varchar(36) crew_id FK "nullable — 크루 연결 (cross-crew 검증용)"
         varchar image_key
         varchar content_type
         varchar status "PENDING / COMPLETED / EXPIRED"
@@ -201,7 +202,6 @@ erDiagram
 |----|------|
 | PENDING | presignedUrl 발급, S3 업로드 대기 |
 | COMPLETED | S3 업로드 완료 (verification 생성 가능) |
-| USED | 인증 생성에 사용됨 (재사용 불가) |
 | EXPIRED | 시간 초과 / 만료 |
 
 ### reports.reason
@@ -293,6 +293,10 @@ ON review(reviewer_id, created_at DESC);
 CREATE INDEX idx_report_status
 ON report(status, created_at DESC)
 WHERE status = 'PENDING';
+
+-- Lambda의 imageKey 기반 업로드 세션 조회 (Flyway V7)
+CREATE INDEX idx_upload_session_image_key
+ON upload_session (image_key);
 ```
 
 ## 5. 설계 트레이드오프: Verification의 3-way FK

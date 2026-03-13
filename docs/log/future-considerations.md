@@ -6,6 +6,22 @@
 
 ---
 
+### [2026-03-13] Moderation Context BC 경계 위반 수정
+
+- 현재 상태: `moderation/infra/CrewClientAdapter.java`가 `crew.domain.model.Crew`, `crew.domain.model.CrewMember`, `crew.port.out.CrewRepositoryPort`를 직접 import. Verification → Crew 경계 수정과 동일 패턴의 위반
+- 필요 시점: 다음 Moderation Context 관련 작업 시
+- 이유: 이번 PR은 Verification → Crew 경계만 수정 범위. Moderation도 동일하게 `CrewQueryUseCase` (Input Port) 도입 후 어댑터가 UseCase만 의존하도록 변경 필요
+
+---
+
+### [2026-03-13] Request DTO Validation 메시지 통일
+
+- 현재 상태: `CreateUploadSessionRequest`에만 `@NotBlank(message = "...")` 설정. `CreateCrewRequest`, `JoinCrewRequest` 등 다른 Request DTO는 message 미설정 (기본 메시지 사용)
+- 필요 시점: 프론트 에러 메시지 표시 구현 시
+- 이유: 기능 문제는 아니고 일관성 이슈. 프론트에서 validation 에러 메시지를 유저에게 직접 표시하게 되면 한국어 메시지 통일이 필요
+
+---
+
 ### [2026-03-11] 썸네일 생성은 Phase 2로 보류
 
 - 현재 상태: 클라이언트 압축 이미지 1장만 업로드. 썸네일 미생성. COMPLETED = "원본 1장 업로드 완료"
@@ -21,27 +37,18 @@
 
 ---
 
-### [2026-03-10] 코드 버그: 크루 최소 기간 미검증 (Crew.validateDates)
+### [2026-03-10] ~~코드 버그: 크루 최소 기간 미검증 (Crew.validateDates)~~ → 해결 완료 (2026-03-12)
 
-- 현재 상태: `Crew.validateDates()`에서 `endDate > startDate`만 체크. biz-logic.md의 "최소 시작일+6일 (작심삼일 2회 보장)" 규칙이 코드에 미반영
-- 필요 시점: 다음 코드 수정 시 즉시
-- 이유: 문서가 정본(source of truth)이며, `endDate >= startDate + 6` 검증 추가 필요. 파일: `crew/domain/model/Crew.java:171-178`
-
----
-
-### [2026-03-10] 코드 버그: maxMembers 최솟값 불일치 (1 → 2)
-
-- 현재 상태: `Crew.java:165-169`에서 `maxMembers < 1` 체크, `CreateCrewRequest`에서 `@Min(1)`. biz-logic.md 규칙은 "2~10명"
-- 필요 시점: 다음 코드 수정 시 즉시
-- 이유: 문서가 정본. 최솟값을 `@Min(2)` + `maxMembers < 2`로 변경 필요. 파일: `crew/domain/model/Crew.java`, `crew/api/CreateCrewRequest.java`
+- ~~현재 상태: `Crew.validateDates()`에서 `endDate > startDate`만 체크. biz-logic.md의 "최소 시작일+6일 (작심삼일 2회 보장)" 규칙이 코드에 미반영~~
+- **해결**: `Crew.validateDates()`에 `endDate.isBefore(startDate.plusDays(6))` 검증 추가. 단위테스트(경계값+실패) 포함.
 
 ---
 
-### [2026-03-10] 코드 버그: Upload Session 생성 시 Grace Period 미적용
+### [2026-03-12] 크루 최소 인원: 백엔드 @Min(1) 유지, 프론트에서 @Min(2) 제한
 
-- 현재 상태: `CreateUploadSessionService:57-63`에서 deadline만 체크, biz-logic.md의 "challenge.deadline + 5분" grace period 미적용
-- 필요 시점: 다음 코드 수정 시 즉시
-- 이유: 문서가 정본. deadline 체크 시 `GRACE_PERIOD(5분)`를 더해야 함. 참고: `CreateVerificationService`에는 `GRACE_PERIOD = Duration.ofMinutes(5)` 상수가 이미 존재
+- 현재 상태: CreateCrewRequest @Min(1), Crew.java maxMembers < 1. biz-logic.md 규칙은 "2~10명"
+- 필요 시점: 프론트 크루 생성 UI 구현 시
+- 이유: 백엔드는 솔로 테스트 및 향후 솔로 모드 확장을 위해 @Min(1) 유지. 프론트 UI에서 최소 2명 제한으로 정상 사용자 가드. API 직접 호출로 1명 크루 생성 가능하나 Phase 1 규모에서 실질적 위험 낮음
 
 ---
 

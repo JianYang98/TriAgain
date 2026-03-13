@@ -53,7 +53,7 @@ public class UploadSessionSteps {
     public void 다음_정보로_업로드_세션을_생성한다(DataTable dataTable) {
         Map<String, String> data = dataTable.asMap(String.class, String.class);
         Map<String, Object> request = new HashMap<>();
-        request.put("challengeId", scenarioContext.getChallengeId());
+        request.put("crewId", scenarioContext.getCrewId());
         request.put("fileName", data.get("fileName"));
         request.put("fileType", data.get("fileType"));
         request.put("fileSize", Long.parseLong(data.get("fileSize")));
@@ -65,7 +65,7 @@ public class UploadSessionSteps {
     @만일("파일 타입 {string}로 업로드 세션을 생성한다")
     public void 파일_타입으로_업로드_세션을_생성한다(String fileType) {
         Map<String, Object> request = new HashMap<>();
-        request.put("challengeId", scenarioContext.getChallengeId());
+        request.put("crewId", scenarioContext.getCrewId());
         request.put("fileName", "test.jpg");
         request.put("fileType", fileType);
         request.put("fileSize", 1024L);
@@ -77,7 +77,7 @@ public class UploadSessionSteps {
     @만일("파일 크기 {long}으로 업로드 세션을 생성한다")
     public void 파일_크기로_업로드_세션을_생성한다(long fileSize) {
         Map<String, Object> request = new HashMap<>();
-        request.put("challengeId", scenarioContext.getChallengeId());
+        request.put("crewId", scenarioContext.getCrewId());
         request.put("fileName", "test.jpg");
         request.put("fileType", "image/jpeg");
         request.put("fileSize", fileSize);
@@ -89,7 +89,7 @@ public class UploadSessionSteps {
     @만일("업로드 세션을 생성한다")
     public void 업로드_세션을_생성한다() {
         Map<String, Object> request = new HashMap<>();
-        request.put("challengeId", scenarioContext.getChallengeId());
+        request.put("crewId", scenarioContext.getCrewId());
         request.put("fileName", "test.jpg");
         request.put("fileType", "image/jpeg");
         request.put("fileSize", 1024L);
@@ -115,7 +115,7 @@ public class UploadSessionSteps {
     public void 업로드_세션이_N분_전에_생성되었다(int minutes) {
         LocalDateTime createdAt = LocalDateTime.now().minusMinutes(minutes).minusSeconds(1);
         UploadSession session = UploadSession.of(
-                null, scenarioContext.getUserId(),
+                null, scenarioContext.getUserId(), null,
                 "test-image-key-" + System.nanoTime() + ".jpg",
                 "image/jpeg", UploadSessionStatus.PENDING, createdAt, createdAt
         );
@@ -131,7 +131,7 @@ public class UploadSessionSteps {
     @조건("업로드 세션이 이미 {string} 상태이다")
     public void 업로드_세션이_이미_상태이다(String status) {
         UploadSession session = UploadSession.of(
-                null, scenarioContext.getUserId(),
+                null, scenarioContext.getUserId(), null,
                 "test-image-key-" + System.nanoTime() + ".jpg",
                 "image/jpeg", UploadSessionStatus.valueOf(status),
                 LocalDateTime.now(), LocalDateTime.now()

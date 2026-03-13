@@ -1,11 +1,7 @@
 package com.triagain.verification.infra;
 
-import com.triagain.common.exception.BusinessException;
-import com.triagain.common.exception.ErrorCode;
-import com.triagain.crew.application.FindOrCreateActiveChallengeService;
-import com.triagain.crew.domain.model.Challenge;
-import com.triagain.crew.domain.vo.ChallengeStatus;
-import com.triagain.crew.port.out.ChallengeRepositoryPort;
+import com.triagain.crew.port.in.ChallengeQueryUseCase;
+import com.triagain.crew.port.in.ChallengeQueryUseCase.ChallengeInfoDto;
 import com.triagain.verification.port.out.ChallengePort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -16,63 +12,60 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ChallengeClientAdapter implements ChallengePort {
 
-    private final ChallengeRepositoryPort challengeRepositoryPort;
-    private final FindOrCreateActiveChallengeService findOrCreateActiveChallengeService;
+    private final ChallengeQueryUseCase challengeQueryUseCase;
 
     @Override
     public Optional<ChallengeInfo> findChallengeById(String challengeId) {
-        return challengeRepositoryPort.findById(challengeId)
+        return challengeQueryUseCase.findById(challengeId)
                 .map(this::toChallengeInfo);
     }
 
-    /** 챌린지 완료 기록 — 같은 트랜잭션 내 findChallengeById 호출 시 JPA 1차 캐시로 DB 재조회 없음 */
+    /** 챌린지 완료 기록 — ChallengeQueryUseCase에 위임 */
     @Override
     public void recordCompletion(String challengeId) {
-        Challenge challenge = challengeRepositoryPort.findById(challengeId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.CHALLENGE_NOT_FOUND));
-        challenge.recordCompletion();
-        challengeRepositoryPort.save(challenge);
+        challengeQueryUseCase.recordCompletion(challengeId);
     }
 
     /** 유저의 활성 챌린지 조회 — IN_PROGRESS 상태만 반환 */
     @Override
     public Optional<ActiveChallengeInfo> findActiveByUserIdAndCrewId(String userId, String crewId) {
-        return challengeRepositoryPort.findByUserIdAndCrewIdAndStatus(userId, crewId, ChallengeStatus.IN_PROGRESS)
+        return challengeQueryUseCase.findActiveByUserIdAndCrewId(userId, crewId)
                 .map(this::toActiveChallengeInfo);
     }
 
-    /** 활성 챌린지 조회 또는 자동 생성 — crew context 서비스에 위임 */
+    /** 활성 챌린지 조회 또는 자동 생성 — crew context UseCase에 위임 */
     @Override
     public ChallengeInfo findOrCreateActiveChallenge(String userId, String crewId) {
-        Challenge challenge = findOrCreateActiveChallengeService.findOrCreate(userId, crewId);
-        return toChallengeInfo(challenge);
+        ChallengeInfoDto dto = challengeQueryUseCase.findOrCreateActive(userId, crewId);
+        return toChallengeInfo(dto);
     }
 
-    private ActiveChallengeInfo toActiveChallengeInfo(Challenge challenge) {
-        return new ActiveChallengeInfo(
-                challenge.getId(),
-                challenge.getStatus().name(),
-                challenge.getCompletedDays(),
-                challenge.getTargetDays()
+    /** 유저의 SUCCESS 챌린지 수 조회 — ChallengeQueryUseCase에 위임 */
+    @Override
+    public int countCompletedChallenges(String userId, String crewId) {
+        return challengeQueryUseCase.countCompletedChallenges(userId, crewId);
+    }
+
+    private ChallengeInfo toChallengeInfo(ChallengeInfoDto dto) {
+        return new ChallengeInfo(
+                dto.id(),
+                dto.userId(),
+                dto.crewId(),
+                dto.completedDays(),
+                dto.targetDays(),
+                dto.status(),
+                dto.startDate(),
+                dto.deadline()
         );
     }
 
-    /** 유저의 SUCCESS 챌린지 수 조회 — ChallengeRepositoryPort에 위임 */
-    @Override
-    public int countCompletedChallenges(String userId, String crewId) {
-        return challengeRepositoryPort.countSuccessByUserIdAndCrewId(userId, crewId);
-    }
-
-    private ChallengeInfo toChallengeInfo(Challenge challenge) {
-        return new ChallengeInfo(
-                challenge.getId(),
-                challenge.getUserId(),
-                challenge.getCrewId(),
-                challenge.getCompletedDays(),
-                challenge.getTargetDays(),
-                challenge.getStatus().name(),
-                challenge.getStartDate(),
-                challenge.getDeadline()
+    private ActiveChallengeInfo toActiveChallengeInfo(ChallengeInfoDto dto) {
+        return new ActiveChallengeInfo(
+                dto.id(),
+                dto.status(),
+                dto.completedDays(),
+                dto.targetDays(),
+                dto.deadline()
         );
     }
 }

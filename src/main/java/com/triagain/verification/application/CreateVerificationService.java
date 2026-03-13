@@ -2,6 +2,7 @@ package com.triagain.verification.application;
 
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
+import com.triagain.verification.domain.DeadlinePolicy;
 import com.triagain.verification.domain.model.UploadSession;
 import com.triagain.verification.domain.model.Verification;
 import com.triagain.verification.port.in.CreateVerificationUseCase;
@@ -15,15 +16,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
 public class CreateVerificationService implements CreateVerificationUseCase {
-
-    private static final Duration GRACE_PERIOD = Duration.ofMinutes(5);
 
     private final VerificationRepositoryPort verificationRepositoryPort;
     private final UploadSessionRepositoryPort uploadSessionRepositoryPort;
@@ -37,6 +35,20 @@ public class CreateVerificationService implements CreateVerificationUseCase {
         // crewId가 있으면 먼저 멤버십 검증 — 비회원의 크루 상태 노출 + 챌린지 생성 방지
         if (command.crewId() != null) {
             crewPort.validateMembership(command.crewId(), command.userId());
+        }
+
+        // photo 인증이고 uploadSessionId가 있을 때, challenge resolve 전에 session cross-crew 선검증
+        UploadSession preloadedSession = null;
+        if (command.uploadSessionId() != null) {
+            preloadedSession = uploadSessionRepositoryPort
+                    .findByIdAndUserId(command.uploadSessionId(), command.userId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.UPLOAD_SESSION_NOT_FOUND));
+
+            String targetCrewId = command.crewId();
+            if (targetCrewId != null && preloadedSession.getCrewId() != null
+                    && !preloadedSession.getCrewId().equals(targetCrewId)) {
+                throw new BusinessException(ErrorCode.UPLOAD_SESSION_CREW_MISMATCH);
+            }
         }
 
         ChallengeInfo challenge = resolveChallenge(command);
@@ -65,7 +77,7 @@ public class CreateVerificationService implements CreateVerificationUseCase {
         Verification verification;
 
         if (command.uploadSessionId() != null) {
-            verification = createPhotoVerification(command, challenge, targetDate);
+            verification = createPhotoVerification(preloadedSession, command, challenge, targetDate);
         } else {
             verification = createTextVerification(command, challenge, targetDate);
         }
@@ -108,31 +120,28 @@ public class CreateVerificationService implements CreateVerificationUseCase {
         return challengePort.findOrCreateActiveChallenge(command.userId(), command.crewId());
     }
 
-    private Verification createPhotoVerification(CreateVerificationCommand command,
+    /** 사진 인증 생성 — 선조회된 session을 재사용하여 중복 DB 조회 방지 */
+    private Verification createPhotoVerification(UploadSession session,
+                                                  CreateVerificationCommand command,
                                                   ChallengeInfo challenge,
                                                   LocalDate targetDate) {
-        UploadSession session = uploadSessionRepositoryPort
-                .findByIdAndUserId(command.uploadSessionId(), command.userId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.UPLOAD_SESSION_NOT_FOUND));
+        // session.crewId와 challenge.crewId 일치 검증 — command.crewId() 제공 여부와 무관
+        if (session.getCrewId() != null && !session.getCrewId().equals(challenge.crewId())) {
+            throw new BusinessException(ErrorCode.UPLOAD_SESSION_CREW_MISMATCH);
+        }
 
         if (!session.isCompleted()) {
-            if (session.isUsed()) {
-                throw new BusinessException(ErrorCode.UPLOAD_SESSION_ALREADY_USED);
-            }
             if (session.isPending()) {
                 throw new BusinessException(ErrorCode.UPLOAD_SESSION_NOT_COMPLETED);
             }
             throw new BusinessException(ErrorCode.UPLOAD_SESSION_EXPIRED);
         }
 
-        if (session.getRequestedAt().isAfter(challenge.deadline().plus(GRACE_PERIOD))) {
+        if (!DeadlinePolicy.isWithinDeadline(session.getRequestedAt(), challenge.deadline())) {
             throw new BusinessException(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
         }
 
         String imageUrl = storagePort.getImageUrl(session.getImageKey());
-
-        session.use();
-        uploadSessionRepositoryPort.save(session);
 
         return Verification.createPhoto(
                 challenge.id(),
@@ -149,7 +158,7 @@ public class CreateVerificationService implements CreateVerificationUseCase {
     private Verification createTextVerification(CreateVerificationCommand command,
                                                  ChallengeInfo challenge,
                                                  LocalDate targetDate) {
-        if (LocalDateTime.now().isAfter(challenge.deadline().plus(GRACE_PERIOD))) {
+        if (!DeadlinePolicy.isWithinDeadline(LocalDateTime.now(), challenge.deadline())) {
             throw new BusinessException(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
         }
 

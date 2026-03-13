@@ -2,6 +2,7 @@ package com.triagain.verification.port.out;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Optional;
 
 public interface ChallengePort {
@@ -35,7 +36,8 @@ public interface ChallengePort {
             String id,
             String status,
             int completedDays,
-            int targetDays
+            int targetDays,
+            LocalDateTime deadline
     ) {
     }
 }

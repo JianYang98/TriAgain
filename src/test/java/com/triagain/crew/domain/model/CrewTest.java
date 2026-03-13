@@ -121,6 +121,37 @@ class CrewTest {
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.INVALID_END_DATE);
         }
+
+        @Test
+        @DisplayName("종료일이 시작일+5일이면 최소 기간 미달로 예외가 발생한다")
+        void endDateTooClose() {
+            // Given — 시작일+5일은 작심삼일 2회(6일) 미달
+            LocalDate startDate = TOMORROW;
+            LocalDate endDate = TOMORROW.plusDays(5);
+
+            // When & Then
+            assertThatThrownBy(() -> Crew.create("user1", "크루", "목표",
+                    VerificationType.TEXT, 5, startDate, endDate, false, null))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.INVALID_END_DATE);
+        }
+
+        @Test
+        @DisplayName("종료일이 정확히 시작일+6일이면 최소 기간을 충족하여 정상 생성된다")
+        void endDateExactlyMinimumDuration() {
+            // Given — 시작일+6일 = 작심삼일 2회 보장 경계값
+            LocalDate startDate = TOMORROW;
+            LocalDate endDate = TOMORROW.plusDays(6);
+
+            // When
+            Crew crew = Crew.create("user1", "크루", "목표",
+                    VerificationType.TEXT, 5, startDate, endDate, false, null);
+
+            // Then
+            assertThat(crew.getStartDate()).isEqualTo(startDate);
+            assertThat(crew.getEndDate()).isEqualTo(endDate);
+        }
     }
 
     @Nested
