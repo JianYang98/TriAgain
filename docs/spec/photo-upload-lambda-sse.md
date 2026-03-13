@@ -30,7 +30,7 @@ sequenceDiagram
     
     Note over Client,Lambda: 📸 1단계: 업로드 세션 생성
     
-    Client->>Server: POST /upload-sessions<br/>(crewId, fileName, contentType, fileSize)
+    Client->>Server: POST /upload-sessions<br/>(crewId, fileName, fileType, fileSize)
     Server-->>Client: sessionId + presignedUrl
     
     Note over Client,Server: 📡 2단계: SSE 구독

@@ -6,6 +6,22 @@
 
 ---
 
+### [2026-03-13] Moderation Context BC 경계 위반 수정
+
+- 현재 상태: `moderation/infra/CrewClientAdapter.java`가 `crew.domain.model.Crew`, `crew.domain.model.CrewMember`, `crew.port.out.CrewRepositoryPort`를 직접 import. Verification → Crew 경계 수정과 동일 패턴의 위반
+- 필요 시점: 다음 Moderation Context 관련 작업 시
+- 이유: 이번 PR은 Verification → Crew 경계만 수정 범위. Moderation도 동일하게 `CrewQueryUseCase` (Input Port) 도입 후 어댑터가 UseCase만 의존하도록 변경 필요
+
+---
+
+### [2026-03-13] Request DTO Validation 메시지 통일
+
+- 현재 상태: `CreateUploadSessionRequest`에만 `@NotBlank(message = "...")` 설정. `CreateCrewRequest`, `JoinCrewRequest` 등 다른 Request DTO는 message 미설정 (기본 메시지 사용)
+- 필요 시점: 프론트 에러 메시지 표시 구현 시
+- 이유: 기능 문제는 아니고 일관성 이슈. 프론트에서 validation 에러 메시지를 유저에게 직접 표시하게 되면 한국어 메시지 통일이 필요
+
+---
+
 ### [2026-03-11] 썸네일 생성은 Phase 2로 보류
 
 - 현재 상태: 클라이언트 압축 이미지 1장만 업로드. 썸네일 미생성. COMPLETED = "원본 1장 업로드 완료"

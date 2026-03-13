@@ -1,11 +1,7 @@
 package com.triagain.verification.infra;
 
-import com.triagain.common.exception.BusinessException;
-import com.triagain.common.exception.ErrorCode;
-import com.triagain.crew.application.FindOrCreateActiveChallengeService;
-import com.triagain.crew.domain.model.Challenge;
-import com.triagain.crew.domain.vo.ChallengeStatus;
-import com.triagain.crew.port.out.ChallengeRepositoryPort;
+import com.triagain.crew.port.in.ChallengeQueryUseCase;
+import com.triagain.crew.port.in.ChallengeQueryUseCase.ChallengeInfoDto;
 import com.triagain.verification.port.out.ChallengePort.ActiveChallengeInfo;
 import com.triagain.verification.port.out.ChallengePort.ChallengeInfo;
 import org.junit.jupiter.api.DisplayName;
@@ -20,7 +16,6 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -28,57 +23,36 @@ import static org.mockito.Mockito.verify;
 class ChallengeClientAdapterTest {
 
     @Mock
-    private ChallengeRepositoryPort challengeRepositoryPort;
-
-    @Mock
-    private FindOrCreateActiveChallengeService findOrCreateActiveChallengeService;
+    private ChallengeQueryUseCase challengeQueryUseCase;
 
     @InjectMocks
     private ChallengeClientAdapter challengeClientAdapter;
 
-    private static Challenge inProgressChallenge(String id) {
-        return Challenge.of(id, "user-1", "crew-1", 1, 3, 1,
-                ChallengeStatus.IN_PROGRESS, LocalDate.now(),
+    private static ChallengeInfoDto inProgressDto(String id) {
+        return new ChallengeInfoDto(id, "user-1", "crew-1", 1, 3, 1,
+                "IN_PROGRESS", LocalDate.now(),
                 LocalDateTime.now().plusDays(3), LocalDateTime.now());
     }
 
     @Test
-    @DisplayName("recordCompletion 정상 — completedDays 증가 + save 호출")
+    @DisplayName("recordCompletion 정상 — ChallengeQueryUseCase에 위임")
     void recordCompletion_success() {
         // Given
         String challengeId = "CHAL-001";
-        Challenge challenge = inProgressChallenge(challengeId);
-        given(challengeRepositoryPort.findById(challengeId)).willReturn(Optional.of(challenge));
 
         // When
         challengeClientAdapter.recordCompletion(challengeId);
 
         // Then
-        assertThat(challenge.getCompletedDays()).isEqualTo(2);
-        verify(challengeRepositoryPort).save(challenge);
+        verify(challengeQueryUseCase).recordCompletion(challengeId);
     }
 
     @Test
-    @DisplayName("recordCompletion 존재하지 않는 challengeId → CHALLENGE_NOT_FOUND 예외")
-    void recordCompletion_challengeNotFound() {
-        // Given
-        String challengeId = "CHAL-999";
-        given(challengeRepositoryPort.findById(challengeId)).willReturn(Optional.empty());
-
-        // When & Then
-        assertThatThrownBy(() -> challengeClientAdapter.recordCompletion(challengeId))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.CHALLENGE_NOT_FOUND);
-    }
-
-    @Test
-    @DisplayName("findChallengeById 정상 — ChallengeInfo DTO에 status 포함")
+    @DisplayName("findChallengeById 정상 — ChallengeInfo DTO 변환 확인")
     void findChallengeById_success() {
         // Given
         String challengeId = "CHAL-001";
-        Challenge challenge = inProgressChallenge(challengeId);
-        given(challengeRepositoryPort.findById(challengeId)).willReturn(Optional.of(challenge));
+        given(challengeQueryUseCase.findById(challengeId)).willReturn(Optional.of(inProgressDto(challengeId)));
 
         // When
         Optional<ChallengeInfo> result = challengeClientAdapter.findChallengeById(challengeId);
@@ -100,9 +74,8 @@ class ChallengeClientAdapterTest {
         // Given
         String userId = "user-1";
         String crewId = "crew-1";
-        Challenge challenge = inProgressChallenge("CHAL-001");
-        given(challengeRepositoryPort.findByUserIdAndCrewIdAndStatus(userId, crewId, ChallengeStatus.IN_PROGRESS))
-                .willReturn(Optional.of(challenge));
+        given(challengeQueryUseCase.findActiveByUserIdAndCrewId(userId, crewId))
+                .willReturn(Optional.of(inProgressDto("CHAL-001")));
 
         // When
         Optional<ActiveChallengeInfo> result = challengeClientAdapter.findActiveByUserIdAndCrewId(userId, crewId);
@@ -123,7 +96,7 @@ class ChallengeClientAdapterTest {
         // Given
         String userId = "user-1";
         String crewId = "crew-1";
-        given(challengeRepositoryPort.findByUserIdAndCrewIdAndStatus(userId, crewId, ChallengeStatus.IN_PROGRESS))
+        given(challengeQueryUseCase.findActiveByUserIdAndCrewId(userId, crewId))
                 .willReturn(Optional.empty());
 
         // When
@@ -134,13 +107,12 @@ class ChallengeClientAdapterTest {
     }
 
     @Test
-    @DisplayName("findOrCreateActiveChallenge — crew context 서비스에 위임")
-    void findOrCreateActiveChallenge_delegatesToService() {
+    @DisplayName("findOrCreateActiveChallenge — ChallengeQueryUseCase에 위임")
+    void findOrCreateActiveChallenge_delegatesToUseCase() {
         // Given
         String userId = "user-1";
         String crewId = "crew-1";
-        Challenge challenge = inProgressChallenge("CHAL-001");
-        given(findOrCreateActiveChallengeService.findOrCreate(userId, crewId)).willReturn(challenge);
+        given(challengeQueryUseCase.findOrCreateActive(userId, crewId)).willReturn(inProgressDto("CHAL-001"));
 
         // When
         ChallengeInfo result = challengeClientAdapter.findOrCreateActiveChallenge(userId, crewId);
@@ -148,6 +120,21 @@ class ChallengeClientAdapterTest {
         // Then
         assertThat(result.id()).isEqualTo("CHAL-001");
         assertThat(result.status()).isEqualTo("IN_PROGRESS");
-        verify(findOrCreateActiveChallengeService).findOrCreate(userId, crewId);
+        verify(challengeQueryUseCase).findOrCreateActive(userId, crewId);
+    }
+
+    @Test
+    @DisplayName("countCompletedChallenges — ChallengeQueryUseCase에 위임")
+    void countCompletedChallenges_delegatesToUseCase() {
+        // Given
+        String userId = "user-1";
+        String crewId = "crew-1";
+        given(challengeQueryUseCase.countCompletedChallenges(userId, crewId)).willReturn(5);
+
+        // When
+        int result = challengeClientAdapter.countCompletedChallenges(userId, crewId);
+
+        // Then
+        assertThat(result).isEqualTo(5);
     }
 }

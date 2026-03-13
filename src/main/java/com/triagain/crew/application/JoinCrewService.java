@@ -45,6 +45,9 @@ public class JoinCrewService implements JoinCrewUseCase {
             }
             throw new BusinessException(ErrorCode.CREW_NOT_RECRUITING);
         }
+        if (crew.isJoinDeadlinePassed()) {
+            throw new BusinessException(ErrorCode.CREW_JOIN_DEADLINE_PASSED);
+        }
         if (crew.getMembers().stream().anyMatch(m -> m.getUserId().equals(userId))) {
             throw new BusinessException(ErrorCode.CREW_ALREADY_JOINED);
         }

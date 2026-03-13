@@ -293,6 +293,10 @@ ON review(reviewer_id, created_at DESC);
 CREATE INDEX idx_report_status
 ON report(status, created_at DESC)
 WHERE status = 'PENDING';
+
+-- Lambda의 imageKey 기반 업로드 세션 조회 (Flyway V7)
+CREATE INDEX idx_upload_session_image_key
+ON upload_session (image_key);
 ```
 
 ## 5. 설계 트레이드오프: Verification의 3-way FK

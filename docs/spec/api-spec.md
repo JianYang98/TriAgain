@@ -118,12 +118,6 @@ Content-Type: application/json
   "message": "크루 멤버만 접근할 수 있습니다."
 }
 
-// 429 Too Many Requests
-{
-  "code": "UPLOAD_RATE_LIMIT",
-  "message": "업로드 요청이 너무 많습니다.",
-  "retryAfter": 60
-}
 ```
 
 **제약 사항:**
@@ -131,7 +125,6 @@ Content-Type: application/json
 - 허용 타입: JPEG, PNG, WebP
 - 파일명: UUID 기반 자동 생성
 - Presigned URL 유효기간: 15분
-- Rate Limit: 사용자당 10건/분
 - 미사용 이미지: 업로드 후 7일 경과 시 자동 삭제
 
 ---
@@ -261,12 +254,6 @@ Idempotency-Key: <uuid>
   "existingVerificationId": "ver_123"
 }
 
-// 429 Too Many Requests
-{
-  "code": "TOO_MANY_REQUESTS",
-  "message": "잠시 후 다시 시도해주세요.",
-  "retryAfter": 3
-}
 ```
 
 **핵심 규칙:**
