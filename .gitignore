@@ -26,6 +26,7 @@ Thumbs.db
 *.bak
 *.bak.md
 CODEX.md
+.claude/
 
 # Personal docs
 docs/blog-ai-pair-debugging.md
