@@ -27,7 +27,8 @@ Thumbs.db
 *.bak.md
 CODEX.md
 .claude/
-
+/agent
+ 
 # Personal docs
 docs/blog-ai-pair-debugging.md
 docs/blog-jpa-idclass-pitfall.md
@@ -46,3 +47,7 @@ deploy.sh
 
 #  pem
 *.pem
+
+
+# 코맨트 파일들
+docs/review-comment/
