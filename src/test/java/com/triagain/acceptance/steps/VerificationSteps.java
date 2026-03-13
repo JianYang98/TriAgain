@@ -258,8 +258,9 @@ public class VerificationSteps {
 
     private UploadSession createAndSaveSession(UploadSessionStatus status, LocalDateTime requestedAt) {
         String userId = scenarioContext.getUserId();
+        String crewId = scenarioContext.getCrewId();
         UploadSession session = UploadSession.of(
-                null, userId, "test-image-key-" + System.nanoTime() + ".jpg",
+                null, userId, crewId, "test-image-key-" + System.nanoTime() + ".jpg",
                 "image/jpeg", status, requestedAt, LocalDateTime.now()
         );
         return uploadSessionRepositoryPort.save(session);

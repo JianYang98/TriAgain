@@ -37,6 +37,20 @@ public class CreateVerificationService implements CreateVerificationUseCase {
             crewPort.validateMembership(command.crewId(), command.userId());
         }
 
+        // photo 인증이고 uploadSessionId가 있을 때, challenge resolve 전에 session cross-crew 선검증
+        UploadSession preloadedSession = null;
+        if (command.uploadSessionId() != null) {
+            preloadedSession = uploadSessionRepositoryPort
+                    .findByIdAndUserId(command.uploadSessionId(), command.userId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.UPLOAD_SESSION_NOT_FOUND));
+
+            String targetCrewId = command.crewId();
+            if (targetCrewId != null && preloadedSession.getCrewId() != null
+                    && !preloadedSession.getCrewId().equals(targetCrewId)) {
+                throw new BusinessException(ErrorCode.UPLOAD_SESSION_CREW_MISMATCH);
+            }
+        }
+
         ChallengeInfo challenge = resolveChallenge(command);
 
         if (!"IN_PROGRESS".equals(challenge.status())) {
@@ -63,7 +77,7 @@ public class CreateVerificationService implements CreateVerificationUseCase {
         Verification verification;
 
         if (command.uploadSessionId() != null) {
-            verification = createPhotoVerification(command, challenge, targetDate);
+            verification = createPhotoVerification(preloadedSession, command, challenge, targetDate);
         } else {
             verification = createTextVerification(command, challenge, targetDate);
         }
@@ -106,17 +120,17 @@ public class CreateVerificationService implements CreateVerificationUseCase {
         return challengePort.findOrCreateActiveChallenge(command.userId(), command.crewId());
     }
 
-    private Verification createPhotoVerification(CreateVerificationCommand command,
+    /** 사진 인증 생성 — 선조회된 session을 재사용하여 중복 DB 조회 방지 */
+    private Verification createPhotoVerification(UploadSession session,
+                                                  CreateVerificationCommand command,
                                                   ChallengeInfo challenge,
                                                   LocalDate targetDate) {
-        UploadSession session = uploadSessionRepositoryPort
-                .findByIdAndUserId(command.uploadSessionId(), command.userId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.UPLOAD_SESSION_NOT_FOUND));
+        // session.crewId와 challenge.crewId 일치 검증 — command.crewId() 제공 여부와 무관
+        if (session.getCrewId() != null && !session.getCrewId().equals(challenge.crewId())) {
+            throw new BusinessException(ErrorCode.UPLOAD_SESSION_CREW_MISMATCH);
+        }
 
         if (!session.isCompleted()) {
-            if (session.isUsed()) {
-                throw new BusinessException(ErrorCode.UPLOAD_SESSION_ALREADY_USED);
-            }
             if (session.isPending()) {
                 throw new BusinessException(ErrorCode.UPLOAD_SESSION_NOT_COMPLETED);
             }
@@ -128,9 +142,6 @@ public class CreateVerificationService implements CreateVerificationUseCase {
         }
 
         String imageUrl = storagePort.getImageUrl(session.getImageKey());
-
-        session.use();
-        uploadSessionRepositoryPort.save(session);
 
         return Verification.createPhoto(
                 challenge.id(),

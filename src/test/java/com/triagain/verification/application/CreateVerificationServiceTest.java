@@ -67,19 +67,13 @@ class CreateVerificationServiceTest {
     }
 
     private static UploadSession completedSession() {
-        return UploadSession.of(SESSION_ID, USER_ID, "images/test.jpg", "image/jpeg",
+        return UploadSession.of(SESSION_ID, USER_ID, CREW_ID, "images/test.jpg", "image/jpeg",
                 UploadSessionStatus.COMPLETED, LocalDateTime.now(), LocalDateTime.now());
     }
 
-    private static UploadSession usedSession() {
-        UploadSession session = completedSession();
-        session.use();
-        return session;
-    }
-
     @Test
-    @DisplayName("사진 인증 성공 시 세션 상태가 USED로 전환된다")
-    void createPhotoVerification_success_sessionUsed() {
+    @DisplayName("사진 인증 성공 시 세션은 COMPLETED를 유지한다 — 중복 방지는 DB UNIQUE constraint")
+    void createPhotoVerification_success_sessionStaysCompleted() {
         // Given
         ChallengeInfo challenge = challengeInfo();
         UploadSession session = completedSession();
@@ -100,31 +94,8 @@ class CreateVerificationServiceTest {
         createVerificationService.createVerification(command);
 
         // Then
-        assertThat(session.getStatus()).isEqualTo(UploadSessionStatus.USED);
-        verify(uploadSessionRepositoryPort).save(session);
-    }
-
-    @Test
-    @DisplayName("USED 세션으로 인증 시도 시 UPLOAD_SESSION_ALREADY_USED 예외")
-    void createPhotoVerification_usedSession_throwsAlreadyUsed() {
-        // Given
-        ChallengeInfo challenge = challengeInfo();
-        UploadSession session = usedSession();
-        CreateVerificationCommand command = new CreateVerificationCommand(
-                USER_ID, CHALLENGE_ID, null, SESSION_ID, "재사용 시도");
-
-        given(challengePort.findChallengeById(CHALLENGE_ID)).willReturn(Optional.of(challenge));
-        given(crewPort.getVerificationType(CREW_ID)).willReturn("PHOTO");
-        given(uploadSessionRepositoryPort.findByIdAndUserId(SESSION_ID, USER_ID))
-                .willReturn(Optional.of(session));
-        given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
-                .willReturn(false);
-
-        // When & Then
-        assertThatThrownBy(() -> createVerificationService.createVerification(command))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.UPLOAD_SESSION_ALREADY_USED);
+        assertThat(session.getStatus()).isEqualTo(UploadSessionStatus.COMPLETED);
+        verify(uploadSessionRepositoryPort, never()).save(session);
     }
 
     @Test
@@ -258,6 +229,33 @@ class CreateVerificationServiceTest {
                 .isEqualTo(ErrorCode.CREW_ACCESS_DENIED);
 
         verify(challengePort, never()).findOrCreateActiveChallenge(any(), any());
+    }
+
+    @Test
+    @DisplayName("challengeId만으로 사진 인증 시 session의 crewId와 challenge의 crewId가 다르면 UPLOAD_SESSION_CREW_MISMATCH 예외")
+    void createPhotoVerification_challengeIdOnly_crossCrewSession_throws() {
+        // Given — session은 crew-999, challenge는 crew-1
+        UploadSession crossCrewSession = UploadSession.of(
+                SESSION_ID, USER_ID, "crew-999", "images/test.jpg", "image/jpeg",
+                UploadSessionStatus.COMPLETED, LocalDateTime.now(), LocalDateTime.now());
+        ChallengeInfo challenge = challengeInfo(); // crewId = CREW_ID ("crew-1")
+        CreateVerificationCommand command = new CreateVerificationCommand(
+                USER_ID, CHALLENGE_ID, null, SESSION_ID, "사진 인증"); // crewId = null
+
+        given(uploadSessionRepositoryPort.findByIdAndUserId(SESSION_ID, USER_ID))
+                .willReturn(Optional.of(crossCrewSession));
+        given(challengePort.findChallengeById(CHALLENGE_ID)).willReturn(Optional.of(challenge));
+        given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
+                .willReturn(false);
+        given(crewPort.getVerificationType(CREW_ID)).willReturn("PHOTO");
+
+        // When & Then
+        assertThatThrownBy(() -> createVerificationService.createVerification(command))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.UPLOAD_SESSION_CREW_MISMATCH);
+
+        verify(verificationRepositoryPort, never()).save(any());
     }
 
     @Test
