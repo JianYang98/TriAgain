@@ -26,6 +26,8 @@ Thumbs.db
 *.bak
 *.bak.md
 CODEX.md
+.claude/
+/agent
 
 # Personal docs
 docs/blog-ai-pair-debugging.md
@@ -45,3 +47,7 @@ deploy.sh
 
 #  pem
 *.pem
+
+
+# 코맨트 파일들
+docs/review-comment/
