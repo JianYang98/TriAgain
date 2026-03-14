@@ -8,12 +8,12 @@ import com.triagain.crew.domain.vo.ChallengeStatus;
 import com.triagain.crew.domain.vo.CrewStatus;
 import com.triagain.crew.port.out.ChallengeRepositoryPort;
 import com.triagain.crew.port.out.CrewRepositoryPort;
+import com.triagain.common.domain.DeadlinePolicy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -21,8 +21,6 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class FindOrCreateActiveChallengeService {
-
-    private static final Duration GRACE_PERIOD = Duration.ofMinutes(5);
 
     private final ChallengeRepositoryPort challengeRepositoryPort;
     private final CrewRepositoryPort crewRepositoryPort;
@@ -73,8 +71,8 @@ public class FindOrCreateActiveChallengeService {
         if (LocalDate.now().isAfter(crew.getEndDate())) {
             throw new BusinessException(ErrorCode.CREW_PERIOD_ENDED);
         }
-        LocalDateTime todayDeadline = LocalDate.now().atTime(crew.getDeadlineTime()).plus(GRACE_PERIOD);
-        if (LocalDateTime.now().isAfter(todayDeadline)) {
+        LocalDateTime todayDeadline = DeadlinePolicy.todayDeadline(crew.getDeadlineTime());
+        if (!DeadlinePolicy.isWithinDeadline(LocalDateTime.now(), todayDeadline)) {
             throw new BusinessException(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
         }
     }

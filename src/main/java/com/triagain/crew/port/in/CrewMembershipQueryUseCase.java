@@ -2,11 +2,18 @@ package com.triagain.crew.port.in;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Optional;
 
 public interface CrewMembershipQueryUseCase {
 
     /** 크루 멤버십 검증 — 미참여 시 BusinessException(CREW_ACCESS_DENIED) */
     void validateMembership(String crewId, String userId);
+
+    /** 크루장 ID 조회 — 신고/검토 시 크루장 확인에 사용 */
+    Optional<String> findCrewLeaderId(String crewId);
+
+    /** 크루 멤버 여부 확인 — 신고 권한 검증에 사용 */
+    boolean isCrewMember(String crewId, String userId);
 
     /** 크루 인증방식 조회 — PHOTO/TEXT 반환 */
     String getVerificationType(String crewId);

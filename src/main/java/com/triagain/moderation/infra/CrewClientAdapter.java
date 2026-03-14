@@ -1,8 +1,6 @@
 package com.triagain.moderation.infra;
 
-import com.triagain.crew.domain.model.Crew;
-import com.triagain.crew.domain.model.CrewMember;
-import com.triagain.crew.port.out.CrewRepositoryPort;
+import com.triagain.crew.port.in.CrewMembershipQueryUseCase;
 import com.triagain.moderation.port.out.CrewPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -13,22 +11,15 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class CrewClientAdapter implements CrewPort {
 
-    private final CrewRepositoryPort crewRepositoryPort;
+    private final CrewMembershipQueryUseCase crewMembershipQueryUseCase;
 
     @Override
     public Optional<String> findCrewLeaderId(String crewId) {
-        return crewRepositoryPort.findById(crewId)
-                .flatMap(crew -> crew.getMembers().stream()
-                        .filter(CrewMember::isLeader)
-                        .findFirst()
-                        .map(CrewMember::getUserId));
+        return crewMembershipQueryUseCase.findCrewLeaderId(crewId);
     }
 
     @Override
     public boolean isCrewMember(String crewId, String userId) {
-        return crewRepositoryPort.findById(crewId)
-                .map(crew -> crew.getMembers().stream()
-                        .anyMatch(m -> m.getUserId().equals(userId)))
-                .orElse(false);
+        return crewMembershipQueryUseCase.isCrewMember(crewId, userId);
     }
 }

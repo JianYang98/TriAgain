@@ -1,8 +1,8 @@
 package com.triagain.moderation.infra;
 
 import com.triagain.moderation.port.out.VerificationPort;
-import com.triagain.verification.domain.model.Verification;
-import com.triagain.verification.port.out.VerificationRepositoryPort;
+import com.triagain.verification.port.in.VerificationModerationUseCase;
+import com.triagain.verification.port.in.VerificationModerationUseCase.VerificationInfoDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -12,60 +12,42 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class VerificationClientAdapter implements VerificationPort {
 
-    private final VerificationRepositoryPort verificationRepositoryPort;
+    private final VerificationModerationUseCase verificationModerationUseCase;
 
     @Override
     public void hideVerification(String verificationId) {
-        verificationRepositoryPort.findById(verificationId)
-                .ifPresent(verification -> {
-                    verification.hide();
-                    verificationRepositoryPort.save(verification);
-                });
+        verificationModerationUseCase.hideVerification(verificationId);
     }
 
     @Override
     public void rejectVerification(String verificationId) {
-        verificationRepositoryPort.findById(verificationId)
-                .ifPresent(verification -> {
-                    verification.reject();
-                    verificationRepositoryPort.save(verification);
-                });
+        verificationModerationUseCase.rejectVerification(verificationId);
     }
 
     @Override
     public void approveVerification(String verificationId) {
-        verificationRepositoryPort.findById(verificationId)
-                .ifPresent(verification -> {
-                    verification.approve();
-                    verificationRepositoryPort.save(verification);
-                });
+        verificationModerationUseCase.approveVerification(verificationId);
     }
 
     @Override
     public int incrementReportCount(String verificationId) {
-        return verificationRepositoryPort.findById(verificationId)
-                .map(verification -> {
-                    verification.incrementReportCount();
-                    verificationRepositoryPort.save(verification);
-                    return verification.getReportCount();
-                })
-                .orElse(0);
+        return verificationModerationUseCase.incrementReportCount(verificationId);
     }
 
     @Override
     public Optional<VerificationInfo> findVerificationById(String verificationId) {
-        return verificationRepositoryPort.findById(verificationId)
+        return verificationModerationUseCase.findById(verificationId)
                 .map(this::toVerificationInfo);
     }
 
-    private VerificationInfo toVerificationInfo(Verification verification) {
+    private VerificationInfo toVerificationInfo(VerificationInfoDto dto) {
         return new VerificationInfo(
-                verification.getId(),
-                verification.getChallengeId(),
-                verification.getUserId(),
-                verification.getCrewId(),
-                verification.getReportCount(),
-                verification.getTargetDate()
+                dto.id(),
+                dto.challengeId(),
+                dto.userId(),
+                dto.crewId(),
+                dto.reportCount(),
+                dto.targetDate()
         );
     }
 }
