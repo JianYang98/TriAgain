@@ -22,6 +22,7 @@ public class Crew {
     private final String creatorId;
     private final String name;
     private final String goal;
+    private final String verificationContent;
     private final VerificationType verificationType;
     private final int maxMembers;
     private int currentMembers;
@@ -35,6 +36,7 @@ public class Crew {
     private final List<CrewMember> members;
 
     private Crew(String id, String creatorId, String name, String goal,
+                 String verificationContent,
                  VerificationType verificationType, int maxMembers,
                  int currentMembers, CrewStatus status, LocalDate startDate,
                  LocalDate endDate, boolean allowLateJoin,
@@ -44,6 +46,7 @@ public class Crew {
         this.creatorId = creatorId;
         this.name = name;
         this.goal = goal;
+        this.verificationContent = verificationContent;
         this.verificationType = verificationType;
         this.maxMembers = maxMembers;
         this.currentMembers = currentMembers;
@@ -59,6 +62,7 @@ public class Crew {
 
     /** 새 크루 생성 — 크루장 ID와 설정값으로 초기화 */
     public static Crew create(String creatorId, String name, String goal,
+                              String verificationContent,
                               VerificationType verificationType,
                               int maxMembers,
                               LocalDate startDate, LocalDate endDate,
@@ -74,6 +78,7 @@ public class Crew {
                 creatorId,
                 name,
                 goal,
+                verificationContent,
                 verificationType,
                 maxMembers,
                 1,
@@ -90,12 +95,13 @@ public class Crew {
 
     /** 영속 데이터로 크루 복원 — DB 조회 결과를 도메인 객체로 변환 */
     public static Crew of(String id, String creatorId, String name, String goal,
+                          String verificationContent,
                           VerificationType verificationType, int maxMembers,
                           int currentMembers, CrewStatus status, LocalDate startDate,
                           LocalDate endDate, boolean allowLateJoin,
                           String inviteCode, LocalDateTime createdAt,
                           LocalTime deadlineTime, List<CrewMember> members) {
-        return new Crew(id, creatorId, name, goal, verificationType,
+        return new Crew(id, creatorId, name, goal, verificationContent, verificationType,
                 maxMembers, currentMembers, status, startDate,
                 endDate, allowLateJoin, inviteCode, createdAt,
                 deadlineTime, members);
@@ -204,6 +210,10 @@ public class Crew {
 
     public String getGoal() {
         return goal;
+    }
+
+    public String getVerificationContent() {
+        return verificationContent;
     }
 
     public VerificationType getVerificationType() {

@@ -53,6 +53,7 @@ public class GetCrewByInviteCodeService implements GetCrewByInviteCodeUseCase {
                 crew.getCreatorId(),
                 crew.getName(),
                 crew.getGoal(),
+                crew.getVerificationContent(),
                 crew.getVerificationType(),
                 crew.getMaxMembers(),
                 crew.getCurrentMembers(),

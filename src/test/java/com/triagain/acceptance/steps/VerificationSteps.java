@@ -68,7 +68,7 @@ public class VerificationSteps {
         Crew crew = crewRepositoryPort.findById(crewId).orElseThrow();
         Crew updated = Crew.of(
                 crew.getId(), crew.getCreatorId(), crew.getName(), crew.getGoal(),
-                VerificationType.valueOf(type), crew.getMaxMembers(),
+                crew.getVerificationContent(), VerificationType.valueOf(type), crew.getMaxMembers(),
                 crew.getCurrentMembers(), crew.getStatus(), crew.getStartDate(),
                 crew.getEndDate(), crew.isAllowLateJoin(), crew.getInviteCode(),
                 crew.getCreatedAt(), crew.getDeadlineTime(), crew.getMembers()

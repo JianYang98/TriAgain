@@ -114,7 +114,7 @@ class CompleteExpiredCrewsSchedulerTest {
 
     private static Crew activeCrew(String id, LocalDate startDate, LocalDate endDate) {
         return Crew.of(id, "creator-1", "테스트 크루", "목표",
-                VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
+                "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
                 startDate, endDate, false, "ABC123",
                 LocalDateTime.now(), DEADLINE_TIME, Collections.emptyList());
     }

@@ -32,6 +32,9 @@ public class CrewJpaEntity {
     @Column(nullable = false)
     private String goal;
 
+    @Column(name = "verification_content", nullable = false, length = 50)
+    private String verificationContent;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "verification_type", nullable = false)
     private VerificationType verificationType;
@@ -72,7 +75,7 @@ public class CrewJpaEntity {
 
     /** JPA 엔티티를 도메인 모델로 변환 — 멤버 제외 */
     public Crew toDomain() {
-        return Crew.of(id, creatorId, name, goal, verificationType,
+        return Crew.of(id, creatorId, name, goal, verificationContent, verificationType,
                 maxMembers, currentMembers, status, startDate,
                 endDate, allowLateJoin, inviteCode, createdAt,
                 deadlineTime, Collections.emptyList());
@@ -83,7 +86,7 @@ public class CrewJpaEntity {
         var members = memberEntities.stream()
                 .map(CrewMemberJpaEntity::toDomain)
                 .toList();
-        return Crew.of(id, creatorId, name, goal, verificationType,
+        return Crew.of(id, creatorId, name, goal, verificationContent, verificationType,
                 maxMembers, currentMembers, status, startDate,
                 endDate, allowLateJoin, inviteCode, createdAt,
                 deadlineTime, members);
@@ -96,6 +99,7 @@ public class CrewJpaEntity {
         entity.creatorId = crew.getCreatorId();
         entity.name = crew.getName();
         entity.goal = crew.getGoal();
+        entity.verificationContent = crew.getVerificationContent();
         entity.verificationType = crew.getVerificationType();
         entity.maxMembers = crew.getMaxMembers();
         entity.currentMembers = crew.getCurrentMembers();

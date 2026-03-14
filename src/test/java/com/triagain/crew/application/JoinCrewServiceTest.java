@@ -35,7 +35,7 @@ class JoinCrewServiceTest {
     private static Crew recruitingCrew(LocalDate startDate, LocalDate endDate) {
         return Crew.of(
                 "CREW-001", "creator-1", "테스트 크루", "목표",
-                VerificationType.TEXT, 10, 1,
+                "인증 내용", VerificationType.TEXT, 10, 1,
                 CrewStatus.RECRUITING, startDate, endDate,
                 true, "ABC123", LocalDateTime.now(),
                 LocalTime.of(23, 59, 59), Collections.emptyList()

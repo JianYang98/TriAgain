@@ -122,7 +122,7 @@ public class MyVerificationsSteps {
     @만일("기간이 {int}일인 크루를 생성한다")
     public void 기간이_N일인_크루를_생성한다(int days) {
         CreateCrewRequest request = new CreateCrewRequest(
-                "테스트 크루", "테스트 목표", VerificationType.TEXT,
+                "테스트 크루", "테스트 목표", "인증 내용", VerificationType.TEXT,
                 10, LocalDate.now().plusDays(1), LocalDate.now().plusDays(1 + days),
                 true, null
         );
@@ -163,7 +163,7 @@ public class MyVerificationsSteps {
         Crew crew = crewRepositoryPort.findById(crewId).orElseThrow();
         Crew updated = Crew.of(
                 crew.getId(), crew.getCreatorId(), crew.getName(), crew.getGoal(),
-                crew.getVerificationType(), crew.getMaxMembers(),
+                crew.getVerificationContent(), crew.getVerificationType(), crew.getMaxMembers(),
                 crew.getCurrentMembers(), crew.getStatus(),
                 LocalDate.now().minusDays(daysNeeded), crew.getEndDate(),
                 crew.isAllowLateJoin(), crew.getInviteCode(),

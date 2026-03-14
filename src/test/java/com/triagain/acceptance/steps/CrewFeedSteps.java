@@ -288,7 +288,7 @@ public class CrewFeedSteps {
         String crewId = IdGenerator.generate("CREW");
         Crew crew = Crew.of(
                 crewId, creatorId, crewName, crewName + " 목표",
-                VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
+                "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
                 LocalDate.now(), LocalDate.now().plusDays(14), true,
                 generateInviteCode(), LocalDateTime.now(),
                 Crew.DEFAULT_DEADLINE_TIME, java.util.List.of()

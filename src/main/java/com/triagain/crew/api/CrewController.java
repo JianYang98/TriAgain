@@ -49,6 +49,7 @@ public class CrewController {
                 userId,
                 request.name(),
                 request.goal(),
+                request.verificationContent(),
                 request.verificationType(),
                 request.maxMembers(),
                 request.startDate(),

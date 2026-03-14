@@ -46,7 +46,7 @@ public class CrewListSteps {
 
         for (int i = 0; i < count; i++) {
             CreateCrewRequest request = new CreateCrewRequest(
-                    "크루 " + (i + 1), "목표 " + (i + 1), VerificationType.TEXT,
+                    "크루 " + (i + 1), "목표 " + (i + 1), "인증 내용", VerificationType.TEXT,
                     10, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true, null
             );
             crewAdapter.createCrew(userId, request);

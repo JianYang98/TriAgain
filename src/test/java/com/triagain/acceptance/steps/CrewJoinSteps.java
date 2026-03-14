@@ -53,7 +53,7 @@ public class CrewJoinSteps {
         ensureUserExists(userId);
 
         CreateCrewRequest request = new CreateCrewRequest(
-                "테스트 크루", "테스트 목표", VerificationType.TEXT,
+                "테스트 크루", "테스트 목표", "인증 내용", VerificationType.TEXT,
                 10, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true, null
         );
         ExtractableResponse<Response> response = crewAdapter.createCrew(userId, request);
@@ -66,7 +66,7 @@ public class CrewJoinSteps {
     public void 중간_가입이_허용된_크루가_이미_시작되었다() {
         String creatorId = scenarioContext.getCreatorId();
         CreateCrewRequest request = new CreateCrewRequest(
-                "활성 크루", "활성 크루 목표", VerificationType.TEXT,
+                "활성 크루", "활성 크루 목표", "인증 내용", VerificationType.TEXT,
                 10, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true, null
         );
         ExtractableResponse<Response> response = crewAdapter.createCrew(creatorId, request);
@@ -81,7 +81,7 @@ public class CrewJoinSteps {
     public void 중간_가입이_불가한_크루가_이미_시작되었다() {
         String creatorId = scenarioContext.getCreatorId();
         CreateCrewRequest request = new CreateCrewRequest(
-                "활성 크루", "활성 크루 목표", VerificationType.TEXT,
+                "활성 크루", "활성 크루 목표", "인증 내용", VerificationType.TEXT,
                 10, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), false, null
         );
         ExtractableResponse<Response> response = crewAdapter.createCrew(creatorId, request);
@@ -96,7 +96,7 @@ public class CrewJoinSteps {
     public void 크루_정원이_가득_찼다() {
         String creatorId = scenarioContext.getCreatorId();
         CreateCrewRequest request = new CreateCrewRequest(
-                "소규모 크루", "소규모 목표", VerificationType.TEXT,
+                "소규모 크루", "소규모 목표", "인증 내용", VerificationType.TEXT,
                 2, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true, null
         );
         ExtractableResponse<Response> response = crewAdapter.createCrew(creatorId, request);
@@ -119,7 +119,7 @@ public class CrewJoinSteps {
     public void 크루_종료일이_N일_남았다(int daysLeft) {
         String creatorId = scenarioContext.getCreatorId();
         CreateCrewRequest request = new CreateCrewRequest(
-                "마감 임박 크루", "마감 목표", VerificationType.TEXT,
+                "마감 임박 크루", "마감 목표", "인증 내용", VerificationType.TEXT,
                 10, LocalDate.now().plusDays(1), LocalDate.now().plusDays(daysLeft), true, null
         );
         ExtractableResponse<Response> response = crewAdapter.createCrew(creatorId, request);
