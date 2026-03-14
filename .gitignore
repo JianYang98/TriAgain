@@ -20,13 +20,15 @@ build/
 
 # OS
 .DS_Store
+**/.DS_Store
 Thumbs.db
 
 # Backup files
 *.bak
 *.bak.md
 CODEX.md
-.claude/
+.claude/memory/
+.claude/*.txt
 /agent
  
 # Personal docs
