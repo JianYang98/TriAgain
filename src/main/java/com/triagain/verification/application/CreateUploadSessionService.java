@@ -2,7 +2,7 @@ package com.triagain.verification.application;
 
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
-import com.triagain.verification.domain.DeadlinePolicy;
+import com.triagain.common.domain.DeadlinePolicy;
 import com.triagain.verification.domain.model.UploadSession;
 import com.triagain.verification.port.in.CreateUploadSessionUseCase;
 import com.triagain.verification.port.out.ChallengePort;

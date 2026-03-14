@@ -1,4 +1,4 @@
-package com.triagain.verification.domain;
+package com.triagain.common.domain;
 
 import java.time.Duration;
 import java.time.LocalDate;

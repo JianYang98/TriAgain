@@ -40,6 +40,7 @@ erDiagram
         string creator_id FK
         string name
         string goal
+        string verification_content "인증 내용 설명 (최대 50자)"
         enum verification_type "TEXT / PHOTO"
         boolean allow_late_join "크루장이 중간 가입 허용 여부 설정"
         int min_members "DEFAULT 1"

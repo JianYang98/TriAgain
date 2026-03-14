@@ -1,8 +1,8 @@
 package com.triagain.crew.infra;
 
 import com.triagain.crew.port.out.UserPort;
-import com.triagain.user.domain.model.User;
-import com.triagain.user.port.out.UserRepositoryPort;
+import com.triagain.user.port.in.UserProfileQueryUseCase;
+import com.triagain.user.port.in.UserProfileQueryUseCase.UserProfileDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -14,15 +14,15 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class UserClientAdapter implements UserPort {
 
-    private final UserRepositoryPort userRepositoryPort;
+    private final UserProfileQueryUseCase userProfileQueryUseCase;
 
     /** 유저 ID 목록으로 프로필 정보 일괄 조회 */
     @Override
     public Map<String, UserProfile> findProfilesByIds(List<String> userIds) {
-        return userRepositoryPort.findAllByIds(userIds).stream()
+        return userProfileQueryUseCase.findProfilesByIds(userIds).entrySet().stream()
                 .collect(Collectors.toMap(
-                        User::getId,
-                        user -> new UserProfile(user.getNickname(), user.getProfileImageUrl())
+                        Map.Entry::getKey,
+                        e -> new UserProfile(e.getValue().nickname(), e.getValue().profileImageUrl())
                 ));
     }
 }

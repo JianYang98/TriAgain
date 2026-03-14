@@ -23,6 +23,7 @@ public class GetMyCrewsService implements GetMyCrewsUseCase {
                         crew.getId(),
                         crew.getName(),
                         crew.getGoal(),
+                        crew.getVerificationContent(),
                         crew.getVerificationType(),
                         crew.getCurrentMembers(),
                         crew.getMaxMembers(),

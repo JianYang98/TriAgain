@@ -810,8 +810,10 @@ Authorization: Bearer <token>
   "success": true,
   "data": {
     "id": "crew_123",
+    "creatorId": "user_001",
     "name": "작심삼일 크루",
     "goal": "매일 운동하기",
+    "verificationContent": "운동 완료 인증샷 찍기",
     "verificationType": "PHOTO",
     "maxMembers": 10,
     "currentMembers": 3,
@@ -820,6 +822,7 @@ Authorization: Bearer <token>
     "endDate": "2026-03-24",
     "allowLateJoin": true,
     "deadlineTime": "23:59:59",
+    "createdAt": "2026-03-01T10:00:00",
     "members": [
       {
         "userId": "user_001",
@@ -922,11 +925,13 @@ Authorization: Bearer {accessToken}
 **응답 (Response)**
 ```json
 {
+  "success": true,
   "data": {
     "id": "crew-uuid",
     "creatorId": "user-uuid",
     "name": "새벽 러닝 크루",
     "goal": "매일 아침 5km 러닝",
+    "verificationContent": "러닝 완료 후 기록 인증",
     "verificationType": "PHOTO",
     "maxMembers": 5,
     "currentMembers": 3,
@@ -995,6 +1000,7 @@ Content-Type: application/json
 {
   "name": "새벽 러닝 크루",
   "goal": "매일 아침 5km 러닝",
+  "verificationContent": "러닝 완료 후 기록 인증",
   "verificationType": "PHOTO",
   "maxMembers": 5,
   "startDate": "2026-03-10",
@@ -1007,6 +1013,7 @@ Content-Type: application/json
 **필드 설명:**
 - `name`: (필수) 크루 이름
 - `goal`: (필수) 크루 목표
+- `verificationContent`: (필수) 인증 내용 (최대 50자)
 - `verificationType`: (필수) 인증 방식 — `TEXT` / `PHOTO`
 - `maxMembers`: (필수) 최대 정원 (1~10)
 - `startDate`: (필수) 크루 시작일
@@ -1023,6 +1030,7 @@ Content-Type: application/json
     "creatorId": "user_456",
     "name": "새벽 러닝 크루",
     "goal": "매일 아침 5km 러닝",
+    "verificationContent": "러닝 완료 후 기록 인증",
     "verificationType": "PHOTO",
     "maxMembers": 5,
     "currentMembers": 1,
@@ -1037,6 +1045,59 @@ Content-Type: application/json
   "error": null
 }
 ```
+
+---
+
+### GET /crews (내 크루 목록 조회)
+
+내가 참여 중인 크루 목록을 조회한다. 홈 화면에서 사용한다.
+
+**요청 (Request)**
+```
+GET /crews HTTP/1.1
+Authorization: Bearer <token>
+```
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "crew_123",
+      "name": "새벽 러닝 크루",
+      "goal": "매일 아침 5km 러닝",
+      "verificationContent": "러닝 완료 후 기록 인증",
+      "verificationType": "PHOTO",
+      "currentMembers": 3,
+      "maxMembers": 5,
+      "status": "ACTIVE",
+      "startDate": "2026-03-10",
+      "endDate": "2026-03-24",
+      "createdAt": "2026-03-01T10:00:00"
+    }
+  ],
+  "error": null
+}
+```
+
+**필드 설명:**
+- `id`: 크루 ID
+- `name`: 크루 이름
+- `goal`: 크루 목표
+- `verificationContent`: 인증 내용
+- `verificationType`: 인증 방식 (`TEXT` / `PHOTO`)
+- `currentMembers`: 현재 멤버 수
+- `maxMembers`: 최대 정원
+- `status`: 크루 상태 (`RECRUITING`, `ACTIVE`, `COMPLETED`)
+- `startDate`: 크루 시작일
+- `endDate`: 크루 종료일
+- `createdAt`: 크루 생성 시각
+
+**에러 응답**
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 401 | A003 | 인증이 필요합니다. | 미인증 |
 
 ---
 
@@ -1099,9 +1160,6 @@ X-Internal-Api-Key: {api-key}
 ---
 
 ## TODO (구현 시 추가 예정)
-
-### Crew Context
-- GET /crews — 크루 목록 조회
 
 ### Moderation Context
 - POST /verifications/{id}/reports — 신고

@@ -19,6 +19,7 @@ public interface GetCrewByInviteCodeUseCase {
             String creatorId,
             String name,
             String goal,
+            String verificationContent,
             VerificationType verificationType,
             int maxMembers,
             int currentMembers,

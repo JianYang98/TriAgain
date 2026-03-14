@@ -149,7 +149,7 @@ class StartupCompensationRunnerTest {
 
     private static Crew recruitingCrew(String id, LocalDate startDate) {
         return Crew.of(id, "creator-1", "테스트 크루", "목표",
-                VerificationType.TEXT, 10, 1, CrewStatus.RECRUITING,
+                "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.RECRUITING,
                 startDate, startDate.plusDays(30), false, "ABC123",
                 LocalDateTime.now(), DEADLINE_TIME, Collections.emptyList());
     }

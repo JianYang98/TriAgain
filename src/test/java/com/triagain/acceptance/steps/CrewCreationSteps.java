@@ -44,6 +44,7 @@ public class CrewCreationSteps {
         CreateCrewRequest request = new CreateCrewRequest(
                 data.getOrDefault("이름", "테스트 크루"),
                 data.getOrDefault("목표", "테스트 목표"),
+                data.getOrDefault("인증내용", "인증 내용"),
                 VerificationType.valueOf(data.getOrDefault("인증방식", "TEXT")),
                 Integer.parseInt(data.getOrDefault("최대인원", "10")),
                 startDate,
@@ -76,7 +77,7 @@ public class CrewCreationSteps {
     @만일("시작일을 오늘로 설정하여 크루를 생성한다")
     public void 시작일을_오늘로_설정하여_크루를_생성한다() {
         CreateCrewRequest request = new CreateCrewRequest(
-                "테스트 크루", "테스트 목표", VerificationType.TEXT,
+                "테스트 크루", "테스트 목표", "인증 내용", VerificationType.TEXT,
                 10, LocalDate.now(), LocalDate.now().plusDays(14), true, null
         );
         ExtractableResponse<Response> response = crewAdapter.createCrew(scenarioContext.getUserId(), request);
@@ -87,7 +88,7 @@ public class CrewCreationSteps {
     public void 종료일을_시작일보다_이전으로_설정한다() {
         LocalDate startDate = LocalDate.now().plusDays(7);
         CreateCrewRequest request = new CreateCrewRequest(
-                "테스트 크루", "테스트 목표", VerificationType.TEXT,
+                "테스트 크루", "테스트 목표", "인증 내용", VerificationType.TEXT,
                 10, startDate, startDate.minusDays(1), true, null
         );
         ExtractableResponse<Response> response = crewAdapter.createCrew(scenarioContext.getUserId(), request);
@@ -97,7 +98,7 @@ public class CrewCreationSteps {
     @만일("크루 이름 없이 크루를 생성한다")
     public void 크루_이름_없이_크루를_생성한다() {
         CreateCrewRequest request = new CreateCrewRequest(
-                "", "테스트 목표", VerificationType.TEXT,
+                "", "테스트 목표", "인증 내용", VerificationType.TEXT,
                 10, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true, null
         );
         ExtractableResponse<Response> response = crewAdapter.createCrew(scenarioContext.getUserId(), request);
@@ -107,7 +108,7 @@ public class CrewCreationSteps {
     @만일("최대인원 {int}으로 크루 생성을 요청한다")
     public void 최대인원으로_크루_생성을_요청한다(int maxMembers) {
         CreateCrewRequest request = new CreateCrewRequest(
-                "테스트 크루", "테스트 목표", VerificationType.TEXT,
+                "테스트 크루", "테스트 목표", "인증 내용", VerificationType.TEXT,
                 maxMembers, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true, null
         );
         ExtractableResponse<Response> response = crewAdapter.createCrew(scenarioContext.getUserId(), request);
@@ -160,7 +161,7 @@ public class CrewCreationSteps {
 
     private CreateCrewRequest defaultRequest(VerificationType verificationType) {
         return new CreateCrewRequest(
-                "테스트 크루", "테스트 목표", verificationType,
+                "테스트 크루", "테스트 목표", "인증 내용", verificationType,
                 10, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true, null
         );
     }

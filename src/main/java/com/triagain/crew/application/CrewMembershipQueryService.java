@@ -3,10 +3,13 @@ package com.triagain.crew.application;
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
 import com.triagain.crew.domain.model.Crew;
+import com.triagain.crew.domain.model.CrewMember;
 import com.triagain.crew.port.in.CrewMembershipQueryUseCase;
 import com.triagain.crew.port.out.CrewRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -49,6 +52,23 @@ public class CrewMembershipQueryService implements CrewMembershipQueryUseCase {
                 crew.isAllowLateJoin(),
                 crew.getDeadlineTime()
         );
+    }
+
+    @Override
+    public Optional<String> findCrewLeaderId(String crewId) {
+        Crew crew = findCrewOrThrow(crewId);
+        return crew.getMembers().stream()
+                .filter(CrewMember::isLeader)
+                .findFirst()
+                .map(CrewMember::getUserId);
+    }
+
+    @Override
+    public boolean isCrewMember(String crewId, String userId) {
+        return crewRepositoryPort.findById(crewId)
+                .map(crew -> crew.getMembers().stream()
+                        .anyMatch(m -> m.getUserId().equals(userId)))
+                .orElse(false);
     }
 
     private Crew findCrewOrThrow(String crewId) {

@@ -133,7 +133,7 @@ class FindOrCreateActiveChallengeServiceTest {
     void completedCrew_throwsNotActive() {
         // Given
         Crew completedCrew = Crew.of(CREW_ID, "creator-1", "크루", "목표",
-                VerificationType.TEXT, 10, 1, CrewStatus.COMPLETED,
+                "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.COMPLETED,
                 LocalDate.now().minusDays(10), LocalDate.now().minusDays(1),
                 false, "ABC123", LocalDateTime.now(), DEADLINE_TIME, Collections.emptyList());
 
@@ -154,7 +154,7 @@ class FindOrCreateActiveChallengeServiceTest {
     void crewPeriodEnded_throws() {
         // Given — ACTIVE지만 endDate 지남
         Crew expiredCrew = Crew.of(CREW_ID, "creator-1", "크루", "목표",
-                VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
+                "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
                 LocalDate.now().minusDays(10), LocalDate.now().minusDays(1),
                 false, "ABC123", LocalDateTime.now(), DEADLINE_TIME, Collections.emptyList());
 
@@ -200,7 +200,7 @@ class FindOrCreateActiveChallengeServiceTest {
         // Given — deadlineTime을 현재 시각 6분 전으로 설정 (grace 5분 초과)
         LocalTime pastDeadline = LocalTime.now().minusMinutes(6);
         Crew crew = Crew.of(CREW_ID, "creator-1", "크루", "목표",
-                VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
+                "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
                 LocalDate.now().minusDays(1), LocalDate.now().plusDays(30),
                 false, "ABC123", LocalDateTime.now(), pastDeadline, Collections.emptyList());
 
@@ -220,7 +220,7 @@ class FindOrCreateActiveChallengeServiceTest {
 
     private static Crew activeCrew(String id, LocalDate startDate, LocalDate endDate) {
         return Crew.of(id, "creator-1", "테스트 크루", "목표",
-                VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
+                "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
                 startDate, endDate, false, "ABC123",
                 LocalDateTime.now(), DEADLINE_TIME, Collections.emptyList());
     }

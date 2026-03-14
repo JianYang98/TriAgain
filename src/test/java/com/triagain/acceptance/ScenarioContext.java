@@ -19,6 +19,7 @@ public class ScenarioContext {
     private String creatorId;
     private String challengeId;
     private Long uploadSessionId;
+    private String imageKey;
     private final Map<String, String> crewNameToId = new HashMap<>();
 
     public void setResponse(ExtractableResponse<Response> response) {
@@ -83,5 +84,13 @@ public class ScenarioContext {
 
     public void setUploadSessionId(Long uploadSessionId) {
         this.uploadSessionId = uploadSessionId;
+    }
+
+    public String getImageKey() {
+        return imageKey;
+    }
+
+    public void setImageKey(String imageKey) {
+        this.imageKey = imageKey;
     }
 }

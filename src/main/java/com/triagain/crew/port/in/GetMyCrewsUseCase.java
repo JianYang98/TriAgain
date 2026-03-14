@@ -16,6 +16,7 @@ public interface GetMyCrewsUseCase {
             String id,
             String name,
             String goal,
+            String verificationContent,
             VerificationType verificationType,
             int currentMembers,
             int maxMembers,
