@@ -810,6 +810,7 @@ Authorization: Bearer <token>
   "success": true,
   "data": {
     "id": "crew_123",
+    "creatorId": "user_001",
     "name": "작심삼일 크루",
     "goal": "매일 운동하기",
     "verificationContent": "운동 완료 인증샷 찍기",
@@ -821,6 +822,7 @@ Authorization: Bearer <token>
     "endDate": "2026-03-24",
     "allowLateJoin": true,
     "deadlineTime": "23:59:59",
+    "createdAt": "2026-03-01T10:00:00",
     "members": [
       {
         "userId": "user_001",
@@ -923,6 +925,7 @@ Authorization: Bearer {accessToken}
 **응답 (Response)**
 ```json
 {
+  "success": true,
   "data": {
     "id": "crew-uuid",
     "creatorId": "user-uuid",
