@@ -51,3 +51,10 @@ deploy.sh
 
 # 코맨트 파일들
 docs/review-comment/
+
+# Lambda build artifacts
+lambda/.aws-sam/
+lambda/Ldeploy.sh
+
+#키
+triagain-admin_accessKeys.csv
