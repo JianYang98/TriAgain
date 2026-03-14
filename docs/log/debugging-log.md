@@ -5,6 +5,15 @@
 
 ---
 
+### [2026-03-14] crews 테이블 verificationContent 필드 추가 — 기존 데이터 백필 정책
+
+- 상황: verification_content 컬럼(NOT NULL) 추가 시 기존 rows가 제약 위반
+- 내 판단: 기존 데이터의 goal 컬럼에서 첫 50자를 백필 (V9: `UPDATE crews SET verification_content = SUBSTRING(goal, 1, 50) WHERE verification_content IS NULL`)
+- AI 역할: 문서 동기화 리뷰에서 백필 정책 미기록 발견
+- 배운 점: 기존 데이터가 있는 테이블에 NOT NULL 컬럼 추가 시 백필 정책을 디버깅 로그에 반드시 기록
+
+---
+
 ### [2026-03-08] 기존 DB에 Flyway 도입 시 baseline 설정 필요
 
 - 상황: Flyway 의존성 추가 후 EC2 배포 시 `Found non-empty schema but no schema history table` 에러. baseline 추가 후에도 V2부터 재실행하며 `column already exists` 에러
