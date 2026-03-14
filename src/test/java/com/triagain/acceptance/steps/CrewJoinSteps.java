@@ -2,11 +2,16 @@ package com.triagain.acceptance.steps;
 
 import com.triagain.acceptance.ScenarioContext;
 import com.triagain.acceptance.adapter.CrewTestAdapter;
+import com.triagain.common.util.IdGenerator;
 import com.triagain.crew.api.CreateCrewRequest;
+import com.triagain.crew.domain.model.Crew;
+import com.triagain.crew.domain.model.CrewMember;
 import com.triagain.crew.domain.vo.ChallengeStatus;
+import com.triagain.crew.domain.vo.CrewStatus;
 import com.triagain.crew.domain.vo.VerificationType;
 import com.triagain.crew.port.in.ActivateCrewUseCase;
 import com.triagain.crew.port.out.ChallengeRepositoryPort;
+import com.triagain.crew.port.out.CrewRepositoryPort;
 import com.triagain.user.domain.model.User;
 import com.triagain.user.port.out.UserRepositoryPort;
 import io.cucumber.java.Before;
@@ -19,6 +24,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,6 +43,9 @@ public class CrewJoinSteps {
 
     @Autowired
     private ChallengeRepositoryPort challengeRepositoryPort;
+
+    @Autowired
+    private CrewRepositoryPort crewRepositoryPort;
 
     @Autowired
     private UserRepositoryPort userRepositoryPort;
@@ -117,14 +127,22 @@ public class CrewJoinSteps {
 
     @조건("크루 종료일이 {int}일 남았다")
     public void 크루_종료일이_N일_남았다(int daysLeft) {
+        // API 유효성 검사(최소 6일)를 우회해야 하므로 레포지토리 직접 사용
         String creatorId = scenarioContext.getCreatorId();
-        CreateCrewRequest request = new CreateCrewRequest(
-                "마감 임박 크루", "마감 목표", "인증 내용", VerificationType.TEXT,
-                10, LocalDate.now().plusDays(1), LocalDate.now().plusDays(daysLeft), true, null
+        ensureUserExists(creatorId);
+        String crewId = IdGenerator.generate("CREW");
+        String inviteCode = "CLOSE1";
+        Crew crew = Crew.of(
+                crewId, creatorId, "마감 임박 크루", "마감 목표",
+                "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
+                LocalDate.now().minusDays(10), LocalDate.now().plusDays(daysLeft), true,
+                inviteCode, LocalDateTime.now(),
+                Crew.DEFAULT_DEADLINE_TIME, List.of()
         );
-        ExtractableResponse<Response> response = crewAdapter.createCrew(creatorId, request);
-        scenarioContext.setCrewId(response.jsonPath().getString("data.crewId"));
-        scenarioContext.setInviteCode(response.jsonPath().getString("data.inviteCode"));
+        crewRepositoryPort.save(crew);
+        crewRepositoryPort.saveMember(CrewMember.createLeader(creatorId, crewId));
+        scenarioContext.setCrewId(crewId);
+        scenarioContext.setInviteCode(inviteCode);
     }
 
     @만일("초대코드를 입력하여 크루에 참여한다")

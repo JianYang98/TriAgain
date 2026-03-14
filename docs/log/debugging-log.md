@@ -5,6 +5,19 @@
 
 ---
 
+### [2026-03-14] GitHub Actions 테스트 실패 — H2 호환성 + Cucumber 테스트 버그 3건
+
+- 상황: feat/s3-lambda-presigned-url 브랜치 PR 후 GitHub Actions에서 8개 테스트 실패. V9 마이그레이션의 `ALTER COLUMN SET NOT NULL` + V1의 부분 인덱스(partial index) 구문이 H2에서 미지원
+- 내 판단:
+  1. `spring.flyway.enabled: false` + `ddl-auto: create-drop`으로 테스트 환경에서 Flyway 비활성화 (H2 호환성 문제 근본 해결)
+  2. `CrewFeedSteps.사용자가_크루에_참여_중이다`에 `scenarioContext.setCrewId()` 누락 → UploadSession 요청 시 crewId=null → C001 오류
+  3. `CrewJoinSteps.크루_종료일이_N일_남았다`가 API 경유로 크루 생성 → 최소 6일 검증 실패 → 리포지토리 직접 생성으로 변경
+  4. Lambda 콜백 테스트 어댑터가 `/internal/upload-sessions/{id}/complete` 호출 → 실제 엔드포인트는 `/internal/upload-sessions/complete?imageKey=...` (URL 불일치)
+- AI 역할: H2 오류 추적, 각 테스트 실패의 실제 원인 분석, 4개 버그 연쇄 수정
+- 배운 점: "contextLoads 실패로 cascading"이라는 가정은 틀렸음. Cucumber 테스트는 별도 컨텍스트로 실제 비즈니스 오류를 드러낸다. 테스트 실패 원인은 반드시 각 실패 메시지를 직접 확인해야 함
+
+---
+
 ### [2026-03-14] crews 테이블 verificationContent 필드 추가 — 기존 데이터 백필 정책
 
 - 상황: verification_content 컬럼(NOT NULL) 추가 시 기존 rows가 제약 위반

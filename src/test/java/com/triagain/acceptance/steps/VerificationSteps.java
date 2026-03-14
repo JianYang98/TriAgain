@@ -115,6 +115,7 @@ public class VerificationSteps {
     public void 업로드_세션이_PENDING_상태이다() {
         UploadSession session = createAndSaveSession(UploadSessionStatus.PENDING, LocalDateTime.now());
         scenarioContext.setUploadSessionId(session.getId());
+        scenarioContext.setImageKey(session.getImageKey());
     }
 
     @조건("업로드 세션이 마감 직전에 요청되었다")

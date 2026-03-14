@@ -105,8 +105,8 @@ public class UploadSessionSteps {
 
     @만일("Lambda가 업로드 완료를 알린다")
     public void Lambda가_업로드_완료를_알린다() {
-        Long sessionId = scenarioContext.getUploadSessionId();
-        scenarioContext.setResponse(uploadSessionAdapter.completeUploadSession(sessionId));
+        String imageKey = scenarioContext.getImageKey();
+        scenarioContext.setResponse(uploadSessionAdapter.completeUploadSession(imageKey));
     }
 
     // ===== 조건 (Given) =====

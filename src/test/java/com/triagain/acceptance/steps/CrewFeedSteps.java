@@ -77,6 +77,7 @@ public class CrewFeedSteps {
         } else {
             crewRepositoryPort.saveMember(CrewMember.createMember(userId, crewId));
         }
+        scenarioContext.setCrewId(crewId);
         ensureChallengeExists(userId, crewId);
     }
 

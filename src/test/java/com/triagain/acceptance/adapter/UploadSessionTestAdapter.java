@@ -20,11 +20,12 @@ public class UploadSessionTestAdapter extends BaseTestAdapter {
                 .extract();
     }
 
-    /** Lambda 콜백 — PUT /internal/upload-sessions/{id}/complete */
-    public ExtractableResponse<Response> completeUploadSession(Long id) {
+    /** Lambda 콜백 — PUT /internal/upload-sessions/complete?imageKey=... */
+    public ExtractableResponse<Response> completeUploadSession(String imageKey) {
         return givenRequest()
+                .queryParam("imageKey", imageKey)
                 .when()
-                .put("/internal/upload-sessions/" + id + "/complete")
+                .put("/internal/upload-sessions/complete")
                 .then()
                 .log().ifError()
                 .extract();
