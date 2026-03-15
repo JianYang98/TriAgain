@@ -70,21 +70,28 @@ jobs:
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          envs: DB_URL,DB_USERNAME,DB_PASSWORD,JWT_SECRET,INTERNAL_API_KEY
           script: |
             docker pull devjian/triagain:latest
             docker stop triagain || true && docker rm triagain || true
             docker run -d --name triagain --restart unless-stopped \
               -p 8080:8080 \
               -e SPRING_PROFILES_ACTIVE=prod \
-              -e DB_URL=${{ secrets.DB_URL }} \
-              -e DB_USERNAME=${{ secrets.DB_USERNAME }} \
-              -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
-              -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
-              -e INTERNAL_API_KEY=${{ secrets.INTERNAL_API_KEY }} \
+              -e "DB_URL=$DB_URL" \
+              -e "DB_USERNAME=$DB_USERNAME" \
+              -e "DB_PASSWORD=$DB_PASSWORD" \
+              -e "JWT_SECRET=$JWT_SECRET" \
+              -e "INTERNAL_API_KEY=$INTERNAL_API_KEY" \
               devjian/triagain:latest
             sleep 15
             curl -f http://localhost:8080/actuator/health
