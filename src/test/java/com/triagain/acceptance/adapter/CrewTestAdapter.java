@@ -60,4 +60,35 @@ public class CrewTestAdapter extends BaseTestAdapter {
                 .log().ifError()
                 .extract();
     }
+
+    /** 크루 수정 — PATCH /crews/{crewId} */
+    public ExtractableResponse<Response> editCrew(String userId, String crewId, Object request) {
+        return givenAuthRequest(userId)
+                .body(request)
+                .when()
+                .patch("/crews/" + crewId)
+                .then()
+                .log().ifError()
+                .extract();
+    }
+
+    /** 크루 삭제 — DELETE /crews/{crewId} */
+    public ExtractableResponse<Response> deleteCrew(String userId, String crewId) {
+        return givenAuthRequest(userId)
+                .when()
+                .delete("/crews/" + crewId)
+                .then()
+                .log().ifError()
+                .extract();
+    }
+
+    /** 크루 탈퇴 — DELETE /crews/{crewId}/members/me */
+    public ExtractableResponse<Response> leaveCrew(String userId, String crewId) {
+        return givenAuthRequest(userId)
+                .when()
+                .delete("/crews/" + crewId + "/members/me")
+                .then()
+                .log().ifError()
+                .extract();
+    }
 }

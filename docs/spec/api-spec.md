@@ -1159,6 +1159,116 @@ X-Internal-Api-Key: {api-key}
 
 ---
 
+### PATCH /crews/{crewId} (크루 수정)
+
+크루장이 RECRUITING 상태 크루의 정보를 부분 수정한다. 최소 1개 이상 필드가 포함되어야 한다.
+
+**요청 (Request)**
+```json
+PATCH /crews/{crewId} HTTP/1.1
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "수정된 이름",
+  "goal": "수정된 목표",
+  "verificationContent": "수정된 인증내용"
+}
+```
+
+**필드 설명:**
+- `name`: (선택) 크루 이름
+- `goal`: (선택) 크루 목표
+- `verificationContent`: (선택) 인증 내용
+- 3개 필드 모두 optional (PATCH 시맨틱), 최소 1개 이상 필수
+- 빈 문자열("") 또는 공백만 있는 값은 거부
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": {
+    "crewId": "crew_123",
+    "creatorId": "user_456",
+    "name": "수정된 이름",
+    "goal": "수정된 목표",
+    "verificationContent": "수정된 인증내용",
+    "verificationType": "PHOTO",
+    "maxMembers": 5,
+    "currentMembers": 1,
+    "status": "RECRUITING",
+    "startDate": "2026-03-10",
+    "endDate": "2026-03-24",
+    "allowLateJoin": true,
+    "inviteCode": "ABC123",
+    "createdAt": "2026-03-09T10:00:00",
+    "deadlineTime": "23:59:59"
+  },
+  "error": null
+}
+```
+
+**에러 응답**
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 400 | CR003 | 모집 중인 크루가 아닙니다. | RECRUITING 상태가 아님 |
+| 400 | CR017 | 수정할 필드가 없습니다. | 빈 body / 모든 필드 null |
+| 400 | CR018 | 유효하지 않은 값입니다. | 빈 문자열 또는 공백만 있는 값 |
+| 403 | CR009 | 크루장만 수정할 수 있습니다. | LEADER가 아님 |
+| 404 | CR001 | 크루를 찾을 수 없습니다. | 존재하지 않는 crewId |
+| 404 | CR021 | 해당 크루의 멤버가 아닙니다. | 크루 미참여 |
+
+---
+
+### DELETE /crews/{crewId} (크루 삭제)
+
+크루장이 RECRUITING 상태이고 본인만 남아있는 크루를 삭제한다. hard delete (DB에서 완전 삭제).
+
+**요청 (Request)**
+```
+DELETE /crews/{crewId} HTTP/1.1
+Authorization: Bearer <token>
+```
+
+**성공 응답 (204 No Content)**
+
+응답 body 없음.
+
+**에러 응답**
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 400 | CR003 | 모집 중인 크루가 아닙니다. | RECRUITING 상태가 아님 |
+| 403 | CR009 | 크루장만 삭제할 수 있습니다. | LEADER가 아님 |
+| 404 | CR001 | 크루를 찾을 수 없습니다. | 존재하지 않는 crewId |
+| 404 | CR021 | 해당 크루의 멤버가 아닙니다. | 크루 미참여 |
+| 409 | CR019 | 크루원이 있는 크루는 삭제할 수 없습니다. | 멤버가 LEADER 본인 외에 존재 |
+
+---
+
+### DELETE /crews/{crewId}/members/me (크루 탈퇴)
+
+크루원(MEMBER)이 RECRUITING 상태 크루에서 탈퇴한다. LEADER는 탈퇴 불가 (크루 삭제를 사용).
+
+**요청 (Request)**
+```
+DELETE /crews/{crewId}/members/me HTTP/1.1
+Authorization: Bearer <token>
+```
+
+**성공 응답 (204 No Content)**
+
+응답 body 없음.
+
+**에러 응답**
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 400 | CR003 | 모집 중인 크루가 아닙니다. | RECRUITING 상태가 아님 |
+| 403 | CR020 | 크루장은 탈퇴할 수 없습니다. | LEADER 탈퇴 시도 |
+| 404 | CR001 | 크루를 찾을 수 없습니다. | 존재하지 않는 crewId |
+| 404 | CR021 | 해당 크루의 멤버가 아닙니다. | crew_member 레코드 없음 |
+
+---
+
 ## TODO (구현 시 추가 예정)
 
 ### Moderation Context

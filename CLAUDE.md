@@ -387,6 +387,39 @@ refactor: Verification 도메인 계층 분리
 
 ---
 
+## API 엔드포인트 요약
+
+상세 명세는 `/docs/spec/api-spec.md` 참고.
+
+### 구현 완료
+
+| Method | Path | 설명 |
+|--------|------|------|
+| POST | /upload-sessions | 이미지 업로드 세션 생성 (Presigned URL 발급) |
+| GET | /upload-sessions/{id}/events | SSE 구독 (업로드 완료 알림) |
+| PUT | /internal/upload-sessions/complete | Lambda 콜백 (Internal API) |
+| POST | /verifications | 인증 생성 |
+| POST | /auth/kakao | 카카오 로그인 |
+| POST | /auth/signup | 회원가입 |
+| POST | /auth/apple | Apple 로그인 |
+| POST | /auth/apple-signup | Apple 회원가입 |
+| POST | /auth/refresh | 토큰 갱신 |
+| POST | /auth/logout | 로그아웃 |
+| GET | /users/me | 내 프로필 조회 |
+| PATCH | /users/me/nickname | 닉네임 변경 |
+| POST | /crews | 크루 생성 |
+| GET | /crews | 내 크루 목록 조회 |
+| GET | /crews/{crewId} | 크루 상세 조회 |
+| GET | /crews/invite/{inviteCode} | 초대코드로 크루 미리보기 |
+| POST | /crews/join | 초대코드로 크루 참여 |
+| GET | /crews/{crewId}/feed | 크루 피드 조회 |
+| GET | /crews/{crewId}/my-verifications | 내 인증 현황 조회 |
+| PATCH | /crews/{crewId} | 크루 수정 (LEADER, RECRUITING 상태만) |
+| DELETE | /crews/{crewId} | 크루 삭제 (LEADER, RECRUITING + 본인만) |
+| DELETE | /crews/{crewId}/members/me | 크루 탈퇴 (MEMBER, RECRUITING 상태만) |
+
+---
+
 ## /docs 참조 가이드
 
 - 상세 비즈니스 규칙은 `/docs/spec/biz-logic.md`를 참고해.
