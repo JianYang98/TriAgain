@@ -35,4 +35,10 @@ public interface CrewRepositoryPort {
 
     /** 시작일 도래한 RECRUITING 크루 조회 — 서버 시작 시 활성화 보정에 사용 */
     List<Crew> findRecruitingCrewsStartedOnOrBefore(LocalDate date);
+
+    /** 크루 삭제 — 멤버 포함 hard delete */
+    void deleteById(String crewId);
+
+    /** 특정 크루의 특정 멤버 삭제 — 크루 탈퇴 시 사용 */
+    void deleteMemberByCrewIdAndUserId(String crewId, String userId);
 }
