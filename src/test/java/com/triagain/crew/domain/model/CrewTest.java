@@ -388,6 +388,213 @@ class CrewTest {
         }
     }
 
+    @Nested
+    @DisplayName("update — 크루 수정")
+    class Update {
+
+        @Test
+        @DisplayName("RECRUITING 상태에서 이름을 수정한다")
+        void updateName() {
+            // Given
+            Crew crew = recruitingCrew(5, 1);
+
+            // When
+            crew.update("새 이름", null, null);
+
+            // Then
+            assertThat(crew.getName()).isEqualTo("새 이름");
+            assertThat(crew.getGoal()).isEqualTo("목표");
+            assertThat(crew.getVerificationContent()).isEqualTo("인증 내용");
+        }
+
+        @Test
+        @DisplayName("여러 필드를 동시에 수정한다")
+        void updateMultipleFields() {
+            // Given
+            Crew crew = recruitingCrew(5, 1);
+
+            // When
+            crew.update("새 이름", "새 목표", "새 인증 내용");
+
+            // Then
+            assertThat(crew.getName()).isEqualTo("새 이름");
+            assertThat(crew.getGoal()).isEqualTo("새 목표");
+            assertThat(crew.getVerificationContent()).isEqualTo("새 인증 내용");
+        }
+
+        @Test
+        @DisplayName("null 필드는 기존 값을 유지한다")
+        void nullFieldsPreserved() {
+            // Given
+            Crew crew = recruitingCrew(5, 1);
+
+            // When
+            crew.update(null, null, null);
+
+            // Then
+            assertThat(crew.getName()).isEqualTo("테스트 크루");
+            assertThat(crew.getGoal()).isEqualTo("목표");
+            assertThat(crew.getVerificationContent()).isEqualTo("인증 내용");
+        }
+
+        @Test
+        @DisplayName("ACTIVE 상태에서 수정하면 예외가 발생한다")
+        void activeCrewCannotUpdate() {
+            // Given
+            Crew crew = crewWithStatus(CrewStatus.ACTIVE, 5, 1, false);
+
+            // When & Then
+            assertThatThrownBy(() -> crew.update("새 이름", null, null))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.CREW_NOT_RECRUITING);
+        }
+
+        @Test
+        @DisplayName("COMPLETED 상태에서 수정하면 예외가 발생한다")
+        void completedCrewCannotUpdate() {
+            // Given
+            Crew crew = crewWithStatus(CrewStatus.COMPLETED, 5, 1, false);
+
+            // When & Then
+            assertThatThrownBy(() -> crew.update("새 이름", null, null))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.CREW_NOT_RECRUITING);
+        }
+    }
+
+    @Nested
+    @DisplayName("findMemberByUserId — 유저 ID로 멤버 조회")
+    class FindMemberByUserId {
+
+        @Test
+        @DisplayName("존재하는 멤버를 조회한다")
+        void success() {
+            // Given
+            Crew crew = recruitingCrew(5, 2);
+
+            // When
+            CrewMember member = crew.findMemberByUserId("leader");
+
+            // Then
+            assertThat(member.getUserId()).isEqualTo("leader");
+            assertThat(member.isLeader()).isTrue();
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 유저 ID로 조회하면 예외가 발생한다")
+        void notFound() {
+            // Given
+            Crew crew = recruitingCrew(5, 1);
+
+            // When & Then
+            assertThatThrownBy(() -> crew.findMemberByUserId("unknown"))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.CREW_MEMBER_NOT_FOUND);
+        }
+    }
+
+    @Nested
+    @DisplayName("removeMember — 멤버 제거")
+    class RemoveMember {
+
+        @Test
+        @DisplayName("RECRUITING 크루에서 MEMBER를 제거하면 currentMembers가 감소한다")
+        void success() {
+            // Given
+            Crew crew = recruitingCrew(5, 3);
+
+            // When
+            crew.removeMember("user2");
+
+            // Then
+            assertThat(crew.getCurrentMembers()).isEqualTo(2);
+            assertThat(crew.getMembers()).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 멤버를 제거하면 예외가 발생한다")
+        void notFound() {
+            // Given
+            Crew crew = recruitingCrew(5, 1);
+
+            // When & Then
+            assertThatThrownBy(() -> crew.removeMember("unknown"))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.CREW_MEMBER_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("ACTIVE 상태에서 removeMember하면 CREW_NOT_RECRUITING 예외가 발생한다")
+        void activeCannotRemove() {
+            // Given
+            Crew crew = crewWithStatus(CrewStatus.ACTIVE, 5, 2, false);
+
+            // When & Then
+            assertThatThrownBy(() -> crew.removeMember("user2"))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.CREW_NOT_RECRUITING);
+        }
+
+        @Test
+        @DisplayName("LEADER가 removeMember하면 LEADER_CANNOT_LEAVE 예외가 발생한다")
+        void leaderCannotRemove() {
+            // Given
+            Crew crew = recruitingCrew(5, 2);
+
+            // When & Then
+            assertThatThrownBy(() -> crew.removeMember("leader"))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.LEADER_CANNOT_LEAVE);
+        }
+    }
+
+    @Nested
+    @DisplayName("validateDeletable — 삭제 가능 여부 검증")
+    class ValidateDeletable {
+
+        @Test
+        @DisplayName("RECRUITING + 멤버 1명이면 삭제 가능하다")
+        void success() {
+            // Given
+            Crew crew = recruitingCrew(5, 1);
+
+            // When & Then — 예외 없이 통과
+            crew.validateDeletable();
+        }
+
+        @Test
+        @DisplayName("ACTIVE 상태면 삭제 불가하다")
+        void activeCannotDelete() {
+            // Given
+            Crew crew = crewWithStatus(CrewStatus.ACTIVE, 5, 1, false);
+
+            // When & Then
+            assertThatThrownBy(crew::validateDeletable)
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.CREW_NOT_RECRUITING);
+        }
+
+        @Test
+        @DisplayName("멤버가 2명 이상이면 삭제 불가하다")
+        void hasMembers() {
+            // Given
+            Crew crew = recruitingCrew(5, 2);
+
+            // When & Then
+            assertThatThrownBy(crew::validateDeletable)
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.CREW_HAS_MEMBERS);
+        }
+    }
+
     // --- 헬퍼 메서드 ---
 
     private Crew recruitingCrew(int maxMembers, int currentMembers) {

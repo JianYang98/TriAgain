@@ -20,9 +20,9 @@ public class Crew {
 
     private final String id;
     private final String creatorId;
-    private final String name;
-    private final String goal;
-    private final String verificationContent;
+    private String name;
+    private String goal;
+    private String verificationContent;
     private final VerificationType verificationType;
     private final int maxMembers;
     private int currentMembers;
@@ -123,6 +123,47 @@ public class Crew {
         this.members.add(member);
         this.currentMembers++;
         return member;
+    }
+
+    /** 크루 정보 수정 — RECRUITING 상태에서 LEADER만 호출 */
+    public void update(String name, String goal, String verificationContent) {
+        if (this.status != CrewStatus.RECRUITING) {
+            throw new BusinessException(ErrorCode.CREW_NOT_RECRUITING);
+        }
+        if (name != null) this.name = name;
+        if (goal != null) this.goal = goal;
+        if (verificationContent != null) this.verificationContent = verificationContent;
+    }
+
+    /** 멤버 제거 — RECRUITING 상태에서 MEMBER만 탈퇴 가능 */
+    public void removeMember(String userId) {
+        if (this.status != CrewStatus.RECRUITING) {
+            throw new BusinessException(ErrorCode.CREW_NOT_RECRUITING);
+        }
+        CrewMember member = findMemberByUserId(userId);
+        if (member.isLeader()) {
+            throw new BusinessException(ErrorCode.LEADER_CANNOT_LEAVE);
+        }
+        this.members.remove(member);
+        this.currentMembers--;
+    }
+
+    /** 유저 ID로 멤버 조회 — 존재하지 않으면 예외 */
+    public CrewMember findMemberByUserId(String userId) {
+        return this.members.stream()
+                .filter(m -> m.getUserId().equals(userId))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(ErrorCode.CREW_MEMBER_NOT_FOUND));
+    }
+
+    /** 삭제 가능 여부 검증 — RECRUITING + 멤버 1명(리더만) */
+    public void validateDeletable() {
+        if (this.status != CrewStatus.RECRUITING) {
+            throw new BusinessException(ErrorCode.CREW_NOT_RECRUITING);
+        }
+        if (this.currentMembers > 1) {
+            throw new BusinessException(ErrorCode.CREW_HAS_MEMBERS);
+        }
     }
 
     /** 정원 초과 여부 확인 — 참여 가능 판단에 사용 */
