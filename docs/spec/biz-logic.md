@@ -71,7 +71,18 @@
 | LEADER 탈퇴 | 불가 — 크루 삭제(DELETE /crews/{crewId})를 사용해야 함 |
 | 비멤버 탈퇴 | crew_member 레코드 없으면 404 |
 
-### 1.7 챌린지
+### 1.7 크루 상태 전이
+
+| 전이 | 트리거 | 시점 |
+|------|--------|------|
+| RECRUITING → ACTIVE | 스케줄러 (ActivateRecruitingCrewsScheduler) | 매일 00:00, start_date ≤ 오늘 |
+| ACTIVE → COMPLETED | 스케줄러 (CompleteExpiredCrewsScheduler) | 매일 00:05, end_date < 오늘 |
+
+- 서버 재시작 시 StartupCompensationRunner가 활성화 → 실패 → 종료 순서로 밀린 작업 보정
+- RECRUITING 상태가 아닌 크루에 activate() 호출 시 CREW_NOT_RECRUITING 예외
+- ACTIVE 상태가 아닌 크루에 complete() 호출 시 CREW_NOT_ACTIVE 예외
+
+### 1.8 챌린지
 
 | 항목 | 내용 |
 |------|------|
@@ -82,7 +93,7 @@
 | 종료 조건 | 크루 기간 종료 시 진행 중 챌린지도 종료 |
 | 작심삼일 표시 | 3회 달성 시 UI에 표시 |
 
-### 1.8 일일 인증
+### 1.9 일일 인증
 
 | 항목 | 내용 |
 |------|------|
@@ -92,16 +103,16 @@
 | 마감 시간 | 크루의 deadlineTime 기준 (미지정 시 23:59:59) |
 | 상태 | 생성 시 APPROVED (기본값) |
 
-### 1.9 크루 내 상호 응원
+### 1.10 크루 내 상호 응원
 
 - Phase 1: 좋아요
 - Phase 2: 이모지 확장 검토 (확장 가능하게 설계)
 
-### 1.10 알림 및 리마인더 시스템 (Phase 2)
+### 1.11 알림 및 리마인더 시스템 (Phase 2)
 
 > Phase 2에서 구현 예정
 
-### 1.11 회원가입/로그인
+### 1.12 회원가입/로그인
 
 | 항목 | 내용 |
 |------|------|
