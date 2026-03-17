@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class CompleteExpiredCrewsScheduler {
+public class CompleteExpiredCrewsScheduler { // 그리 그릿 너도 여기에 있는게 맞아? ( 고민좀 해보기 )
 
     private final CrewRepositoryPort crewRepositoryPort;
     private final ChallengeRepositoryPort challengeRepositoryPort;

@@ -18,7 +18,7 @@ public class CreateCrewService implements CreateCrewUseCase {
 
     private final CrewRepositoryPort crewRepositoryPort;
 
-    @Value("${crew.max-duration-days:30}")
+    @Value("${crew.max-duration-days:30}") // 서비스에 니가 있는게 맞아? ???
     private int maxDurationDays;
 
     /** 크루 생성 — 크루장을 리더 멤버로 자동 등록 */
