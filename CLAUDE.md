@@ -300,9 +300,10 @@ Optional<Crew> findByIdWithLock(String id);
 
 ### 브랜치 전략
 
-- main: 운영 배포 브랜치
-- feat/*: 기능 개발 브랜치 (main에서 분기, PR로 병합)
-- fix/*: 버그 수정 브랜치
+- main: 운영 배포 (직접 push 금지, develop에서 PR로만 병합)
+- develop: 통합 브랜치 (feat→develop PR, CI + E2E 통과 필수)
+- feat/*: 기능 개발 브랜치 (develop에서 분기, develop으로 PR)
+- fix/*: 버그 수정 브랜치 (develop에서 분기, develop으로 PR)
 
 ### 커밋 메시지 (AngularJS Convention)
 
