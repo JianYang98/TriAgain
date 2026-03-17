@@ -6,6 +6,14 @@
 
 ---
 
+### [2026-03-15] Docker 이미지 SHA 태그 기반 배포
+
+- 현재 상태: deploy.yml에서 `devjian/triagain:latest`로 pull/run. 빌드 시 SHA 태그(`devjian/triagain:${{ github.sha }}`)도 push하지만 배포에는 미사용
+- 필요 시점: 롤백 필요성 발생 시 또는 Phase 2
+- 이유: latest 태그 배포는 간단하지만 롤백 시 어떤 버전인지 추적 불가. SHA 태그로 배포하면 특정 커밋으로 즉시 롤백 가능
+
+---
+
 ### [2026-03-13] Moderation Context BC 경계 위반 수정
 
 - 현재 상태: `moderation/infra/CrewClientAdapter.java`가 `crew.domain.model.Crew`, `crew.domain.model.CrewMember`, `crew.port.out.CrewRepositoryPort`를 직접 import. Verification → Crew 경계 수정과 동일 패턴의 위반

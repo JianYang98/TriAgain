@@ -5,6 +5,10 @@ import com.triagain.common.response.ApiResponse;
 import com.triagain.crew.port.in.CreateCrewUseCase;
 import com.triagain.crew.port.in.CreateCrewUseCase.CreateCrewCommand;
 import com.triagain.crew.port.in.CreateCrewUseCase.CreateCrewResult;
+import com.triagain.crew.port.in.DeleteCrewUseCase;
+import com.triagain.crew.port.in.EditCrewUseCase;
+import com.triagain.crew.port.in.EditCrewUseCase.EditCrewCommand;
+import com.triagain.crew.port.in.EditCrewUseCase.EditCrewResult;
 import com.triagain.crew.port.in.GetCrewByInviteCodeUseCase;
 import com.triagain.crew.port.in.GetCrewByInviteCodeUseCase.CrewInvitePreviewResult;
 import com.triagain.crew.port.in.GetCrewUseCase;
@@ -14,11 +18,14 @@ import com.triagain.crew.port.in.GetMyCrewsUseCase.CrewSummaryResult;
 import com.triagain.crew.port.in.JoinCrewByInviteCodeUseCase;
 import com.triagain.crew.port.in.JoinCrewByInviteCodeUseCase.JoinByInviteCodeCommand;
 import com.triagain.crew.port.in.JoinCrewByInviteCodeUseCase.JoinByInviteCodeResult;
+import com.triagain.crew.port.in.LeaveCrewUseCase;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -33,6 +40,9 @@ import java.util.List;
 public class CrewController {
 
     private final CreateCrewUseCase createCrewUseCase;
+    private final EditCrewUseCase editCrewUseCase;
+    private final DeleteCrewUseCase deleteCrewUseCase;
+    private final LeaveCrewUseCase leaveCrewUseCase;
     private final JoinCrewByInviteCodeUseCase joinCrewByInviteCodeUseCase;
     private final GetMyCrewsUseCase getMyCrewsUseCase;
     private final GetCrewUseCase getCrewUseCase;
@@ -106,5 +116,43 @@ public class CrewController {
         CrewDetailResult result = getCrewUseCase.getCrew(crewId, userId);
 
         return ResponseEntity.ok(ApiResponse.ok(result));
+    }
+
+    /** 크루 수정 API — PATCH /api/crews/{crewId} */
+    @PatchMapping("/{crewId}")
+    public ResponseEntity<ApiResponse<EditCrewResult>> editCrew(
+            @AuthenticatedUser String userId,
+            @PathVariable String crewId,
+            @RequestBody EditCrewRequest request
+    ) {
+        EditCrewCommand command = new EditCrewCommand(
+                userId, crewId, request.name(), request.goal(), request.verificationContent()
+        );
+
+        EditCrewResult result = editCrewUseCase.editCrew(command);
+
+        return ResponseEntity.ok(ApiResponse.ok(result));
+    }
+
+    /** 크루 삭제 API — DELETE /api/crews/{crewId} */
+    @DeleteMapping("/{crewId}")
+    public ResponseEntity<Void> deleteCrew(
+            @AuthenticatedUser String userId,
+            @PathVariable String crewId
+    ) {
+        deleteCrewUseCase.deleteCrew(crewId, userId);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    /** 크루 탈퇴 API — DELETE /api/crews/{crewId}/members/me */
+    @DeleteMapping("/{crewId}/members/me")
+    public ResponseEntity<Void> leaveCrew(
+            @AuthenticatedUser String userId,
+            @PathVariable String crewId
+    ) {
+        leaveCrewUseCase.leaveCrew(crewId, userId);
+
+        return ResponseEntity.noContent().build();
     }
 }

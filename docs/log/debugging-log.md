@@ -5,6 +5,18 @@
 
 ---
 
+### [2026-03-17] CI용 E2E 테스트 인프라 구축 — 기존 Cucumber 인프라 재활용 결정
+
+- 상황: CI 파이프라인에 배포 전 E2E 자동 테스트 추가 필요. 별도 TestContainers 구성 vs 기존 Cucumber 인프라 재활용 선택
+- 내 판단:
+  1. 기존 Cucumber 인프라(TestContainers, DatabaseCleanup, REST-Assured) 재활용 → 새 의존성 추가 없이 E2eTestBase 클래스만 신규 생성
+  2. E2E 테스트에서 Flyway 비활성화(`spring.flyway.enabled=false`) — Cucumber와 같은 TestContainers DB를 공유할 때 Flyway 이력 충돌 방지. Hibernate `create-drop`이 스키마를 관리
+  3. Gradle `e2eTest` 태스크를 `@Tag("e2e")` + `includeEngines('junit-jupiter')`로 분리 — Cucumber Suite Engine과 격리
+- AI 역할: 기존 테스트 인프라 분석, Flyway 충돌 원인 식별 및 해결
+- 배운 점: 같은 TestContainers를 공유하는 복수 Spring Context에서 Flyway 이력 충돌은 `spring.flyway.enabled=false`로 해결 가능. `create-drop`과 Flyway를 동시에 사용하면 Flyway는 실질적으로 무의미
+
+---
+
 ### [2026-03-14] GitHub Actions 테스트 실패 — H2 호환성 + Cucumber 테스트 버그 3건
 
 - 상황: feat/s3-lambda-presigned-url 브랜치 PR 후 GitHub Actions에서 8개 테스트 실패. V9 마이그레이션의 `ALTER COLUMN SET NOT NULL` + V1의 부분 인덱스(partial index) 구문이 H2에서 미지원

@@ -207,7 +207,7 @@ com.triagain.verification
 
 - **사람**: 쿠컴버 시나리오 작성 + 리뷰 (비즈니스 플로우 검증)
 - **AI**: 단위테스트 작성 (비즈니스 규칙 검증)
-- **E2E**: 배포 후 수동 스모크 테스트 (핵심 해피패스 3~5개)
+- **E2E**: CI에서 배포 전 자동 실행 (핵심 해피패스 5개)
 
 #### 단위테스트 규칙 (AI 필수 준수)
 
@@ -233,10 +233,18 @@ com.triagain.verification
 - 쿠컴버 시나리오는 기능 구현 전 또는 구현과 동시에 작성
 - 다음 기능으로 넘어가기 전에 테스트 통과 확인 필수
 
+#### E2E 테스트 (CI 자동화)
+
+- 대상: 핵심 해피패스 5개 (회원가입→크루생성→참여→인증→사이클완료)
+- 실행: CI에서 배포 전 자동 실행, `./gradlew e2eTest`로 분리 실행 가능
+- 인프라: TestContainers + PostgreSQL (Cucumber과 동일)
+- 인증: X-User-Id 헤더 (dev/test 환경)
+- 위치: `src/test/java/com/triagain/e2e/`
+
 #### 검증 흐름
 
 ```
-쿠컴버 (비즈니스 시나리오) → 단위테스트 (비즈니스 규칙) → E2E (수동 스모크)
+쿠컴버 (비즈니스 시나리오) → 단위테스트 (비즈니스 규칙) → E2E (CI 자동 해피패스)
 사람이 시나리오를 잡고, AI가 규칙을 촘촘히 채운다.
 ```
 
@@ -292,8 +300,10 @@ Optional<Crew> findByIdWithLock(String id);
 
 ### 브랜치 전략
 
-- Phase 1: main 브랜치 단일 운영
-- Phase 2: feature 브랜치 분리 검토 (운영 단계 진입 시)
+- main: 운영 배포 (직접 push 금지, develop에서 PR로만 병합)
+- develop: 통합 브랜치 (feat→develop PR, CI + E2E 통과 필수)
+- feat/*: 기능 개발 브랜치 (develop에서 분기, develop으로 PR)
+- fix/*: 버그 수정 브랜치 (develop에서 분기, develop으로 PR)
 
 ### 커밋 메시지 (AngularJS Convention)
 
@@ -384,6 +394,39 @@ refactor: Verification 도메인 계층 분리
 - 필요 시점: Phase N 또는 조건
 - 이유: (왜 나중으로 미루는지)
 ```
+
+---
+
+## API 엔드포인트 요약
+
+상세 명세는 `/docs/spec/api-spec.md` 참고.
+
+### 구현 완료
+
+| Method | Path | 설명 |
+|--------|------|------|
+| POST | /upload-sessions | 이미지 업로드 세션 생성 (Presigned URL 발급) |
+| GET | /upload-sessions/{id}/events | SSE 구독 (업로드 완료 알림) |
+| PUT | /internal/upload-sessions/complete | Lambda 콜백 (Internal API) |
+| POST | /verifications | 인증 생성 |
+| POST | /auth/kakao | 카카오 로그인 |
+| POST | /auth/signup | 회원가입 |
+| POST | /auth/apple | Apple 로그인 |
+| POST | /auth/apple-signup | Apple 회원가입 |
+| POST | /auth/refresh | 토큰 갱신 |
+| POST | /auth/logout | 로그아웃 |
+| GET | /users/me | 내 프로필 조회 |
+| PATCH | /users/me/nickname | 닉네임 변경 |
+| POST | /crews | 크루 생성 |
+| GET | /crews | 내 크루 목록 조회 |
+| GET | /crews/{crewId} | 크루 상세 조회 |
+| GET | /crews/invite/{inviteCode} | 초대코드로 크루 미리보기 |
+| POST | /crews/join | 초대코드로 크루 참여 |
+| GET | /crews/{crewId}/feed | 크루 피드 조회 |
+| GET | /crews/{crewId}/my-verifications | 내 인증 현황 조회 |
+| PATCH | /crews/{crewId} | 크루 수정 (LEADER, RECRUITING 상태만) |
+| DELETE | /crews/{crewId} | 크루 삭제 (LEADER, RECRUITING + 본인만) |
+| DELETE | /crews/{crewId}/members/me | 크루 탈퇴 (MEMBER, RECRUITING 상태만) |
 
 ---
 

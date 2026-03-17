@@ -105,4 +105,17 @@ public class CrewJpaAdapter implements CrewRepositoryPort {
                 .map(CrewJpaEntity::toDomain)
                 .toList();
     }
+
+    /** 크루 삭제 — 멤버 먼저 삭제 후 크루 삭제 */
+    @Override
+    public void deleteById(String crewId) {
+        crewMemberJpaRepository.deleteByCrewId(crewId);
+        crewJpaRepository.deleteById(crewId);
+    }
+
+    /** 특정 크루의 특정 멤버 삭제 — 크루 탈퇴 시 사용 */
+    @Override
+    public void deleteMemberByCrewIdAndUserId(String crewId, String userId) {
+        crewMemberJpaRepository.deleteByCrewIdAndUserId(crewId, userId);
+    }
 }
