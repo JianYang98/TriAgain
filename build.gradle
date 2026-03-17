@@ -78,5 +78,16 @@ dependencies {
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags 'e2e'
+    }
+}
+
+tasks.register('e2eTest', Test) {
+    description = 'E2E 해피패스 테스트만 실행'
+    group = 'verification'
+    useJUnitPlatform {
+        includeTags 'e2e'
+        includeEngines 'junit-jupiter'
+    }
 }

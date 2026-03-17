@@ -207,7 +207,7 @@ com.triagain.verification
 
 - **사람**: 쿠컴버 시나리오 작성 + 리뷰 (비즈니스 플로우 검증)
 - **AI**: 단위테스트 작성 (비즈니스 규칙 검증)
-- **E2E**: 배포 후 수동 스모크 테스트 (핵심 해피패스 3~5개)
+- **E2E**: CI에서 배포 전 자동 실행 (핵심 해피패스 5개)
 
 #### 단위테스트 규칙 (AI 필수 준수)
 
@@ -233,10 +233,18 @@ com.triagain.verification
 - 쿠컴버 시나리오는 기능 구현 전 또는 구현과 동시에 작성
 - 다음 기능으로 넘어가기 전에 테스트 통과 확인 필수
 
+#### E2E 테스트 (CI 자동화)
+
+- 대상: 핵심 해피패스 5개 (회원가입→크루생성→참여→인증→사이클완료)
+- 실행: CI에서 배포 전 자동 실행, `./gradlew e2eTest`로 분리 실행 가능
+- 인프라: TestContainers + PostgreSQL (Cucumber과 동일)
+- 인증: X-User-Id 헤더 (dev/test 환경)
+- 위치: `src/test/java/com/triagain/e2e/`
+
 #### 검증 흐름
 
 ```
-쿠컴버 (비즈니스 시나리오) → 단위테스트 (비즈니스 규칙) → E2E (수동 스모크)
+쿠컴버 (비즈니스 시나리오) → 단위테스트 (비즈니스 규칙) → E2E (CI 자동 해피패스)
 사람이 시나리오를 잡고, AI가 규칙을 촘촘히 채운다.
 ```
 
@@ -292,8 +300,10 @@ Optional<Crew> findByIdWithLock(String id);
 
 ### 브랜치 전략
 
-- Phase 1: main 브랜치 단일 운영
-- Phase 2: feature 브랜치 분리 검토 (운영 단계 진입 시)
+- main: 운영 배포 (직접 push 금지, develop에서 PR로만 병합)
+- develop: 통합 브랜치 (feat→develop PR, CI + E2E 통과 필수)
+- feat/*: 기능 개발 브랜치 (develop에서 분기, develop으로 PR)
+- fix/*: 버그 수정 브랜치 (develop에서 분기, develop으로 PR)
 
 ### 커밋 메시지 (AngularJS Convention)
 
