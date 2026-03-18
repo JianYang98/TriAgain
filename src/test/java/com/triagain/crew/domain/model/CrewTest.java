@@ -33,7 +33,7 @@ class CrewTest {
         void success() {
             // Given & When
             Crew crew = Crew.create("user1", "독서 크루", "매일 30분 읽기",
-                    "인증 내용", VerificationType.TEXT, 5, TOMORROW, NEXT_WEEK, false, null, null, null);
+                    "인증 내용", VerificationType.TEXT, 5, TOMORROW, NEXT_WEEK, false, null, CrewCategory.EXERCISE, null);
 
             // Then
             assertThat(crew.getId()).startsWith("CREW");
@@ -50,7 +50,7 @@ class CrewTest {
         @DisplayName("maxMembers가 1이면 크루장 혼자 크루를 운영한다")
         void minMembers() {
             Crew crew = Crew.create("user1", "1인 크루", "목표",
-                    "인증 내용", VerificationType.TEXT, 1, TOMORROW, NEXT_WEEK, false, null, null, null);
+                    "인증 내용", VerificationType.TEXT, 1, TOMORROW, NEXT_WEEK, false, null, CrewCategory.EXERCISE, null);
 
             assertThat(crew.getMaxMembers()).isEqualTo(1);
         }
@@ -59,7 +59,7 @@ class CrewTest {
         @DisplayName("maxMembers가 10이면 최대 정원으로 생성된다")
         void maxMembers() {
             Crew crew = Crew.create("user1", "대규모 크루", "목표",
-                    "인증 내용", VerificationType.TEXT, 10, TOMORROW, NEXT_WEEK, false, null, null, null);
+                    "인증 내용", VerificationType.TEXT, 10, TOMORROW, NEXT_WEEK, false, null, CrewCategory.EXERCISE, null);
 
             assertThat(crew.getMaxMembers()).isEqualTo(10);
         }
@@ -68,7 +68,7 @@ class CrewTest {
         @DisplayName("maxMembers가 0이면 예외가 발생한다")
         void maxMembersZero() {
             assertThatThrownBy(() -> Crew.create("user1", "크루", "목표",
-                    "인증 내용", VerificationType.TEXT, 0, TOMORROW, NEXT_WEEK, false, null, null, null))
+                    "인증 내용", VerificationType.TEXT, 0, TOMORROW, NEXT_WEEK, false, null, CrewCategory.EXERCISE, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.INVALID_MAX_MEMBERS);
@@ -78,7 +78,7 @@ class CrewTest {
         @DisplayName("maxMembers가 11이면 예외가 발생한다")
         void maxMembersExceedsLimit() {
             assertThatThrownBy(() -> Crew.create("user1", "크루", "목표",
-                    "인증 내용", VerificationType.TEXT, 11, TOMORROW, NEXT_WEEK, false, null, null, null))
+                    "인증 내용", VerificationType.TEXT, 11, TOMORROW, NEXT_WEEK, false, null, CrewCategory.EXERCISE, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.INVALID_MAX_MEMBERS);
@@ -88,7 +88,7 @@ class CrewTest {
         @DisplayName("시작일이 오늘이면 예외가 발생한다")
         void startDateToday() {
             assertThatThrownBy(() -> Crew.create("user1", "크루", "목표",
-                    "인증 내용", VerificationType.TEXT, 5, LocalDate.now(), NEXT_WEEK, false, null, null, null))
+                    "인증 내용", VerificationType.TEXT, 5, LocalDate.now(), NEXT_WEEK, false, null, CrewCategory.EXERCISE, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.INVALID_START_DATE);
@@ -98,7 +98,7 @@ class CrewTest {
         @DisplayName("시작일이 과거면 예외가 발생한다")
         void startDatePast() {
             assertThatThrownBy(() -> Crew.create("user1", "크루", "목표",
-                    "인증 내용", VerificationType.TEXT, 5, LocalDate.now().minusDays(1), NEXT_WEEK, false, null, null, null))
+                    "인증 내용", VerificationType.TEXT, 5, LocalDate.now().minusDays(1), NEXT_WEEK, false, null, CrewCategory.EXERCISE, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.INVALID_START_DATE);
@@ -108,7 +108,7 @@ class CrewTest {
         @DisplayName("종료일이 시작일과 같으면 예외가 발생한다")
         void endDateEqualsStartDate() {
             assertThatThrownBy(() -> Crew.create("user1", "크루", "목표",
-                    "인증 내용", VerificationType.TEXT, 5, TOMORROW, TOMORROW, false, null, null, null))
+                    "인증 내용", VerificationType.TEXT, 5, TOMORROW, TOMORROW, false, null, CrewCategory.EXERCISE, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.INVALID_END_DATE);
@@ -118,7 +118,7 @@ class CrewTest {
         @DisplayName("종료일이 시작일보다 이전이면 예외가 발생한다")
         void endDateBeforeStartDate() {
             assertThatThrownBy(() -> Crew.create("user1", "크루", "목표",
-                    "인증 내용", VerificationType.TEXT, 5, NEXT_WEEK, TOMORROW, false, null, null, null))
+                    "인증 내용", VerificationType.TEXT, 5, NEXT_WEEK, TOMORROW, false, null, CrewCategory.EXERCISE, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.INVALID_END_DATE);
@@ -133,7 +133,7 @@ class CrewTest {
 
             // When & Then
             assertThatThrownBy(() -> Crew.create("user1", "크루", "목표",
-                    "인증 내용", VerificationType.TEXT, 5, startDate, endDate, false, null, null, null))
+                    "인증 내용", VerificationType.TEXT, 5, startDate, endDate, false, null, CrewCategory.EXERCISE, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.INVALID_END_DATE);
@@ -148,7 +148,7 @@ class CrewTest {
 
             // When
             Crew crew = Crew.create("user1", "크루", "목표",
-                    "인증 내용", VerificationType.TEXT, 5, startDate, endDate, false, null, null, null);
+                    "인증 내용", VerificationType.TEXT, 5, startDate, endDate, false, null, CrewCategory.EXERCISE, null);
 
             // Then
             assertThat(crew.getStartDate()).isEqualTo(startDate);
@@ -340,6 +340,19 @@ class CrewTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.CREW_NOT_RECRUITING);
+        }
+
+        @Test
+        @DisplayName("종료일이 3일 이내인 크루에 참여하면 CREW_JOIN_DEADLINE_PASSED 예외가 발생한다")
+        void joinDeadlinePassed() {
+            // Given — endDate가 2일 후이면 isJoinDeadlinePassed() = true
+            Crew crew = crewWithEndDate(LocalDate.now().plusDays(2));
+
+            // When & Then
+            assertThatThrownBy(() -> crew.addMember("user2"))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.CREW_JOIN_DEADLINE_PASSED);
         }
 
         @Test

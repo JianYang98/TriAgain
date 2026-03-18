@@ -28,8 +28,6 @@ public class JoinCrewService implements JoinCrewUseCase {
             throw new BusinessException(ErrorCode.CREW_NOT_PUBLIC);
         }
 
-        validateJoin(crew, command.userId());
-
         CrewMember member = crew.addMember(command.userId());
         crewRepositoryPort.save(crew);
         crewRepositoryPort.saveMember(member);
@@ -41,11 +39,5 @@ public class JoinCrewService implements JoinCrewUseCase {
                 crew.getCurrentMembers(),
                 member.getJoinedAt()
         );
-    }
-
-    private void validateJoin(Crew crew, String userId) {
-        if (crew.isJoinDeadlinePassed()) {
-            throw new BusinessException(ErrorCode.CREW_JOIN_DEADLINE_PASSED);
-        }
     }
 }

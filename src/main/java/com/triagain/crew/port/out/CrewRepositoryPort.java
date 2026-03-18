@@ -46,6 +46,6 @@ public interface CrewRepositoryPort {
     /** 공개 크루 검색 — 키워드/카테고리 필터 + 페이지네이션 */
     List<Crew> searchPublicCrews(String keyword, CrewCategory category, LocalDate minEndDate, int offset, int limit);
 
-    /** 초대코드로 정확히 일치하는 크루 검색 — visibility 무관 */
-    Optional<Crew> findByInviteCodeExact(String inviteCode);
+    /** 초대코드로 크루 검색 — visibility 무관, 검색 결과용 */
+    Optional<Crew> findByInviteCodeForSearch(String inviteCode);
 }

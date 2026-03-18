@@ -33,7 +33,7 @@ public class SearchCrewsService implements SearchCrewsUseCase {
 
     /** 초대코드 검색 — visibility 무관, 정확히 일치하는 1건 반환 */
     private SearchCrewsResult searchByInviteCode(String inviteCode) {
-        Optional<Crew> crew = crewRepositoryPort.findByInviteCodeExact(inviteCode.toUpperCase());
+        Optional<Crew> crew = crewRepositoryPort.findByInviteCodeForSearch(inviteCode.toUpperCase());
         List<CrewSearchItem> items = crew.map(c -> List.of(toSearchItem(c)))
                 .orElse(List.of());
         return new SearchCrewsResult(items, false);

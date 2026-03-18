@@ -15,10 +15,12 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public class Crew {
 
     public static final LocalTime DEFAULT_DEADLINE_TIME = LocalTime.of(23, 59, 59);
+    public static final String INVITE_CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 
     private final String id;
     private final String creatorId;
@@ -75,6 +77,7 @@ public class Crew {
                               LocalDate startDate, LocalDate endDate,
                               boolean allowLateJoin, LocalTime deadlineTime,
                               CrewCategory category, CrewVisibility visibility) {
+        Objects.requireNonNull(category, "category must not be null");
         validateMaxMembers(maxMembers);
         validateDates(startDate, endDate);
 
@@ -125,6 +128,9 @@ public class Crew {
         }
         if (canNotJoin()) {
             throw new BusinessException(ErrorCode.CREW_NOT_RECRUITING);
+        }
+        if (isJoinDeadlinePassed()) {
+            throw new BusinessException(ErrorCode.CREW_JOIN_DEADLINE_PASSED);
         }
         if (isAlreadyMember(userId)) {
             throw new BusinessException(ErrorCode.CREW_ALREADY_JOINED);
@@ -242,11 +248,10 @@ public class Crew {
     }
 
     private static String generateInviteCode() {
-        String chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
         StringBuilder code = new StringBuilder(6);
         for (int i = 0; i < 6; i++) {
-            int index = (int) (Math.random() * chars.length());
-            code.append(chars.charAt(index));
+            int index = (int) (Math.random() * INVITE_CODE_CHARS.length());
+            code.append(INVITE_CODE_CHARS.charAt(index));
         }
         return code.toString();
     }

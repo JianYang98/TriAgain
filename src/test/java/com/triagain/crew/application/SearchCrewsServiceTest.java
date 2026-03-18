@@ -157,13 +157,13 @@ class SearchCrewsServiceTest {
     class InviteCodeSearch {
 
         @Test
-        @DisplayName("6자리 영숫자 키워드면 초대코드로 정확히 검색한다")
+        @DisplayName("유효한 초대코드 문자 6자리면 초대코드로 정확히 검색한다")
         void inviteCodeSearch_exactMatch() {
             // Given
             Crew crew = publicCrew("CREW-1", "초대 크루", CrewCategory.ETC);
-            given(crewRepositoryPort.findByInviteCodeExact("ABC123")).willReturn(Optional.of(crew));
+            given(crewRepositoryPort.findByInviteCodeForSearch("ABC234")).willReturn(Optional.of(crew));
 
-            SearchCrewsQuery query = new SearchCrewsQuery("abc123", null, 0, 20);
+            SearchCrewsQuery query = new SearchCrewsQuery("abc234", null, 0, 20);
 
             // When
             SearchCrewsResult result = searchCrewsService.searchCrews(query);
@@ -178,7 +178,7 @@ class SearchCrewsServiceTest {
         @DisplayName("존재하지 않는 초대코드면 빈 결과가 반환된다")
         void inviteCodeSearch_notFound() {
             // Given
-            given(crewRepositoryPort.findByInviteCodeExact("ZZZ999")).willReturn(Optional.empty());
+            given(crewRepositoryPort.findByInviteCodeForSearch("ZZZ999")).willReturn(Optional.empty());
 
             SearchCrewsQuery query = new SearchCrewsQuery("ZZZ999", null, 0, 20);
 
@@ -204,7 +204,7 @@ class SearchCrewsServiceTest {
 
             // Then
             verify(crewRepositoryPort).searchPublicCrews(eq("ABCDEFG"), any(), any(), anyInt(), anyInt());
-            verify(crewRepositoryPort, never()).findByInviteCodeExact(any());
+            verify(crewRepositoryPort, never()).findByInviteCodeForSearch(any());
         }
     }
 
