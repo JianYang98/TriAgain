@@ -8,6 +8,7 @@ import com.triagain.crew.domain.vo.CrewVisibility;
 import com.triagain.crew.port.out.CrewRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -122,18 +123,25 @@ public class CrewJpaAdapter implements CrewRepositoryPort {
         crewMemberJpaRepository.deleteByCrewIdAndUserId(crewId, userId);
     }
 
-    /** 공개 크루 검색 — 키워드/카테고리 필터 + 페이지네이션 */
+    /** LIKE 패턴용 와일드카드 이스케이프 — %, _, \ 문자가 리터럴로 검색되도록 처리 */
+    private String escapeForLike(String keyword) {
+        return keyword.replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
+    }
+
+    /** 공개 크루 검색 — 키워드/카테고리 필터 + 페이지네이션 (Slice 기반 hasNext 판별) */
     @Override
-    public List<Crew> searchPublicCrews(String keyword, CrewCategory category,
-                                        LocalDate minEndDate, int offset, int limit) {
-        int page = offset / limit;
-        String keywordPattern = (keyword != null) ? "%" + keyword.toLowerCase() + "%" : null;
-        return crewJpaRepository.searchPublicCrews(
+    public CrewSearchPage searchPublicCrews(String keyword, CrewCategory category,
+                                            LocalDate minEndDate, int page, int size) {
+        String keywordPattern = (keyword != null) ? "%" + escapeForLike(keyword.toLowerCase()) + "%" : null;
+        Slice<CrewJpaEntity> slice = crewJpaRepository.searchPublicCrews(
                 CrewVisibility.PUBLIC, keywordPattern, category, minEndDate,
-                PageRequest.of(page, limit)
-        ).stream()
+                PageRequest.of(page, size));
+        List<Crew> crews = slice.getContent().stream()
                 .map(CrewJpaEntity::toDomain)
                 .toList();
+        return new CrewSearchPage(crews, slice.hasNext());
     }
 
     /** 초대코드로 크루 검색 — visibility 무관, 검색 결과용 */

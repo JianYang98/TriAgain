@@ -42,20 +42,17 @@ public class SearchCrewsService implements SearchCrewsUseCase {
     /** 키워드/카테고리 검색 — PUBLIC 크루 + 상태 조건 + 페이지네이션 */
     private SearchCrewsResult searchByKeyword(SearchCrewsQuery query) {
         LocalDate minEndDate = LocalDate.now().plusDays(minRemainingDays);
-        int fetchSize = query.size() + 1;
 
-        List<Crew> crews = crewRepositoryPort.searchPublicCrews(
+        CrewRepositoryPort.CrewSearchPage result = crewRepositoryPort.searchPublicCrews(
                 query.keyword(), query.category(), minEndDate,
-                query.offset(), fetchSize
+                query.page(), query.size()
         );
 
-        boolean hasNext = crews.size() > query.size();
-        List<CrewSearchItem> items = crews.stream()
-                .limit(query.size())
+        List<CrewSearchItem> items = result.crews().stream()
                 .map(this::toSearchItem)
                 .toList();
 
-        return new SearchCrewsResult(items, hasNext);
+        return new SearchCrewsResult(items, result.hasNext());
     }
 
     private CrewSearchItem toSearchItem(Crew crew) {
