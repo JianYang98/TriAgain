@@ -2,6 +2,7 @@ package com.triagain.crew.port.in;
 
 import com.triagain.crew.domain.vo.CrewCategory;
 import com.triagain.crew.domain.vo.CrewStatus;
+import com.triagain.crew.domain.vo.CrewVisibility;
 import com.triagain.crew.domain.vo.VerificationType;
 
 import java.time.LocalDate;
@@ -54,6 +55,7 @@ public interface SearchCrewsUseCase {
             CrewStatus status,
             LocalDate startDate,
             LocalDate endDate,
-            LocalDateTime createdAt
+            LocalDateTime createdAt,
+            CrewVisibility visibility
     ) {}
 }

@@ -72,7 +72,8 @@ public class SearchCrewsService implements SearchCrewsUseCase {
                 crew.getStatus(),
                 crew.getStartDate(),
                 crew.getEndDate(),
-                crew.getCreatedAt()
+                crew.getCreatedAt(),
+                crew.getVisibility()
         );
     }
 }

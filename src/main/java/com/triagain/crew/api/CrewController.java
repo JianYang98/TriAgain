@@ -135,7 +135,7 @@ public class CrewController {
     public ResponseEntity<ApiResponse<EditCrewResult>> editCrew(
             @AuthenticatedUser String userId,
             @PathVariable String crewId,
-            @RequestBody EditCrewRequest request
+            @Valid @RequestBody EditCrewRequest request
     ) {
         EditCrewCommand command = new EditCrewCommand(
                 userId, crewId, request.name(), request.goal(), request.verificationContent(),

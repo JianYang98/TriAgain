@@ -1328,7 +1328,8 @@ GET /crews/search?keyword=러닝&category=EXERCISE&page=0&size=20 HTTP/1.1
         "status": "RECRUITING",
         "startDate": "2026-03-10",
         "endDate": "2026-03-24",
-        "createdAt": "2026-03-01T10:00:00"
+        "createdAt": "2026-03-01T10:00:00",
+        "visibility": "PUBLIC"
       }
     ],
     "hasNext": false
@@ -1352,6 +1353,7 @@ GET /crews/search?keyword=러닝&category=EXERCISE&page=0&size=20 HTTP/1.1
   - `startDate`: 크루 시작일
   - `endDate`: 크루 종료일
   - `createdAt`: 크루 생성 시각
+  - `visibility`: 공개 설정 (`PUBLIC` / `PRIVATE`) — 초대코드 검색 시 PRIVATE 크루도 반환되므로 구분용
 - `hasNext`: 다음 페이지 존재 여부
 
 ---
