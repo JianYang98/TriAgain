@@ -4,6 +4,8 @@ import com.triagain.acceptance.ScenarioContext;
 import com.triagain.acceptance.adapter.CrewTestAdapter;
 import com.triagain.common.util.IdGenerator;
 import com.triagain.crew.api.CreateCrewRequest;
+import com.triagain.crew.domain.vo.CrewCategory;
+import com.triagain.crew.domain.vo.CrewVisibility;
 import com.triagain.crew.domain.model.Crew;
 import com.triagain.crew.domain.model.CrewMember;
 import com.triagain.crew.domain.vo.ChallengeStatus;
@@ -64,7 +66,7 @@ public class CrewJoinSteps {
 
         CreateCrewRequest request = new CreateCrewRequest(
                 "테스트 크루", "테스트 목표", "인증 내용", VerificationType.TEXT,
-                10, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true, null
+                10, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true, null, CrewCategory.ETC, null
         );
         ExtractableResponse<Response> response = crewAdapter.createCrew(userId, request);
         scenarioContext.setCrewId(response.jsonPath().getString("data.crewId"));
@@ -77,7 +79,7 @@ public class CrewJoinSteps {
         String creatorId = scenarioContext.getCreatorId();
         CreateCrewRequest request = new CreateCrewRequest(
                 "활성 크루", "활성 크루 목표", "인증 내용", VerificationType.TEXT,
-                10, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true, null
+                10, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true, null, CrewCategory.ETC, null
         );
         ExtractableResponse<Response> response = crewAdapter.createCrew(creatorId, request);
         String crewId = response.jsonPath().getString("data.crewId");
@@ -92,7 +94,7 @@ public class CrewJoinSteps {
         String creatorId = scenarioContext.getCreatorId();
         CreateCrewRequest request = new CreateCrewRequest(
                 "활성 크루", "활성 크루 목표", "인증 내용", VerificationType.TEXT,
-                10, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), false, null
+                10, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), false, null, CrewCategory.ETC, null
         );
         ExtractableResponse<Response> response = crewAdapter.createCrew(creatorId, request);
         String crewId = response.jsonPath().getString("data.crewId");
@@ -107,7 +109,7 @@ public class CrewJoinSteps {
         String creatorId = scenarioContext.getCreatorId();
         CreateCrewRequest request = new CreateCrewRequest(
                 "소규모 크루", "소규모 목표", "인증 내용", VerificationType.TEXT,
-                2, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true, null
+                2, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true, null, CrewCategory.ETC, null
         );
         ExtractableResponse<Response> response = crewAdapter.createCrew(creatorId, request);
         String crewId = response.jsonPath().getString("data.crewId");
@@ -137,7 +139,7 @@ public class CrewJoinSteps {
                 "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
                 LocalDate.now().minusDays(10), LocalDate.now().plusDays(daysLeft), true,
                 inviteCode, LocalDateTime.now(),
-                Crew.DEFAULT_DEADLINE_TIME, List.of()
+                Crew.DEFAULT_DEADLINE_TIME, null, CrewVisibility.PRIVATE, List.of()
         );
         crewRepositoryPort.save(crew);
         crewRepositoryPort.saveMember(CrewMember.createLeader(creatorId, crewId));

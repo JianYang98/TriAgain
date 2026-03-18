@@ -38,7 +38,8 @@ public class CrewEditSteps {
         EditCrewRequest request = new EditCrewRequest(
                 data.getOrDefault("이름", null),
                 data.getOrDefault("목표", null),
-                data.getOrDefault("인증내용", null)
+                data.getOrDefault("인증내용", null),
+                null, null
         );
 
         ExtractableResponse<Response> response = crewAdapter.editCrew(
@@ -52,7 +53,8 @@ public class CrewEditSteps {
         EditCrewRequest request = new EditCrewRequest(
                 data.getOrDefault("이름", null),
                 data.getOrDefault("목표", null),
-                data.getOrDefault("인증내용", null)
+                data.getOrDefault("인증내용", null),
+                null, null
         );
 
         ExtractableResponse<Response> response = crewAdapter.editCrew(
@@ -62,7 +64,7 @@ public class CrewEditSteps {
 
     @만일("빈 body로 크루를 수정한다")
     public void 빈_body로_크루를_수정한다() {
-        EditCrewRequest request = new EditCrewRequest(null, null, null);
+        EditCrewRequest request = new EditCrewRequest(null, null, null, null, null);
         ExtractableResponse<Response> response = crewAdapter.editCrew(
                 scenarioContext.getUserId(), scenarioContext.getCrewId(), request);
         scenarioContext.setResponse(response);

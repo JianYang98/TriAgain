@@ -30,7 +30,9 @@ public class GetMyCrewsService implements GetMyCrewsUseCase {
                         crew.getStatus(),
                         crew.getStartDate(),
                         crew.getEndDate(),
-                        crew.getCreatedAt()
+                        crew.getCreatedAt(),
+                        crew.getCategory(),
+                        crew.getVisibility()
                 ))
                 .toList();
     }

@@ -5,6 +5,7 @@ import com.triagain.acceptance.adapter.CrewTestAdapter;
 import com.triagain.acceptance.adapter.MyVerificationsTestAdapter;
 import com.triagain.common.util.IdGenerator;
 import com.triagain.crew.api.CreateCrewRequest;
+import com.triagain.crew.domain.vo.CrewCategory;
 import com.triagain.crew.domain.model.Challenge;
 import com.triagain.crew.domain.model.Crew;
 import com.triagain.crew.domain.vo.ChallengeStatus;
@@ -124,7 +125,7 @@ public class MyVerificationsSteps {
         CreateCrewRequest request = new CreateCrewRequest(
                 "테스트 크루", "테스트 목표", "인증 내용", VerificationType.TEXT,
                 10, LocalDate.now().plusDays(1), LocalDate.now().plusDays(1 + days),
-                true, null
+                true, null, CrewCategory.ETC, null
         );
         ExtractableResponse<Response> response = crewAdapter.createCrew(scenarioContext.getUserId(), request);
         scenarioContext.setResponse(response);
@@ -167,7 +168,7 @@ public class MyVerificationsSteps {
                 crew.getCurrentMembers(), crew.getStatus(),
                 LocalDate.now().minusDays(daysNeeded), crew.getEndDate(),
                 crew.isAllowLateJoin(), crew.getInviteCode(),
-                crew.getCreatedAt(), crew.getDeadlineTime(), crew.getMembers()
+                crew.getCreatedAt(), crew.getDeadlineTime(), crew.getCategory(), crew.getVisibility(), crew.getMembers()
         );
         crewRepositoryPort.save(updated);
     }

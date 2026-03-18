@@ -32,6 +32,7 @@ public class DevSecurityConfig {
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/internal/**").permitAll()
                         .requestMatchers("/upload-sessions/*/events").permitAll()
+                        .requestMatchers("/crews/search").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

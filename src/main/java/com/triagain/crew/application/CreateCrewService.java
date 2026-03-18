@@ -38,7 +38,9 @@ public class CreateCrewService implements CreateCrewUseCase {
                 command.startDate(),
                 command.endDate(),
                 command.allowLateJoin(),
-                command.deadlineTime()
+                command.deadlineTime(),
+                command.category(),
+                command.visibility()
         );
 
         Crew saved = crewRepositoryPort.save(crew);
@@ -59,7 +61,9 @@ public class CreateCrewService implements CreateCrewUseCase {
                 saved.isAllowLateJoin(),
                 saved.getInviteCode(),
                 saved.getCreatedAt(),
-                saved.getDeadlineTime()
+                saved.getDeadlineTime(),
+                saved.getCategory(),
+                saved.getVisibility()
         );
     }
 

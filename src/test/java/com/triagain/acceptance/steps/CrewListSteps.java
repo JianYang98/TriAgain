@@ -3,6 +3,7 @@ package com.triagain.acceptance.steps;
 import com.triagain.acceptance.ScenarioContext;
 import com.triagain.acceptance.adapter.CrewTestAdapter;
 import com.triagain.crew.api.CreateCrewRequest;
+import com.triagain.crew.domain.vo.CrewCategory;
 import com.triagain.crew.domain.vo.VerificationType;
 import com.triagain.user.domain.model.User;
 import com.triagain.user.port.out.UserRepositoryPort;
@@ -47,7 +48,7 @@ public class CrewListSteps {
         for (int i = 0; i < count; i++) {
             CreateCrewRequest request = new CreateCrewRequest(
                     "크루 " + (i + 1), "목표 " + (i + 1), "인증 내용", VerificationType.TEXT,
-                    10, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true, null
+                    10, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true, null, CrewCategory.ETC, null
             );
             crewAdapter.createCrew(userId, request);
         }

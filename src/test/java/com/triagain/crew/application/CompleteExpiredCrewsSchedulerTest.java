@@ -116,6 +116,6 @@ class CompleteExpiredCrewsSchedulerTest {
         return Crew.of(id, "creator-1", "테스트 크루", "목표",
                 "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
                 startDate, endDate, false, "ABC123",
-                LocalDateTime.now(), DEADLINE_TIME, Collections.emptyList());
+                LocalDateTime.now(), DEADLINE_TIME, null, null, Collections.emptyList());
     }
 }

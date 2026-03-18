@@ -2,9 +2,12 @@ package com.triagain.crew.infra;
 
 import com.triagain.crew.domain.model.Crew;
 import com.triagain.crew.domain.model.CrewMember;
+import com.triagain.crew.domain.vo.CrewCategory;
 import com.triagain.crew.domain.vo.CrewStatus;
+import com.triagain.crew.domain.vo.CrewVisibility;
 import com.triagain.crew.port.out.CrewRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -117,5 +120,25 @@ public class CrewJpaAdapter implements CrewRepositoryPort {
     @Override
     public void deleteMemberByCrewIdAndUserId(String crewId, String userId) {
         crewMemberJpaRepository.deleteByCrewIdAndUserId(crewId, userId);
+    }
+
+    /** 공개 크루 검색 — 키워드/카테고리 필터 + 페이지네이션 */
+    @Override
+    public List<Crew> searchPublicCrews(String keyword, CrewCategory category,
+                                        LocalDate minEndDate, int offset, int limit) {
+        int page = offset / limit;
+        return crewJpaRepository.searchPublicCrews(
+                CrewVisibility.PUBLIC, keyword, category, minEndDate,
+                PageRequest.of(page, limit)
+        ).stream()
+                .map(CrewJpaEntity::toDomain)
+                .toList();
+    }
+
+    /** 초대코드로 크루 검색 — visibility 무관, 검색 결과용 */
+    @Override
+    public Optional<Crew> findByInviteCodeForSearch(String inviteCode) {
+        return crewJpaRepository.findByInviteCode(inviteCode)
+                .map(CrewJpaEntity::toDomain);
     }
 }

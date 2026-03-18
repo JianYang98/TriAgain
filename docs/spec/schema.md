@@ -51,6 +51,8 @@ erDiagram
         date end_date
         time deadline_time "마감 시간 (DEFAULT 23:59:59)"
         string invite_code UK
+        string category "크루 카테고리 — VARCHAR(20) NULL"
+        string visibility "공개 설정 — VARCHAR(10) NOT NULL DEFAULT 'PRIVATE'"
         timestamp created_at
     }
     
@@ -162,6 +164,21 @@ erDiagram
 | ACTIVE | 진행 중 |
 | COMPLETED | 완료 |
 
+### crews.category
+| 값 | 의미 |
+|----|------|
+| EXERCISE | 운동 |
+| STUDY | 공부 |
+| LIFESTYLE | 생활습관 |
+| SELF_DEV | 자기개발 |
+| ETC | 기타 |
+
+### crews.visibility
+| 값 | 의미 |
+|----|------|
+| PUBLIC | 공개 (검색 노출) |
+| PRIVATE | 비공개 (초대코드만) |
+
 ### crews.verification_type
 | 값 | 의미 |
 |----|------|
@@ -271,6 +288,15 @@ WHERE status = 'IN_PROGRESS';
 -- 신고 중복 방지
 CREATE UNIQUE INDEX idx_report_unique
 ON report(verification_id, reporter_id);
+```
+
+### 크루 검색 인덱스
+
+```sql
+-- 크루 검색 (공개 + 모집중/중간가입 가능)
+CREATE INDEX idx_crew_search
+ON crews(visibility, status, created_at DESC)
+WHERE visibility = 'PUBLIC';
 ```
 
 ### Moderation 관련 인덱스

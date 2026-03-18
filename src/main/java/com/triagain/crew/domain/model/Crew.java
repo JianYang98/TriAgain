@@ -2,7 +2,9 @@ package com.triagain.crew.domain.model;
 
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
+import com.triagain.crew.domain.vo.CrewCategory;
 import com.triagain.crew.domain.vo.CrewStatus;
+import com.triagain.crew.domain.vo.CrewVisibility;
 import com.triagain.crew.domain.vo.VerificationType;
 
 import com.triagain.common.util.IdGenerator;
@@ -13,10 +15,12 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public class Crew {
 
     public static final LocalTime DEFAULT_DEADLINE_TIME = LocalTime.of(23, 59, 59);
+    public static final String INVITE_CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 
     private final String id;
     private final String creatorId;
@@ -33,6 +37,8 @@ public class Crew {
     private final String inviteCode;
     private final LocalDateTime createdAt;
     private final LocalTime deadlineTime;
+    private CrewCategory category;
+    private CrewVisibility visibility;
     private final List<CrewMember> members;
 
     private Crew(String id, String creatorId, String name, String goal,
@@ -41,7 +47,8 @@ public class Crew {
                  int currentMembers, CrewStatus status, LocalDate startDate,
                  LocalDate endDate, boolean allowLateJoin,
                  String inviteCode, LocalDateTime createdAt,
-                 LocalTime deadlineTime, List<CrewMember> members) {
+                 LocalTime deadlineTime, CrewCategory category,
+                 CrewVisibility visibility, List<CrewMember> members) {
         this.id = id;
         this.creatorId = creatorId;
         this.name = name;
@@ -57,6 +64,8 @@ public class Crew {
         this.inviteCode = inviteCode;
         this.createdAt = createdAt;
         this.deadlineTime = deadlineTime;
+        this.category = category;
+        this.visibility = visibility;
         this.members = new ArrayList<>(members);
     }
 
@@ -66,7 +75,9 @@ public class Crew {
                               VerificationType verificationType,
                               int maxMembers,
                               LocalDate startDate, LocalDate endDate,
-                              boolean allowLateJoin, LocalTime deadlineTime) {
+                              boolean allowLateJoin, LocalTime deadlineTime,
+                              CrewCategory category, CrewVisibility visibility) {
+        Objects.requireNonNull(category, "category must not be null");
         validateMaxMembers(maxMembers);
         validateDates(startDate, endDate);
 
@@ -89,6 +100,8 @@ public class Crew {
                 generateInviteCode(),
                 LocalDateTime.now(),
                 deadlineTime != null ? deadlineTime : DEFAULT_DEADLINE_TIME,
+                category,
+                visibility != null ? visibility : CrewVisibility.PRIVATE,
                 List.of(leader)
         );
     }
@@ -100,11 +113,12 @@ public class Crew {
                           int currentMembers, CrewStatus status, LocalDate startDate,
                           LocalDate endDate, boolean allowLateJoin,
                           String inviteCode, LocalDateTime createdAt,
-                          LocalTime deadlineTime, List<CrewMember> members) {
+                          LocalTime deadlineTime, CrewCategory category,
+                          CrewVisibility visibility, List<CrewMember> members) {
         return new Crew(id, creatorId, name, goal, verificationContent, verificationType,
                 maxMembers, currentMembers, status, startDate,
                 endDate, allowLateJoin, inviteCode, createdAt,
-                deadlineTime, members);
+                deadlineTime, category, visibility, members);
     }
 
     /** 멤버 추가 — 정원·상태·마감일 검증 후 멤버 등록 */
@@ -114,6 +128,9 @@ public class Crew {
         }
         if (canNotJoin()) {
             throw new BusinessException(ErrorCode.CREW_NOT_RECRUITING);
+        }
+        if (isJoinDeadlinePassed()) {
+            throw new BusinessException(ErrorCode.CREW_JOIN_DEADLINE_PASSED);
         }
         if (isAlreadyMember(userId)) {
             throw new BusinessException(ErrorCode.CREW_ALREADY_JOINED);
@@ -126,13 +143,16 @@ public class Crew {
     }
 
     /** 크루 정보 수정 — RECRUITING 상태에서 LEADER만 호출 */
-    public void update(String name, String goal, String verificationContent) {
+    public void update(String name, String goal, String verificationContent,
+                       CrewCategory category, CrewVisibility visibility) {
         if (this.status != CrewStatus.RECRUITING) {
             throw new BusinessException(ErrorCode.CREW_NOT_RECRUITING);
         }
         if (name != null) this.name = name;
         if (goal != null) this.goal = goal;
         if (verificationContent != null) this.verificationContent = verificationContent;
+        if (category != null) this.category = category;
+        if (visibility != null) this.visibility = visibility;
     }
 
     /** 멤버 제거 — RECRUITING 상태에서 MEMBER만 탈퇴 가능 */
@@ -228,11 +248,10 @@ public class Crew {
     }
 
     private static String generateInviteCode() {
-        String chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
         StringBuilder code = new StringBuilder(6);
         for (int i = 0; i < 6; i++) {
-            int index = (int) (Math.random() * chars.length());
-            code.append(chars.charAt(index));
+            int index = (int) (Math.random() * INVITE_CODE_CHARS.length());
+            code.append(INVITE_CODE_CHARS.charAt(index));
         }
         return code.toString();
     }
@@ -295,6 +314,19 @@ public class Crew {
 
     public LocalTime getDeadlineTime() {
         return deadlineTime;
+    }
+
+    public CrewCategory getCategory() {
+        return category;
+    }
+
+    public CrewVisibility getVisibility() {
+        return visibility;
+    }
+
+    /** 공개 크루 여부 확인 — 크루 검색/직접 가입 판단에 사용 */
+    public boolean isPublic() {
+        return this.visibility == CrewVisibility.PUBLIC;
     }
 
     public List<CrewMember> getMembers() {

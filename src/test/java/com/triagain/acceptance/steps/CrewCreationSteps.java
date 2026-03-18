@@ -3,6 +3,7 @@ package com.triagain.acceptance.steps;
 import com.triagain.acceptance.ScenarioContext;
 import com.triagain.acceptance.adapter.CrewTestAdapter;
 import com.triagain.crew.api.CreateCrewRequest;
+import com.triagain.crew.domain.vo.CrewCategory;
 import com.triagain.crew.domain.vo.VerificationType;
 import io.cucumber.datatable.DataTable;
 import io.cucumber.java.Before;
@@ -50,7 +51,7 @@ public class CrewCreationSteps {
                 startDate,
                 endDate,
                 "허용".equals(data.getOrDefault("중간가입", "허용")),
-                null
+                null, CrewCategory.ETC, null
         );
 
         ExtractableResponse<Response> response = crewAdapter.createCrew(scenarioContext.getUserId(), request);
@@ -78,7 +79,7 @@ public class CrewCreationSteps {
     public void 시작일을_오늘로_설정하여_크루를_생성한다() {
         CreateCrewRequest request = new CreateCrewRequest(
                 "테스트 크루", "테스트 목표", "인증 내용", VerificationType.TEXT,
-                10, LocalDate.now(), LocalDate.now().plusDays(14), true, null
+                10, LocalDate.now(), LocalDate.now().plusDays(14), true, null, CrewCategory.ETC, null
         );
         ExtractableResponse<Response> response = crewAdapter.createCrew(scenarioContext.getUserId(), request);
         scenarioContext.setResponse(response);
@@ -89,7 +90,7 @@ public class CrewCreationSteps {
         LocalDate startDate = LocalDate.now().plusDays(7);
         CreateCrewRequest request = new CreateCrewRequest(
                 "테스트 크루", "테스트 목표", "인증 내용", VerificationType.TEXT,
-                10, startDate, startDate.minusDays(1), true, null
+                10, startDate, startDate.minusDays(1), true, null, CrewCategory.ETC, null
         );
         ExtractableResponse<Response> response = crewAdapter.createCrew(scenarioContext.getUserId(), request);
         scenarioContext.setResponse(response);
@@ -99,7 +100,7 @@ public class CrewCreationSteps {
     public void 크루_이름_없이_크루를_생성한다() {
         CreateCrewRequest request = new CreateCrewRequest(
                 "", "테스트 목표", "인증 내용", VerificationType.TEXT,
-                10, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true, null
+                10, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true, null, CrewCategory.ETC, null
         );
         ExtractableResponse<Response> response = crewAdapter.createCrew(scenarioContext.getUserId(), request);
         scenarioContext.setResponse(response);
@@ -109,7 +110,7 @@ public class CrewCreationSteps {
     public void 최대인원으로_크루_생성을_요청한다(int maxMembers) {
         CreateCrewRequest request = new CreateCrewRequest(
                 "테스트 크루", "테스트 목표", "인증 내용", VerificationType.TEXT,
-                maxMembers, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true, null
+                maxMembers, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true, null, CrewCategory.ETC, null
         );
         ExtractableResponse<Response> response = crewAdapter.createCrew(scenarioContext.getUserId(), request);
         scenarioContext.setResponse(response);
@@ -162,7 +163,7 @@ public class CrewCreationSteps {
     private CreateCrewRequest defaultRequest(VerificationType verificationType) {
         return new CreateCrewRequest(
                 "테스트 크루", "테스트 목표", "인증 내용", verificationType,
-                10, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true, null
+                10, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true, null, CrewCategory.ETC, null
         );
     }
 

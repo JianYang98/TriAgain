@@ -63,6 +63,8 @@ public class GetCrewByInviteCodeService implements GetCrewByInviteCodeUseCase {
                 crew.isAllowLateJoin(),
                 crew.getDeadlineTime(),
                 crew.getCreatedAt(),
+                crew.getCategory(),
+                crew.getVisibility(),
                 members,
                 joinBlockedReason == null,
                 joinBlockedReason
