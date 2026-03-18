@@ -31,11 +31,6 @@ public interface SearchCrewsUseCase {
             if (size > 50) size = 50;
         }
 
-        /** 페이지네이션 오프셋 계산 */
-        public int offset() {
-            return page * size;
-        }
-
         /** 초대코드 검색 여부 판별 — INVITE_CODE_CHARS 문자 집합의 6자리만 매칭 */
         public boolean isInviteCodeSearch() {
             return keyword != null && INVITE_CODE_PATTERN.matcher(keyword.toUpperCase()).matches();
