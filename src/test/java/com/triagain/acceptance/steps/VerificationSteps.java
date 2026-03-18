@@ -71,7 +71,7 @@ public class VerificationSteps {
                 crew.getVerificationContent(), VerificationType.valueOf(type), crew.getMaxMembers(),
                 crew.getCurrentMembers(), crew.getStatus(), crew.getStartDate(),
                 crew.getEndDate(), crew.isAllowLateJoin(), crew.getInviteCode(),
-                crew.getCreatedAt(), crew.getDeadlineTime(), crew.getMembers()
+                crew.getCreatedAt(), crew.getDeadlineTime(), crew.getCategory(), crew.getVisibility(), crew.getMembers()
         );
         crewRepositoryPort.save(updated);
     }

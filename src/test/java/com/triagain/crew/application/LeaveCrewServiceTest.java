@@ -100,7 +100,7 @@ class LeaveCrewServiceTest {
         Crew crew = Crew.of("CREW-1", "leader-1", "크루", "목표", "인증",
                 VerificationType.TEXT, 10, 2, CrewStatus.ACTIVE,
                 LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true,
-                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), List.of(leader, member));
+                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null, null, List.of(leader, member));
         given(crewRepositoryPort.findByIdWithLock("CREW-1")).willReturn(Optional.of(crew));
 
         // When & Then
@@ -117,7 +117,7 @@ class LeaveCrewServiceTest {
         return Crew.of("CREW-1", leaderId, "테스트 크루", "목표", "인증 내용",
                 VerificationType.TEXT, 10, 1, CrewStatus.RECRUITING,
                 LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true,
-                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), List.of(leader));
+                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null, null, List.of(leader));
     }
 
     private Crew recruitingCrewWithLeaderAndMember(String leaderId, String memberId) {
@@ -126,6 +126,6 @@ class LeaveCrewServiceTest {
         return Crew.of("CREW-1", leaderId, "테스트 크루", "목표", "인증 내용",
                 VerificationType.TEXT, 10, 2, CrewStatus.RECRUITING,
                 LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true,
-                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), List.of(leader, member));
+                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null, null, List.of(leader, member));
     }
 }

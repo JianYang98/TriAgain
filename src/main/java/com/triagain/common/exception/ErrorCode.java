@@ -54,6 +54,7 @@ public enum ErrorCode {
     CREW_HAS_MEMBERS(409, "CR019"),
     LEADER_CANNOT_LEAVE(403, "CR020"),
     CREW_MEMBER_NOT_FOUND(404, "CR021"),
+    CREW_NOT_PUBLIC(400, "CR022"),
 
     // Verification
     VERIFICATION_NOT_FOUND(404, "V001"),

@@ -2,7 +2,9 @@ package com.triagain.crew.domain.model;
 
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
+import com.triagain.crew.domain.vo.CrewCategory;
 import com.triagain.crew.domain.vo.CrewStatus;
+import com.triagain.crew.domain.vo.CrewVisibility;
 import com.triagain.crew.domain.vo.VerificationType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -31,7 +33,7 @@ class CrewTest {
         void success() {
             // Given & When
             Crew crew = Crew.create("user1", "독서 크루", "매일 30분 읽기",
-                    "인증 내용", VerificationType.TEXT, 5, TOMORROW, NEXT_WEEK, false, null);
+                    "인증 내용", VerificationType.TEXT, 5, TOMORROW, NEXT_WEEK, false, null, null, null);
 
             // Then
             assertThat(crew.getId()).startsWith("CREW");
@@ -48,7 +50,7 @@ class CrewTest {
         @DisplayName("maxMembers가 1이면 크루장 혼자 크루를 운영한다")
         void minMembers() {
             Crew crew = Crew.create("user1", "1인 크루", "목표",
-                    "인증 내용", VerificationType.TEXT, 1, TOMORROW, NEXT_WEEK, false, null);
+                    "인증 내용", VerificationType.TEXT, 1, TOMORROW, NEXT_WEEK, false, null, null, null);
 
             assertThat(crew.getMaxMembers()).isEqualTo(1);
         }
@@ -57,7 +59,7 @@ class CrewTest {
         @DisplayName("maxMembers가 10이면 최대 정원으로 생성된다")
         void maxMembers() {
             Crew crew = Crew.create("user1", "대규모 크루", "목표",
-                    "인증 내용", VerificationType.TEXT, 10, TOMORROW, NEXT_WEEK, false, null);
+                    "인증 내용", VerificationType.TEXT, 10, TOMORROW, NEXT_WEEK, false, null, null, null);
 
             assertThat(crew.getMaxMembers()).isEqualTo(10);
         }
@@ -66,7 +68,7 @@ class CrewTest {
         @DisplayName("maxMembers가 0이면 예외가 발생한다")
         void maxMembersZero() {
             assertThatThrownBy(() -> Crew.create("user1", "크루", "목표",
-                    "인증 내용", VerificationType.TEXT, 0, TOMORROW, NEXT_WEEK, false, null))
+                    "인증 내용", VerificationType.TEXT, 0, TOMORROW, NEXT_WEEK, false, null, null, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.INVALID_MAX_MEMBERS);
@@ -76,7 +78,7 @@ class CrewTest {
         @DisplayName("maxMembers가 11이면 예외가 발생한다")
         void maxMembersExceedsLimit() {
             assertThatThrownBy(() -> Crew.create("user1", "크루", "목표",
-                    "인증 내용", VerificationType.TEXT, 11, TOMORROW, NEXT_WEEK, false, null))
+                    "인증 내용", VerificationType.TEXT, 11, TOMORROW, NEXT_WEEK, false, null, null, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.INVALID_MAX_MEMBERS);
@@ -86,7 +88,7 @@ class CrewTest {
         @DisplayName("시작일이 오늘이면 예외가 발생한다")
         void startDateToday() {
             assertThatThrownBy(() -> Crew.create("user1", "크루", "목표",
-                    "인증 내용", VerificationType.TEXT, 5, LocalDate.now(), NEXT_WEEK, false, null))
+                    "인증 내용", VerificationType.TEXT, 5, LocalDate.now(), NEXT_WEEK, false, null, null, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.INVALID_START_DATE);
@@ -96,7 +98,7 @@ class CrewTest {
         @DisplayName("시작일이 과거면 예외가 발생한다")
         void startDatePast() {
             assertThatThrownBy(() -> Crew.create("user1", "크루", "목표",
-                    "인증 내용", VerificationType.TEXT, 5, LocalDate.now().minusDays(1), NEXT_WEEK, false, null))
+                    "인증 내용", VerificationType.TEXT, 5, LocalDate.now().minusDays(1), NEXT_WEEK, false, null, null, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.INVALID_START_DATE);
@@ -106,7 +108,7 @@ class CrewTest {
         @DisplayName("종료일이 시작일과 같으면 예외가 발생한다")
         void endDateEqualsStartDate() {
             assertThatThrownBy(() -> Crew.create("user1", "크루", "목표",
-                    "인증 내용", VerificationType.TEXT, 5, TOMORROW, TOMORROW, false, null))
+                    "인증 내용", VerificationType.TEXT, 5, TOMORROW, TOMORROW, false, null, null, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.INVALID_END_DATE);
@@ -116,7 +118,7 @@ class CrewTest {
         @DisplayName("종료일이 시작일보다 이전이면 예외가 발생한다")
         void endDateBeforeStartDate() {
             assertThatThrownBy(() -> Crew.create("user1", "크루", "목표",
-                    "인증 내용", VerificationType.TEXT, 5, NEXT_WEEK, TOMORROW, false, null))
+                    "인증 내용", VerificationType.TEXT, 5, NEXT_WEEK, TOMORROW, false, null, null, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.INVALID_END_DATE);
@@ -131,7 +133,7 @@ class CrewTest {
 
             // When & Then
             assertThatThrownBy(() -> Crew.create("user1", "크루", "목표",
-                    "인증 내용", VerificationType.TEXT, 5, startDate, endDate, false, null))
+                    "인증 내용", VerificationType.TEXT, 5, startDate, endDate, false, null, null, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.INVALID_END_DATE);
@@ -146,11 +148,126 @@ class CrewTest {
 
             // When
             Crew crew = Crew.create("user1", "크루", "목표",
-                    "인증 내용", VerificationType.TEXT, 5, startDate, endDate, false, null);
+                    "인증 내용", VerificationType.TEXT, 5, startDate, endDate, false, null, null, null);
 
             // Then
             assertThat(crew.getStartDate()).isEqualTo(startDate);
             assertThat(crew.getEndDate()).isEqualTo(endDate);
+        }
+    }
+
+    @Nested
+    @DisplayName("create — visibility 기본값")
+    class CreateVisibility {
+
+        @Test
+        @DisplayName("visibility가 null이면 PRIVATE으로 생성된다")
+        void visibilityNullDefaultsToPrivate() {
+            Crew crew = Crew.create("user1", "크루", "목표",
+                    "인증 내용", VerificationType.TEXT, 5, TOMORROW, NEXT_WEEK, false, null, CrewCategory.EXERCISE, null);
+
+            assertThat(crew.getVisibility()).isEqualTo(CrewVisibility.PRIVATE);
+            assertThat(crew.isPublic()).isFalse();
+        }
+
+        @Test
+        @DisplayName("visibility를 PUBLIC으로 지정하면 PUBLIC으로 생성된다")
+        void visibilityPublic() {
+            Crew crew = Crew.create("user1", "크루", "목표",
+                    "인증 내용", VerificationType.TEXT, 5, TOMORROW, NEXT_WEEK, false, null, CrewCategory.STUDY, CrewVisibility.PUBLIC);
+
+            assertThat(crew.getVisibility()).isEqualTo(CrewVisibility.PUBLIC);
+            assertThat(crew.isPublic()).isTrue();
+        }
+
+        @Test
+        @DisplayName("category가 설정되면 그대로 저장된다")
+        void categoryPreserved() {
+            Crew crew = Crew.create("user1", "크루", "목표",
+                    "인증 내용", VerificationType.TEXT, 5, TOMORROW, NEXT_WEEK, false, null, CrewCategory.SELF_DEV, null);
+
+            assertThat(crew.getCategory()).isEqualTo(CrewCategory.SELF_DEV);
+        }
+    }
+
+    @Nested
+    @DisplayName("update — category/visibility 수정")
+    class UpdateCategoryVisibility {
+
+        @Test
+        @DisplayName("category를 수정하면 변경된다")
+        void updateCategory() {
+            Crew crew = recruitingCrew(5, 1);
+            crew.update(null, null, null, CrewCategory.EXERCISE, null);
+
+            assertThat(crew.getCategory()).isEqualTo(CrewCategory.EXERCISE);
+        }
+
+        @Test
+        @DisplayName("visibility를 PUBLIC으로 수정하면 isPublic이 true이다")
+        void updateVisibilityToPublic() {
+            Crew crew = recruitingCrew(5, 1);
+            crew.update(null, null, null, null, CrewVisibility.PUBLIC);
+
+            assertThat(crew.isPublic()).isTrue();
+        }
+
+        @Test
+        @DisplayName("null로 전달하면 기존 category/visibility가 유지된다")
+        void nullPreservesExisting() {
+            Crew crew = Crew.of("CREW-1", "leader", "테스트 크루", "목표",
+                    "인증 내용", VerificationType.TEXT, 5, 1,
+                    CrewStatus.RECRUITING, TOMORROW, FAR_FUTURE, false,
+                    "ABC123", LocalDateTime.now(), Crew.DEFAULT_DEADLINE_TIME,
+                    CrewCategory.STUDY, CrewVisibility.PUBLIC,
+                    List.of(CrewMember.of("CRMB-1", "leader", "CREW-1",
+                            com.triagain.crew.domain.vo.CrewRole.LEADER, LocalDateTime.now())));
+
+            crew.update(null, null, null, null, null);
+
+            assertThat(crew.getCategory()).isEqualTo(CrewCategory.STUDY);
+            assertThat(crew.getVisibility()).isEqualTo(CrewVisibility.PUBLIC);
+        }
+    }
+
+    @Nested
+    @DisplayName("isPublic — 공개 크루 여부")
+    class IsPublic {
+
+        @Test
+        @DisplayName("visibility가 PUBLIC이면 true")
+        void publicCrew() {
+            Crew crew = Crew.of("CREW-1", "leader", "크루", "목표",
+                    "인증", VerificationType.TEXT, 5, 1,
+                    CrewStatus.RECRUITING, TOMORROW, FAR_FUTURE, false,
+                    "ABC123", LocalDateTime.now(), Crew.DEFAULT_DEADLINE_TIME,
+                    null, CrewVisibility.PUBLIC, List.of());
+
+            assertThat(crew.isPublic()).isTrue();
+        }
+
+        @Test
+        @DisplayName("visibility가 PRIVATE이면 false")
+        void privateCrew() {
+            Crew crew = Crew.of("CREW-1", "leader", "크루", "목표",
+                    "인증", VerificationType.TEXT, 5, 1,
+                    CrewStatus.RECRUITING, TOMORROW, FAR_FUTURE, false,
+                    "ABC123", LocalDateTime.now(), Crew.DEFAULT_DEADLINE_TIME,
+                    null, CrewVisibility.PRIVATE, List.of());
+
+            assertThat(crew.isPublic()).isFalse();
+        }
+
+        @Test
+        @DisplayName("visibility가 null이면 false")
+        void nullVisibility() {
+            Crew crew = Crew.of("CREW-1", "leader", "크루", "목표",
+                    "인증", VerificationType.TEXT, 5, 1,
+                    CrewStatus.RECRUITING, TOMORROW, FAR_FUTURE, false,
+                    "ABC123", LocalDateTime.now(), Crew.DEFAULT_DEADLINE_TIME,
+                    null, null, List.of());
+
+            assertThat(crew.isPublic()).isFalse();
         }
     }
 
@@ -399,7 +516,7 @@ class CrewTest {
             Crew crew = recruitingCrew(5, 1);
 
             // When
-            crew.update("새 이름", null, null);
+            crew.update("새 이름", null, null, null, null);
 
             // Then
             assertThat(crew.getName()).isEqualTo("새 이름");
@@ -414,7 +531,7 @@ class CrewTest {
             Crew crew = recruitingCrew(5, 1);
 
             // When
-            crew.update("새 이름", "새 목표", "새 인증 내용");
+            crew.update("새 이름", "새 목표", "새 인증 내용", null, null);
 
             // Then
             assertThat(crew.getName()).isEqualTo("새 이름");
@@ -429,7 +546,7 @@ class CrewTest {
             Crew crew = recruitingCrew(5, 1);
 
             // When
-            crew.update(null, null, null);
+            crew.update(null, null, null, null, null);
 
             // Then
             assertThat(crew.getName()).isEqualTo("테스트 크루");
@@ -444,7 +561,7 @@ class CrewTest {
             Crew crew = crewWithStatus(CrewStatus.ACTIVE, 5, 1, false);
 
             // When & Then
-            assertThatThrownBy(() -> crew.update("새 이름", null, null))
+            assertThatThrownBy(() -> crew.update("새 이름", null, null, null, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.CREW_NOT_RECRUITING);
@@ -457,7 +574,7 @@ class CrewTest {
             Crew crew = crewWithStatus(CrewStatus.COMPLETED, 5, 1, false);
 
             // When & Then
-            assertThatThrownBy(() -> crew.update("새 이름", null, null))
+            assertThatThrownBy(() -> crew.update("새 이름", null, null, null, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.CREW_NOT_RECRUITING);
@@ -612,7 +729,7 @@ class CrewTest {
         return Crew.of("CREW-1", "leader", "테스트 크루", "목표",
                 "인증 내용", VerificationType.TEXT, maxMembers, currentMembers,
                 status, TOMORROW, FAR_FUTURE, allowLateJoin,
-                "ABC123", LocalDateTime.now(), Crew.DEFAULT_DEADLINE_TIME, members);
+                "ABC123", LocalDateTime.now(), Crew.DEFAULT_DEADLINE_TIME, null, null, members);
     }
 
     private Crew crewWithEndDate(LocalDate endDate) {
@@ -623,6 +740,6 @@ class CrewTest {
         return Crew.of("CREW-1", "leader", "테스트 크루", "목표",
                 "인증 내용", VerificationType.TEXT, 5, 1,
                 CrewStatus.RECRUITING, TOMORROW, endDate, false,
-                "ABC123", LocalDateTime.now(), Crew.DEFAULT_DEADLINE_TIME, members);
+                "ABC123", LocalDateTime.now(), Crew.DEFAULT_DEADLINE_TIME, null, null, members);
     }
 }

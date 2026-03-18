@@ -1,6 +1,8 @@
 package com.triagain.crew.port.in;
 
+import com.triagain.crew.domain.vo.CrewCategory;
 import com.triagain.crew.domain.vo.CrewStatus;
+import com.triagain.crew.domain.vo.CrewVisibility;
 import com.triagain.crew.domain.vo.VerificationType;
 
 import java.time.LocalDate;
@@ -17,7 +19,9 @@ public interface EditCrewUseCase {
             String crewId,
             String name,
             String goal,
-            String verificationContent
+            String verificationContent,
+            CrewCategory category,
+            CrewVisibility visibility
     ) {}
 
     record EditCrewResult(
@@ -35,6 +39,8 @@ public interface EditCrewUseCase {
             boolean allowLateJoin,
             String inviteCode,
             LocalDateTime createdAt,
-            LocalTime deadlineTime
+            LocalTime deadlineTime,
+            CrewCategory category,
+            CrewVisibility visibility
     ) {}
 }

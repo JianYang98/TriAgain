@@ -1,7 +1,9 @@
 package com.triagain.crew.infra;
 
 import com.triagain.crew.domain.model.Crew;
+import com.triagain.crew.domain.vo.CrewCategory;
 import com.triagain.crew.domain.vo.CrewStatus;
+import com.triagain.crew.domain.vo.CrewVisibility;
 import com.triagain.crew.domain.vo.VerificationType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -70,6 +72,14 @@ public class CrewJpaEntity {
     @Column(name = "deadline_time", nullable = false, columnDefinition = "time default '23:59:59'")
     private LocalTime deadlineTime;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private CrewCategory category;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private CrewVisibility visibility;
+
     protected CrewJpaEntity() {
     }
 
@@ -78,7 +88,7 @@ public class CrewJpaEntity {
         return Crew.of(id, creatorId, name, goal, verificationContent, verificationType,
                 maxMembers, currentMembers, status, startDate,
                 endDate, allowLateJoin, inviteCode, createdAt,
-                deadlineTime, Collections.emptyList());
+                deadlineTime, category, visibility, Collections.emptyList());
     }
 
     /** JPA 엔티티를 도메인 모델로 변환 — 멤버 포함 */
@@ -89,7 +99,7 @@ public class CrewJpaEntity {
         return Crew.of(id, creatorId, name, goal, verificationContent, verificationType,
                 maxMembers, currentMembers, status, startDate,
                 endDate, allowLateJoin, inviteCode, createdAt,
-                deadlineTime, members);
+                deadlineTime, category, visibility, members);
     }
 
     /** 도메인 모델을 JPA 엔티티로 변환 — 저장 시 사용 */
@@ -110,6 +120,8 @@ public class CrewJpaEntity {
         entity.inviteCode = crew.getInviteCode();
         entity.createdAt = crew.getCreatedAt();
         entity.deadlineTime = crew.getDeadlineTime();
+        entity.category = crew.getCategory();
+        entity.visibility = crew.getVisibility();
         return entity;
     }
 

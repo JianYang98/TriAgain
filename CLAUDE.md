@@ -427,6 +427,8 @@ refactor: Verification 도메인 계층 분리
 | PATCH | /crews/{crewId} | 크루 수정 (LEADER, RECRUITING 상태만) |
 | DELETE | /crews/{crewId} | 크루 삭제 (LEADER, RECRUITING + 본인만) |
 | DELETE | /crews/{crewId}/members/me | 크루 탈퇴 (MEMBER, RECRUITING 상태만) |
+| GET | /crews/search | 크루 검색 (공개 크루, permitAll) |
+| POST | /crews/{crewId}/join | 공개 크루 직접 가입 |
 
 ---
 

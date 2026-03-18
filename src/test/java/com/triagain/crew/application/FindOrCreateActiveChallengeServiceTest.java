@@ -135,7 +135,7 @@ class FindOrCreateActiveChallengeServiceTest {
         Crew completedCrew = Crew.of(CREW_ID, "creator-1", "크루", "목표",
                 "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.COMPLETED,
                 LocalDate.now().minusDays(10), LocalDate.now().minusDays(1),
-                false, "ABC123", LocalDateTime.now(), DEADLINE_TIME, Collections.emptyList());
+                false, "ABC123", LocalDateTime.now(), DEADLINE_TIME, null, null, Collections.emptyList());
 
         given(challengeRepositoryPort.findByUserIdAndCrewIdAndStatusWithLock(
                 USER_ID, CREW_ID, ChallengeStatus.IN_PROGRESS))
@@ -156,7 +156,7 @@ class FindOrCreateActiveChallengeServiceTest {
         Crew expiredCrew = Crew.of(CREW_ID, "creator-1", "크루", "목표",
                 "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
                 LocalDate.now().minusDays(10), LocalDate.now().minusDays(1),
-                false, "ABC123", LocalDateTime.now(), DEADLINE_TIME, Collections.emptyList());
+                false, "ABC123", LocalDateTime.now(), DEADLINE_TIME, null, null, Collections.emptyList());
 
         given(challengeRepositoryPort.findByUserIdAndCrewIdAndStatusWithLock(
                 USER_ID, CREW_ID, ChallengeStatus.IN_PROGRESS))
@@ -202,7 +202,7 @@ class FindOrCreateActiveChallengeServiceTest {
         Crew crew = Crew.of(CREW_ID, "creator-1", "크루", "목표",
                 "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
                 LocalDate.now().minusDays(1), LocalDate.now().plusDays(30),
-                false, "ABC123", LocalDateTime.now(), pastDeadline, Collections.emptyList());
+                false, "ABC123", LocalDateTime.now(), pastDeadline, null, null, Collections.emptyList());
 
         given(challengeRepositoryPort.findByUserIdAndCrewIdAndStatusWithLock(
                 USER_ID, CREW_ID, ChallengeStatus.IN_PROGRESS))
@@ -222,6 +222,6 @@ class FindOrCreateActiveChallengeServiceTest {
         return Crew.of(id, "creator-1", "테스트 크루", "목표",
                 "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
                 startDate, endDate, false, "ABC123",
-                LocalDateTime.now(), DEADLINE_TIME, Collections.emptyList());
+                LocalDateTime.now(), DEADLINE_TIME, null, null, Collections.emptyList());
     }
 }

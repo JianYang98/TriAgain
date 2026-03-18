@@ -1,7 +1,9 @@
 package com.triagain.crew.port.in;
 
+import com.triagain.crew.domain.vo.CrewCategory;
 import com.triagain.crew.domain.vo.CrewRole;
 import com.triagain.crew.domain.vo.CrewStatus;
+import com.triagain.crew.domain.vo.CrewVisibility;
 import com.triagain.crew.domain.vo.VerificationType;
 
 import java.time.LocalDate;
@@ -29,6 +31,8 @@ public interface GetCrewByInviteCodeUseCase {
             boolean allowLateJoin,
             LocalTime deadlineTime,
             LocalDateTime createdAt,
+            CrewCategory category,
+            CrewVisibility visibility,
             List<MemberSummary> members,
             boolean joinable,
             String joinBlockedReason

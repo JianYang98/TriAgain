@@ -77,7 +77,7 @@ class ActivateRecruitingCrewsSchedulerTest {
         Crew activeCrew = Crew.of("crew-1", "creator-1", "테스트 크루", "목표",
                 "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
                 LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), false, "ABC123",
-                LocalDateTime.now(), DEADLINE_TIME, Collections.emptyList());
+                LocalDateTime.now(), DEADLINE_TIME, null, null, Collections.emptyList());
         given(crewRepositoryPort.findRecruitingCrewsStartedOnOrBefore(any(LocalDate.class)))
                 .willReturn(List.of(activeCrew));
 
@@ -92,6 +92,6 @@ class ActivateRecruitingCrewsSchedulerTest {
         return Crew.of(id, "creator-1", "테스트 크루", "목표",
                 "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.RECRUITING,
                 startDate, startDate.plusDays(30), false, "ABC123",
-                LocalDateTime.now(), DEADLINE_TIME, Collections.emptyList());
+                LocalDateTime.now(), DEADLINE_TIME, null, null, Collections.emptyList());
     }
 }

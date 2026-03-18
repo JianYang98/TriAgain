@@ -75,6 +75,8 @@ public class GetCrewService implements GetCrewUseCase {
                 crew.getInviteCode(),
                 crew.getCreatedAt(),
                 crew.getDeadlineTime(),
+                crew.getCategory(),
+                crew.getVisibility(),
                 members
         );
     }

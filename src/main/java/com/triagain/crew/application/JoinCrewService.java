@@ -24,6 +24,10 @@ public class JoinCrewService implements JoinCrewUseCase {
         Crew crew = crewRepositoryPort.findByIdWithLock(command.crewId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.CREW_NOT_FOUND));
 
+        if (!crew.isPublic()) {
+            throw new BusinessException(ErrorCode.CREW_NOT_PUBLIC);
+        }
+
         validateJoin(crew, command.userId());
 
         CrewMember member = crew.addMember(command.userId());
@@ -34,6 +38,7 @@ public class JoinCrewService implements JoinCrewUseCase {
                 member.getUserId(),
                 member.getCrewId(),
                 member.getRole(),
+                crew.getCurrentMembers(),
                 member.getJoinedAt()
         );
     }

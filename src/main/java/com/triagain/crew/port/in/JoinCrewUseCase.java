@@ -12,7 +12,7 @@ public interface JoinCrewUseCase {
     record JoinCrewCommand(String userId, String crewId) {
     }
 
-    record JoinCrewResult(String userId, String crewId, CrewRole role, LocalDateTime joinedAt) {
+    record JoinCrewResult(String userId, String crewId, CrewRole role, int currentMembers, LocalDateTime joinedAt) {
     }
 }
 
