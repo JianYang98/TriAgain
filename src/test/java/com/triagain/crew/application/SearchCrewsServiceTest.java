@@ -23,15 +23,12 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class SearchCrewsServiceTest {
@@ -149,62 +146,6 @@ class SearchCrewsServiceTest {
             // Then
             assertThat(result.crews()).hasSize(1);
             assertThat(result.hasNext()).isFalse();
-        }
-    }
-
-    @Nested
-    @DisplayName("초대코드 검색")
-    class InviteCodeSearch {
-
-        @Test
-        @DisplayName("유효한 초대코드 문자 6자리면 초대코드로 정확히 검색한다")
-        void inviteCodeSearch_exactMatch() {
-            // Given
-            Crew crew = publicCrew("CREW-1", "초대 크루", CrewCategory.ETC);
-            given(crewRepositoryPort.findByInviteCodeForSearch("ABC234")).willReturn(Optional.of(crew));
-
-            SearchCrewsQuery query = new SearchCrewsQuery("abc234", null, 0, 20);
-
-            // When
-            SearchCrewsResult result = searchCrewsService.searchCrews(query);
-
-            // Then
-            assertThat(result.crews()).hasSize(1);
-            assertThat(result.hasNext()).isFalse();
-            verify(crewRepositoryPort, never()).searchPublicCrews(any(), any(), any(), anyInt(), anyInt());
-        }
-
-        @Test
-        @DisplayName("존재하지 않는 초대코드면 빈 결과가 반환된다")
-        void inviteCodeSearch_notFound() {
-            // Given
-            given(crewRepositoryPort.findByInviteCodeForSearch("ZZZ999")).willReturn(Optional.empty());
-
-            SearchCrewsQuery query = new SearchCrewsQuery("ZZZ999", null, 0, 20);
-
-            // When
-            SearchCrewsResult result = searchCrewsService.searchCrews(query);
-
-            // Then
-            assertThat(result.crews()).isEmpty();
-        }
-
-        @Test
-        @DisplayName("7자리 키워드면 초대코드가 아닌 일반 검색으로 동작한다")
-        void sevenCharKeyword_notInviteCode() {
-            // Given
-            ReflectionTestUtils.setField(searchCrewsService, "minRemainingDays", 6);
-            given(crewRepositoryPort.searchPublicCrews(eq("ABCDEFG"), any(), any(), anyInt(), anyInt()))
-                    .willReturn(new CrewSearchPage(Collections.emptyList(), false));
-
-            SearchCrewsQuery query = new SearchCrewsQuery("ABCDEFG", null, 0, 20);
-
-            // When
-            searchCrewsService.searchCrews(query);
-
-            // Then
-            verify(crewRepositoryPort).searchPublicCrews(eq("ABCDEFG"), any(), any(), anyInt(), anyInt());
-            verify(crewRepositoryPort, never()).findByInviteCodeForSearch(any());
         }
     }
 

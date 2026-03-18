@@ -143,11 +143,4 @@ public class CrewJpaAdapter implements CrewRepositoryPort {
                 .toList();
         return new CrewSearchPage(crews, slice.hasNext());
     }
-
-    /** 초대코드로 크루 검색 — visibility 무관, 검색 결과용 */
-    @Override
-    public Optional<Crew> findByInviteCodeForSearch(String inviteCode) {
-        return crewJpaRepository.findByInviteCode(inviteCode)
-                .map(CrewJpaEntity::toDomain);
-    }
 }

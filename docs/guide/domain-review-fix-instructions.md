@@ -102,34 +102,10 @@ public static Crew create(..., CrewCategory category, CrewVisibility visibility)
 
 ---
 
-### 2. SearchCrewsUseCase.java — isInviteCodeSearch() 정규식 수정 [MAJOR]
+### 2. [삭제됨] SearchCrewsUseCase.java — isInviteCodeSearch() 정규식 수정
 
-**파일**: `src/main/java/com/triagain/crew/port/in/SearchCrewsUseCase.java`
-
-**현재** (라인 34-37):
-```java
-public boolean isInviteCodeSearch() {
-    return keyword != null && keyword.matches("^[A-Za-z0-9]{6}$");
-}
-```
-
-**문제**: `"STUDIO"` 같은 일반 6자 영문 키워드도 초대코드로 오인 → 검색 결과가 0건
-
-**변경**:
-```java
-import com.triagain.crew.domain.model.Crew;
-
-// ...
-
-public boolean isInviteCodeSearch() {
-    return keyword != null && keyword.toUpperCase()
-            .matches("^[" + Crew.INVITE_CODE_CHARS + "]{6}$");
-}
-```
-
-- `Crew.INVITE_CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"` (I,L,O,0,1 제외)
-- 포함하지 않는 문자: `I`, `L`, `O`, `0`, `1`, 소문자 — 이 문자가 포함된 키워드는 초대코드로 판별되지 않음
-- port/in → domain 의존은 헥사고날 아키텍처에서 허용 (UseCase가 도메인을 참조하는 건 정상)
+> 초대코드 검색 기능 자체가 제거됨 (GET /crews/search는 PUBLIC 크루 LIKE 검색만 수행).
+> `INVITE_CODE_PATTERN`, `isInviteCodeSearch()` 메서드 모두 삭제.
 
 ---
 
@@ -245,65 +221,10 @@ public JoinByInviteCodeResult joinByInviteCode(JoinByInviteCodeCommand command) 
 
 ---
 
-### 5. CrewRepositoryPort.java — 메서드 리네이밍 (Warning)
+### 5~7. [삭제됨] findByInviteCodeForSearch 리네이밍
 
-**파일**: `src/main/java/com/triagain/crew/port/out/CrewRepositoryPort.java`
-
-**현재** (라인 49-50):
-```java
-/** 초대코드로 정확히 일치하는 크루 검색 — visibility 무관 */
-Optional<Crew> findByInviteCodeExact(String inviteCode);
-```
-
-**변경**:
-```java
-/** 초대코드로 크루 검색 — 멤버 로드 없이 검색 결과용으로 반환 */
-Optional<Crew> findByInviteCodeForSearch(String inviteCode);
-```
-
-**이유**: `findByInviteCode`(가입용, 멤버 포함)와 구분. "Exact"는 쿼리 방식이고, 실제 의도는 "검색 결과용 경량 조회". `ForSearch`가 용도를 더 명확히 표현.
-
----
-
-### 6. CrewJpaAdapter.java — 구현 메서드명 변경
-
-**파일**: `src/main/java/com/triagain/crew/infra/CrewJpaAdapter.java`
-
-**현재** (라인 138-143):
-```java
-/** 초대코드로 정확히 일치하는 크루 검색 — visibility 무관 */
-@Override
-public Optional<Crew> findByInviteCodeExact(String inviteCode) {
-    return crewJpaRepository.findByInviteCode(inviteCode)
-            .map(CrewJpaEntity::toDomain);
-}
-```
-
-**변경**:
-```java
-/** 초대코드로 크루 검색 — 멤버 로드 없이 검색 결과용으로 반환 */
-@Override
-public Optional<Crew> findByInviteCodeForSearch(String inviteCode) {
-    return crewJpaRepository.findByInviteCode(inviteCode)
-            .map(CrewJpaEntity::toDomain);
-}
-```
-
----
-
-### 7. SearchCrewsService.java — 호출부 메서드명 변경
-
-**파일**: `src/main/java/com/triagain/crew/application/SearchCrewsService.java`
-
-**현재** (라인 36):
-```java
-Optional<Crew> crew = crewRepositoryPort.findByInviteCodeExact(inviteCode.toUpperCase());
-```
-
-**변경**:
-```java
-Optional<Crew> crew = crewRepositoryPort.findByInviteCodeForSearch(inviteCode.toUpperCase());
-```
+> 초대코드 검색 기능 자체가 제거됨.
+> `findByInviteCodeForSearch()` 메서드가 CrewRepositoryPort, CrewJpaAdapter, SearchCrewsService에서 모두 삭제.
 
 ---
 

@@ -138,7 +138,7 @@
 |------|------|
 | 검색 대상 | `visibility = PUBLIC` AND (`status = RECRUITING` OR (`status = ACTIVE` AND `allowLateJoin = true` AND 잔여일 ≥ 6)) |
 | 비로그인 허용 | permitAll — 인증 없이 검색 가능 |
-| 검색 필터 | 키워드 (이름/목표 LIKE 검색, 초대코드 exact match), 카테고리 |
+| 검색 필터 | 키워드 (이름/목표 LIKE 검색), 카테고리 |
 | 페이지네이션 | hasNext boolean, 기본 20건, 최대 50건 |
 | 정렬 | createdAt DESC |
 | 잔여일 임계값 | 설정값으로 외부화 (`crew.search.min-remaining-days`, 기본값 6) |
@@ -152,11 +152,6 @@
 | `LIFESTYLE` | 생활습관 |
 | `SELF_DEV` | 자기개발 |
 | `ETC` | 기타 |
-
-**초대코드 검색 규칙:**
-- keyword가 6자리 영숫자(초대코드 형식)이면 `inviteCode` exact match 검색
-- 그 외 keyword는 크루 이름/목표에서 LIKE 검색
-- 초대코드 매칭은 visibility와 무관하게 검색 (비공개 크루도 초대코드로 찾을 수 있음)
 
 **기존 크루 처리 (마이그레이션):**
 - `category = null` (nullable — 기존 크루는 카테고리 미지정)

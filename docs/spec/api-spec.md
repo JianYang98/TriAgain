@@ -1371,7 +1371,7 @@ GET /crews/search?keyword=러닝&category=EXERCISE&page=0&size=20 HTTP/1.1
 ```
 
 **쿼리 파라미터:**
-- `keyword`: (선택) 검색어 — 크루 이름, 목표에서 LIKE 검색. 6자리 초대코드 형식(영숫자)이면 초대코드 정확히 일치(exact match) 검색
+- `keyword`: (선택) 검색어 — 크루 이름, 목표에서 LIKE 검색
 - `category`: (선택) 카테고리 필터 — `EXERCISE` / `STUDY` / `LIFESTYLE` / `SELF_DEV` / `ETC`
 - `page`: (선택) 페이지 번호 (기본값 0)
 - `size`: (선택) 페이지 크기 (기본값 20, 최대 50)
@@ -1400,8 +1400,7 @@ GET /crews/search?keyword=러닝&category=EXERCISE&page=0&size=20 HTTP/1.1
         "status": "RECRUITING",
         "startDate": "2026-03-10",
         "endDate": "2026-03-24",
-        "createdAt": "2026-03-01T10:00:00",
-        "visibility": "PUBLIC"
+        "createdAt": "2026-03-01T10:00:00"
       }
     ],
     "hasNext": false
@@ -1425,7 +1424,6 @@ GET /crews/search?keyword=러닝&category=EXERCISE&page=0&size=20 HTTP/1.1
   - `startDate`: 크루 시작일
   - `endDate`: 크루 종료일
   - `createdAt`: 크루 생성 시각
-  - `visibility`: 공개 설정 (`PUBLIC` / `PRIVATE`) — 초대코드 검색 시 PRIVATE 크루도 반환되므로 구분용
 - `hasNext`: 다음 페이지 존재 여부
 
 ---
