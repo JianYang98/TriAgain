@@ -33,7 +33,7 @@ public interface CrewJpaRepository extends JpaRepository<CrewJpaEntity, String> 
     /** 공개 크루 검색 — 키워드/카테고리 필터 + 상태 조건 */
     @Query("SELECT c FROM CrewJpaEntity c WHERE c.visibility = :visibility " +
             "AND (c.status = 'RECRUITING' OR (c.status = 'ACTIVE' AND c.allowLateJoin = true AND c.endDate >= :minEndDate)) " +
-            "AND (:keyword IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(c.goal) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+            "AND (:keyword IS NULL OR LOWER(c.name) LIKE :keyword OR LOWER(c.goal) LIKE :keyword) " +
             "AND (:category IS NULL OR c.category = :category) " +
             "ORDER BY c.createdAt DESC")
     List<CrewJpaEntity> searchPublicCrews(

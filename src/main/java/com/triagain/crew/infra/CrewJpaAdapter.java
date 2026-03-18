@@ -127,8 +127,9 @@ public class CrewJpaAdapter implements CrewRepositoryPort {
     public List<Crew> searchPublicCrews(String keyword, CrewCategory category,
                                         LocalDate minEndDate, int offset, int limit) {
         int page = offset / limit;
+        String keywordPattern = (keyword != null) ? "%" + keyword.toLowerCase() + "%" : null;
         return crewJpaRepository.searchPublicCrews(
-                CrewVisibility.PUBLIC, keyword, category, minEndDate,
+                CrewVisibility.PUBLIC, keywordPattern, category, minEndDate,
                 PageRequest.of(page, limit)
         ).stream()
                 .map(CrewJpaEntity::toDomain)
