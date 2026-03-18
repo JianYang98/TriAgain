@@ -15,6 +15,7 @@ import com.triagain.crew.port.in.GetCrewUseCase;
 import com.triagain.crew.port.in.GetCrewUseCase.CrewDetailResult;
 import com.triagain.crew.port.in.GetMyCrewsUseCase;
 import com.triagain.crew.port.in.GetMyCrewsUseCase.CrewSummaryResult;
+import com.triagain.crew.port.in.GetCrewPreviewUseCase;
 import com.triagain.crew.port.in.JoinCrewByInviteCodeUseCase;
 import com.triagain.crew.port.in.JoinCrewByInviteCodeUseCase.JoinByInviteCodeCommand;
 import com.triagain.crew.port.in.JoinCrewByInviteCodeUseCase.JoinByInviteCodeResult;
@@ -55,6 +56,7 @@ public class CrewController {
     private final GetMyCrewsUseCase getMyCrewsUseCase;
     private final GetCrewUseCase getCrewUseCase;
     private final GetCrewByInviteCodeUseCase getCrewByInviteCodeUseCase;
+    private final GetCrewPreviewUseCase getCrewPreviewUseCase;
     private final SearchCrewsUseCase searchCrewsUseCase;
     private final JoinCrewUseCase joinCrewUseCase;
 
@@ -116,6 +118,16 @@ public class CrewController {
     ) {
         CrewInvitePreviewResult result = getCrewByInviteCodeUseCase.getByInviteCode(inviteCode, userId);
 
+        return ResponseEntity.ok(ApiResponse.ok(result));
+    }
+
+    /** 공개 크루 미리보기 API — GET /api/crews/{crewId}/preview */
+    @GetMapping("/{crewId}/preview")
+    public ResponseEntity<ApiResponse<CrewInvitePreviewResult>> getCrewPreview(
+            @AuthenticatedUser String userId,
+            @PathVariable String crewId
+    ) {
+        CrewInvitePreviewResult result = getCrewPreviewUseCase.getCrewPreview(crewId, userId);
         return ResponseEntity.ok(ApiResponse.ok(result));
     }
 

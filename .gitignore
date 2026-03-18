@@ -54,6 +54,9 @@ deploy.sh
 # 코맨트 파일들
 docs/review-comment/
 
+# Archive (지시서, 과거 문서 — 로컬 전용)
+docs/archive/
+
 # Lambda build artifacts
 lambda/.aws-sam/
 lambda/Ldeploy.sh

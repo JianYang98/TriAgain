@@ -8,6 +8,7 @@ import com.triagain.crew.domain.vo.VerificationType;
 import com.triagain.crew.port.in.SearchCrewsUseCase.SearchCrewsQuery;
 import com.triagain.crew.port.in.SearchCrewsUseCase.SearchCrewsResult;
 import com.triagain.crew.port.out.CrewRepositoryPort;
+import com.triagain.crew.port.out.CrewRepositoryPort.CrewSearchPage;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -22,15 +23,12 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class SearchCrewsServiceTest {
@@ -51,8 +49,8 @@ class SearchCrewsServiceTest {
             // Given
             ReflectionTestUtils.setField(searchCrewsService, "minRemainingDays", 6);
             Crew crew = publicCrew("CREW-1", "운동 크루", CrewCategory.EXERCISE);
-            given(crewRepositoryPort.searchPublicCrews(eq("운동"), any(), any(), eq(0), eq(21)))
-                    .willReturn(List.of(crew));
+            given(crewRepositoryPort.searchPublicCrews(eq("운동"), any(), any(), eq(0), eq(20)))
+                    .willReturn(new CrewSearchPage(List.of(crew), false));
 
             SearchCrewsQuery query = new SearchCrewsQuery("운동", null, 0, 20);
 
@@ -71,8 +69,8 @@ class SearchCrewsServiceTest {
             // Given
             ReflectionTestUtils.setField(searchCrewsService, "minRemainingDays", 6);
             Crew crew = publicCrew("CREW-1", "스터디 크루", CrewCategory.STUDY);
-            given(crewRepositoryPort.searchPublicCrews(any(), eq(CrewCategory.STUDY), any(), eq(0), eq(21)))
-                    .willReturn(List.of(crew));
+            given(crewRepositoryPort.searchPublicCrews(any(), eq(CrewCategory.STUDY), any(), eq(0), eq(20)))
+                    .willReturn(new CrewSearchPage(List.of(crew), false));
 
             SearchCrewsQuery query = new SearchCrewsQuery(null, CrewCategory.STUDY, 0, 20);
 
@@ -90,7 +88,7 @@ class SearchCrewsServiceTest {
             // Given
             ReflectionTestUtils.setField(searchCrewsService, "minRemainingDays", 6);
             given(crewRepositoryPort.searchPublicCrews(any(), any(), any(), anyInt(), anyInt()))
-                    .willReturn(Collections.emptyList());
+                    .willReturn(new CrewSearchPage(Collections.emptyList(), false));
 
             SearchCrewsQuery query = new SearchCrewsQuery("존재하지않는크루", null, 0, 20);
 
@@ -108,17 +106,16 @@ class SearchCrewsServiceTest {
     class Pagination {
 
         @Test
-        @DisplayName("결과가 size+1이면 hasNext가 true이다")
+        @DisplayName("다음 페이지가 존재하면 hasNext가 true이다")
         void hasNext_whenMoreResults() {
             // Given
             ReflectionTestUtils.setField(searchCrewsService, "minRemainingDays", 6);
             List<Crew> crews = List.of(
                     publicCrew("CREW-1", "크루1", CrewCategory.ETC),
-                    publicCrew("CREW-2", "크루2", CrewCategory.ETC),
-                    publicCrew("CREW-3", "크루3", CrewCategory.ETC) // size+1번째
+                    publicCrew("CREW-2", "크루2", CrewCategory.ETC)
             );
-            given(crewRepositoryPort.searchPublicCrews(any(), any(), any(), eq(0), eq(3)))
-                    .willReturn(crews);
+            given(crewRepositoryPort.searchPublicCrews(any(), any(), any(), eq(0), eq(2)))
+                    .willReturn(new CrewSearchPage(crews, true));
 
             SearchCrewsQuery query = new SearchCrewsQuery(null, null, 0, 2);
 
@@ -138,8 +135,8 @@ class SearchCrewsServiceTest {
             List<Crew> crews = List.of(
                     publicCrew("CREW-1", "크루1", CrewCategory.ETC)
             );
-            given(crewRepositoryPort.searchPublicCrews(any(), any(), any(), eq(0), eq(21)))
-                    .willReturn(crews);
+            given(crewRepositoryPort.searchPublicCrews(any(), any(), any(), eq(0), eq(20)))
+                    .willReturn(new CrewSearchPage(crews, false));
 
             SearchCrewsQuery query = new SearchCrewsQuery(null, null, 0, 20);
 
@@ -149,62 +146,6 @@ class SearchCrewsServiceTest {
             // Then
             assertThat(result.crews()).hasSize(1);
             assertThat(result.hasNext()).isFalse();
-        }
-    }
-
-    @Nested
-    @DisplayName("초대코드 검색")
-    class InviteCodeSearch {
-
-        @Test
-        @DisplayName("유효한 초대코드 문자 6자리면 초대코드로 정확히 검색한다")
-        void inviteCodeSearch_exactMatch() {
-            // Given
-            Crew crew = publicCrew("CREW-1", "초대 크루", CrewCategory.ETC);
-            given(crewRepositoryPort.findByInviteCodeForSearch("ABC234")).willReturn(Optional.of(crew));
-
-            SearchCrewsQuery query = new SearchCrewsQuery("abc234", null, 0, 20);
-
-            // When
-            SearchCrewsResult result = searchCrewsService.searchCrews(query);
-
-            // Then
-            assertThat(result.crews()).hasSize(1);
-            assertThat(result.hasNext()).isFalse();
-            verify(crewRepositoryPort, never()).searchPublicCrews(any(), any(), any(), anyInt(), anyInt());
-        }
-
-        @Test
-        @DisplayName("존재하지 않는 초대코드면 빈 결과가 반환된다")
-        void inviteCodeSearch_notFound() {
-            // Given
-            given(crewRepositoryPort.findByInviteCodeForSearch("ZZZ999")).willReturn(Optional.empty());
-
-            SearchCrewsQuery query = new SearchCrewsQuery("ZZZ999", null, 0, 20);
-
-            // When
-            SearchCrewsResult result = searchCrewsService.searchCrews(query);
-
-            // Then
-            assertThat(result.crews()).isEmpty();
-        }
-
-        @Test
-        @DisplayName("7자리 키워드면 초대코드가 아닌 일반 검색으로 동작한다")
-        void sevenCharKeyword_notInviteCode() {
-            // Given
-            ReflectionTestUtils.setField(searchCrewsService, "minRemainingDays", 6);
-            given(crewRepositoryPort.searchPublicCrews(eq("ABCDEFG"), any(), any(), anyInt(), anyInt()))
-                    .willReturn(Collections.emptyList());
-
-            SearchCrewsQuery query = new SearchCrewsQuery("ABCDEFG", null, 0, 20);
-
-            // When
-            searchCrewsService.searchCrews(query);
-
-            // Then
-            verify(crewRepositoryPort).searchPublicCrews(eq("ABCDEFG"), any(), any(), anyInt(), anyInt());
-            verify(crewRepositoryPort, never()).findByInviteCodeForSearch(any());
         }
     }
 

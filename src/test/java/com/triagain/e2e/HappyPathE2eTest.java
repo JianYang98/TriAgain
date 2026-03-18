@@ -49,7 +49,8 @@ class HappyPathE2eTest extends E2eTestBase {
                 "maxMembers", 10,
                 "startDate", LocalDate.now().plusDays(1).toString(),
                 "endDate", LocalDate.now().plusDays(15).toString(),
-                "allowLateJoin", true
+                "allowLateJoin", true,
+                "category", "EXERCISE"
         );
         ExtractableResponse<Response> response = authPost(userId, "/crews", request);
 
@@ -80,7 +81,8 @@ class HappyPathE2eTest extends E2eTestBase {
                 "maxMembers", 10,
                 "startDate", LocalDate.now().plusDays(1).toString(),
                 "endDate", LocalDate.now().plusDays(15).toString(),
-                "allowLateJoin", true
+                "allowLateJoin", true,
+                "category", "EXERCISE"
         );
         ExtractableResponse<Response> createResponse = authPost(userA, "/crews", crewRequest);
         String crewId = createResponse.jsonPath().getString("data.crewId");

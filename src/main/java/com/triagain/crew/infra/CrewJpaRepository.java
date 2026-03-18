@@ -5,6 +5,7 @@ import com.triagain.crew.domain.vo.CrewStatus;
 import com.triagain.crew.domain.vo.CrewVisibility;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -33,10 +34,10 @@ public interface CrewJpaRepository extends JpaRepository<CrewJpaEntity, String> 
     /** 공개 크루 검색 — 키워드/카테고리 필터 + 상태 조건 */
     @Query("SELECT c FROM CrewJpaEntity c WHERE c.visibility = :visibility " +
             "AND (c.status = 'RECRUITING' OR (c.status = 'ACTIVE' AND c.allowLateJoin = true AND c.endDate >= :minEndDate)) " +
-            "AND (:keyword IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(c.goal) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+            "AND (:keyword IS NULL OR LOWER(c.name) LIKE :keyword ESCAPE '\\' OR LOWER(c.goal) LIKE :keyword ESCAPE '\\') " +
             "AND (:category IS NULL OR c.category = :category) " +
             "ORDER BY c.createdAt DESC")
-    List<CrewJpaEntity> searchPublicCrews(
+    Slice<CrewJpaEntity> searchPublicCrews(
             @Param("visibility") CrewVisibility visibility,
             @Param("keyword") String keyword,
             @Param("category") CrewCategory category,

@@ -6,6 +6,15 @@
 
 ---
 
+### [2026-03-19] CrewPreviewAssembler 도메인 검증 로직 중복 해소
+
+- 현재 상태: `Crew.addMember()`와 `CrewPreviewAssembler.calculateJoinBlockedReason()`이 동일한 가입 검증(정원/상태/마감일/중복)을 각각 수행. Assembler는 reason을 세분화(CREW_ENDED, LATE_JOIN_NOT_ALLOWED)하므로 단순 위임 불가
+- 필요 시점: Phase 2 또는 다음 Crew 도메인 리팩토링 시
+- 이유: 현재 두 로직은 동기화되어 있고, `addMember()` 수정 시 Assembler도 함께 확인하면 됨. 도메인 모델 변경 범위가 크므로 별도 작업으로 분리
+- Phase 2 방향: `Crew` 도메인에 `getJoinBlockedReason(): Optional<JoinBlockedReason>` 메서드 추가 → Assembler는 위임만 수행
+
+---
+
 ### [2026-03-15] Docker 이미지 SHA 태그 기반 배포
 
 - 현재 상태: deploy.yml에서 `devjian/triagain:latest`로 pull/run. 빌드 시 SHA 태그(`devjian/triagain:${{ github.sha }}`)도 push하지만 배포에는 미사용

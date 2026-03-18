@@ -869,6 +869,78 @@ Authorization: Bearer <token>
 
 ---
 
+### GET /crews/{crewId}/preview (공개 크루 미리보기)
+
+크루 ID로 공개 크루 정보를 미리 조회한다.
+검색 결과에서 상세를 확인할 때 사용하며, 초대코드 미리보기(GET /crews/invite/{inviteCode})와 동일한 응답을 반환한다.
+PUBLIC 크루만 조회 가능하다.
+
+**요청 (Request)**
+```
+GET /crews/{crewId}/preview HTTP/1.1
+Authorization: Bearer <token>
+```
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "crew_123",
+    "creatorId": "user_001",
+    "name": "작심삼일 크루",
+    "goal": "매일 운동하기",
+    "verificationContent": "운동 완료 인증샷 찍기",
+    "verificationType": "PHOTO",
+    "maxMembers": 10,
+    "currentMembers": 3,
+    "status": "RECRUITING",
+    "startDate": "2026-03-10",
+    "endDate": "2026-03-24",
+    "allowLateJoin": true,
+    "deadlineTime": "23:59:59",
+    "createdAt": "2026-03-01T10:00:00",
+    "category": "EXERCISE",
+    "visibility": "PUBLIC",
+    "members": [
+      {
+        "userId": "user_001",
+        "nickname": "크루장닉네임",
+        "profileImageUrl": "https://...",
+        "role": "LEADER",
+        "joinedAt": "2026-03-01T10:00:00"
+      }
+    ],
+    "joinable": true,
+    "joinBlockedReason": null
+  },
+  "error": null
+}
+```
+
+**필드 설명:**
+- `joinable`: 현재 유저가 이 크루에 가입 가능한지 여부
+- `joinBlockedReason`: 가입 불가 시 사유 (joinable=true이면 null)
+
+**joinBlockedReason 값:**
+
+| 값 | 설명 |
+|------|------|
+| `ALREADY_MEMBER` | 이미 가입한 크루 |
+| `CREW_ENDED` | 크루가 종료(COMPLETED)됨 |
+| `CREW_FULL` | 정원 초과 |
+| `LATE_JOIN_NOT_ALLOWED` | 중간 가입 비허용 (ACTIVE 크루) |
+| `CREW_JOIN_DEADLINE_PASSED` | 참여 마감 기한 초과 |
+
+**에러 응답**
+
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 400 | CR022 | 공개 크루만 직접 가입할 수 있습니다. | PRIVATE 크루에 접근 시도 |
+| 404 | CR001 | 크루를 찾을 수 없습니다. | 존재하지 않는 crewId |
+
+---
+
 ### POST /crews/join (초대코드로 크루 참여)
 
 초대코드를 사용하여 크루에 참여한다. 크루가 RECRUITING 상태이고, 정원이 남아있는 경우에만 참여 가능.
@@ -1299,7 +1371,7 @@ GET /crews/search?keyword=러닝&category=EXERCISE&page=0&size=20 HTTP/1.1
 ```
 
 **쿼리 파라미터:**
-- `keyword`: (선택) 검색어 — 크루 이름, 목표에서 LIKE 검색. 6자리 초대코드 형식(영숫자)이면 초대코드 정확히 일치(exact match) 검색
+- `keyword`: (선택) 검색어 — 크루 이름, 목표에서 LIKE 검색
 - `category`: (선택) 카테고리 필터 — `EXERCISE` / `STUDY` / `LIFESTYLE` / `SELF_DEV` / `ETC`
 - `page`: (선택) 페이지 번호 (기본값 0)
 - `size`: (선택) 페이지 크기 (기본값 20, 최대 50)
@@ -1328,8 +1400,7 @@ GET /crews/search?keyword=러닝&category=EXERCISE&page=0&size=20 HTTP/1.1
         "status": "RECRUITING",
         "startDate": "2026-03-10",
         "endDate": "2026-03-24",
-        "createdAt": "2026-03-01T10:00:00",
-        "visibility": "PUBLIC"
+        "createdAt": "2026-03-01T10:00:00"
       }
     ],
     "hasNext": false
@@ -1353,7 +1424,6 @@ GET /crews/search?keyword=러닝&category=EXERCISE&page=0&size=20 HTTP/1.1
   - `startDate`: 크루 시작일
   - `endDate`: 크루 종료일
   - `createdAt`: 크루 생성 시각
-  - `visibility`: 공개 설정 (`PUBLIC` / `PRIVATE`) — 초대코드 검색 시 PRIVATE 크루도 반환되므로 구분용
 - `hasNext`: 다음 페이지 존재 여부
 
 ---
