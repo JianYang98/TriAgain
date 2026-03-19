@@ -44,7 +44,7 @@ class EditCrewServiceTest {
         given(crewRepositoryPort.findById("CREW-1")).willReturn(Optional.of(crew));
         given(crewRepositoryPort.save(crew)).willReturn(crew);
 
-        EditCrewCommand command = new EditCrewCommand("leader-1", "CREW-1", "새 이름", null, null);
+        EditCrewCommand command = new EditCrewCommand("leader-1", "CREW-1", "새 이름", null, null, null, null);
 
         // When
         EditCrewResult result = editCrewService.editCrew(command);
@@ -62,7 +62,7 @@ class EditCrewServiceTest {
         given(crewRepositoryPort.findById("CREW-1")).willReturn(Optional.of(crew));
         given(crewRepositoryPort.save(crew)).willReturn(crew);
 
-        EditCrewCommand command = new EditCrewCommand("leader-1", "CREW-1", "새 이름", "새 목표", "새 인증");
+        EditCrewCommand command = new EditCrewCommand("leader-1", "CREW-1", "새 이름", "새 목표", "새 인증", null, null);
 
         // When
         EditCrewResult result = editCrewService.editCrew(command);
@@ -77,7 +77,7 @@ class EditCrewServiceTest {
     @DisplayName("모든 필드가 null이면 CREW_NO_FIELDS_TO_UPDATE 예외가 발생한다")
     void allFieldsNull_throws() {
         // Given
-        EditCrewCommand command = new EditCrewCommand("leader-1", "CREW-1", null, null, null);
+        EditCrewCommand command = new EditCrewCommand("leader-1", "CREW-1", null, null, null, null, null);
 
         // When & Then
         assertThatThrownBy(() -> editCrewService.editCrew(command))
@@ -90,7 +90,7 @@ class EditCrewServiceTest {
     @DisplayName("빈 문자열로 수정하면 CREW_INVALID_FIELD_VALUE 예외가 발생한다")
     void blankName_throws() {
         // Given
-        EditCrewCommand command = new EditCrewCommand("leader-1", "CREW-1", "", null, null);
+        EditCrewCommand command = new EditCrewCommand("leader-1", "CREW-1", "", null, null, null, null);
 
         // When & Then
         assertThatThrownBy(() -> editCrewService.editCrew(command))
@@ -103,7 +103,7 @@ class EditCrewServiceTest {
     @DisplayName("공백만 있는 문자열로 수정하면 CREW_INVALID_FIELD_VALUE 예외가 발생한다")
     void whitespaceOnly_throws() {
         // Given
-        EditCrewCommand command = new EditCrewCommand("leader-1", "CREW-1", null, "   ", null);
+        EditCrewCommand command = new EditCrewCommand("leader-1", "CREW-1", null, "   ", null, null, null);
 
         // When & Then
         assertThatThrownBy(() -> editCrewService.editCrew(command))
@@ -117,7 +117,7 @@ class EditCrewServiceTest {
     void crewNotFound_throws() {
         // Given
         given(crewRepositoryPort.findById("CREW-999")).willReturn(Optional.empty());
-        EditCrewCommand command = new EditCrewCommand("leader-1", "CREW-999", "새 이름", null, null);
+        EditCrewCommand command = new EditCrewCommand("leader-1", "CREW-999", "새 이름", null, null, null, null);
 
         // When & Then
         assertThatThrownBy(() -> editCrewService.editCrew(command))
@@ -133,7 +133,7 @@ class EditCrewServiceTest {
         Crew crew = recruitingCrewWithLeaderAndMember("leader-1", "member-1");
         given(crewRepositoryPort.findById("CREW-1")).willReturn(Optional.of(crew));
 
-        EditCrewCommand command = new EditCrewCommand("member-1", "CREW-1", "새 이름", null, null);
+        EditCrewCommand command = new EditCrewCommand("member-1", "CREW-1", "새 이름", null, null, null, null);
 
         // When & Then
         assertThatThrownBy(() -> editCrewService.editCrew(command))
@@ -149,7 +149,7 @@ class EditCrewServiceTest {
         Crew crew = recruitingCrewWithLeader("leader-1");
         given(crewRepositoryPort.findById("CREW-1")).willReturn(Optional.of(crew));
 
-        EditCrewCommand command = new EditCrewCommand("stranger", "CREW-1", "새 이름", null, null);
+        EditCrewCommand command = new EditCrewCommand("stranger", "CREW-1", "새 이름", null, null, null, null);
 
         // When & Then
         assertThatThrownBy(() -> editCrewService.editCrew(command))
@@ -165,7 +165,7 @@ class EditCrewServiceTest {
         return Crew.of("CREW-1", leaderId, "테스트 크루", "목표", "인증 내용",
                 VerificationType.TEXT, 10, 1, CrewStatus.RECRUITING,
                 LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true,
-                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), List.of(leader));
+                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null, null, List.of(leader));
     }
 
     private Crew recruitingCrewWithLeaderAndMember(String leaderId, String memberId) {
@@ -174,6 +174,6 @@ class EditCrewServiceTest {
         return Crew.of("CREW-1", leaderId, "테스트 크루", "목표", "인증 내용",
                 VerificationType.TEXT, 10, 2, CrewStatus.RECRUITING,
                 LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true,
-                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), List.of(leader, member));
+                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null, null, List.of(leader, member));
     }
 }

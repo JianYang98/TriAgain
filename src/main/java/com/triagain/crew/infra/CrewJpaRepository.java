@@ -1,7 +1,11 @@
 package com.triagain.crew.infra;
 
+import com.triagain.crew.domain.vo.CrewCategory;
 import com.triagain.crew.domain.vo.CrewStatus;
+import com.triagain.crew.domain.vo.CrewVisibility;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -26,4 +30,18 @@ public interface CrewJpaRepository extends JpaRepository<CrewJpaEntity, String> 
 
     /** 시작일 도래한 특정 상태 크루 조회 — 서버 시작 시 활성화 보정에 사용 */
     List<CrewJpaEntity> findAllByStatusAndStartDateLessThanEqual(CrewStatus status, LocalDate date);
+
+    /** 공개 크루 검색 — 키워드/카테고리 필터 + 상태 조건 */
+    @Query("SELECT c FROM CrewJpaEntity c WHERE c.visibility = :visibility " +
+            "AND (c.status = 'RECRUITING' OR (c.status = 'ACTIVE' AND c.allowLateJoin = true AND c.endDate >= :minEndDate)) " +
+            "AND (:keyword IS NULL OR LOWER(c.name) LIKE :keyword ESCAPE '\\' OR LOWER(c.goal) LIKE :keyword ESCAPE '\\') " +
+            "AND (:category IS NULL OR c.category = :category) " +
+            "ORDER BY c.createdAt DESC")
+    Slice<CrewJpaEntity> searchPublicCrews(
+            @Param("visibility") CrewVisibility visibility,
+            @Param("keyword") String keyword,
+            @Param("category") CrewCategory category,
+            @Param("minEndDate") LocalDate minEndDate,
+            Pageable pageable
+    );
 }

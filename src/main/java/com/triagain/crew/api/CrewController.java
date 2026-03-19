@@ -15,10 +15,18 @@ import com.triagain.crew.port.in.GetCrewUseCase;
 import com.triagain.crew.port.in.GetCrewUseCase.CrewDetailResult;
 import com.triagain.crew.port.in.GetMyCrewsUseCase;
 import com.triagain.crew.port.in.GetMyCrewsUseCase.CrewSummaryResult;
+import com.triagain.crew.port.in.GetCrewPreviewUseCase;
 import com.triagain.crew.port.in.JoinCrewByInviteCodeUseCase;
 import com.triagain.crew.port.in.JoinCrewByInviteCodeUseCase.JoinByInviteCodeCommand;
 import com.triagain.crew.port.in.JoinCrewByInviteCodeUseCase.JoinByInviteCodeResult;
+import com.triagain.crew.domain.vo.CrewCategory;
+import com.triagain.crew.port.in.JoinCrewUseCase;
+import com.triagain.crew.port.in.JoinCrewUseCase.JoinCrewCommand;
+import com.triagain.crew.port.in.JoinCrewUseCase.JoinCrewResult;
 import com.triagain.crew.port.in.LeaveCrewUseCase;
+import com.triagain.crew.port.in.SearchCrewsUseCase;
+import com.triagain.crew.port.in.SearchCrewsUseCase.SearchCrewsQuery;
+import com.triagain.crew.port.in.SearchCrewsUseCase.SearchCrewsResult;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -30,6 +38,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -47,6 +56,9 @@ public class CrewController {
     private final GetMyCrewsUseCase getMyCrewsUseCase;
     private final GetCrewUseCase getCrewUseCase;
     private final GetCrewByInviteCodeUseCase getCrewByInviteCodeUseCase;
+    private final GetCrewPreviewUseCase getCrewPreviewUseCase;
+    private final SearchCrewsUseCase searchCrewsUseCase;
+    private final JoinCrewUseCase joinCrewUseCase;
 
     /** 크루 생성 API — POST /api/crews */
     @PostMapping
@@ -65,7 +77,9 @@ public class CrewController {
                 request.startDate(),
                 request.endDate(),
                 request.allowLateJoin(),
-                request.deadlineTime()
+                request.deadlineTime(),
+                request.category(),
+                request.visibility()
         );
 
         CreateCrewResult result = createCrewUseCase.createCrew(command);
@@ -107,6 +121,16 @@ public class CrewController {
         return ResponseEntity.ok(ApiResponse.ok(result));
     }
 
+    /** 공개 크루 미리보기 API — GET /api/crews/{crewId}/preview */
+    @GetMapping("/{crewId}/preview")
+    public ResponseEntity<ApiResponse<CrewInvitePreviewResult>> getCrewPreview(
+            @AuthenticatedUser String userId,
+            @PathVariable String crewId
+    ) {
+        CrewInvitePreviewResult result = getCrewPreviewUseCase.getCrewPreview(crewId, userId);
+        return ResponseEntity.ok(ApiResponse.ok(result));
+    }
+
     /** 크루 상세 조회 API — GET /api/crews/{crewId} */
     @GetMapping("/{crewId}")
     public ResponseEntity<ApiResponse<CrewDetailResult>> getCrew(
@@ -123,15 +147,41 @@ public class CrewController {
     public ResponseEntity<ApiResponse<EditCrewResult>> editCrew(
             @AuthenticatedUser String userId,
             @PathVariable String crewId,
-            @RequestBody EditCrewRequest request
+            @Valid @RequestBody EditCrewRequest request
     ) {
         EditCrewCommand command = new EditCrewCommand(
-                userId, crewId, request.name(), request.goal(), request.verificationContent()
+                userId, crewId, request.name(), request.goal(), request.verificationContent(),
+                request.category(), request.visibility()
         );
 
         EditCrewResult result = editCrewUseCase.editCrew(command);
 
         return ResponseEntity.ok(ApiResponse.ok(result));
+    }
+
+    /** 크루 검색 API — GET /api/crews/search (permitAll) */
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<SearchCrewsResult>> searchCrews(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) CrewCategory category,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        SearchCrewsQuery query = new SearchCrewsQuery(keyword, category, page, size);
+        SearchCrewsResult result = searchCrewsUseCase.searchCrews(query);
+
+        return ResponseEntity.ok(ApiResponse.ok(result));
+    }
+
+    /** 공개 크루 직접 가입 API — POST /api/crews/{crewId}/join */
+    @PostMapping("/{crewId}/join")
+    public ResponseEntity<ApiResponse<JoinCrewResult>> joinCrew(
+            @AuthenticatedUser String userId,
+            @PathVariable String crewId
+    ) {
+        JoinCrewResult result = joinCrewUseCase.joinCrew(new JoinCrewCommand(userId, crewId));
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(result));
     }
 
     /** 크루 삭제 API — DELETE /api/crews/{crewId} */

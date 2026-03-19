@@ -421,12 +421,15 @@ refactor: Verification 도메인 계층 분리
 | GET | /crews | 내 크루 목록 조회 |
 | GET | /crews/{crewId} | 크루 상세 조회 |
 | GET | /crews/invite/{inviteCode} | 초대코드로 크루 미리보기 |
+| GET | /crews/{crewId}/preview | 공개 크루 미리보기 (검색 → 상세) |
 | POST | /crews/join | 초대코드로 크루 참여 |
 | GET | /crews/{crewId}/feed | 크루 피드 조회 |
 | GET | /crews/{crewId}/my-verifications | 내 인증 현황 조회 |
 | PATCH | /crews/{crewId} | 크루 수정 (LEADER, RECRUITING 상태만) |
 | DELETE | /crews/{crewId} | 크루 삭제 (LEADER, RECRUITING + 본인만) |
 | DELETE | /crews/{crewId}/members/me | 크루 탈퇴 (MEMBER, RECRUITING 상태만) |
+| GET | /crews/search | 크루 검색 (공개 크루, permitAll) |
+| POST | /crews/{crewId}/join | 공개 크루 직접 가입 |
 
 ---
 

@@ -2,6 +2,7 @@ package com.triagain.crew.port.out;
 
 import com.triagain.crew.domain.model.Crew;
 import com.triagain.crew.domain.model.CrewMember;
+import com.triagain.crew.domain.vo.CrewCategory;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -41,4 +42,10 @@ public interface CrewRepositoryPort {
 
     /** 특정 크루의 특정 멤버 삭제 — 크루 탈퇴 시 사용 */
     void deleteMemberByCrewIdAndUserId(String crewId, String userId);
+
+    /** 크루 검색 결과 + hasNext 페이지네이션 정보 */
+    record CrewSearchPage(List<Crew> crews, boolean hasNext) {}
+
+    /** 공개 크루 검색 — 키워드/카테고리 필터 + 페이지네이션 (page: 0-based 페이지 번호) */
+    CrewSearchPage searchPublicCrews(String keyword, CrewCategory category, LocalDate minEndDate, int page, int size);
 }

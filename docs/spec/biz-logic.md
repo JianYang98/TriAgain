@@ -18,18 +18,22 @@
 | 초대코드 | 크루 생성 시 자동 발급 (6자리 영숫자, 0/O/I/L 제외) |
 | 초대 링크 | 초대코드 기반 딥링크 생성 |
 | 자동 가입 | 크루 생성자는 LEADER 역할로 자동 가입 |
+| 카테고리 (category) | 필수 선택 — `EXERCISE` / `STUDY` / `LIFESTYLE` / `SELF_DEV` / `ETC` |
+| 공개 설정 (visibility) | 선택 — `PUBLIC` / `PRIVATE` (기본값 `PRIVATE`) |
 | 중간 가입 | 크루장이 허용/불가 설정 (allow_late_join) |
 
 ### 1.2 크루 참여
 
 | 항목 | 내용 |
 |------|------|
-| 참여 방식 | 초대코드 입력 |
+| 비공개 크루 참여 | 초대코드 입력 (POST /crews/join) |
+| 공개 크루 참여 | (1) 검색 → 직접 가입 (POST /crews/{crewId}/join), (2) 초대코드 (POST /crews/join) — 공개 크루도 초대코드 유지 |
 | 참여 조건 | 정원 미초과 + 크루 종료 3일 전까지 |
 | 중간 가입 허용일 때 | 크루 시작 후에도 참여 가능 → 첫 인증 시 챌린지 자동 생성 |
 | 중간 가입 불가일 때 | 크루 시작 전까지만 참여 가능 |
 | 역할 | MEMBER로 자동 배정 |
 | 중복 참여 | 동일 크루 중복 참여 불가 |
+| 공통 검증 | 정원, 상태, 마감, 중복 검증은 Crew 도메인 모델에 위임 (가입 경로와 무관하게 동일) |
 
 ### 1.3 크루 조회
 
@@ -38,6 +42,7 @@
 | 크루 목록 | 내가 참여 중인 크루 목록 |
 | 크루 상세 | 크루 정보 + 멤버 목록 + 현재 챌린지 상태 |
 | 크루 피드 | 크루원들의 인증 목록 + 나의 현황 |
+| 크루 검색 | 공개(PUBLIC) + 모집중/중간가입 가능 크루 검색 (비로그인 허용) |
 
 ### 1.4 크루 수정
 
@@ -45,7 +50,7 @@
 |------|------|
 | 권한 | LEADER만 가능 |
 | 상태 조건 | 크루 상태 = RECRUITING |
-| 수정 가능 필드 | name, goal, verificationContent |
+| 수정 가능 필드 | name, goal, verificationContent, category, visibility |
 | 수정 방식 | 부분 수정 (PATCH 시맨틱) — null인 필드는 수정하지 않음 |
 | 최소 필드 수 | 최소 1개 이상 필드 필수 (빈 body 거부) |
 | 빈 값 검증 | 빈 문자열("") 또는 공백만 있는 값은 거부 |
@@ -126,6 +131,31 @@
 | 기존 유저 | terms_agreed_at=NULL이어도 정상 로그인 가능 (이미 동의한 것으로 간주) |
 
 > 상세 설계는 [docs/spec/user.md](user.md) 참고
+
+### 1.13 크루 검색
+
+| 항목 | 내용 |
+|------|------|
+| 검색 대상 | `visibility = PUBLIC` AND (`status = RECRUITING` OR (`status = ACTIVE` AND `allowLateJoin = true` AND 잔여일 ≥ 6)) |
+| 비로그인 허용 | permitAll — 인증 없이 검색 가능 |
+| 검색 필터 | 키워드 (이름/목표 LIKE 검색), 카테고리 |
+| 페이지네이션 | hasNext boolean, 기본 20건, 최대 50건 |
+| 정렬 | createdAt DESC |
+| 잔여일 임계값 | 설정값으로 외부화 (`crew.search.min-remaining-days`, 기본값 6) |
+
+**카테고리 (CrewCategory enum):**
+
+| 값 | 설명 |
+|------|------|
+| `EXERCISE` | 운동 |
+| `STUDY` | 공부 |
+| `LIFESTYLE` | 생활습관 |
+| `SELF_DEV` | 자기개발 |
+| `ETC` | 기타 |
+
+**기존 크루 처리 (마이그레이션):**
+- `category = null` (nullable — 기존 크루는 카테고리 미지정)
+- `visibility = PRIVATE` (기존 크루는 검색에 노출되지 않음)
 
 ---
 

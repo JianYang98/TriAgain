@@ -8,6 +8,7 @@ import com.triagain.crew.domain.model.Crew;
 import com.triagain.crew.domain.model.CrewMember;
 import com.triagain.crew.domain.vo.ChallengeStatus;
 import com.triagain.crew.domain.vo.CrewStatus;
+import com.triagain.crew.domain.vo.CrewVisibility;
 import com.triagain.crew.domain.vo.VerificationType;
 import com.triagain.crew.port.out.ChallengeRepositoryPort;
 import com.triagain.crew.port.out.CrewRepositoryPort;
@@ -292,7 +293,7 @@ public class CrewFeedSteps {
                 "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
                 LocalDate.now(), LocalDate.now().plusDays(14), true,
                 generateInviteCode(), LocalDateTime.now(),
-                Crew.DEFAULT_DEADLINE_TIME, java.util.List.of()
+                Crew.DEFAULT_DEADLINE_TIME, null, CrewVisibility.PRIVATE, java.util.List.of()
         );
         crewRepositoryPort.save(crew);
         crewRepositoryPort.saveMember(CrewMember.createLeader(creatorId, crewId));

@@ -3,9 +3,13 @@ package com.triagain.crew.application;
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
 import com.triagain.crew.domain.model.Crew;
+import com.triagain.crew.domain.model.CrewMember;
+import com.triagain.crew.domain.vo.CrewRole;
 import com.triagain.crew.domain.vo.CrewStatus;
+import com.triagain.crew.domain.vo.CrewVisibility;
 import com.triagain.crew.domain.vo.VerificationType;
 import com.triagain.crew.port.in.JoinCrewUseCase.JoinCrewCommand;
+import com.triagain.crew.port.in.JoinCrewUseCase.JoinCrewResult;
 import com.triagain.crew.port.out.CrewRepositoryPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,9 +22,13 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
@@ -32,14 +40,78 @@ class JoinCrewServiceTest {
     @InjectMocks
     private JoinCrewService joinCrewService;
 
-    private static Crew recruitingCrew(LocalDate startDate, LocalDate endDate) {
-        return Crew.of(
-                "CREW-001", "creator-1", "테스트 크루", "목표",
-                "인증 내용", VerificationType.TEXT, 10, 1,
-                CrewStatus.RECRUITING, startDate, endDate,
+    @Test
+    @DisplayName("PUBLIC 크루에 정상 가입하면 MEMBER 역할로 등록된다")
+    void joinPublicCrew_success() {
+        // Given
+        Crew crew = publicRecruitingCrew(LocalDate.now().plusDays(7), LocalDate.now().plusDays(30));
+        given(crewRepositoryPort.findByIdWithLock("CREW-001")).willReturn(Optional.of(crew));
+        given(crewRepositoryPort.save(any())).willReturn(crew);
+        given(crewRepositoryPort.saveMember(any())).willReturn(null);
+
+        JoinCrewCommand command = new JoinCrewCommand("user-1", "CREW-001");
+
+        // When
+        JoinCrewResult result = joinCrewService.joinCrew(command);
+
+        // Then
+        assertThat(result.role()).isEqualTo(CrewRole.MEMBER);
+        assertThat(result.userId()).isEqualTo("user-1");
+    }
+
+    @Test
+    @DisplayName("PRIVATE 크루에 직접 가입하면 CREW_NOT_PUBLIC 예외가 발생한다")
+    void joinPrivateCrew_throwsNotPublic() {
+        // Given
+        Crew crew = privateRecruitingCrew(LocalDate.now().plusDays(7), LocalDate.now().plusDays(30));
+        given(crewRepositoryPort.findByIdWithLock("CREW-001")).willReturn(Optional.of(crew));
+
+        JoinCrewCommand command = new JoinCrewCommand("user-1", "CREW-001");
+
+        // When & Then
+        assertThatThrownBy(() -> joinCrewService.joinCrew(command))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.CREW_NOT_PUBLIC);
+    }
+
+    @Test
+    @DisplayName("정원이 가득 찬 PUBLIC 크루에 가입하면 CREW_FULL 예외가 발생한다")
+    void joinFullCrew_throwsFull() {
+        // Given
+        Crew crew = publicCrewWithMembers(CrewStatus.RECRUITING, 2, 2,
+                LocalDate.now().plusDays(7), LocalDate.now().plusDays(30));
+        given(crewRepositoryPort.findByIdWithLock("CREW-001")).willReturn(Optional.of(crew));
+
+        JoinCrewCommand command = new JoinCrewCommand("user-1", "CREW-001");
+
+        // When & Then
+        assertThatThrownBy(() -> joinCrewService.joinCrew(command))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.CREW_FULL);
+    }
+
+    @Test
+    @DisplayName("이미 참여한 유저가 다시 가입하면 CREW_ALREADY_JOINED 예외가 발생한다")
+    void joinAlreadyJoined_throwsAlreadyJoined() {
+        // Given
+        CrewMember leader = CrewMember.of("CRMB-1", "leader", "CREW-001", CrewRole.LEADER, LocalDateTime.now());
+        CrewMember existing = CrewMember.of("CRMB-2", "user-1", "CREW-001", CrewRole.MEMBER, LocalDateTime.now());
+        Crew crew = Crew.of("CREW-001", "leader", "테스트 크루", "목표",
+                "인증 내용", VerificationType.TEXT, 10, 2,
+                CrewStatus.RECRUITING, LocalDate.now().plusDays(1), LocalDate.now().plusDays(30),
                 true, "ABC123", LocalDateTime.now(),
-                LocalTime.of(23, 59, 59), Collections.emptyList()
-        );
+                LocalTime.of(23, 59, 59), null, CrewVisibility.PUBLIC, List.of(leader, existing));
+        given(crewRepositoryPort.findByIdWithLock("CREW-001")).willReturn(Optional.of(crew));
+
+        JoinCrewCommand command = new JoinCrewCommand("user-1", "CREW-001");
+
+        // When & Then
+        assertThatThrownBy(() -> joinCrewService.joinCrew(command))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.CREW_ALREADY_JOINED);
     }
 
     @Test
@@ -48,7 +120,7 @@ class JoinCrewServiceTest {
         // Given — 크루 종료일이 내일이면 endDate - 3일 = 이틀 전 → 마감 초과
         LocalDate endDate = LocalDate.now().plusDays(1);
         LocalDate startDate = endDate.minusDays(7);
-        Crew crew = recruitingCrew(startDate, endDate);
+        Crew crew = publicRecruitingCrew(startDate, endDate);
 
         given(crewRepositoryPort.findByIdWithLock("CREW-001")).willReturn(Optional.of(crew));
 
@@ -67,19 +139,49 @@ class JoinCrewServiceTest {
         // Given — endDate - 3일 = 오늘 → isAfter가 false이므로 통과
         LocalDate endDate = LocalDate.now().plusDays(3);
         LocalDate startDate = endDate.minusDays(7);
-        Crew crew = recruitingCrew(startDate, endDate);
+        Crew crew = publicRecruitingCrew(startDate, endDate);
 
         given(crewRepositoryPort.findByIdWithLock("CREW-001")).willReturn(Optional.of(crew));
+        given(crewRepositoryPort.save(crew)).willReturn(crew);
+        given(crewRepositoryPort.saveMember(any())).willReturn(null);
 
         JoinCrewCommand command = new JoinCrewCommand("user-1", "CREW-001");
 
-        // When & Then — 마감일 검증 통과 후 addMember에서 중복 검증 등 진행됨 (예외 없이 통과)
-        // addMember 성공을 위해 save mock 필요
-        given(crewRepositoryPort.save(crew)).willReturn(crew);
-        given(crewRepositoryPort.saveMember(org.mockito.ArgumentMatchers.any())).willReturn(null);
-
-        // 마감일 검증 통과 확인 — CREW_JOIN_DEADLINE_PASSED 예외가 발생하지 않아야 함
-        org.assertj.core.api.Assertions.assertThatCode(() -> joinCrewService.joinCrew(command))
+        // When & Then — CREW_JOIN_DEADLINE_PASSED 예외가 발생하지 않아야 함
+        assertThatCode(() -> joinCrewService.joinCrew(command))
                 .doesNotThrowAnyException();
+    }
+
+    // --- 헬퍼 메서드 ---
+
+    private static Crew publicRecruitingCrew(LocalDate startDate, LocalDate endDate) {
+        return Crew.of(
+                "CREW-001", "creator-1", "테스트 크루", "목표",
+                "인증 내용", VerificationType.TEXT, 10, 1,
+                CrewStatus.RECRUITING, startDate, endDate,
+                true, "ABC123", LocalDateTime.now(),
+                LocalTime.of(23, 59, 59), null, CrewVisibility.PUBLIC, Collections.emptyList()
+        );
+    }
+
+    private static Crew privateRecruitingCrew(LocalDate startDate, LocalDate endDate) {
+        return Crew.of(
+                "CREW-001", "creator-1", "테스트 크루", "목표",
+                "인증 내용", VerificationType.TEXT, 10, 1,
+                CrewStatus.RECRUITING, startDate, endDate,
+                true, "ABC123", LocalDateTime.now(),
+                LocalTime.of(23, 59, 59), null, CrewVisibility.PRIVATE, Collections.emptyList()
+        );
+    }
+
+    private static Crew publicCrewWithMembers(CrewStatus status, int maxMembers, int currentMembers,
+                                               LocalDate startDate, LocalDate endDate) {
+        return Crew.of(
+                "CREW-001", "creator-1", "테스트 크루", "목표",
+                "인증 내용", VerificationType.TEXT, maxMembers, currentMembers,
+                status, startDate, endDate,
+                true, "ABC123", LocalDateTime.now(),
+                LocalTime.of(23, 59, 59), null, CrewVisibility.PUBLIC, Collections.emptyList()
+        );
     }
 }

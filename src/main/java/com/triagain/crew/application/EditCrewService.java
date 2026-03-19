@@ -30,7 +30,8 @@ public class EditCrewService implements EditCrewUseCase {
             throw new BusinessException(ErrorCode.CREW_ACCESS_DENIED);
         }
 
-        crew.update(command.name(), command.goal(), command.verificationContent());
+        crew.update(command.name(), command.goal(), command.verificationContent(),
+                command.category(), command.visibility());
 
         Crew saved = crewRepositoryPort.save(crew);
 
@@ -49,13 +50,16 @@ public class EditCrewService implements EditCrewUseCase {
                 saved.isAllowLateJoin(),
                 saved.getInviteCode(),
                 saved.getCreatedAt(),
-                saved.getDeadlineTime()
+                saved.getDeadlineTime(),
+                saved.getCategory(),
+                saved.getVisibility()
         );
     }
 
     /** 수정 요청 필드 검증 — 모두 null이거나 빈문자열/공백만 있으면 예외 */
     private void validateFields(EditCrewCommand command) {
-        if (command.name() == null && command.goal() == null && command.verificationContent() == null) {
+        if (command.name() == null && command.goal() == null && command.verificationContent() == null
+                && command.category() == null && command.visibility() == null) {
             throw new BusinessException(ErrorCode.CREW_NO_FIELDS_TO_UPDATE);
         }
         validateNotBlank(command.name());

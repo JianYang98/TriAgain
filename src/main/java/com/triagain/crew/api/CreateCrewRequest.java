@@ -1,5 +1,7 @@
 package com.triagain.crew.api;
 
+import com.triagain.crew.domain.vo.CrewCategory;
+import com.triagain.crew.domain.vo.CrewVisibility;
 import com.triagain.crew.domain.vo.VerificationType;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -19,6 +21,8 @@ public record CreateCrewRequest(
         @NotNull LocalDate startDate,
         @NotNull LocalDate endDate,
         boolean allowLateJoin,
-        LocalTime deadlineTime
+        LocalTime deadlineTime,
+        @NotNull CrewCategory category,
+        CrewVisibility visibility
 ) {
 }
