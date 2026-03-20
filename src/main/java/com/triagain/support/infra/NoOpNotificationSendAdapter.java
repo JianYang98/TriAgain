@@ -15,6 +15,11 @@ public class NoOpNotificationSendAdapter implements NotificationSendPort {
     /** dev/test 환경용 no-op FCM 발송 — 로그만 출력 */
     @Override
     public void send(String fcmToken, String title, String body, Map<String, String> data) {
-        log.debug("NoOp FCM: token={}, title={}, body={}, data={}", fcmToken, title, body, data);
+        log.debug("NoOp FCM: token={}, title={}, body={}, data={}", maskToken(fcmToken), title, body, data);
+    }
+
+    private String maskToken(String token) {
+        if (token == null || token.length() <= 10) return "***";
+        return token.substring(0, 10) + "***";
     }
 }

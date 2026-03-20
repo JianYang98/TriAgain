@@ -9,6 +9,7 @@ import com.triagain.user.port.in.UpdateUserProfileUseCase.UpdateProfileCommand;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -54,7 +55,9 @@ public class UserController {
     }
 
     record UpdateFcmTokenRequest(
-            @NotBlank String fcmToken
+            @NotBlank
+            @Size(max = 500, message = "FCM 토큰이 너무 깁니다")
+            String fcmToken
     ) {
     }
 

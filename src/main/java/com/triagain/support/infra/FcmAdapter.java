@@ -3,6 +3,7 @@ package com.triagain.support.infra;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
+import com.google.firebase.messaging.MessagingErrorCode;
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
 import com.triagain.support.port.out.NotificationSendPort;
@@ -45,7 +46,13 @@ public class FcmAdapter implements NotificationSendPort {
             String messageId = firebaseMessaging.send(message);
             log.info("FCM 발송 성공: messageId={}", messageId);
         } catch (FirebaseMessagingException e) {
-            log.warn("FCM 발송 실패, 재시도 예정: token={}, error={}", fcmToken, e.getMessage());
+            MessagingErrorCode errorCode = e.getMessagingErrorCode();
+            if (errorCode == MessagingErrorCode.UNREGISTERED
+                    || errorCode == MessagingErrorCode.INVALID_ARGUMENT) {
+                log.warn("FCM 영구 오류 (재시도 불가): token={}, errorCode={}", maskToken(fcmToken), errorCode);
+                return;
+            }
+            log.warn("FCM 발송 실패, 재시도 예정: token={}, error={}", maskToken(fcmToken), e.getMessage());
             throw new BusinessException(ErrorCode.FCM_SEND_FAILED);
         }
     }
@@ -53,7 +60,12 @@ public class FcmAdapter implements NotificationSendPort {
     /** FCM 발송 최종 실패 핸들러 — 3회 재시도 후 호출 */
     @Recover
     public void recoverSend(BusinessException e, String fcmToken, String title, String body, Map<String, String> data) {
-        log.error("FCM 발송 최종 실패 (3회 재시도 후): token={}", fcmToken, e);
+        log.error("FCM 발송 최종 실패 (3회 재시도 후): token={}", maskToken(fcmToken), e);
         throw e;
+    }
+
+    private String maskToken(String token) {
+        if (token == null || token.length() <= 10) return "***";
+        return token.substring(0, 10) + "***";
     }
 }

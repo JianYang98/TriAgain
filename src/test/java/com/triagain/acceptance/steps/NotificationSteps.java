@@ -66,8 +66,8 @@ public class NotificationSteps {
         scenarioContext.setResponse(response);
     }
 
-    @만일("{string}이 첫 번째 알림을 읽음 처리한다")
-    public void 사용자가_첫_번째_알림을_읽음_처리한다(String userId) {
+    @만일("{string}이 알림을 읽음 처리한다")
+    public void 사용자가_알림을_읽음_처리한다(String userId) {
         String notificationId = scenarioContext.getNotificationId();
         ExtractableResponse<Response> response = notificationAdapter.markAsRead(userId, notificationId);
         scenarioContext.setResponse(response);
