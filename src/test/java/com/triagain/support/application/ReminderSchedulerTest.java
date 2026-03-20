@@ -1,6 +1,7 @@
 package com.triagain.support.application;
 
 import com.triagain.support.domain.model.Notification;
+import com.triagain.support.port.out.FcmTokenCleanupPort;
 import com.triagain.support.port.out.NotificationRepositoryPort;
 import com.triagain.support.port.out.NotificationSendPort;
 import com.triagain.support.port.out.NotificationTargetQueryPort;
@@ -37,6 +38,9 @@ class ReminderSchedulerTest {
     @Mock
     private NotificationSendPort notificationSendPort;
 
+    @Mock
+    private FcmTokenCleanupPort fcmTokenCleanupPort;
+
     private ReminderScheduler reminderScheduler;
 
     @BeforeEach
@@ -56,7 +60,7 @@ class ReminderSchedulerTest {
 
         reminderScheduler = new ReminderScheduler(
                 notificationTargetQueryPort, notificationRepositoryPort,
-                notificationSendPort, transactionTemplate);
+                notificationSendPort, fcmTokenCleanupPort, transactionTemplate);
     }
 
     @DisplayName("리마인더 타겟이 2명이면 알림 저장 2회 + 푸시 발송 2회 호출된다")
@@ -69,6 +73,8 @@ class ReminderSchedulerTest {
         );
         given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class), any(LocalDate.class)))
                 .willReturn(targets);
+        given(notificationSendPort.send(anyString(), anyString(), anyString(), anyMap()))
+                .willReturn(true);
 
         // when
         reminderScheduler.sendReminders();
@@ -76,6 +82,7 @@ class ReminderSchedulerTest {
         // then
         verify(notificationRepositoryPort, times(2)).save(any(Notification.class));
         verify(notificationSendPort, times(2)).send(anyString(), anyString(), anyString(), anyMap());
+        verify(fcmTokenCleanupPort, never()).clearFcmToken(anyString());
     }
 
     @DisplayName("fcmToken이 null이면 알림은 저장하되 푸시는 발송하지 않는다")
@@ -111,6 +118,26 @@ class ReminderSchedulerTest {
         verify(notificationSendPort, never()).send(anyString(), anyString(), anyString(), anyMap());
     }
 
+    @DisplayName("FCM 토큰이 무효하면 토큰 정리 포트가 호출된다")
+    @Test
+    void sendReminders_invalidToken_clearsToken() {
+        // given
+        List<ReminderTarget> targets = List.of(
+                new ReminderTarget("user-1", "token-1", "crew-1", "운동 크루")
+        );
+        given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class), any(LocalDate.class)))
+                .willReturn(targets);
+        given(notificationSendPort.send(anyString(), anyString(), anyString(), anyMap()))
+                .willReturn(false);
+
+        // when
+        reminderScheduler.sendReminders();
+
+        // then
+        verify(notificationRepositoryPort).save(any(Notification.class));
+        verify(fcmTokenCleanupPort).clearFcmToken("user-1");
+    }
+
     @DisplayName("개별 타겟 처리 실패 시 나머지 타겟은 정상 처리된다")
     @Test
     void sendReminders_individualFailure_continuesBatch() {
@@ -121,6 +148,8 @@ class ReminderSchedulerTest {
         );
         given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class), any(LocalDate.class)))
                 .willReturn(targets);
+        given(notificationSendPort.send(anyString(), anyString(), anyString(), anyMap()))
+                .willReturn(true);
 
         // 첫 번째 save 시 예외 발생
         doThrow(new RuntimeException("DB 오류"))

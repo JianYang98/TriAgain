@@ -20,9 +20,6 @@ public interface NotificationRepositoryPort {
 
     long countUnreadByUserId(String userId);
 
-    /** 알림 읽음 처리 — 단건 ID 기반 */
-    void markAsRead(String notificationId);
-
     /** 지정 일시 이전 알림 일괄 삭제 — 스케줄러용 (30일 지난 알림 정리) */
     void deleteOlderThan(LocalDateTime dateTime);
 }

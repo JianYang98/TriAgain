@@ -14,9 +14,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+
+import org.mockito.ArgumentCaptor;
 
 @ExtendWith(MockitoExtension.class)
 class ReadNotificationServiceTest {
@@ -30,7 +33,7 @@ class ReadNotificationServiceTest {
     private static final String USER_ID = "user-1";
     private static final String NOTIFICATION_ID = "NTFY-001";
 
-    @DisplayName("본인 알림 읽음 처리 시 markAsRead 포트가 호출된다")
+    @DisplayName("본인 알림 읽음 처리 시 도메인 markAsRead 후 save가 호출된다")
     @Test
     void markAsRead_success() {
         // given
@@ -42,7 +45,9 @@ class ReadNotificationServiceTest {
         readNotificationService.markAsRead(NOTIFICATION_ID, USER_ID);
 
         // then
-        verify(notificationRepositoryPort).markAsRead(NOTIFICATION_ID);
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepositoryPort).save(captor.capture());
+        assertThat(captor.getValue().isRead()).isTrue();
     }
 
     @DisplayName("존재하지 않는 알림 읽음 처리 시 NOTIFICATION_NOT_FOUND 예외가 발생한다")

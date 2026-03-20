@@ -28,6 +28,7 @@ public class ReadNotificationService implements ReadNotificationUseCase {
             throw new BusinessException(ErrorCode.NOTIFICATION_NOT_FOUND);
         }
 
-        notificationRepositoryPort.markAsRead(notificationId);
+        notification.markAsRead();
+        notificationRepositoryPort.save(notification);
     }
 }

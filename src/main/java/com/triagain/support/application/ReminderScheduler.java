@@ -5,6 +5,7 @@ import com.triagain.support.domain.vo.NotificationMessageTemplate.NotificationMe
 import com.triagain.support.domain.vo.NotificationTargetType;
 import com.triagain.support.domain.vo.NotificationType;
 import com.triagain.support.domain.model.Notification;
+import com.triagain.support.port.out.FcmTokenCleanupPort;
 import com.triagain.support.port.out.NotificationRepositoryPort;
 import com.triagain.support.port.out.NotificationSendPort;
 import com.triagain.support.port.out.NotificationTargetQueryPort;
@@ -29,6 +30,7 @@ public class ReminderScheduler {
     private final NotificationTargetQueryPort notificationTargetQueryPort;
     private final NotificationRepositoryPort notificationRepositoryPort;
     private final NotificationSendPort notificationSendPort;
+    private final FcmTokenCleanupPort fcmTokenCleanupPort;
     private final TransactionTemplate transactionTemplate;
 
     /** 인증 마감 임박 리마인더 — 매 15분, deadlineTime 15~30분 전 미인증 유저 대상 */
@@ -59,8 +61,11 @@ public class ReminderScheduler {
                 });
 
                 if (target.fcmToken() != null) {
-                    notificationSendPort.send(target.fcmToken(), msg.title(), msg.content(),
+                    boolean tokenValid = notificationSendPort.send(target.fcmToken(), msg.title(), msg.content(),
                             Map.of("type", "REMINDER", "crewId", target.crewId()));
+                    if (!tokenValid) {
+                        fcmTokenCleanupPort.clearFcmToken(target.userId());
+                    }
                 }
                 successCount++;
             } catch (Exception e) {

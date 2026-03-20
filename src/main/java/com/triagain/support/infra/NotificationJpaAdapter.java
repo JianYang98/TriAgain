@@ -47,12 +47,6 @@ public class NotificationJpaAdapter implements NotificationRepositoryPort {
 
     @Override
     @Transactional
-    public void markAsRead(String notificationId) {
-        notificationJpaRepository.markAsRead(notificationId);
-    }
-
-    @Override
-    @Transactional
     public void deleteOlderThan(LocalDateTime dateTime) {
         notificationJpaRepository.deleteByCreatedAtBefore(dateTime);
     }

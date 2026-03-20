@@ -5,6 +5,7 @@ import com.triagain.support.domain.vo.NotificationMessageTemplate.NotificationMe
 import com.triagain.support.domain.vo.NotificationTargetType;
 import com.triagain.support.domain.vo.NotificationType;
 import com.triagain.support.domain.model.Notification;
+import com.triagain.support.port.out.FcmTokenCleanupPort;
 import com.triagain.support.port.out.NotificationRepositoryPort;
 import com.triagain.support.port.out.NotificationSendPort;
 import com.triagain.support.port.out.NotificationTargetQueryPort;
@@ -28,6 +29,7 @@ public class CrewStartNotificationScheduler {
     private final NotificationTargetQueryPort notificationTargetQueryPort;
     private final NotificationRepositoryPort notificationRepositoryPort;
     private final NotificationSendPort notificationSendPort;
+    private final FcmTokenCleanupPort fcmTokenCleanupPort;
     private final TransactionTemplate transactionTemplate;
 
     /** 크루 시작 알림 — 매일 09:00, 오늘 시작된 크루의 전체 멤버에게 알림 */
@@ -53,8 +55,11 @@ public class CrewStartNotificationScheduler {
                 });
 
                 if (target.fcmToken() != null) {
-                    notificationSendPort.send(target.fcmToken(), msg.title(), msg.content(),
+                    boolean tokenValid = notificationSendPort.send(target.fcmToken(), msg.title(), msg.content(),
                             Map.of("type", "CREW_STARTED", "crewId", target.crewId()));
+                    if (!tokenValid) {
+                        fcmTokenCleanupPort.clearFcmToken(target.userId());
+                    }
                 }
                 successCount++;
             } catch (Exception e) {
