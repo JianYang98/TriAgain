@@ -28,6 +28,9 @@ public class UserJpaEntity {
     @Column(name = "profile_image_url")
     private String profileImageUrl;
 
+    @Column(name = "fcm_token", length = 500)
+    private String fcmToken;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -38,7 +41,7 @@ public class UserJpaEntity {
     }
 
     public User toDomain() {
-        return User.of(id, provider, email, nickname, profileImageUrl, createdAt, termsAgreedAt);
+        return User.of(id, provider, email, nickname, profileImageUrl, fcmToken, createdAt, termsAgreedAt);
     }
 
     public static UserJpaEntity fromDomain(User user) {
@@ -48,6 +51,7 @@ public class UserJpaEntity {
         entity.email = user.getEmail();
         entity.nickname = user.getNickname();
         entity.profileImageUrl = user.getProfileImageUrl();
+        entity.fcmToken = user.getFcmToken();
         entity.createdAt = user.getCreatedAt();
         entity.termsAgreedAt = user.getTermsAgreedAt();
         return entity;

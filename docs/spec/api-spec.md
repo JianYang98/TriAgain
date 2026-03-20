@@ -1470,6 +1470,42 @@ Authorization: Bearer <token>
 
 ---
 
+### PATCH /users/me/fcm-token (FCM 토큰 등록/갱신)
+
+앱 실행/로그인 시 클라이언트가 FCM 디바이스 토큰을 서버에 등록/갱신한다.
+
+**요청 (Request)**
+```
+PATCH /users/me/fcm-token HTTP/1.1
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+```json
+{
+  "fcmToken": "dK1x...FCM디바이스토큰"
+}
+```
+
+**필드 설명:**
+- `fcmToken`: (필수) Firebase Cloud Messaging 디바이스 토큰
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": null,
+  "error": null
+}
+```
+
+**에러 응답**
+| HTTP | 코드 | 메시지 |
+|------|------|--------|
+| 400 | C001 | 잘못된 입력값입니다. |
+| 401 | A003 | 인증이 필요합니다. |
+
+---
+
 ## TODO (구현 시 추가 예정)
 
 ### Moderation Context

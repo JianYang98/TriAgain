@@ -31,6 +31,7 @@ erDiagram
         string email "nullable"
         string nickname
         string profile_image_url
+        string fcm_token "nullable — FCM 디바이스 토큰, VARCHAR(500)"
         timestamp created_at
         timestamp terms_agreed_at "nullable — 약관 동의 일시 (NULL이면 기존 유저)"
     }
@@ -267,6 +268,8 @@ erDiagram
 | REPORT_RECEIVED | 신고 접수 |
 | REVIEW_COMPLETED | 검토 완료 |
 | UPLOAD_COMPLETED | 이미지 업로드 완료 |
+| REMINDER | 인증 리마인더 (스케줄러) |
+| CREW_STARTED | 크루 시작 알림 |
 
 ### notifications.target_type
 | 값 | 의미 |

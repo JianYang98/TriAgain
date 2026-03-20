@@ -89,7 +89,8 @@ public enum ErrorCode {
     // Support
     NOTIFICATION_NOT_FOUND(404, "S001"),
     REACTION_NOT_FOUND(404, "S002"),
-    EMOJI_REQUIRED(400, "S003");
+    EMOJI_REQUIRED(400, "S003"),
+    FCM_SEND_FAILED(502, "S004");
 
     private final int status;
     private final String code;

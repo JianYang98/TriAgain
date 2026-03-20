@@ -3,6 +3,7 @@ package com.triagain.user.api;
 import com.triagain.common.auth.AuthenticatedUser;
 import com.triagain.common.response.ApiResponse;
 import com.triagain.user.port.in.GetUserUseCase;
+import com.triagain.user.port.in.UpdateFcmTokenUseCase;
 import com.triagain.user.port.in.UpdateUserProfileUseCase;
 import com.triagain.user.port.in.UpdateUserProfileUseCase.UpdateProfileCommand;
 import jakarta.validation.Valid;
@@ -23,6 +24,7 @@ public class UserController {
 
     private final GetUserUseCase getUserUseCase;
     private final UpdateUserProfileUseCase updateUserProfileUseCase;
+    private final UpdateFcmTokenUseCase updateFcmTokenUseCase;
 
     /** 내 프로필 조회 — 마이페이지에서 사용 */
     @GetMapping("/me")
@@ -40,6 +42,20 @@ public class UserController {
         UpdateProfileCommand command = new UpdateProfileCommand(userId, request.nickname(), null);
         UpdateUserProfileUseCase.UpdateProfileResult result = updateUserProfileUseCase.updateProfile(command);
         return ResponseEntity.ok(ApiResponse.ok(MyProfileResponse.from(result)));
+    }
+
+    /** FCM 토큰 등록/갱신 — 앱 실행 시 클라이언트가 호출 */
+    @PatchMapping("/me/fcm-token")
+    public ResponseEntity<ApiResponse<Void>> updateFcmToken(
+            @AuthenticatedUser String userId,
+            @Valid @RequestBody UpdateFcmTokenRequest request) {
+        updateFcmTokenUseCase.updateFcmToken(userId, request.fcmToken());
+        return ResponseEntity.ok(ApiResponse.ok());
+    }
+
+    record UpdateFcmTokenRequest(
+            @NotBlank String fcmToken
+    ) {
     }
 
     record UpdateNicknameRequest(

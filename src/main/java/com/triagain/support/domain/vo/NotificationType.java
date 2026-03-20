@@ -8,5 +8,7 @@ public enum NotificationType {
     CREW_INVITE,
     REPORT_RECEIVED,
     REVIEW_COMPLETED,
-    UPLOAD_COMPLETED
+    UPLOAD_COMPLETED,
+    REMINDER,
+    CREW_STARTED
 }

@@ -61,5 +61,8 @@ docs/archive/
 lambda/.aws-sam/
 lambda/Ldeploy.sh
 
+# Firebase
+**/*firebase*.json
+
 #키
 triagain-admin_accessKeys.csv
