@@ -1506,6 +1506,123 @@ Content-Type: application/json
 
 ---
 
+### GET /notifications (내 알림 목록 조회)
+
+내 알림을 최신순으로 페이지네이션 조회한다.
+
+**요청 (Request)**
+```
+GET /notifications?page=0&size=20 HTTP/1.1
+Authorization: Bearer <token>
+```
+
+**쿼리 파라미터:**
+- `page`: (선택) 페이지 번호 (기본값 0)
+- `size`: (선택) 페이지 크기 (기본값 20, 최대 50)
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": {
+    "notifications": [
+      {
+        "id": "notif_123",
+        "type": "CREW_START",
+        "title": "크루 시작!",
+        "content": "새벽 러닝 크루가 시작되었습니다.",
+        "isRead": false,
+        "targetType": "CREW",
+        "targetId": "crew_123",
+        "createdAt": "2026-03-20T09:00:00"
+      }
+    ],
+    "hasNext": false
+  },
+  "error": null
+}
+```
+
+**필드 설명:**
+- `notifications`: 알림 목록 (최신순 정렬)
+  - `id`: 알림 ID
+  - `type`: 알림 타입 (CREW_START, REMINDER 등)
+  - `title`: 알림 제목
+  - `content`: 알림 내용
+  - `isRead`: 읽음 여부
+  - `targetType`: 알림 대상 타입 (CREW 등)
+  - `targetId`: 알림 대상 ID (nullable)
+  - `createdAt`: 알림 생성 시각
+- `hasNext`: 다음 페이지 존재 여부
+
+**에러 응답**
+| HTTP | 코드 | 메시지 |
+|------|------|--------|
+| 401 | A003 | 인증이 필요합니다. |
+
+---
+
+### GET /notifications/unread-count (안 읽은 알림 수 조회)
+
+읽지 않은 알림 수를 조회한다. 뱃지 표시용.
+
+**요청 (Request)**
+```
+GET /notifications/unread-count HTTP/1.1
+Authorization: Bearer <token>
+```
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": {
+    "count": 5
+  },
+  "error": null
+}
+```
+
+**필드 설명:**
+- `count`: 안 읽은 알림 수
+
+**에러 응답**
+| HTTP | 코드 | 메시지 |
+|------|------|--------|
+| 401 | A003 | 인증이 필요합니다. |
+
+---
+
+### PATCH /notifications/{id}/read (알림 읽음 처리)
+
+알림을 읽음 상태로 변경한다. 본인 알림만 처리 가능.
+
+**요청 (Request)**
+```
+PATCH /notifications/{id}/read HTTP/1.1
+Authorization: Bearer <token>
+```
+
+**경로 파라미터:**
+- `id`: (필수) 알림 ID
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": null,
+  "error": null
+}
+```
+
+**에러 응답**
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 401 | A003 | 인증이 필요합니다. | 미인증 |
+| 404 | S001 | 알림을 찾을 수 없습니다. | 존재하지 않거나 본인 알림 아님 |
+
+---
+
 ## TODO (구현 시 추가 예정)
 
 ### Moderation Context
