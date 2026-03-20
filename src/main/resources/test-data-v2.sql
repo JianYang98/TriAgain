@@ -451,36 +451,36 @@ INSERT INTO verifications (id, challenge_id, user_id, crew_id,
 INSERT INTO notifications (id, user_id, type, title, content, is_read,
                            target_type, target_id, created_at) VALUES
 ('NTFY-test-001', 'test-user-1', 'CREW_STARTED',
- '크루 시작!', '매일 독서 크루 크루가 시작됐어요! 첫 인증 도전해볼까요?',
+ '매일 독서 크루 | 크루 시작!', '함께 작심삼일을 만들어가요!',
  true, 'CREW', 'CREW-test-001', '2026-02-15 00:00:00'),
 ('NTFY-test-002', 'test-user-1', 'CREW_STARTED',
- '크루 시작!', '오늘부터 3일! 매일 운동 크루에서 함께 시작해요',
+ '매일 운동 크루 | 크루 시작!', '오늘부터 3일! 함께 시작해요',
  false, 'CREW', 'CREW-test-002', '2026-02-25 00:00:00'),
 ('NTFY-test-003', 'test-user-1', 'REMINDER',
- '인증 마감 임박!', '매일 독서 크루 크루원들이 기다리고 있어요!',
+ '매일 독서 크루 | 인증 마감 임박!', '크루원들이 기다리고 있어요!',
  true, 'CREW', 'CREW-test-001', '2026-02-28 18:00:00'),
 ('NTFY-test-004', 'test-user-1', 'REMINDER',
- '인증 마감 임박!', '아직 늦지 않았어요! 인증하러 가볼까요?',
+ '매일 독서 크루 | 인증 마감 임박!', '아직 늦지 않았어요! 인증하러 가볼까요?',
  false, 'CREW', 'CREW-test-001', '2026-03-01 18:00:00'),
 ('NTFY-test-005', 'test-user-1', 'REMINDER',
- '인증 마감 임박!', '오늘도 작심삼일 한 걸음! 인증하러 갈까요?',
+ '매일 운동 크루 | 인증 마감 임박!', '오늘도 작심삼일 한 걸음! 인증하러 갈까요?',
  false, 'CREW', 'CREW-test-002', '2026-03-01 19:00:00');
 
 -- ─── test-user-2 (민수): CREW_STARTED ×1 + REMINDER ×1 ───
 INSERT INTO notifications (id, user_id, type, title, content, is_read,
                            target_type, target_id, created_at) VALUES
 ('NTFY-test-006', 'test-user-2', 'CREW_STARTED',
- '크루 시작!', '매일 독서 크루 크루가 시작됐어요! 첫 인증 도전해볼까요?',
+ '매일 독서 크루 | 크루 시작!', '함께 작심삼일을 만들어가요!',
  false, 'CREW', 'CREW-test-001', '2026-02-15 00:00:00'),
 ('NTFY-test-007', 'test-user-2', 'REMINDER',
- '인증 마감 임박!', '매일 독서 크루 크루원들이 기다리고 있어요!',
+ '매일 독서 크루 | 인증 마감 임박!', '크루원들이 기다리고 있어요!',
  false, 'CREW', 'CREW-test-001', '2026-03-01 18:00:00');
 
 -- ─── test-user-3 (수진): REMINDER ×1 ───
 INSERT INTO notifications (id, user_id, type, title, content, is_read,
                            target_type, target_id, created_at) VALUES
 ('NTFY-test-008', 'test-user-3', 'REMINDER',
- '인증 마감 임박!', '아직 늦지 않았어요! 인증하러 가볼까요?',
+ '매일 독서 크루 | 인증 마감 임박!', '아직 늦지 않았어요! 인증하러 가볼까요?',
  false, 'CREW', 'CREW-test-001', '2026-03-01 18:00:00');
 
 -- test-user-4 (현우): 알림 0건 (빈 목록 엣지케이스)
@@ -489,5 +489,5 @@ INSERT INTO notifications (id, user_id, type, title, content, is_read,
 INSERT INTO notifications (id, user_id, type, title, content, is_read,
                            target_type, target_id, created_at) VALUES
 ('NTFY-test-009', 'test-user-6', 'CREW_STARTED',
- '크루 시작!', '오늘부터 3일! 매일 운동 크루에서 함께 시작해요',
+ '매일 운동 크루 | 크루 시작!', '오늘부터 3일! 함께 시작해요',
  false, 'CREW', 'CREW-test-002', '2026-02-25 00:00:00');

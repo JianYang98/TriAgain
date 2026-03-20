@@ -8,9 +8,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class NotificationMessageTemplateTest {
 
-    @DisplayName("리마인더 메시지에서 {crewName} 플레이스홀더가 실제 크루명으로 치환된다")
+    @DisplayName("리마인더 메시지 title에 크루명이 prefix로 포함된다")
     @Test
-    void reminder_replacesCrewName() {
+    void reminder_titleContainsCrewNamePrefix() {
         // given
         String crewName = "운동 크루";
 
@@ -18,16 +18,24 @@ class NotificationMessageTemplateTest {
         NotificationMessage message = NotificationMessageTemplate.reminder(crewName);
 
         // then
-        assertThat(message.content()).doesNotContain("{crewName}");
-        assertThat(message.content()).satisfiesAnyOf(
-                content -> assertThat(content).contains(crewName),
-                content -> assertThat(content).doesNotContain("{")
-        );
+        assertThat(message.title()).startsWith(crewName + " | ");
+        assertThat(message.title()).endsWith("인증 마감 임박!");
     }
 
-    @DisplayName("크루 시작 메시지에서 {crewName} 플레이스홀더가 실제 크루명으로 치환된다")
+    @DisplayName("리마인더 메시지 content에 플레이스홀더가 없다")
     @Test
-    void crewStarted_replacesCrewName() {
+    void reminder_contentHasNoPlaceholder() {
+        // when
+        NotificationMessage message = NotificationMessageTemplate.reminder("운동 크루");
+
+        // then
+        assertThat(message.content()).doesNotContain("{crewName}");
+        assertThat(message.content()).doesNotContain("{");
+    }
+
+    @DisplayName("크루 시작 메시지 title에 크루명이 prefix로 포함된다")
+    @Test
+    void crewStarted_titleContainsCrewNamePrefix() {
         // given
         String crewName = "독서 모임";
 
@@ -35,11 +43,19 @@ class NotificationMessageTemplateTest {
         NotificationMessage message = NotificationMessageTemplate.crewStarted(crewName);
 
         // then
+        assertThat(message.title()).startsWith(crewName + " | ");
+        assertThat(message.title()).endsWith("크루 시작!");
+    }
+
+    @DisplayName("크루 시작 메시지 content에 플레이스홀더가 없다")
+    @Test
+    void crewStarted_contentHasNoPlaceholder() {
+        // when
+        NotificationMessage message = NotificationMessageTemplate.crewStarted("독서 모임");
+
+        // then
         assertThat(message.content()).doesNotContain("{crewName}");
-        assertThat(message.content()).satisfiesAnyOf(
-                content -> assertThat(content).contains(crewName),
-                content -> assertThat(content).doesNotContain("{")
-        );
+        assertThat(message.content()).doesNotContain("{");
     }
 
     @DisplayName("리마인더 메시지의 title과 content가 모두 non-null, non-empty이다")
