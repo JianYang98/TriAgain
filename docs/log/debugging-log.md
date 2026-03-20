@@ -5,6 +5,15 @@
 
 ---
 
+### [2026-03-20] 알림 인프라 설계 — 스케줄러 장애 격리 + 인앱 API
+
+- 상황: FCM 푸시 + 인앱 알림 기능 구현. 스케줄러에서 한 건 실패 시 전체 중단 방지 필요
+- 내 판단: @Transactional 대신 TransactionTemplate으로 건별 트랜잭션 격리. unread-count를 별도 UseCase로 분리하지 않고 GetNotificationsUseCase에 포함 (오버엔지니어링 방지). 30일 삭제 스케줄러는 Phase 1 규모에서 불필요하여 스킵
+- AI 역할: 3계층(UseCase/Service/Controller) 구현, TransactionTemplate 장애 격리 패턴 적용
+- 배운 점: 스케줄러 내부에서 개별 트랜잭션을 써야 한 건 실패가 전체를 롤백하지 않는다
+
+---
+
 ### [2026-03-17] CI용 E2E 테스트 인프라 구축 — 기존 Cucumber 인프라 재활용 결정
 
 - 상황: CI 파이프라인에 배포 전 E2E 자동 테스트 추가 필요. 별도 TestContainers 구성 vs 기존 Cucumber 인프라 재활용 선택

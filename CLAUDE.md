@@ -430,6 +430,10 @@ refactor: Verification 도메인 계층 분리
 | DELETE | /crews/{crewId}/members/me | 크루 탈퇴 (MEMBER, RECRUITING 상태만) |
 | GET | /crews/search | 크루 검색 (공개 크루, permitAll) |
 | POST | /crews/{crewId}/join | 공개 크루 직접 가입 |
+| PATCH | /users/me/fcm-token | FCM 토큰 등록/갱신 |
+| GET | /notifications | 내 알림 목록 조회 |
+| GET | /notifications/unread-count | 안 읽은 알림 수 조회 |
+| PATCH | /notifications/{id}/read | 알림 읽음 처리 |
 
 ---
 
