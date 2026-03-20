@@ -195,6 +195,32 @@ com.triagain.verification
 - Java `record` 사용 (Lombok 의존 없이 불변 객체)
 - Entity를 Controller에서 직접 반환 금지, 반드시 DTO로 변환
 
+### Native SQL 작성 컨벤션
+
+- SELECT 컬럼은 줄바꿈 + 들여쓰기로 나열
+- JOIN / LEFT JOIN은 줄바꿈, ON 조건은 3칸 들여쓰기
+- 복합 ON 조건은 AND를 줄바꿈 + 2칸 들여쓰기로 정렬
+- WHERE / AND는 줄바꿈 + 2칸 들여쓰기
+
+```sql
+SELECT DISTINCT
+       cm.user_id,
+       u.fcm_token,
+       c.id   AS crew_id,
+       c.name AS crew_name
+FROM crews c
+JOIN crew_members cm
+   ON cm.crew_id = c.id
+LEFT JOIN verifications v
+   ON v.user_id = cm.user_id
+  AND v.crew_id = c.id
+  AND v.target_date = :targetDate
+JOIN users u
+   ON u.id = cm.user_id
+WHERE c.status = 'ACTIVE'
+  AND v.id IS NULL
+```
+
 ### 예외 처리
 
 - 커스텀 예외 사용 (`BusinessException` 상속)
