@@ -1528,7 +1528,7 @@ Authorization: Bearer <token>
     "notifications": [
       {
         "id": "notif_123",
-        "type": "CREW_START",
+        "type": "CREW_STARTED",
         "title": "크루 시작!",
         "content": "새벽 러닝 크루가 시작되었습니다.",
         "isRead": false,
@@ -1546,7 +1546,7 @@ Authorization: Bearer <token>
 **필드 설명:**
 - `notifications`: 알림 목록 (최신순 정렬)
   - `id`: 알림 ID
-  - `type`: 알림 타입 (CREW_START, REMINDER 등)
+  - `type`: 알림 타입 (CREW_STARTED, REMINDER 등)
   - `title`: 알림 제목
   - `content`: 알림 내용
   - `isRead`: 읽음 여부
