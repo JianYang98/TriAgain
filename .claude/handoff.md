@@ -1,64 +1,79 @@
-# Handoff: 크루 검색 기능 — 스펙 완료, 백엔드 구현 대기
+# Handoff: 알림 인프라 + 인앱 알림 API 구현
 
-> 브랜치: `feat/cicd-docker` (크루 검색 작업은 아직 별도 브랜치 미생성)
+> 브랜치: `feat/scheduler-fault-isolation`
 
 ---
 
 ## 이번 세션 완료 작업
 
-### 크루 검색 스펙 + 문서 (100% 완료)
+### TODO 6: 인앱 알림 API (100% 완료)
 
-1. **api-spec.md** — GET /crews/search, POST /crews/{crewId}/join 스펙 추가 + 기존 API에 category/visibility 필드 추가
-2. **biz-logic.md** — 섹션 1.13 크루 검색 비즈니스 규칙 추가
-3. **schema.md** — crews 테이블에 category/visibility 컬럼, enum 정의, 검색 인덱스 추가
-4. **V10 마이그레이션** — `V10__add_category_visibility_to_crews.sql` 생성
-5. **프론트 지시서** — `docs/guide/frontend-crew-search-handoff.md` 생성
+기존 알림 인프라(도메인 모델, JPA 어댑터, 리포지토리 포트) 위에 UseCase + Service + Controller 3계층을 추가했다.
 
-### 미커밋 변경 파일
+**신규 파일 5개:**
 
-| 파일 | 상태 |
+| 파일 | 역할 |
 |------|------|
-| docs/spec/api-spec.md | Modified |
-| docs/spec/biz-logic.md | Modified |
-| docs/spec/schema.md | Modified |
-| src/main/resources/db/migration/V10__*.sql | New |
-| docs/guide/crew-search-system-design .md | New (설계 문서) |
-| CLAUDE.md | Modified (크루 검색 API 추가) |
+| `support/port/in/GetNotificationsUseCase.java` | 알림 조회 + 안 읽은 수 UseCase |
+| `support/port/in/ReadNotificationUseCase.java` | 알림 읽음 처리 UseCase |
+| `support/application/GetNotificationsService.java` | 조회 서비스 (Slice 페이지네이션) |
+| `support/application/ReadNotificationService.java` | 읽음 처리 서비스 (소유권 검증) |
+| `support/api/NotificationController.java` | REST 컨트롤러 (3개 엔드포인트) |
+
+**API 엔드포인트:**
+
+| Method | Path | 설명 |
+|--------|------|------|
+| GET | `/notifications` | 내 알림 목록 (page/size) |
+| GET | `/notifications/unread-count` | 안 읽은 알림 수 |
+| PATCH | `/notifications/{id}/read` | 알림 읽음 처리 |
+
+**설계 결정:**
+- `unread-count`를 별도 UseCase로 분리하지 않고 `GetNotificationsUseCase`에 포함 (오버엔지니어링 방지)
+- 읽음 처리 시 소유권 불일치 → `NOTIFICATION_NOT_FOUND` 반환 (정보 노출 방지)
+- enum을 String으로 변환하여 클라이언트 호환성 확보
+
+### 이전 TODO (1~5) — 이번 브랜치에 이미 포함
+
+| 파일 | 역할 |
+|------|------|
+| `support/application/ReminderScheduler.java` | 리마인더 스케줄러 (TransactionTemplate 장애 격리) |
+| `support/application/CrewStartNotificationScheduler.java` | 크루 시작 알림 스케줄러 |
+| `support/domain/vo/NotificationMessageTemplate.java` | 알림 메시지 템플릿 |
+| `support/infra/NotificationTargetQueryAdapter.java` | 스케줄러용 조회 어댑터 |
+| `support/port/out/NotificationTargetQueryPort.java` | 스케줄러용 조회 포트 |
 
 ---
 
-## 다음 단계: 백엔드 구현
+## 미커밋 변경 파일
 
-### 1. 도메인 모델 변경
+| 파일 | 상태 |
+|------|------|
+| `CLAUDE.md` | Modified |
+| `TriAgainApplication.java` | Modified |
+| `.claude/skills/` | New (디렉토리) |
+| `support/api/NotificationController.java` | New |
+| `support/application/*.java` | New (4개: Get/Read Service, 2 Schedulers) |
+| `support/domain/vo/NotificationMessageTemplate.java` | New |
+| `support/infra/NotificationTargetQueryAdapter.java` | New |
+| `support/port/in/*.java` | New (2개: Get/Read UseCase) |
+| `support/port/out/NotificationTargetQueryPort.java` | New |
 
-- `CrewCategory` enum 생성 (EXERCISE, STUDY, LIFESTYLE, SELF_DEV, ETC)
-- `CrewVisibility` enum 생성 (PUBLIC, PRIVATE)
-- `Crew` 도메인 모델에 category, visibility 필드 추가
-- `CrewJpaEntity`에 컬럼 매핑 추가
+**빌드 상태:** `compileJava` ✅ / `test` ✅
 
-### 2. 크루 생성/수정 반영
+---
 
-- `CreateCrewRequest`에 category(필수), visibility(선택) 추가
-- `UpdateCrewRequest`에 category, visibility 추가
-- 기존 응답 DTO에 category, visibility 필드 추가
+## 다음 단계
 
-### 3. 크루 검색 API 구현
-
-- `GET /crews/search` — permitAll, 키워드+카테고리+상태 필터, cursor 페이지네이션
-- `POST /crews/{crewId}/join` — 공개 크루 직접 가입 (초대코드 없이)
-- MyBatis로 검색 쿼리 구현 (복잡한 조회)
-- ErrorCode CR022 (CREW_NOT_PUBLIC) 추가
-
-### 4. SecurityConfig 변경
-
-- `/crews/search` permitAll 추가
-- `/crews/{crewId}/join` 인증 필요
+1. **SecurityConfig 확인** — `/notifications/**` 엔드포인트가 인증 필요한지 확인하고 필요시 설정 추가
+2. **api-spec.md 업데이트** — 알림 API 3개 명세를 정본 문서에 추가
+3. **커밋 & PR** — 이 브랜치의 모든 변경사항 커밋
 
 ---
 
 ## 기존 미해결 항목
 
-### 크루 최소 기간 미검증 버그 (이전 핸드오프에서 이관)
+### 크루 최소 기간 미검증 버그
 
 - **파일**: `crew/domain/model/Crew.java:171-178`
 - **현재**: `endDate > startDate`만 체크

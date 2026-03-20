@@ -433,6 +433,23 @@ refactor: Verification 도메인 계층 분리
 
 ---
 
+## Skills 트리거
+
+다음 상황에서는 반드시 해당 skill 파일을 읽고 작업한다.
+skill 파일을 읽지 않고 작업하는 것은 규칙 위반이다.
+
+| 상황 | 읽을 파일 |
+|------|----------|
+| 엔티티/도메인 모델 변경, 필드 추가/수정, 상태 전이 변경, 비즈니스 규칙 변경 | `.claude/skills/new-domain.md` |
+| 새 API 엔드포인트 추가, 기존 API 수정 (요청/응답/경로/에러코드 변경) | `.claude/skills/new-api.md` |
+| 테스트 작성/수정, 도메인 변경 후 테스트 파급력 분석 | `.claude/skills/write-test.md` |
+
+### 복합 작업 시
+
+하나의 작업이 여러 skill에 해당하면, 해당 skill을 모두 읽는다.
+예: "크루에 새 필드 추가하고 API도 수정해" → `new-domain.md` + `new-api.md` + `write-test.md` 순서로 읽는다.
+
+
 ## /docs 참조 가이드
 
 - 상세 비즈니스 규칙은 `/docs/spec/biz-logic.md`를 참고해.
