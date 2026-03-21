@@ -115,7 +115,7 @@ Content-Type: application/json
 // 403 Forbidden - 크루 멤버 아님
 {
   "code": "CREW_ACCESS_DENIED",
-  "message": "크루 멤버만 접근할 수 있습니다."
+  "message": "크루 멤버만 조회할 수 있습니다."
 }
 
 ```
@@ -936,7 +936,7 @@ Authorization: Bearer <token>
 
 | HTTP | 코드 | 메시지 | 설명 |
 |------|------|--------|------|
-| 400 | CR022 | 공개 크루만 직접 가입할 수 있습니다. | PRIVATE 크루에 접근 시도 |
+| 400 | CR022 | 공개 크루가 아닙니다. | PRIVATE 크루에 접근 시도 |
 | 404 | CR001 | 크루를 찾을 수 없습니다. | 존재하지 않는 crewId |
 
 ---
@@ -1057,7 +1057,7 @@ Authorization: Bearer {accessToken}
 **에러 응답**
 | HTTP | 코드 | 메시지 | 설명 |
 |------|------|--------|------|
-| 403 | CR009 | 크루 멤버만 접근할 수 있습니다. | 비멤버 접근 |
+| 403 | CR009 | 크루 멤버만 조회할 수 있습니다. | 비멤버 접근 |
 | 404 | CR001 | 크루를 찾을 수 없습니다. | 존재하지 않는 crewId |
 
 ---
@@ -1461,12 +1461,165 @@ Authorization: Bearer <token>
 **에러 응답**
 | HTTP | 코드 | 메시지 | 설명 |
 |------|------|--------|------|
-| 400 | CR022 | 공개 크루만 직접 가입할 수 있습니다. | visibility=PRIVATE인 크루 |
+| 400 | CR022 | 공개 크루가 아닙니다. | visibility=PRIVATE인 크루 |
 | 400 | CR003 | 모집 중인 크루가 아닙니다. | 크루 상태가 가입 불가 |
 | 400 | CR008 | 크루 참여 마감 기한이 지났습니다. | 중간 가입 기한 초과 |
 | 404 | CR001 | 크루를 찾을 수 없습니다. | 존재하지 않는 crewId |
 | 409 | CR002 | 크루 정원이 가득 찼습니다. | 정원 초과 |
 | 409 | CR004 | 이미 참여 중인 크루입니다. | 중복 참여 |
+
+---
+
+### PATCH /users/me/fcm-token (FCM 토큰 등록/갱신)
+
+앱 실행/로그인 시 클라이언트가 FCM 디바이스 토큰을 서버에 등록/갱신한다.
+
+**요청 (Request)**
+```
+PATCH /users/me/fcm-token HTTP/1.1
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+```json
+{
+  "fcmToken": "dK1x...FCM디바이스토큰"
+}
+```
+
+**필드 설명:**
+- `fcmToken`: (필수) Firebase Cloud Messaging 디바이스 토큰
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": null,
+  "error": null
+}
+```
+
+**에러 응답**
+| HTTP | 코드 | 메시지 |
+|------|------|--------|
+| 400 | C001 | 잘못된 입력값입니다. |
+| 401 | A003 | 인증이 필요합니다. |
+
+---
+
+### GET /notifications (내 알림 목록 조회)
+
+내 알림을 최신순으로 페이지네이션 조회한다.
+
+**요청 (Request)**
+```
+GET /notifications?page=0&size=20 HTTP/1.1
+Authorization: Bearer <token>
+```
+
+**쿼리 파라미터:**
+- `page`: (선택) 페이지 번호 (기본값 0)
+- `size`: (선택) 페이지 크기 (기본값 20, 최대 50)
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": {
+    "notifications": [
+      {
+        "id": "notif_123",
+        "type": "CREW_STARTED",
+        "title": "크루 시작!",
+        "content": "새벽 러닝 크루가 시작되었습니다.",
+        "isRead": false,
+        "targetType": "CREW",
+        "targetId": "crew_123",
+        "createdAt": "2026-03-20T09:00:00"
+      }
+    ],
+    "hasNext": false
+  },
+  "error": null
+}
+```
+
+**필드 설명:**
+- `notifications`: 알림 목록 (최신순 정렬)
+  - `id`: 알림 ID
+  - `type`: 알림 타입 (CREW_STARTED, REMINDER 등)
+  - `title`: 알림 제목
+  - `content`: 알림 내용
+  - `isRead`: 읽음 여부
+  - `targetType`: 알림 대상 타입 (CREW 등)
+  - `targetId`: 알림 대상 ID (nullable)
+  - `createdAt`: 알림 생성 시각
+- `hasNext`: 다음 페이지 존재 여부
+
+**에러 응답**
+| HTTP | 코드 | 메시지 |
+|------|------|--------|
+| 401 | A003 | 인증이 필요합니다. |
+
+---
+
+### GET /notifications/unread-count (안 읽은 알림 수 조회)
+
+읽지 않은 알림 수를 조회한다. 뱃지 표시용.
+
+**요청 (Request)**
+```
+GET /notifications/unread-count HTTP/1.1
+Authorization: Bearer <token>
+```
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": {
+    "count": 5
+  },
+  "error": null
+}
+```
+
+**필드 설명:**
+- `count`: 안 읽은 알림 수
+
+**에러 응답**
+| HTTP | 코드 | 메시지 |
+|------|------|--------|
+| 401 | A003 | 인증이 필요합니다. |
+
+---
+
+### PATCH /notifications/{id}/read (알림 읽음 처리)
+
+알림을 읽음 상태로 변경한다. 본인 알림만 처리 가능.
+
+**요청 (Request)**
+```
+PATCH /notifications/{id}/read HTTP/1.1
+Authorization: Bearer <token>
+```
+
+**경로 파라미터:**
+- `id`: (필수) 알림 ID
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": null,
+  "error": null
+}
+```
+
+**에러 응답**
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 401 | A003 | 인증이 필요합니다. | 미인증 |
+| 404 | S001 | 알림을 찾을 수 없습니다. | 존재하지 않거나 본인 알림 아님 |
 
 ---
 

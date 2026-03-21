@@ -6,6 +6,22 @@
 
 ---
 
+### [2026-03-20] 알림 테이블 정리 스케줄러 (30일 삭제)
+
+- 현재 상태: NotificationRepositoryPort.deleteOlderThan() 메서드는 구현 완료, 호출하는 스케줄러는 미구현
+- 필요 시점: 알림 테이블 10만건 이상 시
+- 이유: Phase 1 규모(500명)에서 알림 데이터량이 적어 즉시 도입 불필요. 데이터 증가 시 도입 예정
+
+---
+
+### [2026-03-20] CloudWatch 로그 연동
+
+- 현재 상태: EC2 서버 로컬 로그만 존재
+- 필요 시점: 출시 후 운영 모니터링 시
+- 참고: 청천님 사례 — 중요 로그만 CloudWatch에 기록
+
+---
+
 ### [2026-03-19] CrewPreviewAssembler 도메인 검증 로직 중복 해소
 
 - 현재 상태: `Crew.addMember()`와 `CrewPreviewAssembler.calculateJoinBlockedReason()`이 동일한 가입 검증(정원/상태/마감일/중복)을 각각 수행. Assembler는 reason을 세분화(CREW_ENDED, LATE_JOIN_NOT_ALLOWED)하므로 단순 위임 불가

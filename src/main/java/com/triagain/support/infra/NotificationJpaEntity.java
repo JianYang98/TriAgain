@@ -1,6 +1,7 @@
 package com.triagain.support.infra;
 
 import com.triagain.support.domain.model.Notification;
+import com.triagain.support.domain.vo.NotificationTargetType;
 import com.triagain.support.domain.vo.NotificationType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -23,17 +24,24 @@ public class NotificationJpaEntity {
     private String userId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     private NotificationType type;
 
     @Column(nullable = false)
     private String title;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 500)
     private String content;
 
     @Column(name = "is_read", nullable = false)
     private boolean isRead;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "target_type", length = 50)
+    private NotificationTargetType targetType;
+
+    @Column(name = "target_id", length = 36)
+    private String targetId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -42,7 +50,8 @@ public class NotificationJpaEntity {
     }
 
     public Notification toDomain() {
-        return Notification.of(id, userId, type, title, content, isRead, createdAt);
+        return Notification.of(id, userId, type, title, content, isRead,
+                targetType, targetId, createdAt);
     }
 
     public static NotificationJpaEntity fromDomain(Notification notification) {
@@ -53,6 +62,8 @@ public class NotificationJpaEntity {
         entity.title = notification.getTitle();
         entity.content = notification.getContent();
         entity.isRead = notification.isRead();
+        entity.targetType = notification.getTargetType();
+        entity.targetId = notification.getTargetId();
         entity.createdAt = notification.getCreatedAt();
         return entity;
     }

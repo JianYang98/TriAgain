@@ -99,7 +99,7 @@ class AppleSignupServiceTest {
         given(appleTokenVerifierPort.verify("valid-token")).willReturn(appleUserInfo);
         given(userRepositoryPort.findById("001234.abcdef.5678")).willReturn(
                 Optional.of(User.of("001234.abcdef.5678", "APPLE", "apple@test.com", "기존유저", null,
-                        java.time.LocalDateTime.now(), java.time.LocalDateTime.now()))
+                        null, java.time.LocalDateTime.now(), java.time.LocalDateTime.now()))
         );
 
         AppleSignupCommand command = new AppleSignupCommand(

@@ -31,6 +31,7 @@ erDiagram
         string email "nullable"
         string nickname
         string profile_image_url
+        string fcm_token "nullable — FCM 디바이스 토큰, VARCHAR(500)"
         timestamp created_at
         timestamp terms_agreed_at "nullable — 약관 동의 일시 (NULL이면 기존 유저)"
     }
@@ -118,8 +119,10 @@ erDiagram
         string user_id FK
         enum type
         string title
-        string content
-        boolean is_read
+        varchar(500) content "최대 500자"
+        boolean is_read "DEFAULT FALSE"
+        enum target_type "CREW | VERIFICATION | CHALLENGE — nullable"
+        string target_id "nullable — 대상 리소스 ID"
         timestamp created_at
     }
     
@@ -265,6 +268,15 @@ erDiagram
 | REPORT_RECEIVED | 신고 접수 |
 | REVIEW_COMPLETED | 검토 완료 |
 | UPLOAD_COMPLETED | 이미지 업로드 완료 |
+| REMINDER | 인증 리마인더 (스케줄러) |
+| CREW_STARTED | 크루 시작 알림 |
+
+### notifications.target_type
+| 값 | 의미 |
+|----|------|
+| CREW | 크루 대상 알림 |
+| VERIFICATION | 인증 대상 알림 |
+| CHALLENGE | 챌린지 대상 알림 |
 
 ## 4. 인덱스 설계
 
@@ -324,6 +336,18 @@ WHERE status = 'PENDING';
 -- Lambda의 imageKey 기반 업로드 세션 조회 (Flyway V7)
 CREATE INDEX idx_upload_session_image_key
 ON upload_session (image_key);
+```
+
+### 알림 관련 인덱스
+
+```sql
+-- 사용자별 알림 최신순 조회 (Flyway V11)
+CREATE INDEX idx_notification_user_created
+ON notifications (user_id, created_at DESC);
+
+-- 알림 생성일 기준 조회/정리 (Flyway V11)
+CREATE INDEX idx_notification_created
+ON notifications (created_at);
 ```
 
 ## 5. 설계 트레이드오프: Verification의 3-way FK

@@ -55,7 +55,7 @@ class AppleLoginServiceTest {
     void login_existingUser_returnsJwt() {
         // Given
         User existingUser = User.of("001234.abcdef.5678", "APPLE", "apple@test.com", "애플유저", null,
-                LocalDateTime.now(), LocalDateTime.now());
+                null, LocalDateTime.now(), LocalDateTime.now());
         given(appleTokenVerifierPort.verify("valid-token")).willReturn(appleUserInfo);
         given(userRepositoryPort.findById("001234.abcdef.5678")).willReturn(Optional.of(existingUser));
         given(userRepositoryPort.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
@@ -100,7 +100,7 @@ class AppleLoginServiceTest {
     void login_existingUser_emailChanged_saves() {
         // Given
         User existingUser = User.of("001234.abcdef.5678", "APPLE", "old@test.com", "애플유저", null,
-                LocalDateTime.now(), LocalDateTime.now());
+                null, LocalDateTime.now(), LocalDateTime.now());
         given(appleTokenVerifierPort.verify("valid-token")).willReturn(appleUserInfo);
         given(userRepositoryPort.findById("001234.abcdef.5678")).willReturn(Optional.of(existingUser));
         given(userRepositoryPort.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
@@ -121,7 +121,7 @@ class AppleLoginServiceTest {
         // Given
         AppleUserInfo noEmailUser = new AppleUserInfo("001234.abcdef.5678", null);
         User existingUser = User.of("001234.abcdef.5678", "APPLE", "existing@test.com", "애플유저", null,
-                LocalDateTime.now(), LocalDateTime.now());
+                null, LocalDateTime.now(), LocalDateTime.now());
         given(appleTokenVerifierPort.verify("valid-token")).willReturn(noEmailUser);
         given(userRepositoryPort.findById("001234.abcdef.5678")).willReturn(Optional.of(existingUser));
         given(jwtProvider.createAccessToken(anyString(), anyString())).willReturn("access-token");

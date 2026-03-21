@@ -96,7 +96,7 @@ class SignupServiceTest {
         given(kakaoApiPort.getUserInfo("valid-token")).willReturn(kakaoUserInfo);
         given(userRepositoryPort.findById("12345")).willReturn(
                 Optional.of(User.of("12345", "KAKAO", "kakao@test.com", "기존유저", null,
-                        java.time.LocalDateTime.now(), java.time.LocalDateTime.now()))
+                        null, java.time.LocalDateTime.now(), java.time.LocalDateTime.now()))
         );
 
         SignupCommand command = new SignupCommand("valid-token", "12345", "내닉네임", true);

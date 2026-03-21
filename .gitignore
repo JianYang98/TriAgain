@@ -57,9 +57,15 @@ docs/review-comment/
 # Archive (지시서, 과거 문서 — 로컬 전용)
 docs/archive/
 
+# Guide (개발 가이드/지시서 — 로컬 전용)
+docs/guide/
+
 # Lambda build artifacts
 lambda/.aws-sam/
 lambda/Ldeploy.sh
+
+# Firebase
+**/*firebase*.json
 
 #키
 triagain-admin_accessKeys.csv

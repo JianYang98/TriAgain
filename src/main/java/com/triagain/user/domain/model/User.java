@@ -15,16 +15,18 @@ public class User {
     private String email;
     private String nickname;
     private String profileImageUrl;
+    private String fcmToken;
     private final LocalDateTime createdAt;
     private final LocalDateTime termsAgreedAt;
 
     private User(String id, String provider, String email, String nickname,
-                 String profileImageUrl, LocalDateTime createdAt, LocalDateTime termsAgreedAt) {
+                 String profileImageUrl, String fcmToken, LocalDateTime createdAt, LocalDateTime termsAgreedAt) {
         this.id = id;
         this.provider = provider;
         this.email = email;
         this.nickname = nickname;
         this.profileImageUrl = profileImageUrl;
+        this.fcmToken = fcmToken;
         this.createdAt = createdAt;
         this.termsAgreedAt = termsAgreedAt;
     }
@@ -38,6 +40,7 @@ public class User {
                 email,
                 nickname,
                 profileImageUrl,
+                null,
                 LocalDateTime.now(),
                 LocalDateTime.now()
         );
@@ -52,6 +55,7 @@ public class User {
                 email,
                 nickname,
                 null,
+                null,
                 LocalDateTime.now(),
                 LocalDateTime.now()
         );
@@ -59,8 +63,8 @@ public class User {
 
     /** DB 조회 결과 → 도메인 객체 복원 */
     public static User of(String id, String provider, String email, String nickname,
-                          String profileImageUrl, LocalDateTime createdAt, LocalDateTime termsAgreedAt) {
-        return new User(id, provider, email, nickname, profileImageUrl, createdAt, termsAgreedAt);
+                          String profileImageUrl, String fcmToken, LocalDateTime createdAt, LocalDateTime termsAgreedAt) {
+        return new User(id, provider, email, nickname, profileImageUrl, fcmToken, createdAt, termsAgreedAt);
     }
 
     /** 닉네임 검증 — 2~12자, 한글/영문/숫자/언더스코어만 허용 */
@@ -134,5 +138,14 @@ public class User {
 
     public LocalDateTime getTermsAgreedAt() {
         return termsAgreedAt;
+    }
+
+    /** FCM 토큰 갱신 — 앱 실행/로그인 시 클라이언트가 호출 */
+    public void updateFcmToken(String fcmToken) {
+        this.fcmToken = fcmToken;
+    }
+
+    public String getFcmToken() {
+        return fcmToken;
     }
 }

@@ -42,6 +42,13 @@ dependencies {
     implementation platform('software.amazon.awssdk:bom:2.31.3')
     implementation 'software.amazon.awssdk:s3'
 
+    // Firebase Admin SDK (FCM)
+    implementation 'com.google.firebase:firebase-admin:9.4.3'
+
+    // Spring Retry
+    implementation 'org.springframework.retry:spring-retry'
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
+
     // Swagger UI
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
 
