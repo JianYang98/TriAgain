@@ -20,7 +20,7 @@ aws:
 
 firebase:
   enabled: ${FIREBASE_ENABLED:false}
-  service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH:/opt/triagain/firebase-service-account.json}
+  service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH:/opt/triagain/config/triagain-firebase-service-account.json}
 
 logging:
   level:
