@@ -9,7 +9,7 @@ import com.triagain.common.exception.ErrorCode;
 import com.triagain.support.port.out.NotificationSendPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component;
 import java.util.Map;
 
 @Component
-@Profile("prod")
+@ConditionalOnProperty(name = "firebase.enabled", havingValue = "true")
 @RequiredArgsConstructor
 @Slf4j
 public class FcmAdapter implements NotificationSendPort {
