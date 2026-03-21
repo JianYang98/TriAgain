@@ -2,13 +2,13 @@ package com.triagain.support.infra;
 
 import com.triagain.support.port.out.NotificationSendPort;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
 @Component
-@Profile("!prod")
+@ConditionalOnProperty(name = "firebase.enabled", havingValue = "false", matchIfMissing = true)
 @Slf4j
 public class NoOpNotificationSendAdapter implements NotificationSendPort {
 
