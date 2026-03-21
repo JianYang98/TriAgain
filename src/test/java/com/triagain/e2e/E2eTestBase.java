@@ -100,7 +100,7 @@ public abstract class E2eTestBase {
     /** 테스트 유저 생성 — DB 직접 저장 */
     protected User createUser(String userId) {
         User user = User.of(userId, "KAKAO", userId + "@test.com",
-                userId, null, LocalDateTime.now(), LocalDateTime.now());
+                userId, null, null, LocalDateTime.now(), LocalDateTime.now());
         return userRepositoryPort.save(user);
     }
 

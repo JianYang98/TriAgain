@@ -195,6 +195,32 @@ com.triagain.verification
 - Java `record` 사용 (Lombok 의존 없이 불변 객체)
 - Entity를 Controller에서 직접 반환 금지, 반드시 DTO로 변환
 
+### Native SQL 작성 컨벤션
+
+- SELECT 컬럼은 줄바꿈 + 들여쓰기로 나열
+- JOIN / LEFT JOIN은 줄바꿈, ON 조건은 3칸 들여쓰기
+- 복합 ON 조건은 AND를 줄바꿈 + 2칸 들여쓰기로 정렬
+- WHERE / AND는 줄바꿈 + 2칸 들여쓰기
+
+```sql
+SELECT DISTINCT
+       cm.user_id,
+       u.fcm_token,
+       c.id   AS crew_id,
+       c.name AS crew_name
+FROM crews c
+JOIN crew_members cm
+   ON cm.crew_id = c.id
+LEFT JOIN verifications v
+   ON v.user_id = cm.user_id
+  AND v.crew_id = c.id
+  AND v.target_date = :targetDate
+JOIN users u
+   ON u.id = cm.user_id
+WHERE c.status = 'ACTIVE'
+  AND v.id IS NULL
+```
+
 ### 예외 처리
 
 - 커스텀 예외 사용 (`BusinessException` 상속)
@@ -430,8 +456,29 @@ refactor: Verification 도메인 계층 분리
 | DELETE | /crews/{crewId}/members/me | 크루 탈퇴 (MEMBER, RECRUITING 상태만) |
 | GET | /crews/search | 크루 검색 (공개 크루, permitAll) |
 | POST | /crews/{crewId}/join | 공개 크루 직접 가입 |
+| PATCH | /users/me/fcm-token | FCM 토큰 등록/갱신 |
+| GET | /notifications | 내 알림 목록 조회 |
+| GET | /notifications/unread-count | 안 읽은 알림 수 조회 |
+| PATCH | /notifications/{id}/read | 알림 읽음 처리 |
 
 ---
+
+## Skills 트리거
+
+다음 상황에서는 반드시 해당 skill 파일을 읽고 작업한다.
+skill 파일을 읽지 않고 작업하는 것은 규칙 위반이다.
+
+| 상황 | 읽을 파일 |
+|------|----------|
+| 엔티티/도메인 모델 변경, 필드 추가/수정, 상태 전이 변경, 비즈니스 규칙 변경 | `.claude/skills/new-domain.md` |
+| 새 API 엔드포인트 추가, 기존 API 수정 (요청/응답/경로/에러코드 변경) | `.claude/skills/new-api.md` |
+| 테스트 작성/수정, 도메인 변경 후 테스트 파급력 분석 | `.claude/skills/write-test.md` |
+
+### 복합 작업 시
+
+하나의 작업이 여러 skill에 해당하면, 해당 skill을 모두 읽는다.
+예: "크루에 새 필드 추가하고 API도 수정해" → `new-domain.md` + `new-api.md` + `write-test.md` 순서로 읽는다.
+
 
 ## /docs 참조 가이드
 

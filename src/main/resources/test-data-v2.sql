@@ -17,6 +17,7 @@
 -- =============================================================
 
 -- 기존 테스트 데이터 정리 (역순 삭제)
+DELETE FROM notifications WHERE user_id IN ('test-user-1', 'test-user-2', 'test-user-3', 'test-user-4', 'test-user-5', 'test-user-6', 'test-user-7');
 DELETE FROM verifications WHERE crew_id IN ('CREW-test-001', 'CREW-test-002');
 DELETE FROM challenges WHERE crew_id IN ('CREW-test-001', 'CREW-test-002');
 DELETE FROM crew_members WHERE crew_id IN ('CREW-test-001', 'CREW-test-002');
@@ -43,22 +44,26 @@ INSERT INTO users (id, provider, email, nickname, profile_image_url, created_at)
 
 -- 크루1: 매일 독서 크루 (중간가입 허용, 초대코드 READ26)
 INSERT INTO crews (id, creator_id, name, goal, verification_type,
+                   verification_content,
                    min_members, max_members, current_members,
                    status, start_date, end_date, allow_late_join,
                    invite_code, deadline_time, created_at) VALUES
 ('CREW-test-001', 'test-user-1',
  '매일 독서 크루', '매일 30분 이상 독서하기', 'TEXT',
+ '오늘 읽은 책 내용 간단 요약',
  1, 10, 5,
  'ACTIVE', '2026-02-15', '2026-03-15', true,
  'READ26', '23:59:59', '2026-02-10 10:00:00');
 
 -- 크루2: 매일 운동 크루 (중간가입 불가, 초대코드 FIT026)
 INSERT INTO crews (id, creator_id, name, goal, verification_type,
+                   verification_content,
                    min_members, max_members, current_members,
                    status, start_date, end_date, allow_late_join,
                    invite_code, deadline_time, created_at) VALUES
 ('CREW-test-002', 'test-user-6',
  '매일 운동 크루', '매일 30분 운동하기', 'TEXT',
+ '오늘 한 운동 종류와 시간',
  1, 5, 3,
  'ACTIVE', '2026-02-25', '2026-03-15', false,
  'FIT026', '22:00:00', '2026-02-12 10:00:00');
@@ -426,3 +431,63 @@ INSERT INTO verifications (id, challenge_id, user_id, crew_id,
 --   현우: 1회 달성, 0/3
 --   수진: 0회 달성, 1/3
 --   예린: 0회 달성, 2/3
+
+
+-- =============================================================
+-- 9. Notifications (알림 테스트 데이터)
+-- =============================================================
+-- 현재 구현된 알림 타입: CREW_STARTED, REMINDER
+-- target_type: CREW (크루 관련 알림)
+--
+-- test-user-1 (지안): 5건 (unread 3)
+-- test-user-2 (민수): 2건 (unread 2)
+-- test-user-3 (수진): 1건 (unread 1)
+-- test-user-4 (현우): 0건 (빈 목록 엣지케이스)
+-- test-user-6 (준호): 1건 (unread 1)
+-- 총 9건
+-- =============================================================
+
+-- ─── test-user-1 (지안): CREW_STARTED ×2 + REMINDER ×3 ───
+INSERT INTO notifications (id, user_id, type, title, content, is_read,
+                           target_type, target_id, created_at) VALUES
+('NTFY-test-001', 'test-user-1', 'CREW_STARTED',
+ '매일 독서 크루 | 크루 시작!', '함께 작심삼일을 만들어가요!',
+ true, 'CREW', 'CREW-test-001', '2026-02-15 00:00:00'),
+('NTFY-test-002', 'test-user-1', 'CREW_STARTED',
+ '매일 운동 크루 | 크루 시작!', '오늘부터 3일! 함께 시작해요',
+ false, 'CREW', 'CREW-test-002', '2026-02-25 00:00:00'),
+('NTFY-test-003', 'test-user-1', 'REMINDER',
+ '매일 독서 크루 | 인증 마감 임박!', '크루원들이 기다리고 있어요!',
+ true, 'CREW', 'CREW-test-001', '2026-02-28 18:00:00'),
+('NTFY-test-004', 'test-user-1', 'REMINDER',
+ '매일 독서 크루 | 인증 마감 임박!', '아직 늦지 않았어요! 인증하러 가볼까요?',
+ false, 'CREW', 'CREW-test-001', '2026-03-01 18:00:00'),
+('NTFY-test-005', 'test-user-1', 'REMINDER',
+ '매일 운동 크루 | 인증 마감 임박!', '오늘도 작심삼일 한 걸음! 인증하러 갈까요?',
+ false, 'CREW', 'CREW-test-002', '2026-03-01 19:00:00');
+
+-- ─── test-user-2 (민수): CREW_STARTED ×1 + REMINDER ×1 ───
+INSERT INTO notifications (id, user_id, type, title, content, is_read,
+                           target_type, target_id, created_at) VALUES
+('NTFY-test-006', 'test-user-2', 'CREW_STARTED',
+ '매일 독서 크루 | 크루 시작!', '함께 작심삼일을 만들어가요!',
+ false, 'CREW', 'CREW-test-001', '2026-02-15 00:00:00'),
+('NTFY-test-007', 'test-user-2', 'REMINDER',
+ '매일 독서 크루 | 인증 마감 임박!', '크루원들이 기다리고 있어요!',
+ false, 'CREW', 'CREW-test-001', '2026-03-01 18:00:00');
+
+-- ─── test-user-3 (수진): REMINDER ×1 ───
+INSERT INTO notifications (id, user_id, type, title, content, is_read,
+                           target_type, target_id, created_at) VALUES
+('NTFY-test-008', 'test-user-3', 'REMINDER',
+ '매일 독서 크루 | 인증 마감 임박!', '아직 늦지 않았어요! 인증하러 가볼까요?',
+ false, 'CREW', 'CREW-test-001', '2026-03-01 18:00:00');
+
+-- test-user-4 (현우): 알림 0건 (빈 목록 엣지케이스)
+
+-- ─── test-user-6 (준호): CREW_STARTED ×1 ───
+INSERT INTO notifications (id, user_id, type, title, content, is_read,
+                           target_type, target_id, created_at) VALUES
+('NTFY-test-009', 'test-user-6', 'CREW_STARTED',
+ '매일 운동 크루 | 크루 시작!', '오늘부터 3일! 함께 시작해요',
+ false, 'CREW', 'CREW-test-002', '2026-02-25 00:00:00');
