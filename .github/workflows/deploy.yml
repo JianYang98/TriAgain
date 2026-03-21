@@ -116,13 +116,15 @@ jobs:
             docker stop triagain || true && docker rm triagain || true
             docker run -d --name triagain --restart unless-stopped \
               -p 8080:8080 \
-              -v /opt/triagain:/opt/triagain:ro \
+              -v /home/ec2-user/triagain/config:/opt/triagain/config:ro \
               -e SPRING_PROFILES_ACTIVE=prod \
               -e "DB_URL=$DB_URL" \
               -e "DB_USERNAME=$DB_USERNAME" \
               -e "DB_PASSWORD=$DB_PASSWORD" \
               -e "JWT_SECRET=$JWT_SECRET" \
               -e "INTERNAL_API_KEY=$INTERNAL_API_KEY" \
+              -e "FIREBASE_ENABLED=true" \
+              -e "FIREBASE_SERVICE_ACCOUNT_PATH=/opt/triagain/config/triagain-firebase-service-account.json" \
               devjian/triagain:latest
             sleep 15
             curl -f http://localhost:8080/actuator/health
