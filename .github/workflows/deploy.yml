@@ -112,17 +112,29 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           envs: DB_URL,DB_USERNAME,DB_PASSWORD,JWT_SECRET,INTERNAL_API_KEY
           script: |
+            # Firebase 키 파일 존재 체크
+            FIREBASE_KEY_PATH="/home/ec2-user/triagain/config/triagain-firebase-service-account.json"
+            if [ -f "$FIREBASE_KEY_PATH" ]; then
+              echo "[INFO] Firebase key found. FCM enabled."
+              FIREBASE_ENABLED=true
+            else
+              echo "[WARN] Firebase key not found at $FIREBASE_KEY_PATH. FCM disabled."
+              FIREBASE_ENABLED=false
+            fi
+
             docker pull devjian/triagain:latest
             docker stop triagain || true && docker rm triagain || true
             docker run -d --name triagain --restart unless-stopped \
               -p 8080:8080 \
-              -v /opt/triagain:/opt/triagain:ro \
+              -v /home/ec2-user/triagain/config:/opt/triagain/config:ro \
               -e SPRING_PROFILES_ACTIVE=prod \
               -e "DB_URL=$DB_URL" \
               -e "DB_USERNAME=$DB_USERNAME" \
               -e "DB_PASSWORD=$DB_PASSWORD" \
               -e "JWT_SECRET=$JWT_SECRET" \
               -e "INTERNAL_API_KEY=$INTERNAL_API_KEY" \
+              -e "FIREBASE_ENABLED=$FIREBASE_ENABLED" \
+              -e "FIREBASE_SERVICE_ACCOUNT_PATH=/opt/triagain/config/triagain-firebase-service-account.json" \
               devjian/triagain:latest
             sleep 15
             curl -f http://localhost:8080/actuator/health
