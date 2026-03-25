@@ -1,4 +1,4 @@
-package com.triagain.crew.application;
+package com.triagain.crew.application.scheduler;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -28,8 +28,7 @@ class StartupCompensationRunnerTest {
 
     @BeforeEach
     void setUp() {
-        runner = new StartupCompensationRunner(
-                activateScheduler, failScheduler, completeScheduler);
+        runner = new StartupCompensationRunner(activateScheduler, failScheduler, completeScheduler);
     }
 
     @Test
@@ -40,38 +39,38 @@ class StartupCompensationRunnerTest {
 
         // Then
         InOrder inOrder = inOrder(activateScheduler, failScheduler, completeScheduler);
-        inOrder.verify(activateScheduler).activateRecruitingCrews();
-        inOrder.verify(failScheduler).failExpiredChallenges();
-        inOrder.verify(completeScheduler).completeExpiredCrews();
+        inOrder.verify(activateScheduler).compensateAllRecruitingCrews();
+        inOrder.verify(failScheduler).compensateAllExpired();
+        inOrder.verify(completeScheduler).compensateAllExpiredCrews();
     }
 
     @Test
     @DisplayName("Step 1 실패해도 Step 2, 3 계속 진행")
-    void step1Fails_step2And3StillRun() {
+    void step1Fails_remainingStepsStillRun() {
         // Given
         doThrow(new RuntimeException("DB error"))
-                .when(activateScheduler).activateRecruitingCrews();
+                .when(activateScheduler).compensateAllRecruitingCrews();
 
         // When
         runner.compensateMissedSchedulerJobs();
 
         // Then
-        verify(failScheduler).failExpiredChallenges();
-        verify(completeScheduler).completeExpiredCrews();
+        verify(failScheduler).compensateAllExpired();
+        verify(completeScheduler).compensateAllExpiredCrews();
     }
 
     @Test
     @DisplayName("Step 2 실패해도 Step 3 계속 진행")
-    void step2Fails_step3StillRuns() {
+    void step2Fails_remainingStepsStillRun() {
         // Given
         doThrow(new RuntimeException("scheduler error"))
-                .when(failScheduler).failExpiredChallenges();
+                .when(failScheduler).compensateAllExpired();
 
         // When
         runner.compensateMissedSchedulerJobs();
 
         // Then
-        verify(activateScheduler).activateRecruitingCrews();
-        verify(completeScheduler).completeExpiredCrews();
+        verify(activateScheduler).compensateAllRecruitingCrews();
+        verify(completeScheduler).compensateAllExpiredCrews();
     }
 }

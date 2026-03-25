@@ -3,7 +3,7 @@ package com.triagain.acceptance.steps;
 import com.triagain.acceptance.ScenarioContext;
 import com.triagain.acceptance.adapter.CapturingSsePort;
 import com.triagain.acceptance.adapter.UploadSessionTestAdapter;
-import com.triagain.verification.application.ExpireUploadSessionScheduler;
+import com.triagain.verification.application.scheduler.ExpireUploadSessionScheduler;
 import com.triagain.verification.domain.model.UploadSession;
 import com.triagain.verification.domain.vo.UploadSessionStatus;
 import com.triagain.verification.port.out.UploadSessionRepositoryPort;

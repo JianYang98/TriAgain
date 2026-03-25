@@ -6,6 +6,14 @@
 
 ---
 
+### [2026-03-25] Dead Letter 자동 재시도 스케줄러
+
+- 현재 상태: DeadLetter 도메인에 `retry()`, `resolve()` 메서드 구현 완료. DeadLetterRepositoryPort에 `findRetryable()` 메서드 존재. 재시도 스케줄러는 미구현
+- 필요 시점: Phase 2 또는 Dead Letter 건수 증가 시
+- 이유: Phase 1에서는 실패 건이 적고 수동 모니터링으로 충분. 지수 백오프(10분, 20분, 40분) 로직은 도메인에 구현되어 있어, 스케줄러만 추가하면 됨
+
+---
+
 ### [2026-03-20] 알림 테이블 정리 스케줄러 (30일 삭제)
 
 - 현재 상태: NotificationRepositoryPort.deleteOlderThan() 메서드는 구현 완료, 호출하는 스케줄러는 미구현

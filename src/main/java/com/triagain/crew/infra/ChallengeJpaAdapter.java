@@ -6,6 +6,7 @@ import com.triagain.crew.port.out.ChallengeRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +51,14 @@ public class ChallengeJpaAdapter implements ChallengeRepositoryPort {
     @Override
     public List<Challenge> findExpiredWithoutVerification() {
         return challengeJpaRepository.findExpiredWithoutVerification().stream()
+                .map(ChallengeJpaEntity::toDomain)
+                .toList();
+    }
+
+    /** 시간 윈도우 내 마감 초과 + 미인증 챌린지 조회 — 정기 스케줄러에서 사용 */
+    @Override
+    public List<Challenge> findExpiredInWindow(LocalDateTime from, LocalDateTime to) {
+        return challengeJpaRepository.findExpiredInWindow(from, to).stream()
                 .map(ChallengeJpaEntity::toDomain)
                 .toList();
     }

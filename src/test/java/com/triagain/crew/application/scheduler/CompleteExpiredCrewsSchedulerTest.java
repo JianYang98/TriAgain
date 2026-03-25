@@ -1,5 +1,7 @@
-package com.triagain.crew.application;
+package com.triagain.crew.application.scheduler;
 
+import com.triagain.common.port.out.DeadLetterRepositoryPort;
+import com.triagain.common.scheduler.ChunkProcessor;
 import com.triagain.crew.domain.model.Challenge;
 import com.triagain.crew.domain.model.Crew;
 import com.triagain.crew.domain.vo.ChallengeStatus;
@@ -13,23 +15,21 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.transaction.support.TransactionTemplate;
-
 import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -47,19 +47,22 @@ class CompleteExpiredCrewsSchedulerTest {
     @Mock
     private TransactionTemplate transactionTemplate;
 
+    @Mock
+    private DeadLetterRepositoryPort deadLetterRepositoryPort;
+
     private CompleteExpiredCrewsScheduler scheduler;
 
     private static final LocalTime DEADLINE_TIME = LocalTime.of(23, 59, 59);
 
     @BeforeEach
     void setUp() {
-        // empty list early return 테스트에서 사용되지 않으므로 lenient
         lenient().doAnswer(invocation -> {
             invocation.<Consumer<TransactionStatus>>getArgument(0).accept(null);
             return null;
         }).when(transactionTemplate).executeWithoutResult(any());
 
-        scheduler = new CompleteExpiredCrewsScheduler(crewRepositoryPort, challengeRepositoryPort, transactionTemplate);
+        ChunkProcessor chunkProcessor = new ChunkProcessor(transactionTemplate);
+        scheduler = new CompleteExpiredCrewsScheduler(crewRepositoryPort, challengeRepositoryPort, chunkProcessor, deadLetterRepositoryPort);
     }
 
     @Test
@@ -131,14 +134,18 @@ class CompleteExpiredCrewsSchedulerTest {
     }
 
     @Test
-    @DisplayName("1건 실패해도 나머지 크루는 정상 처리된다")
-    void oneFailure_doesNotAffectOthers() {
+    @DisplayName("1건 실패해도 나머지 크루는 정상 처리되고 Dead Letter가 기록된다")
+    void oneFailure_doesNotAffectOthers_andDeadLetterSaved() {
         // Given
         Crew crew1 = activeCrew("crew-1", LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
         Crew crew2 = activeCrew("crew-2", LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
+        Crew freshCrew1 = activeCrew("crew-1", LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
+        Crew freshCrew2 = activeCrew("crew-2", LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
 
         given(crewRepositoryPort.findActiveCrewsEndedBefore(any(LocalDate.class)))
                 .willReturn(List.of(crew1, crew2));
+        given(crewRepositoryPort.findById("crew-1")).willReturn(Optional.of(freshCrew1));
+        given(crewRepositoryPort.findById("crew-2")).willReturn(Optional.of(freshCrew2));
         given(challengeRepositoryPort.findAllByCrewIdAndStatus("crew-1", ChallengeStatus.IN_PROGRESS))
                 .willThrow(new RuntimeException("DB error"));
         given(challengeRepositoryPort.findAllByCrewIdAndStatus("crew-2", ChallengeStatus.IN_PROGRESS))
@@ -149,9 +156,12 @@ class CompleteExpiredCrewsSchedulerTest {
         assertThatCode(() -> scheduler.completeExpiredCrews())
                 .doesNotThrowAnyException();
 
-        // crew-2는 정상 처리
-        assertThat(crew2.getStatus()).isEqualTo(CrewStatus.COMPLETED);
+        // crew-2는 rehydrate 후 정상 처리
+        assertThat(freshCrew2.getStatus()).isEqualTo(CrewStatus.COMPLETED);
         verify(crewRepositoryPort, times(1)).save(any());
+
+        // crew-1은 DB 조회 자체가 실패하므로 Dead Letter에 기록
+        verify(deadLetterRepositoryPort, times(1)).save(any());
     }
 
     // --- 헬퍼 메서드 ---

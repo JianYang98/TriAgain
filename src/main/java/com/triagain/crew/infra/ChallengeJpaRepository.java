@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,6 +39,27 @@ public interface ChallengeJpaRepository extends JpaRepository<ChallengeJpaEntity
               )
             """)
     List<ChallengeJpaEntity> findExpiredWithoutVerification();
+
+    /** 시간 윈도우 내 마감 초과 + 미인증 챌린지 조회 — 정기 스케줄러에서 사용 */
+    @Query(nativeQuery = true, value = """
+            SELECT c.* FROM challenges c
+            JOIN crews cr ON c.crew_id = cr.id
+            WHERE c.status = 'IN_PROGRESS'
+              AND cr.status = 'ACTIVE'
+              AND (c.start_date + c.completed_days) + cr.deadline_time
+                  + INTERVAL '5 minutes' < :windowEnd
+              AND (c.start_date + c.completed_days) + cr.deadline_time
+                  + INTERVAL '5 minutes' >= :windowStart
+              AND NOT EXISTS (
+                  SELECT 1 FROM verifications v
+                  WHERE v.user_id = c.user_id
+                    AND v.crew_id = c.crew_id
+                    AND v.target_date = c.start_date + c.completed_days
+              )
+            """)
+    List<ChallengeJpaEntity> findExpiredInWindow(
+            @Param("windowStart") LocalDateTime windowStart,
+            @Param("windowEnd") LocalDateTime windowEnd);
 
     /** 비관적 락으로 유저·크루·상태 기준 챌린지 조회 — 동시 챌린지 생성 방지 */
     @Lock(LockModeType.PESSIMISTIC_WRITE)

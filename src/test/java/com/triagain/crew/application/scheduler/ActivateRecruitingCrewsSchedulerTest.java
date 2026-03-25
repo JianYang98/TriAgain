@@ -1,5 +1,7 @@
-package com.triagain.crew.application;
+package com.triagain.crew.application.scheduler;
 
+import com.triagain.common.port.out.DeadLetterRepositoryPort;
+import com.triagain.common.scheduler.ChunkProcessor;
 import com.triagain.crew.domain.model.Crew;
 import com.triagain.crew.domain.vo.CrewStatus;
 import com.triagain.crew.domain.vo.VerificationType;
@@ -10,22 +12,21 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.transaction.support.TransactionTemplate;
-
 import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -40,20 +41,22 @@ class ActivateRecruitingCrewsSchedulerTest {
     @Mock
     private TransactionTemplate transactionTemplate;
 
+    @Mock
+    private DeadLetterRepositoryPort deadLetterRepositoryPort;
+
     private ActivateRecruitingCrewsScheduler scheduler;
 
     private static final LocalTime DEADLINE_TIME = LocalTime.of(23, 59, 59);
 
     @BeforeEach
     void setUp() {
-        // TransactionTemplate.executeWithoutResult()가 콜백을 즉시 실행하도록 stub
-        // empty list early return 테스트에서 사용되지 않으므로 lenient
         lenient().doAnswer(invocation -> {
             invocation.<Consumer<TransactionStatus>>getArgument(0).accept(null);
             return null;
         }).when(transactionTemplate).executeWithoutResult(any());
 
-        scheduler = new ActivateRecruitingCrewsScheduler(crewRepositoryPort, transactionTemplate);
+        ChunkProcessor chunkProcessor = new ChunkProcessor(transactionTemplate);
+        scheduler = new ActivateRecruitingCrewsScheduler(crewRepositoryPort, chunkProcessor, deadLetterRepositoryPort);
     }
 
     @Test
@@ -90,41 +93,58 @@ class ActivateRecruitingCrewsSchedulerTest {
     }
 
     @Test
-    @DisplayName("이미 ACTIVE인 크루가 포함되면 예외 없이 실패 로그만 남긴다")
-    void alreadyActiveCrew_logsErrorWithoutThrowing() {
+    @DisplayName("이미 ACTIVE인 크루가 포함되면 예외 없이 Dead Letter에 기록된다")
+    void alreadyActiveCrew_deadLetterSaved() {
         // Given
         Crew activeCrew = Crew.of("crew-1", "creator-1", "테스트 크루", "목표",
+                "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
+                LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), false, "ABC123",
+                LocalDateTime.now(), DEADLINE_TIME, null, null, Collections.emptyList());
+        // rehydrate해도 DB 상태가 ACTIVE이므로 여전히 실패
+        Crew freshActiveCrew = Crew.of("crew-1", "creator-1", "테스트 크루", "목표",
                 "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
                 LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), false, "ABC123",
                 LocalDateTime.now(), DEADLINE_TIME, null, null, Collections.emptyList());
         given(crewRepositoryPort.findRecruitingCrewsStartedOnOrBefore(any(LocalDate.class)))
                 .willReturn(List.of(activeCrew));
+        given(crewRepositoryPort.findById("crew-1")).willReturn(Optional.of(freshActiveCrew));
 
-        // When & Then — try-catch가 잡으므로 예외 전파 없음
+        // When & Then — ChunkProcessor가 잡으므로 예외 전파 없음
         assertThatCode(() -> scheduler.activateRecruitingCrews())
                 .doesNotThrowAnyException();
+
+        // 실패 건은 Dead Letter에 기록 (DB 자체가 ACTIVE이므로 rehydrate해도 여전히 실패)
+        verify(deadLetterRepositoryPort, times(1)).save(any());
     }
 
     @Test
-    @DisplayName("1건 실패해도 나머지는 정상 처리된다")
-    void oneFailure_doesNotAffectOthers() {
+    @DisplayName("1건 실패해도 나머지는 정상 처리되고 Dead Letter가 기록된다")
+    void oneFailure_doesNotAffectOthers_andDeadLetterSaved() {
         // Given
         Crew activeCrew = Crew.of("crew-1", "creator-1", "테스트 크루", "목표",
                 "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
                 LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), false, "ABC123",
                 LocalDateTime.now(), DEADLINE_TIME, null, null, Collections.emptyList());
-        Crew recruitingCrew = recruitingCrew("crew-2", LocalDate.of(2026, 3, 2));
+        Crew freshActiveCrew = Crew.of("crew-1", "creator-1", "테스트 크루", "목표",
+                "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
+                LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), false, "ABC123",
+                LocalDateTime.now(), DEADLINE_TIME, null, null, Collections.emptyList());
+        Crew recruitingCrew2 = recruitingCrew("crew-2", LocalDate.of(2026, 3, 2));
+        Crew freshRecruitingCrew2 = recruitingCrew("crew-2", LocalDate.of(2026, 3, 2));
 
         given(crewRepositoryPort.findRecruitingCrewsStartedOnOrBefore(any(LocalDate.class)))
-                .willReturn(List.of(activeCrew, recruitingCrew));
+                .willReturn(List.of(activeCrew, recruitingCrew2));
+        given(crewRepositoryPort.findById("crew-1")).willReturn(Optional.of(freshActiveCrew));
+        given(crewRepositoryPort.findById("crew-2")).willReturn(Optional.of(freshRecruitingCrew2));
         given(crewRepositoryPort.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         // When
         scheduler.activateRecruitingCrews();
 
-        // Then — 첫 번째는 실패, 두 번째는 정상 처리
-        assertThat(recruitingCrew.getStatus()).isEqualTo(CrewStatus.ACTIVE);
+        // Then — 첫 번째는 DB 자체가 ACTIVE이므로 rehydrate해도 실패(Dead Letter), 두 번째는 정상 처리
+        assertThat(freshRecruitingCrew2.getStatus()).isEqualTo(CrewStatus.ACTIVE);
         verify(crewRepositoryPort, times(1)).save(any());
+        verify(deadLetterRepositoryPort, times(1)).save(any());
     }
 
     // --- 헬퍼 메서드 ---
