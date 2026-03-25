@@ -32,8 +32,6 @@ CODEX.md
 /agent
  
 # Personal docs
-docs/blog-ai-pair-debugging.md
-docs/blog-jpa-idclass-pitfall.md
 docs/intellij-shortcuts-guide.md
 docs/java7-to-17-guide.md
 docs/java7-to-17-guide_bak.md
@@ -59,6 +57,9 @@ docs/archive/
 
 # Guide (개발 가이드/지시서 — 로컬 전용)
 docs/guide/
+
+# Blog (기술 블로그 초안 — 로컬 전용)
+docs/blog/
 
 # Lambda build artifacts
 lambda/.aws-sam/
