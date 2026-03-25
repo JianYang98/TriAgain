@@ -1,5 +1,8 @@
 package com.triagain.support.application;
 
+import com.triagain.common.domain.DeadLetter;
+import com.triagain.common.port.out.DeadLetterRepositoryPort;
+import com.triagain.common.scheduler.ChunkProcessor;
 import com.triagain.support.domain.model.Notification;
 import com.triagain.support.port.out.FcmTokenCleanupPort;
 import com.triagain.support.port.out.NotificationRepositoryPort;
@@ -18,7 +21,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
@@ -41,11 +43,13 @@ class ReminderSchedulerTest {
     @Mock
     private FcmTokenCleanupPort fcmTokenCleanupPort;
 
+    @Mock
+    private DeadLetterRepositoryPort deadLetterRepositoryPort;
+
     private ReminderScheduler reminderScheduler;
 
     @BeforeEach
     void setUp() {
-        // TransactionTemplate stub — 콜백을 즉시 실행
         TransactionTemplate transactionTemplate = new TransactionTemplate();
         transactionTemplate.setTransactionManager(new org.springframework.transaction.support.AbstractPlatformTransactionManager() {
             @Override
@@ -57,10 +61,11 @@ class ReminderSchedulerTest {
             @Override
             protected void doRollback(org.springframework.transaction.support.DefaultTransactionStatus status) {}
         });
+        ChunkProcessor chunkProcessor = new ChunkProcessor(transactionTemplate);
 
         reminderScheduler = new ReminderScheduler(
                 notificationTargetQueryPort, notificationRepositoryPort,
-                notificationSendPort, fcmTokenCleanupPort, transactionTemplate);
+                notificationSendPort, fcmTokenCleanupPort, chunkProcessor, deadLetterRepositoryPort);
     }
 
     @DisplayName("리마인더 타겟이 2명이면 알림 저장 2회 + 푸시 발송 2회 호출된다")
@@ -138,9 +143,9 @@ class ReminderSchedulerTest {
         verify(fcmTokenCleanupPort).clearFcmToken("user-1");
     }
 
-    @DisplayName("개별 타겟 처리 실패 시 나머지 타겟은 정상 처리된다")
+    @DisplayName("개별 타겟 DB 저장 실패 시 DeadLetter에 기록되고 나머지는 정상 처리된다")
     @Test
-    void sendReminders_individualFailure_continuesBatch() {
+    void sendReminders_individualFailure_recordsDeadLetterAndContinues() {
         // given
         List<ReminderTarget> targets = List.of(
                 new ReminderTarget("user-1", "token-1", "crew-1", "운동 크루"),
@@ -151,16 +156,18 @@ class ReminderSchedulerTest {
         given(notificationSendPort.send(anyString(), anyString(), anyString(), anyMap()))
                 .willReturn(true);
 
-        // 첫 번째 save 시 예외 발생
+        // 첫 번째 아이템: 청크 시도 + 건별 재시도 모두 실패 (2회 throw), 두 번째 아이템: 성공
         doThrow(new RuntimeException("DB 오류"))
+                .doThrow(new RuntimeException("DB 오류"))
                 .doAnswer(invocation -> invocation.getArgument(0))
                 .when(notificationRepositoryPort).save(any(Notification.class));
 
         // when
         reminderScheduler.sendReminders();
 
-        // then — 두 번째 타겟은 정상 처리
-        verify(notificationRepositoryPort, times(2)).save(any(Notification.class));
+        // then — 첫 번째: 청크(1회) + 건별재시도(1회) = 2회 실패, 두 번째: 청크(1회) 성공 → 총 3회 호출
+        verify(notificationRepositoryPort, times(3)).save(any(Notification.class));
+        verify(deadLetterRepositoryPort).save(any(DeadLetter.class));
         verify(notificationSendPort).send(eq("token-2"), anyString(), anyString(), anyMap());
     }
 }

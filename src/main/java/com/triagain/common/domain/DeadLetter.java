@@ -58,6 +58,29 @@ public class DeadLetter {
                 nextRetryAt, createdAt, updatedAt);
     }
 
+    /** 재시도 — retryCount 증가 + nextRetryAt 지수 백오프 재계산, maxRetries 초과 시 ABANDONED */
+    public void retry() {
+        if (this.status != DeadLetterStatus.PENDING) {
+            throw new IllegalStateException("PENDING 상태만 재시도 가능");
+        }
+        this.retryCount++;
+        this.updatedAt = LocalDateTime.now();
+        if (this.retryCount >= this.maxRetries) {
+            this.status = DeadLetterStatus.ABANDONED;
+        } else {
+            this.nextRetryAt = LocalDateTime.now().plusMinutes(10L * (1L << this.retryCount));
+        }
+    }
+
+    /** 수동 해결 처리 — PENDING → RESOLVED */
+    public void resolve() {
+        if (this.status != DeadLetterStatus.PENDING) {
+            throw new IllegalStateException("PENDING 상태만 해결 가능");
+        }
+        this.status = DeadLetterStatus.RESOLVED;
+        this.updatedAt = LocalDateTime.now();
+    }
+
     public String getId() { return id; }
     public DeadLetterTaskType getTaskType() { return taskType; }
     public String getTargetId() { return targetId; }

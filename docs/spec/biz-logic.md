@@ -388,7 +388,20 @@ Circuit OPEN 시 단계별 기능 축소 전략.
 | retry_count | 0 (생성 시) |
 | max_retries | 3 (기본값) |
 | next_retry_at | 생성 시각 + 10분 |
-| task_type | CHALLENGE_FAIL, CREW_ACTIVATE, CREW_COMPLETE, SESSION_EXPIRE |
+| task_type | CHALLENGE_FAIL, CREW_ACTIVATE, CREW_COMPLETE, SESSION_EXPIRE, CREW_START_NOTIFICATION, REMINDER |
+
+#### 상태 전이 규칙
+
+```
+PENDING → retry() → PENDING  (retryCount < maxRetries)
+PENDING → retry() → ABANDONED (retryCount ≥ maxRetries)
+PENDING → resolve() → RESOLVED (수동 해결)
+```
+
+- `retry()`: retryCount 증가 + nextRetryAt 지수 백오프 (`10 × 2^retryCount` 분)
+  - retryCount가 maxRetries에 도달하면 ABANDONED으로 전이
+- `resolve()`: 운영자 수동 해결 시 RESOLVED로 전이
+- PENDING이 아닌 상태에서 retry()/resolve() 호출 시 IllegalStateException
 
 ### 6.3 스케줄러별 실행 전략
 
@@ -407,15 +420,18 @@ Circuit OPEN 시 단계별 기능 축소 전략.
 ### 6.4 서버 시작 보정 (StartupCompensationRunner)
 
 서버 재시작/배포로 스케줄러가 누락한 작업을 보정한다. `ApplicationReadyEvent`에서 실행.
+BC별로 Runner를 분리하여 Bounded Context 경계를 유지한다.
 
-**실행 순서 (의존성 순서 보장):**
+**Crew StartupCompensationRunner (`@Order(1)`):**
 1. 크루 활성화 보정 (RECRUITING → ACTIVE)
 2. 챌린지 실패 보정 (미인증 → FAILED)
 3. 크루 종료 보정 (ACTIVE → COMPLETED)
-4. 업로드 세션 만료 보정 (PENDING → EXPIRED)
+
+**Verification StartupCompensationRunner (`@Order(2)`):**
+1. 업로드 세션 만료 보정 (PENDING → EXPIRED)
 
 **보정 조회 방식:** 윈도우 제한 없이 전체 미처리 건 조회 (서버 다운 기간이 길 수 있으므로).
-**장애 격리:** 한 단계 실패해도 다음 단계 계속 진행.
+**장애 격리:** 한 단계 실패해도 다음 단계 계속 진행. Runner 간에도 독립 실행.
 
 ---
 

@@ -1,5 +1,8 @@
 package com.triagain.support.application;
 
+import com.triagain.common.domain.DeadLetter;
+import com.triagain.common.port.out.DeadLetterRepositoryPort;
+import com.triagain.common.scheduler.ChunkProcessor;
 import com.triagain.support.domain.model.Notification;
 import com.triagain.support.port.out.FcmTokenCleanupPort;
 import com.triagain.support.port.out.NotificationRepositoryPort;
@@ -39,11 +42,13 @@ class CrewStartNotificationSchedulerTest {
     @Mock
     private FcmTokenCleanupPort fcmTokenCleanupPort;
 
+    @Mock
+    private DeadLetterRepositoryPort deadLetterRepositoryPort;
+
     private CrewStartNotificationScheduler crewStartNotificationScheduler;
 
     @BeforeEach
     void setUp() {
-        // TransactionTemplate stub — 콜백을 즉시 실행
         TransactionTemplate transactionTemplate = new TransactionTemplate();
         transactionTemplate.setTransactionManager(new org.springframework.transaction.support.AbstractPlatformTransactionManager() {
             @Override
@@ -55,10 +60,11 @@ class CrewStartNotificationSchedulerTest {
             @Override
             protected void doRollback(org.springframework.transaction.support.DefaultTransactionStatus status) {}
         });
+        ChunkProcessor chunkProcessor = new ChunkProcessor(transactionTemplate);
 
         crewStartNotificationScheduler = new CrewStartNotificationScheduler(
                 notificationTargetQueryPort, notificationRepositoryPort,
-                notificationSendPort, fcmTokenCleanupPort, transactionTemplate);
+                notificationSendPort, fcmTokenCleanupPort, chunkProcessor, deadLetterRepositoryPort);
     }
 
     @DisplayName("크루 시작 타겟이 2명이면 알림 저장 2회 + 푸시 발송 2회 호출된다")
@@ -136,9 +142,9 @@ class CrewStartNotificationSchedulerTest {
         verify(fcmTokenCleanupPort).clearFcmToken("user-1");
     }
 
-    @DisplayName("개별 타겟 처리 실패 시 나머지 타겟은 정상 처리된다")
+    @DisplayName("개별 타겟 DB 저장 실패 시 DeadLetter에 기록되고 나머지는 정상 처리된다")
     @Test
-    void notifyCrewStart_individualFailure_continuesBatch() {
+    void notifyCrewStart_individualFailure_recordsDeadLetterAndContinues() {
         // given
         List<CrewStartTarget> targets = List.of(
                 new CrewStartTarget("user-1", "token-1", "crew-1", "독서 모임"),
@@ -149,16 +155,18 @@ class CrewStartNotificationSchedulerTest {
         given(notificationSendPort.send(anyString(), anyString(), anyString(), anyMap()))
                 .willReturn(true);
 
-        // 첫 번째 save 시 예외 발생
+        // 첫 번째 아이템: 청크 시도 + 건별 재시도 모두 실패 (2회 throw), 두 번째 아이템: 성공
         doThrow(new RuntimeException("DB 오류"))
+                .doThrow(new RuntimeException("DB 오류"))
                 .doAnswer(invocation -> invocation.getArgument(0))
                 .when(notificationRepositoryPort).save(any(Notification.class));
 
         // when
         crewStartNotificationScheduler.sendCrewStartNotifications();
 
-        // then — 두 번째 타겟은 정상 처리
-        verify(notificationRepositoryPort, times(2)).save(any(Notification.class));
+        // then — 첫 번째: 청크(1회) + 건별재시도(1회) = 2회 실패, 두 번째: 청크(1회) 성공 → 총 3회 호출
+        verify(notificationRepositoryPort, times(3)).save(any(Notification.class));
+        verify(deadLetterRepositoryPort).save(any(DeadLetter.class));
         verify(notificationSendPort).send(eq("token-2"), anyString(), anyString(), anyMap());
     }
 }
