@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -99,14 +100,20 @@ class ActivateRecruitingCrewsSchedulerTest {
                 "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
                 LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), false, "ABC123",
                 LocalDateTime.now(), DEADLINE_TIME, null, null, Collections.emptyList());
+        // rehydrate해도 DB 상태가 ACTIVE이므로 여전히 실패
+        Crew freshActiveCrew = Crew.of("crew-1", "creator-1", "테스트 크루", "목표",
+                "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
+                LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), false, "ABC123",
+                LocalDateTime.now(), DEADLINE_TIME, null, null, Collections.emptyList());
         given(crewRepositoryPort.findRecruitingCrewsStartedOnOrBefore(any(LocalDate.class)))
                 .willReturn(List.of(activeCrew));
+        given(crewRepositoryPort.findById("crew-1")).willReturn(Optional.of(freshActiveCrew));
 
         // When & Then — ChunkProcessor가 잡으므로 예외 전파 없음
         assertThatCode(() -> scheduler.activateRecruitingCrews())
                 .doesNotThrowAnyException();
 
-        // 실패 건은 Dead Letter에 기록
+        // 실패 건은 Dead Letter에 기록 (DB 자체가 ACTIVE이므로 rehydrate해도 여전히 실패)
         verify(deadLetterRepositoryPort, times(1)).save(any());
     }
 
@@ -118,17 +125,24 @@ class ActivateRecruitingCrewsSchedulerTest {
                 "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
                 LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), false, "ABC123",
                 LocalDateTime.now(), DEADLINE_TIME, null, null, Collections.emptyList());
-        Crew recruitingCrew = recruitingCrew("crew-2", LocalDate.of(2026, 3, 2));
+        Crew freshActiveCrew = Crew.of("crew-1", "creator-1", "테스트 크루", "목표",
+                "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
+                LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), false, "ABC123",
+                LocalDateTime.now(), DEADLINE_TIME, null, null, Collections.emptyList());
+        Crew recruitingCrew2 = recruitingCrew("crew-2", LocalDate.of(2026, 3, 2));
+        Crew freshRecruitingCrew2 = recruitingCrew("crew-2", LocalDate.of(2026, 3, 2));
 
         given(crewRepositoryPort.findRecruitingCrewsStartedOnOrBefore(any(LocalDate.class)))
-                .willReturn(List.of(activeCrew, recruitingCrew));
+                .willReturn(List.of(activeCrew, recruitingCrew2));
+        given(crewRepositoryPort.findById("crew-1")).willReturn(Optional.of(freshActiveCrew));
+        given(crewRepositoryPort.findById("crew-2")).willReturn(Optional.of(freshRecruitingCrew2));
         given(crewRepositoryPort.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         // When
         scheduler.activateRecruitingCrews();
 
-        // Then — 첫 번째는 실패(Dead Letter), 두 번째는 정상 처리
-        assertThat(recruitingCrew.getStatus()).isEqualTo(CrewStatus.ACTIVE);
+        // Then — 첫 번째는 DB 자체가 ACTIVE이므로 rehydrate해도 실패(Dead Letter), 두 번째는 정상 처리
+        assertThat(freshRecruitingCrew2.getStatus()).isEqualTo(CrewStatus.ACTIVE);
         verify(crewRepositoryPort, times(1)).save(any());
         verify(deadLetterRepositoryPort, times(1)).save(any());
     }

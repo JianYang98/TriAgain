@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -138,9 +139,13 @@ class CompleteExpiredCrewsSchedulerTest {
         // Given
         Crew crew1 = activeCrew("crew-1", LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
         Crew crew2 = activeCrew("crew-2", LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
+        Crew freshCrew1 = activeCrew("crew-1", LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
+        Crew freshCrew2 = activeCrew("crew-2", LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
 
         given(crewRepositoryPort.findActiveCrewsEndedBefore(any(LocalDate.class)))
                 .willReturn(List.of(crew1, crew2));
+        given(crewRepositoryPort.findById("crew-1")).willReturn(Optional.of(freshCrew1));
+        given(crewRepositoryPort.findById("crew-2")).willReturn(Optional.of(freshCrew2));
         given(challengeRepositoryPort.findAllByCrewIdAndStatus("crew-1", ChallengeStatus.IN_PROGRESS))
                 .willThrow(new RuntimeException("DB error"));
         given(challengeRepositoryPort.findAllByCrewIdAndStatus("crew-2", ChallengeStatus.IN_PROGRESS))
@@ -151,11 +156,11 @@ class CompleteExpiredCrewsSchedulerTest {
         assertThatCode(() -> scheduler.completeExpiredCrews())
                 .doesNotThrowAnyException();
 
-        // crew-2는 정상 처리
-        assertThat(crew2.getStatus()).isEqualTo(CrewStatus.COMPLETED);
+        // crew-2는 rehydrate 후 정상 처리
+        assertThat(freshCrew2.getStatus()).isEqualTo(CrewStatus.COMPLETED);
         verify(crewRepositoryPort, times(1)).save(any());
 
-        // crew-1은 Dead Letter에 기록
+        // crew-1은 DB 조회 자체가 실패하므로 Dead Letter에 기록
         verify(deadLetterRepositoryPort, times(1)).save(any());
     }
 

@@ -18,6 +18,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -123,22 +124,33 @@ class FailExpiredChallengesSchedulerTest {
                 ChallengeStatus.IN_PROGRESS, LocalDate.of(2026, 3, 1),
                 LocalDateTime.of(2026, 3, 4, 23, 59, 59), LocalDateTime.now());
 
+        // rehydrator용 fresh 인스턴스
+        Challenge freshExpired1 = Challenge.of("CHAL-1", "user-1", "crew-1", 1, 3, 0,
+                ChallengeStatus.IN_PROGRESS, LocalDate.of(2026, 3, 1),
+                LocalDateTime.of(2026, 3, 4, 23, 59, 59), LocalDateTime.now());
+        Challenge freshExpired2 = Challenge.of("CHAL-2", "user-2", "crew-2", 2, 3, 1,
+                ChallengeStatus.IN_PROGRESS, LocalDate.of(2026, 3, 1),
+                LocalDateTime.of(2026, 3, 4, 23, 59, 59), LocalDateTime.now());
+
         given(challengeRepositoryPort.findExpiredWithoutVerification())
                 .willReturn(List.of(expired1, expired2));
+        given(challengeRepositoryPort.findById("CHAL-1")).willReturn(Optional.of(freshExpired1));
+        given(challengeRepositoryPort.findById("CHAL-2")).willReturn(Optional.of(freshExpired2));
         given(challengeRepositoryPort.save(any()))
-                .willThrow(new RuntimeException("DB error"))    // 첫 번째 실패
-                .willAnswer(inv -> inv.getArgument(0));         // 두 번째 성공
+                .willThrow(new RuntimeException("DB error"))    // 청크 내 첫 save 실패
+                .willAnswer(inv -> inv.getArgument(0))          // per-item retry 성공
+                .willAnswer(inv -> inv.getArgument(0));
 
         // When & Then — 예외 전파 없음
         assertThatCode(() -> scheduler.compensateAllExpired())
                 .doesNotThrowAnyException();
 
-        // 두 번째 챌린지는 정상 처리
-        assertThat(expired2.getStatus()).isEqualTo(ChallengeStatus.FAILED);
-        verify(challengeRepositoryPort, times(2)).save(any());
+        // rehydrate된 fresh 인스턴스가 FAILED로 처리됨
+        assertThat(freshExpired1.getStatus()).isEqualTo(ChallengeStatus.FAILED);
+        assertThat(freshExpired2.getStatus()).isEqualTo(ChallengeStatus.FAILED);
 
-        // 실패 건은 Dead Letter에 기록
-        verify(deadLetterRepositoryPort, times(1)).save(any());
+        // 실패 건은 Dead Letter에 기록되지 않음 (rehydrate 후 재시도 성공)
+        verify(deadLetterRepositoryPort, never()).save(any());
     }
 
     @Test

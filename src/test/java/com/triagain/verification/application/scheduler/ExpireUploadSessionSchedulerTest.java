@@ -17,6 +17,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -117,22 +118,31 @@ class ExpireUploadSessionSchedulerTest {
         UploadSession session2 = UploadSession.of(2L, "user-2", "crew-2", "key-2", "image/png",
                 UploadSessionStatus.PENDING, LocalDateTime.now().minusMinutes(30), LocalDateTime.now().minusMinutes(30));
 
+        // rehydrator용 fresh 인스턴스
+        UploadSession freshSession1 = UploadSession.of(1L, "user-1", "crew-1", "key-1", "image/jpeg",
+                UploadSessionStatus.PENDING, LocalDateTime.now().minusMinutes(20), LocalDateTime.now().minusMinutes(20));
+        UploadSession freshSession2 = UploadSession.of(2L, "user-2", "crew-2", "key-2", "image/png",
+                UploadSessionStatus.PENDING, LocalDateTime.now().minusMinutes(30), LocalDateTime.now().minusMinutes(30));
+
         given(uploadSessionRepositoryPort.findPendingSessionsBefore(any(LocalDateTime.class)))
                 .willReturn(List.of(session1, session2));
+        given(uploadSessionRepositoryPort.findById(1L)).willReturn(Optional.of(freshSession1));
+        given(uploadSessionRepositoryPort.findById(2L)).willReturn(Optional.of(freshSession2));
         given(uploadSessionRepositoryPort.save(any()))
-                .willThrow(new RuntimeException("DB error"))    // 첫 번째 실패
-                .willAnswer(inv -> inv.getArgument(0));         // 두 번째 성공
+                .willThrow(new RuntimeException("DB error"))    // 청크 내 첫 save 실패
+                .willAnswer(inv -> inv.getArgument(0))          // per-item retry 성공
+                .willAnswer(inv -> inv.getArgument(0));
 
         // When & Then — 예외 전파 없음
         assertThatCode(() -> scheduler.compensateAllExpiredSessions())
                 .doesNotThrowAnyException();
 
-        // 두 번째 세션은 정상 처리
-        assertThat(session2.getStatus()).isEqualTo(UploadSessionStatus.EXPIRED);
-        verify(uploadSessionRepositoryPort, times(2)).save(any());
+        // rehydrate된 fresh 인스턴스가 EXPIRED로 처리됨
+        assertThat(freshSession1.getStatus()).isEqualTo(UploadSessionStatus.EXPIRED);
+        assertThat(freshSession2.getStatus()).isEqualTo(UploadSessionStatus.EXPIRED);
 
-        // 실패 건은 Dead Letter에 기록
-        verify(deadLetterRepositoryPort, times(1)).save(any());
+        // rehydrate 후 재시도 성공이므로 Dead Letter 없음
+        verify(deadLetterRepositoryPort, never()).save(any());
     }
 
     @Test

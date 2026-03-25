@@ -58,7 +58,7 @@ public class CompleteExpiredCrewsScheduler {
             }
             crew.complete();
             crewRepositoryPort.save(crew);
-        });
+        }, stale -> crewRepositoryPort.findById(stale.getId()).orElseThrow());
 
         for (FailedItem<Crew> failed : result.failedItems()) {
             deadLetterRepositoryPort.save(DeadLetter.of(

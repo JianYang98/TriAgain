@@ -49,7 +49,7 @@ public class FailExpiredChallengesScheduler {
         ChunkProcessingResult<Challenge> result = chunkProcessor.execute(expired, CHUNK_SIZE, challenge -> {
             challenge.fail();
             challengeRepositoryPort.save(challenge);
-        });
+        }, stale -> challengeRepositoryPort.findById(stale.getId()).orElseThrow());
 
         for (FailedItem<Challenge> failed : result.failedItems()) {
             deadLetterRepositoryPort.save(DeadLetter.of(

@@ -48,7 +48,7 @@ public class ActivateRecruitingCrewsScheduler {
         ChunkProcessingResult<Crew> result = chunkProcessor.execute(crews, CHUNK_SIZE, crew -> {
             crew.activate();
             crewRepositoryPort.save(crew);
-        });
+        }, stale -> crewRepositoryPort.findById(stale.getId()).orElseThrow());
 
         for (FailedItem<Crew> failed : result.failedItems()) {
             deadLetterRepositoryPort.save(DeadLetter.of(

@@ -54,7 +54,7 @@ public class ExpireUploadSessionScheduler {
         ChunkProcessingResult<UploadSession> result = chunkProcessor.execute(sessions, CHUNK_SIZE, session -> {
             session.expire();
             uploadSessionRepositoryPort.save(session);
-        });
+        }, stale -> uploadSessionRepositoryPort.findById(stale.getId()).orElseThrow());
 
         for (FailedItem<UploadSession> failed : result.failedItems()) {
             deadLetterRepositoryPort.save(DeadLetter.of(
