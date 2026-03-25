@@ -1,4 +1,4 @@
-package com.triagain.verification.application;
+package com.triagain.verification.application.scheduler;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

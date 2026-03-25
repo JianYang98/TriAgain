@@ -1,4 +1,4 @@
-package com.triagain.verification.application;
+package com.triagain.verification.application.scheduler;
 
 import com.triagain.common.port.out.DeadLetterRepositoryPort;
 import com.triagain.common.scheduler.ChunkProcessor;

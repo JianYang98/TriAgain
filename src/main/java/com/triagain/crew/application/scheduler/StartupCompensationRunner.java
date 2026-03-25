@@ -1,4 +1,4 @@
-package com.triagain.crew.application;
+package com.triagain.crew.application.scheduler;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

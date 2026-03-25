@@ -1,4 +1,4 @@
-package com.triagain.crew.application;
+package com.triagain.crew.application.scheduler;
 
 import com.triagain.common.domain.DeadLetter;
 import com.triagain.common.domain.DeadLetterTaskType;

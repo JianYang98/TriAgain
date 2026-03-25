@@ -1,4 +1,4 @@
-package com.triagain.verification.application;
+package com.triagain.verification.application.scheduler;
 
 import com.triagain.common.domain.DeadLetter;
 import com.triagain.common.domain.DeadLetterTaskType;

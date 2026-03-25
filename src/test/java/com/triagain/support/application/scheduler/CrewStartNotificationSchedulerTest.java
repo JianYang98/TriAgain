@@ -1,4 +1,4 @@
-package com.triagain.support.application;
+package com.triagain.support.application.scheduler;
 
 import com.triagain.common.domain.DeadLetter;
 import com.triagain.common.port.out.DeadLetterRepositoryPort;
@@ -8,7 +8,7 @@ import com.triagain.support.port.out.FcmTokenCleanupPort;
 import com.triagain.support.port.out.NotificationRepositoryPort;
 import com.triagain.support.port.out.NotificationSendPort;
 import com.triagain.support.port.out.NotificationTargetQueryPort;
-import com.triagain.support.port.out.NotificationTargetQueryPort.ReminderTarget;
+import com.triagain.support.port.out.NotificationTargetQueryPort.CrewStartTarget;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,7 +18,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.Collections;
 import java.util.List;
 
@@ -29,7 +28,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class ReminderSchedulerTest {
+class CrewStartNotificationSchedulerTest {
 
     @Mock
     private NotificationTargetQueryPort notificationTargetQueryPort;
@@ -46,7 +45,7 @@ class ReminderSchedulerTest {
     @Mock
     private DeadLetterRepositoryPort deadLetterRepositoryPort;
 
-    private ReminderScheduler reminderScheduler;
+    private CrewStartNotificationScheduler crewStartNotificationScheduler;
 
     @BeforeEach
     void setUp() {
@@ -63,26 +62,26 @@ class ReminderSchedulerTest {
         });
         ChunkProcessor chunkProcessor = new ChunkProcessor(transactionTemplate);
 
-        reminderScheduler = new ReminderScheduler(
+        crewStartNotificationScheduler = new CrewStartNotificationScheduler(
                 notificationTargetQueryPort, notificationRepositoryPort,
                 notificationSendPort, fcmTokenCleanupPort, chunkProcessor, deadLetterRepositoryPort);
     }
 
-    @DisplayName("리마인더 타겟이 2명이면 알림 저장 2회 + 푸시 발송 2회 호출된다")
+    @DisplayName("크루 시작 타겟이 2명이면 알림 저장 2회 + 푸시 발송 2회 호출된다")
     @Test
-    void sendReminders_withTargets_savesAndSends() {
+    void notifyCrewStart_withTargets_savesAndSends() {
         // given
-        List<ReminderTarget> targets = List.of(
-                new ReminderTarget("user-1", "token-1", "crew-1", "운동 크루"),
-                new ReminderTarget("user-2", "token-2", "crew-1", "운동 크루")
+        List<CrewStartTarget> targets = List.of(
+                new CrewStartTarget("user-1", "token-1", "crew-1", "독서 모임"),
+                new CrewStartTarget("user-2", "token-2", "crew-1", "독서 모임")
         );
-        given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class), any(LocalDate.class)))
+        given(notificationTargetQueryPort.findCrewStartTargets(any(LocalDate.class)))
                 .willReturn(targets);
         given(notificationSendPort.send(anyString(), anyString(), anyString(), anyMap()))
                 .willReturn(true);
 
         // when
-        reminderScheduler.sendReminders();
+        crewStartNotificationScheduler.sendCrewStartNotifications();
 
         // then
         verify(notificationRepositoryPort, times(2)).save(any(Notification.class));
@@ -92,16 +91,16 @@ class ReminderSchedulerTest {
 
     @DisplayName("fcmToken이 null이면 알림은 저장하되 푸시는 발송하지 않는다")
     @Test
-    void sendReminders_nullFcmToken_savesButDoesNotSend() {
+    void notifyCrewStart_nullFcmToken_savesButDoesNotSend() {
         // given
-        List<ReminderTarget> targets = List.of(
-                new ReminderTarget("user-1", null, "crew-1", "운동 크루")
+        List<CrewStartTarget> targets = List.of(
+                new CrewStartTarget("user-1", null, "crew-1", "독서 모임")
         );
-        given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class), any(LocalDate.class)))
+        given(notificationTargetQueryPort.findCrewStartTargets(any(LocalDate.class)))
                 .willReturn(targets);
 
         // when
-        reminderScheduler.sendReminders();
+        crewStartNotificationScheduler.sendCrewStartNotifications();
 
         // then
         verify(notificationRepositoryPort).save(any(Notification.class));
@@ -110,13 +109,13 @@ class ReminderSchedulerTest {
 
     @DisplayName("타겟이 없으면 아무 작업도 수행하지 않는다")
     @Test
-    void sendReminders_noTargets_doesNothing() {
+    void notifyCrewStart_noTargets_doesNothing() {
         // given
-        given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class), any(LocalDate.class)))
+        given(notificationTargetQueryPort.findCrewStartTargets(any(LocalDate.class)))
                 .willReturn(Collections.emptyList());
 
         // when
-        reminderScheduler.sendReminders();
+        crewStartNotificationScheduler.sendCrewStartNotifications();
 
         // then
         verify(notificationRepositoryPort, never()).save(any(Notification.class));
@@ -125,18 +124,18 @@ class ReminderSchedulerTest {
 
     @DisplayName("FCM 토큰이 무효하면 토큰 정리 포트가 호출된다")
     @Test
-    void sendReminders_invalidToken_clearsToken() {
+    void notifyCrewStart_invalidToken_clearsToken() {
         // given
-        List<ReminderTarget> targets = List.of(
-                new ReminderTarget("user-1", "token-1", "crew-1", "운동 크루")
+        List<CrewStartTarget> targets = List.of(
+                new CrewStartTarget("user-1", "token-1", "crew-1", "독서 모임")
         );
-        given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class), any(LocalDate.class)))
+        given(notificationTargetQueryPort.findCrewStartTargets(any(LocalDate.class)))
                 .willReturn(targets);
         given(notificationSendPort.send(anyString(), anyString(), anyString(), anyMap()))
                 .willReturn(false);
 
         // when
-        reminderScheduler.sendReminders();
+        crewStartNotificationScheduler.sendCrewStartNotifications();
 
         // then
         verify(notificationRepositoryPort).save(any(Notification.class));
@@ -145,13 +144,13 @@ class ReminderSchedulerTest {
 
     @DisplayName("개별 타겟 DB 저장 실패 시 DeadLetter에 기록되고 나머지는 정상 처리된다")
     @Test
-    void sendReminders_individualFailure_recordsDeadLetterAndContinues() {
+    void notifyCrewStart_individualFailure_recordsDeadLetterAndContinues() {
         // given
-        List<ReminderTarget> targets = List.of(
-                new ReminderTarget("user-1", "token-1", "crew-1", "운동 크루"),
-                new ReminderTarget("user-2", "token-2", "crew-1", "운동 크루")
+        List<CrewStartTarget> targets = List.of(
+                new CrewStartTarget("user-1", "token-1", "crew-1", "독서 모임"),
+                new CrewStartTarget("user-2", "token-2", "crew-1", "독서 모임")
         );
-        given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class), any(LocalDate.class)))
+        given(notificationTargetQueryPort.findCrewStartTargets(any(LocalDate.class)))
                 .willReturn(targets);
         given(notificationSendPort.send(anyString(), anyString(), anyString(), anyMap()))
                 .willReturn(true);
@@ -163,7 +162,7 @@ class ReminderSchedulerTest {
                 .when(notificationRepositoryPort).save(any(Notification.class));
 
         // when
-        reminderScheduler.sendReminders();
+        crewStartNotificationScheduler.sendCrewStartNotifications();
 
         // then — 첫 번째: 청크(1회) + 건별재시도(1회) = 2회 실패, 두 번째: 청크(1회) 성공 → 총 3회 호출
         verify(notificationRepositoryPort, times(3)).save(any(Notification.class));
