@@ -1,14 +1,19 @@
 package com.triagain.crew.application;
 
+import com.triagain.common.domain.DeadLetter;
+import com.triagain.common.domain.DeadLetterTaskType;
+import com.triagain.common.port.out.DeadLetterRepositoryPort;
+import com.triagain.common.scheduler.ChunkProcessingResult;
+import com.triagain.common.scheduler.ChunkProcessor;
+import com.triagain.common.scheduler.FailedItem;
 import com.triagain.crew.domain.model.Challenge;
 import com.triagain.crew.port.out.ChallengeRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.support.TransactionTemplate;
 
-import java.util.ArrayList;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Slf4j
@@ -16,33 +21,45 @@ import java.util.List;
 @RequiredArgsConstructor
 public class FailExpiredChallengesScheduler {
 
-    private final ChallengeRepositoryPort challengeRepositoryPort;
-    private final TransactionTemplate transactionTemplate;
+    private static final int CHUNK_SIZE = 50;
+    private static final int WINDOW_MINUTES = 5;
 
-    /** 마감 초과 챌린지 실패 처리 — 매 5분마다 크루별 deadlineTime 기준으로 판정 */
+    private final ChallengeRepositoryPort challengeRepositoryPort;
+    private final ChunkProcessor chunkProcessor;
+    private final DeadLetterRepositoryPort deadLetterRepositoryPort;
+
+    /** 마감 초과 챌린지 실패 처리 — 매 5분마다 윈도우 조회로 판정 */
     @Scheduled(fixedRate = 300_000)
     public void failExpiredChallenges() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime windowStart = now.minusMinutes(WINDOW_MINUTES);
+        List<Challenge> expired = challengeRepositoryPort.findExpiredInWindow(windowStart, now);
+        processExpired(expired);
+    }
+
+    /** 서버 시작 보정용 — 전체 미처리 건 조회 */
+    public void compensateAllExpired() {
         List<Challenge> expired = challengeRepositoryPort.findExpiredWithoutVerification();
+        processExpired(expired);
+    }
+
+    private void processExpired(List<Challenge> expired) {
         if (expired.isEmpty()) return;
 
-        int successCount = 0;
-        List<String> failedIds = new ArrayList<>();
+        ChunkProcessingResult<Challenge> result = chunkProcessor.execute(expired, CHUNK_SIZE, challenge -> {
+            challenge.fail();
+            challengeRepositoryPort.save(challenge);
+        });
 
-        for (Challenge challenge : expired) {
-            try {
-                transactionTemplate.executeWithoutResult(status -> {
-                    challenge.fail();
-                    challengeRepositoryPort.save(challenge);
-                });
-                successCount++;
-            } catch (Exception e) {
-                failedIds.add(challenge.getId());
-                log.error("챌린지 실패 처리 오류 [challengeId={}]: {}", challenge.getId(), e.getMessage(), e);
-            }
+        for (FailedItem<Challenge> failed : result.failedItems()) {
+            deadLetterRepositoryPort.save(DeadLetter.of(
+                    DeadLetterTaskType.CHALLENGE_FAIL,
+                    failed.item().getId(),
+                    failed.errorMessage()
+            ));
         }
 
-        log.info("챌린지 실패 처리 완료: 전체 {}건, 성공 {}건, 실패 {}건{}",
-                expired.size(), successCount, failedIds.size(),
-                failedIds.isEmpty() ? "" : " | 실패 ID: " + String.join(", ", failedIds));
+        log.info("챌린지 실패 처리: 전체 {}건, 성공 {}건, 실패 {}건",
+                expired.size(), result.successCount(), result.failedCount());
     }
 }

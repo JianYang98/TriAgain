@@ -1,5 +1,6 @@
 package com.triagain.crew.application;
 
+import com.triagain.verification.application.ExpireUploadSessionScheduler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,54 +25,76 @@ class StartupCompensationRunnerTest {
     @Mock
     private CompleteExpiredCrewsScheduler completeScheduler;
 
+    @Mock
+    private ExpireUploadSessionScheduler expireSessionScheduler;
+
     private StartupCompensationRunner runner;
 
     @BeforeEach
     void setUp() {
         runner = new StartupCompensationRunner(
-                activateScheduler, failScheduler, completeScheduler);
+                activateScheduler, failScheduler, completeScheduler, expireSessionScheduler);
     }
 
     @Test
-    @DisplayName("3단계 모두 순서대로 실행됨 — 활성화 → 실패 → 종료")
+    @DisplayName("4단계 모두 순서대로 실행됨 — 활성화 → 실패 → 종료 → 세션 만료")
     void allStepsExecutedInOrder() {
         // When
         runner.compensateMissedSchedulerJobs();
 
         // Then
-        InOrder inOrder = inOrder(activateScheduler, failScheduler, completeScheduler);
-        inOrder.verify(activateScheduler).activateRecruitingCrews();
-        inOrder.verify(failScheduler).failExpiredChallenges();
-        inOrder.verify(completeScheduler).completeExpiredCrews();
+        InOrder inOrder = inOrder(activateScheduler, failScheduler, completeScheduler, expireSessionScheduler);
+        inOrder.verify(activateScheduler).compensateAllRecruitingCrews();
+        inOrder.verify(failScheduler).compensateAllExpired();
+        inOrder.verify(completeScheduler).compensateAllExpiredCrews();
+        inOrder.verify(expireSessionScheduler).compensateAllExpiredSessions();
     }
 
     @Test
-    @DisplayName("Step 1 실패해도 Step 2, 3 계속 진행")
-    void step1Fails_step2And3StillRun() {
+    @DisplayName("Step 1 실패해도 Step 2, 3, 4 계속 진행")
+    void step1Fails_remainingStepsStillRun() {
         // Given
         doThrow(new RuntimeException("DB error"))
-                .when(activateScheduler).activateRecruitingCrews();
+                .when(activateScheduler).compensateAllRecruitingCrews();
 
         // When
         runner.compensateMissedSchedulerJobs();
 
         // Then
-        verify(failScheduler).failExpiredChallenges();
-        verify(completeScheduler).completeExpiredCrews();
+        verify(failScheduler).compensateAllExpired();
+        verify(completeScheduler).compensateAllExpiredCrews();
+        verify(expireSessionScheduler).compensateAllExpiredSessions();
     }
 
     @Test
-    @DisplayName("Step 2 실패해도 Step 3 계속 진행")
-    void step2Fails_step3StillRuns() {
+    @DisplayName("Step 2 실패해도 Step 3, 4 계속 진행")
+    void step2Fails_remainingStepsStillRun() {
         // Given
         doThrow(new RuntimeException("scheduler error"))
-                .when(failScheduler).failExpiredChallenges();
+                .when(failScheduler).compensateAllExpired();
 
         // When
         runner.compensateMissedSchedulerJobs();
 
         // Then
-        verify(activateScheduler).activateRecruitingCrews();
-        verify(completeScheduler).completeExpiredCrews();
+        verify(activateScheduler).compensateAllRecruitingCrews();
+        verify(completeScheduler).compensateAllExpiredCrews();
+        verify(expireSessionScheduler).compensateAllExpiredSessions();
+    }
+
+    @Test
+    @DisplayName("Step 3 실패해도 Step 4 계속 진행")
+    void step3Fails_step4StillRuns() {
+        // Given
+        doThrow(new RuntimeException("complete error"))
+                .when(completeScheduler).compensateAllExpiredCrews();
+
+        // When
+        runner.compensateMissedSchedulerJobs();
+
+        // Then
+        verify(activateScheduler).compensateAllRecruitingCrews();
+        verify(failScheduler).compensateAllExpired();
+        verify(expireSessionScheduler).compensateAllExpiredSessions();
     }
 }

@@ -353,7 +353,73 @@ Circuit OPEN 시 단계별 기능 축소 전략.
 
 ---
 
-## 6. Phase 로드맵
+## 6. 스케줄러 복원력 정책
+
+### 6.1 청크 처리 전략 (ChunkProcessor)
+
+모든 배치 스케줄러는 `ChunkProcessor`를 사용하여 대량 건을 안전하게 처리한다.
+
+| 항목 | 내용 |
+|------|------|
+| 청크 크기 | 50건 단위 |
+| 트랜잭션 | 청크 단위로 별도 트랜잭션 (TransactionTemplate) |
+| 실패 격리 | 청크 실패 시 해당 청크만 건별 분리 재시도 |
+| Dead Letter | 건별 재시도에서도 실패한 건은 dead_letters 테이블에 기록 |
+
+**처리 흐름:**
+```
+1. 전체 대상 조회 (트랜잭션 밖)
+2. 50건씩 청크로 분할
+3. 청크 단위 트랜잭션 실행
+   → 성공: 다음 청크로
+   → 실패: 해당 청크 건별 분리 재시도
+      → 건별 성공: 카운트
+      → 건별 실패: Dead Letter 기록
+```
+
+### 6.2 Dead Letter 정책
+
+배치 처리에서 최종 실패한 건을 영구 기록하여 운영 모니터링 및 수동 복구에 사용한다.
+
+| 항목 | 내용 |
+|------|------|
+| 기록 시점 | ChunkProcessor 건별 재시도에서도 실패한 건 |
+| 초기 상태 | PENDING |
+| retry_count | 0 (생성 시) |
+| max_retries | 3 (기본값) |
+| next_retry_at | 생성 시각 + 10분 |
+| task_type | CHALLENGE_FAIL, CREW_ACTIVATE, CREW_COMPLETE, SESSION_EXPIRE |
+
+### 6.3 스케줄러별 실행 전략
+
+| 스케줄러 | 주기 | 조회 방식 | 설명 |
+|----------|------|-----------|------|
+| ActivateRecruitingCrewsScheduler | 매일 00:00 | start_date ≤ 오늘 | RECRUITING → ACTIVE |
+| CompleteExpiredCrewsScheduler | 매일 00:05 | end_date < 오늘 | ACTIVE → COMPLETED + IN_PROGRESS 챌린지 ENDED |
+| FailExpiredChallengesScheduler | 매 5분 | 5분 윈도우 조회 | deadline 초과 + 미인증 챌린지 FAILED |
+| ExpireUploadSessionScheduler | 매 5분 | 5분 윈도우 조회 | 15분 경과 PENDING 세션 EXPIRED |
+
+**5분 윈도우 조회:**
+- FailExpiredChallenges: `deadline BETWEEN (now - 5분) AND now`
+- ExpireUploadSession: `requested_at BETWEEN (now - 20분) AND (now - 15분)`
+- 장점: 전체 스캔 방지, 이전 주기에서 처리된 건 재조회 최소화
+
+### 6.4 서버 시작 보정 (StartupCompensationRunner)
+
+서버 재시작/배포로 스케줄러가 누락한 작업을 보정한다. `ApplicationReadyEvent`에서 실행.
+
+**실행 순서 (의존성 순서 보장):**
+1. 크루 활성화 보정 (RECRUITING → ACTIVE)
+2. 챌린지 실패 보정 (미인증 → FAILED)
+3. 크루 종료 보정 (ACTIVE → COMPLETED)
+4. 업로드 세션 만료 보정 (PENDING → EXPIRED)
+
+**보정 조회 방식:** 윈도우 제한 없이 전체 미처리 건 조회 (서버 다운 기간이 길 수 있으므로).
+**장애 격리:** 한 단계 실패해도 다음 단계 계속 진행.
+
+---
+
+## 7. Phase 로드맵
 
 ### Phase 1 (MVP) — 현재
 
