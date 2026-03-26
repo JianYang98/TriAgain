@@ -46,8 +46,8 @@ public class KakaoLoginService implements KakaoLoginUseCase {
             user = userRepositoryPort.save(user);
         }
 
-        String accessToken = jwtProvider.createAccessToken(user.getId(), user.getProvider());
-        String refreshToken = jwtProvider.createRefreshToken(user.getId());
+        String accessToken = jwtProvider.createAccessToken(user.getId(), user.getProvider(), user.getTokenVersion());
+        String refreshToken = jwtProvider.createRefreshToken(user.getId(), user.getTokenVersion());
 
         return KakaoLoginResult.existingUser(
                 accessToken,

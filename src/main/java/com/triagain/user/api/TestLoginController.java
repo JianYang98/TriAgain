@@ -35,8 +35,8 @@ public class TestLoginController {
         User user = userRepositoryPort.findById(request.userId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        String accessToken = jwtProvider.createAccessToken(user.getId(), user.getProvider());
-        String refreshToken = jwtProvider.createRefreshToken(user.getId());
+        String accessToken = jwtProvider.createAccessToken(user.getId(), user.getProvider(), user.getTokenVersion());
+        String refreshToken = jwtProvider.createRefreshToken(user.getId(), user.getTokenVersion());
 
         return ResponseEntity.ok(ApiResponse.ok(
                 KakaoLoginResult.existingUser(

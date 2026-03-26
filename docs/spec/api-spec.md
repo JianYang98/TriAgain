@@ -664,6 +664,35 @@ Content-Type: application/json
 
 ---
 
+### DELETE /users/me (회원탈퇴)
+
+회원을 탈퇴 처리한다. 개인정보를 초기화하고 기존 토큰을 무효화한다.
+
+**인증**: Bearer Token 필수
+
+**요청 (Request)**
+```
+DELETE /users/me HTTP/1.1
+Authorization: Bearer <token>
+```
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": null,
+  "error": null
+}
+```
+
+**에러 응답**
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 400 | U010 | 이미 탈퇴한 사용자입니다. | deleted_at이 이미 설정됨 |
+| 400 | U011 | 멤버가 있는 크루의 리더는 탈퇴할 수 없습니다. | 리더 + 다른 멤버 존재 |
+
+---
+
 ### GET /crews/{crewId}/feed (크루 피드 조회)
 
 크루원들의 인증 목록과 나의 챌린지 현황을 조회한다.
@@ -1158,7 +1187,8 @@ Authorization: Bearer <token>
       "endDate": "2026-03-24",
       "createdAt": "2026-03-01T10:00:00",
       "category": "EXERCISE",
-      "visibility": "PUBLIC"
+      "visibility": "PUBLIC",
+      "todayVerified": true
     }
   ],
   "error": null
@@ -1179,6 +1209,7 @@ Authorization: Bearer <token>
 - `createdAt`: 크루 생성 시각
 - `category`: 크루 카테고리 (nullable — 기존 크루는 null)
 - `visibility`: 공개 설정 (`PUBLIC` / `PRIVATE`)
+- `todayVerified`: 오늘 인증 완료 여부 (boolean)
 
 **에러 응답**
 | HTTP | 코드 | 메시지 | 설명 |

@@ -11,6 +11,7 @@ import com.triagain.verification.port.out.ChallengePort.ChallengeInfo;
 import com.triagain.verification.port.out.CrewPort;
 import com.triagain.verification.port.out.StoragePort;
 import com.triagain.verification.port.out.UploadSessionRepositoryPort;
+import com.triagain.verification.port.out.VerificationNotificationPort;
 import com.triagain.verification.port.out.VerificationRepositoryPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -48,6 +49,9 @@ class CreateVerificationServiceTest {
 
     @Mock
     private StoragePort storagePort;
+
+    @Mock
+    private VerificationNotificationPort verificationNotificationPort;
 
     @InjectMocks
     private CreateVerificationService createVerificationService;

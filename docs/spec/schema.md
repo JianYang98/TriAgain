@@ -32,8 +32,10 @@ erDiagram
         string nickname
         string profile_image_url
         string fcm_token "nullable — FCM 디바이스 토큰, VARCHAR(500)"
+        int token_version "NOT NULL DEFAULT 0 — 토큰 무효화용 버전"
         timestamp created_at
         timestamp terms_agreed_at "nullable — 약관 동의 일시 (NULL이면 기존 유저)"
+        timestamp deleted_at "nullable — 탈퇴 일시 (null이면 활성)"
     }
     
     crews {

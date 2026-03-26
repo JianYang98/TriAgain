@@ -6,8 +6,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
 @RequiredArgsConstructor
@@ -37,5 +39,11 @@ public class VerificationJpaAdapter implements VerificationRepositoryPort {
     public List<LocalDate> findApprovedDatesByUserIdAndCrewId(
             String userId, String crewId, LocalDate startDate, LocalDate endDate) {
         return verificationJpaRepository.findApprovedDatesByUserIdAndCrewId(userId, crewId, startDate, endDate);
+    }
+
+    @Override
+    public Set<String> findVerifiedCrewIds(String userId, List<String> crewIds, LocalDate targetDate) {
+        if (crewIds.isEmpty()) return Set.of();
+        return new HashSet<>(verificationJpaRepository.findVerifiedCrewIds(userId, crewIds, targetDate));
     }
 }

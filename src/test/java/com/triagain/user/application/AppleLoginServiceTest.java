@@ -23,6 +23,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -55,12 +56,12 @@ class AppleLoginServiceTest {
     void login_existingUser_returnsJwt() {
         // Given
         User existingUser = User.of("001234.abcdef.5678", "APPLE", "apple@test.com", "애플유저", null,
-                null, LocalDateTime.now(), LocalDateTime.now());
+                null, LocalDateTime.now(), LocalDateTime.now(), null, 0);
         given(appleTokenVerifierPort.verify("valid-token")).willReturn(appleUserInfo);
         given(userRepositoryPort.findById("001234.abcdef.5678")).willReturn(Optional.of(existingUser));
         given(userRepositoryPort.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
-        given(jwtProvider.createAccessToken(anyString(), anyString())).willReturn("access-token");
-        given(jwtProvider.createRefreshToken(anyString())).willReturn("refresh-token");
+        given(jwtProvider.createAccessToken(anyString(), anyString(), anyInt())).willReturn("access-token");
+        given(jwtProvider.createRefreshToken(anyString(), anyInt())).willReturn("refresh-token");
         given(jwtProvider.getAccessTokenExpirationSeconds()).willReturn(1800L);
 
         // When
@@ -100,12 +101,12 @@ class AppleLoginServiceTest {
     void login_existingUser_emailChanged_saves() {
         // Given
         User existingUser = User.of("001234.abcdef.5678", "APPLE", "old@test.com", "애플유저", null,
-                null, LocalDateTime.now(), LocalDateTime.now());
+                null, LocalDateTime.now(), LocalDateTime.now(), null, 0);
         given(appleTokenVerifierPort.verify("valid-token")).willReturn(appleUserInfo);
         given(userRepositoryPort.findById("001234.abcdef.5678")).willReturn(Optional.of(existingUser));
         given(userRepositoryPort.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
-        given(jwtProvider.createAccessToken(anyString(), anyString())).willReturn("access-token");
-        given(jwtProvider.createRefreshToken(anyString())).willReturn("refresh-token");
+        given(jwtProvider.createAccessToken(anyString(), anyString(), anyInt())).willReturn("access-token");
+        given(jwtProvider.createRefreshToken(anyString(), anyInt())).willReturn("refresh-token");
         given(jwtProvider.getAccessTokenExpirationSeconds()).willReturn(1800L);
 
         // When
@@ -121,11 +122,11 @@ class AppleLoginServiceTest {
         // Given
         AppleUserInfo noEmailUser = new AppleUserInfo("001234.abcdef.5678", null);
         User existingUser = User.of("001234.abcdef.5678", "APPLE", "existing@test.com", "애플유저", null,
-                null, LocalDateTime.now(), LocalDateTime.now());
+                null, LocalDateTime.now(), LocalDateTime.now(), null, 0);
         given(appleTokenVerifierPort.verify("valid-token")).willReturn(noEmailUser);
         given(userRepositoryPort.findById("001234.abcdef.5678")).willReturn(Optional.of(existingUser));
-        given(jwtProvider.createAccessToken(anyString(), anyString())).willReturn("access-token");
-        given(jwtProvider.createRefreshToken(anyString())).willReturn("refresh-token");
+        given(jwtProvider.createAccessToken(anyString(), anyString(), anyInt())).willReturn("access-token");
+        given(jwtProvider.createRefreshToken(anyString(), anyInt())).willReturn("refresh-token");
         given(jwtProvider.getAccessTokenExpirationSeconds()).willReturn(1800L);
 
         // When

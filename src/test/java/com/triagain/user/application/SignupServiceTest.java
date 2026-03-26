@@ -22,6 +22,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -54,10 +55,10 @@ class SignupServiceTest {
     void signup_success() {
         // Given
         given(kakaoApiPort.getUserInfo("valid-token")).willReturn(kakaoUserInfo);
-        given(userRepositoryPort.findById("12345")).willReturn(Optional.empty());
+        given(userRepositoryPort.findByIdIncludingWithdrawn("12345")).willReturn(Optional.empty());
         given(userRepositoryPort.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
-        given(jwtProvider.createAccessToken(anyString(), anyString())).willReturn("access-token");
-        given(jwtProvider.createRefreshToken(anyString())).willReturn("refresh-token");
+        given(jwtProvider.createAccessToken(anyString(), anyString(), anyInt())).willReturn("access-token");
+        given(jwtProvider.createRefreshToken(anyString(), anyInt())).willReturn("refresh-token");
         given(jwtProvider.getAccessTokenExpirationSeconds()).willReturn(1800L);
 
         SignupCommand command = new SignupCommand("valid-token", "12345", "내닉네임", true);
@@ -94,9 +95,9 @@ class SignupServiceTest {
     void signup_alreadyExists_throwsException() {
         // Given
         given(kakaoApiPort.getUserInfo("valid-token")).willReturn(kakaoUserInfo);
-        given(userRepositoryPort.findById("12345")).willReturn(
+        given(userRepositoryPort.findByIdIncludingWithdrawn("12345")).willReturn(
                 Optional.of(User.of("12345", "KAKAO", "kakao@test.com", "기존유저", null,
-                        null, java.time.LocalDateTime.now(), java.time.LocalDateTime.now()))
+                        null, java.time.LocalDateTime.now(), java.time.LocalDateTime.now(), null, 0))
         );
 
         SignupCommand command = new SignupCommand("valid-token", "12345", "내닉네임", true);
@@ -193,10 +194,10 @@ class SignupServiceTest {
     void signup_nicknameWithSpaces_trimsAndSucceeds() {
         // Given
         given(kakaoApiPort.getUserInfo("valid-token")).willReturn(kakaoUserInfo);
-        given(userRepositoryPort.findById("12345")).willReturn(Optional.empty());
+        given(userRepositoryPort.findByIdIncludingWithdrawn("12345")).willReturn(Optional.empty());
         given(userRepositoryPort.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
-        given(jwtProvider.createAccessToken(anyString(), anyString())).willReturn("access-token");
-        given(jwtProvider.createRefreshToken(anyString())).willReturn("refresh-token");
+        given(jwtProvider.createAccessToken(anyString(), anyString(), anyInt())).willReturn("access-token");
+        given(jwtProvider.createRefreshToken(anyString(), anyInt())).willReturn("refresh-token");
         given(jwtProvider.getAccessTokenExpirationSeconds()).willReturn(1800L);
 
         SignupCommand command = new SignupCommand("valid-token", "12345", "  내닉네임  ", true);

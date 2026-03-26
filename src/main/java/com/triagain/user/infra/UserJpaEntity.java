@@ -37,11 +37,18 @@ public class UserJpaEntity {
     @Column(name = "terms_agreed_at")
     private LocalDateTime termsAgreedAt;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    @Column(name = "token_version", nullable = false)
+    private int tokenVersion;
+
     protected UserJpaEntity() {
     }
 
     public User toDomain() {
-        return User.of(id, provider, email, nickname, profileImageUrl, fcmToken, createdAt, termsAgreedAt);
+        return User.of(id, provider, email, nickname, profileImageUrl, fcmToken,
+                createdAt, termsAgreedAt, deletedAt, tokenVersion);
     }
 
     public static UserJpaEntity fromDomain(User user) {
@@ -54,6 +61,8 @@ public class UserJpaEntity {
         entity.fcmToken = user.getFcmToken();
         entity.createdAt = user.getCreatedAt();
         entity.termsAgreedAt = user.getTermsAgreedAt();
+        entity.deletedAt = user.getDeletedAt();
+        entity.tokenVersion = user.getTokenVersion();
         return entity;
     }
 }

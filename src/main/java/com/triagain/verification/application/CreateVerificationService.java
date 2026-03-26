@@ -11,6 +11,7 @@ import com.triagain.verification.port.out.ChallengePort.ChallengeInfo;
 import com.triagain.verification.port.out.CrewPort;
 import com.triagain.verification.port.out.StoragePort;
 import com.triagain.verification.port.out.UploadSessionRepositoryPort;
+import com.triagain.verification.port.out.VerificationNotificationPort;
 import com.triagain.verification.port.out.VerificationRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,7 @@ public class CreateVerificationService implements CreateVerificationUseCase {
     private final ChallengePort challengePort;
     private final CrewPort crewPort;
     private final StoragePort storagePort;
+    private final VerificationNotificationPort verificationNotificationPort;
 
     @Override
     @Transactional
@@ -84,7 +86,11 @@ public class CreateVerificationService implements CreateVerificationUseCase {
 
         Verification saved = verificationRepositoryPort.save(verification);
 
-        challengePort.recordCompletion(challenge.id());
+        boolean challengeSuccess = challengePort.recordCompletion(challenge.id());
+        if (challengeSuccess) {
+            verificationNotificationPort.sendChallengeSuccessNotification(
+                    command.userId(), challenge.crewId());
+        }
 
         return new VerificationResult(
                 saved.getId(),

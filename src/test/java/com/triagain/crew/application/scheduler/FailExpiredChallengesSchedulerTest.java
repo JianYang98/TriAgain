@@ -5,6 +5,8 @@ import com.triagain.common.scheduler.ChunkProcessor;
 import com.triagain.crew.domain.model.Challenge;
 import com.triagain.crew.domain.vo.ChallengeStatus;
 import com.triagain.crew.port.out.ChallengeRepositoryPort;
+import com.triagain.crew.port.out.CrewRepositoryPort;
+import com.triagain.crew.port.out.NotificationPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -37,6 +39,12 @@ class FailExpiredChallengesSchedulerTest {
     private ChallengeRepositoryPort challengeRepositoryPort;
 
     @Mock
+    private CrewRepositoryPort crewRepositoryPort;
+
+    @Mock
+    private NotificationPort notificationPort;
+
+    @Mock
     private TransactionTemplate transactionTemplate;
 
     @Mock
@@ -52,7 +60,7 @@ class FailExpiredChallengesSchedulerTest {
         }).when(transactionTemplate).executeWithoutResult(any());
 
         ChunkProcessor chunkProcessor = new ChunkProcessor(transactionTemplate);
-        scheduler = new FailExpiredChallengesScheduler(challengeRepositoryPort, chunkProcessor, deadLetterRepositoryPort);
+        scheduler = new FailExpiredChallengesScheduler(challengeRepositoryPort, crewRepositoryPort, notificationPort, chunkProcessor, deadLetterRepositoryPort);
     }
 
     @Test

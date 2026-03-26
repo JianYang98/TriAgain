@@ -22,4 +22,12 @@ public interface VerificationJpaRepository extends JpaRepository<VerificationJpa
             @Param("crewId") String crewId,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
+
+    /** 오늘 인증 완료한 크루 ID 배치 조회 — N+1 방지 */
+    @Query("SELECT DISTINCT v.crewId FROM VerificationJpaEntity v " +
+           "WHERE v.userId = :userId AND v.crewId IN :crewIds AND v.targetDate = :targetDate")
+    List<String> findVerifiedCrewIds(
+            @Param("userId") String userId,
+            @Param("crewIds") List<String> crewIds,
+            @Param("targetDate") LocalDate targetDate);
 }

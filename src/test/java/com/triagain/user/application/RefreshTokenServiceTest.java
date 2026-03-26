@@ -38,13 +38,14 @@ class RefreshTokenServiceTest {
     void refresh_validToken_returnsNewAccessToken() {
         // Given
         String refreshToken = "valid-refresh-token";
-        User user = User.of("user-123", "KAKAO", "test@test.com", "테스트", null, null, LocalDateTime.now(), LocalDateTime.now());
+        User user = User.of("user-123", "KAKAO", "test@test.com", "테스트", null, null, LocalDateTime.now(), LocalDateTime.now(), null, 0);
 
         given(jwtProvider.validateToken(refreshToken)).willReturn(true);
         given(jwtProvider.getTokenType(refreshToken)).willReturn("refresh");
         given(jwtProvider.getUserId(refreshToken)).willReturn("user-123");
+        given(jwtProvider.getTokenVersion(refreshToken)).willReturn(0);
         given(userRepositoryPort.findById("user-123")).willReturn(Optional.of(user));
-        given(jwtProvider.createAccessToken("user-123", "KAKAO")).willReturn("new-access-token");
+        given(jwtProvider.createAccessToken("user-123", "KAKAO", 0)).willReturn("new-access-token");
         given(jwtProvider.getAccessTokenExpirationSeconds()).willReturn(1800L);
 
         // When

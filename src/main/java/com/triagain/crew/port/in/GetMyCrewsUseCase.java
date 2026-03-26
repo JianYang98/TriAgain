@@ -27,7 +27,8 @@ public interface GetMyCrewsUseCase {
             LocalDate endDate,
             LocalDateTime createdAt,
             CrewCategory category,
-            CrewVisibility visibility
+            CrewVisibility visibility,
+            boolean todayVerified
     ) {
     }
 }

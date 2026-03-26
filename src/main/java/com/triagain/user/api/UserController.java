@@ -5,6 +5,7 @@ import com.triagain.common.response.ApiResponse;
 import com.triagain.user.port.in.GetUserUseCase;
 import com.triagain.user.port.in.UpdateFcmTokenUseCase;
 import com.triagain.user.port.in.UpdateUserProfileUseCase;
+import com.triagain.user.port.in.WithdrawUserUseCase;
 import com.triagain.user.port.in.UpdateUserProfileUseCase.UpdateProfileCommand;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -12,6 +13,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,6 +28,7 @@ public class UserController {
     private final GetUserUseCase getUserUseCase;
     private final UpdateUserProfileUseCase updateUserProfileUseCase;
     private final UpdateFcmTokenUseCase updateFcmTokenUseCase;
+    private final WithdrawUserUseCase withdrawUserUseCase;
 
     /** 내 프로필 조회 — 마이페이지에서 사용 */
     @GetMapping("/me")
@@ -43,6 +46,13 @@ public class UserController {
         UpdateProfileCommand command = new UpdateProfileCommand(userId, request.nickname(), null);
         UpdateUserProfileUseCase.UpdateProfileResult result = updateUserProfileUseCase.updateProfile(command);
         return ResponseEntity.ok(ApiResponse.ok(MyProfileResponse.from(result)));
+    }
+
+    /** 회원탈퇴 — 개인정보 초기화 + 크루 멤버십 정리 + 토큰 무효화 */
+    @DeleteMapping("/me")
+    public ResponseEntity<ApiResponse<Void>> withdraw(@AuthenticatedUser String userId) {
+        withdrawUserUseCase.withdraw(userId);
+        return ResponseEntity.ok(ApiResponse.ok());
     }
 
     /** FCM 토큰 등록/갱신 — 앱 실행 시 클라이언트가 호출 */

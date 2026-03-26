@@ -122,9 +122,11 @@
 | FCM 토큰 관리 | PATCH /users/me/fcm-token으로 등록/갱신, nullable |
 | 인앱 알림 | 목록 조회 (페이지네이션), 안 읽은 수, 읽음 처리 |
 | 장애 격리 | TransactionTemplate 개별 트랜잭션 — 한 건 실패해도 나머지 계속 발송 |
-| 알림 타입 | CREW_STARTED, REMINDER (추후 VERIFICATION_APPROVED 등 확장) |
+| 알림 타입 | CREW_STARTED, REMINDER, CHALLENGE_SUCCESS, CHALLENGE_FAILED (추후 VERIFICATION_APPROVED 등 확장) |
 | 메시지 템플릿 | 랜덤 메시지 선택, {crewName} 플레이스홀더 치환 |
 | 발송 방식 | 인앱 알림 저장 → FCM 푸시 (best-effort, 실패해도 인앱은 유지) |
+| 챌린지 성공 알림 | SUCCESS 시 인앱 알림 + FCM 발송 (인증 완료 시점) |
+| 챌린지 실패 알림 | FAILED 시 인앱 알림 + FCM 발송 (스케줄러에서 실패 처리 시점) |
 
 ### 1.12 회원가입/로그인
 
@@ -165,6 +167,18 @@
 **기존 크루 처리 (마이그레이션):**
 - `category = null` (nullable — 기존 크루는 카테고리 미지정)
 - `visibility = PRIVATE` (기존 크루는 검색에 노출되지 않음)
+
+### 1.14 회원탈퇴
+
+| 항목 | 내용 |
+|------|------|
+| 리더 + 다른 멤버 있음 | 탈퇴 거부 (U011) — 먼저 크루를 삭제하거나 리더를 위임해야 함 |
+| 리더 + 혼자 | 크루 + 연관 데이터(crew_members, challenges, verifications) 하드 삭제 후 탈퇴 |
+| MEMBER | 크루에서 제거 후 탈퇴 |
+| 개인정보 초기화 | 닉네임 → "탈퇴한 사용자", email/profileImageUrl/fcmToken → null |
+| 토큰 무효화 | tokenVersion 증가로 기존 accessToken/refreshToken 즉시 무효화 |
+| 재가입 | 동일 소셜 계정으로 재가입 가능 (탈퇴 계정 재활성화, deleted_at → null) |
+| 탈퇴 기록 | deleted_at에 탈퇴 일시 기록 (null이면 활성 사용자) |
 
 ---
 
