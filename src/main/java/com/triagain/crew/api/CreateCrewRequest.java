@@ -13,8 +13,8 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 
 public record CreateCrewRequest(
-        @NotBlank String name,
-        @NotBlank String goal,
+        @NotBlank @Size(max = 50) String name,
+        @NotBlank @Size(max = 500) String goal,
         @NotBlank @Size(max = 50) String verificationContent,
         @NotNull VerificationType verificationType,
         @Min(1) @Max(10) int maxMembers,

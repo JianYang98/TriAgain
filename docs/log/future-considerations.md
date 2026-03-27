@@ -6,6 +6,16 @@
 
 ---
 
+### [2026-03-27] BC 경계 위반 리팩토링 (D-C1, D-C2)
+
+- 현재 상태:
+  - D-C1: UserCrewMembershipAdapter (User Context)가 Crew Context의 JPA 인프라를 직접 import
+  - D-C2: NotificationAdapter, VerificationNotificationAdapter가 Support Context의 Notification 도메인 모델을 직접 생성
+- 필요 시점: Phase 2 또는 마이크로서비스 분리 시
+- 이유: 모노리스 단일 배포이므로 Phase 1에서는 실질적 문제 없음. 리팩토링 범위가 크고 기능 변경 없으므로 별도 PR로 분리
+
+---
+
 ### [2026-03-27] 부하 테스트 우선순위
 
 - 현재 상태: Phase 1 (500명, TPS 50 목표), 부하 테스트 미실시

@@ -263,6 +263,52 @@ class CreateVerificationServiceTest {
     }
 
     @Test
+    @DisplayName("recordCompletion이 true이면 챌린지 성공 알림이 발송된다")
+    void createVerification_challengeSuccess_sendsNotification() {
+        // Given
+        ChallengeInfo challenge = challengeInfo();
+        CreateVerificationCommand command = new CreateVerificationCommand(
+                USER_ID, null, CREW_ID, null, "텍스트 인증");
+
+        given(challengePort.findOrCreateActiveChallenge(USER_ID, CREW_ID)).willReturn(challenge);
+        given(crewPort.getVerificationType(CREW_ID)).willReturn("TEXT");
+        given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
+                .willReturn(false);
+        given(verificationRepositoryPort.save(any(Verification.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+        given(challengePort.recordCompletion(CHALLENGE_ID)).willReturn(true);
+
+        // When
+        createVerificationService.createVerification(command);
+
+        // Then — 챌린지 성공 알림 발송 확인
+        verify(verificationNotificationPort).sendChallengeSuccessNotification(USER_ID, CREW_ID);
+    }
+
+    @Test
+    @DisplayName("recordCompletion이 false이면 챌린지 성공 알림이 발송되지 않는다")
+    void createVerification_challengeNotComplete_noNotification() {
+        // Given
+        ChallengeInfo challenge = challengeInfo();
+        CreateVerificationCommand command = new CreateVerificationCommand(
+                USER_ID, null, CREW_ID, null, "텍스트 인증");
+
+        given(challengePort.findOrCreateActiveChallenge(USER_ID, CREW_ID)).willReturn(challenge);
+        given(crewPort.getVerificationType(CREW_ID)).willReturn("TEXT");
+        given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
+                .willReturn(false);
+        given(verificationRepositoryPort.save(any(Verification.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+        given(challengePort.recordCompletion(CHALLENGE_ID)).willReturn(false);
+
+        // When
+        createVerificationService.createVerification(command);
+
+        // Then — 챌린지 성공 알림 미발송 확인
+        verify(verificationNotificationPort, never()).sendChallengeSuccessNotification(any(), any());
+    }
+
+    @Test
     @DisplayName("challengeId+crewId로 인증 시 비회원이면 CREW_ACCESS_DENIED + findChallengeById 미호출")
     void createVerification_challengeIdAndCrewId_nonMember_blocksBeforeChallenge() {
         // Given

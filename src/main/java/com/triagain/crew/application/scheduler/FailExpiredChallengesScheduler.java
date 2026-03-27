@@ -17,7 +17,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -54,12 +53,9 @@ public class FailExpiredChallengesScheduler {
     private void processExpired(List<Challenge> expired) {
         if (expired.isEmpty()) return;
 
-        List<Challenge> successfullyFailed = new ArrayList<>();
-
         ChunkProcessingResult<Challenge> result = chunkProcessor.execute(expired, CHUNK_SIZE, challenge -> {
             challenge.fail();
             challengeRepositoryPort.save(challenge);
-            successfullyFailed.add(challenge);
         }, stale -> challengeRepositoryPort.findById(stale.getId()).orElseThrow());
 
         for (FailedItem<Challenge> failed : result.failedItems()) {
@@ -70,8 +66,8 @@ public class FailExpiredChallengesScheduler {
             ));
         }
 
-        // 실패 처리 성공 건에 대해 알림 발송
-        sendFailedNotifications(successfullyFailed);
+        // 실패 처리 성공 건에 대해 알림 발송 — ChunkProcessor가 수집한 안전한 리스트 사용
+        sendFailedNotifications(result.successItems());
 
         log.info("챌린지 실패 처리: 전체 {}건, 성공 {}건, 실패 {}건",
                 expired.size(), result.successCount(), result.failedCount());

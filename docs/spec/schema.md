@@ -149,7 +149,7 @@ erDiagram
 
     dead_letters {
         varchar(36) id PK
-        varchar(30) task_type "CHALLENGE_FAIL / CREW_ACTIVATE / CREW_COMPLETE / SESSION_EXPIRE"
+        varchar(30) task_type "CHALLENGE_FAIL / CREW_ACTIVATE / CREW_COMPLETE / SESSION_EXPIRE / CREW_START_NOTIFICATION / REMINDER / CHALLENGE_NOTIFICATION"
         varchar(36) target_id "실패 대상 엔티티 ID"
         text error_message "nullable"
         varchar(20) status "PENDING / RESOLVED / ABANDONED"
@@ -286,6 +286,9 @@ erDiagram
 | CREW_ACTIVATE | 크루 활성화 (RECRUITING → ACTIVE) |
 | CREW_COMPLETE | 크루 종료 (ACTIVE → COMPLETED) |
 | SESSION_EXPIRE | 업로드 세션 만료 (PENDING → EXPIRED) |
+| CREW_START_NOTIFICATION | 크루 시작 알림 |
+| REMINDER | 미인증 리마인더 알림 |
+| CHALLENGE_NOTIFICATION | 챌린지 성공/실패 알림 |
 
 ### notifications.type
 | 값 | 의미 |

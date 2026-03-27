@@ -402,7 +402,7 @@ Circuit OPEN 시 단계별 기능 축소 전략.
 | retry_count | 0 (생성 시) |
 | max_retries | 3 (기본값) |
 | next_retry_at | 생성 시각 + 10분 |
-| task_type | CHALLENGE_FAIL, CREW_ACTIVATE, CREW_COMPLETE, SESSION_EXPIRE, CREW_START_NOTIFICATION, REMINDER |
+| task_type | CHALLENGE_FAIL, CREW_ACTIVATE, CREW_COMPLETE, SESSION_EXPIRE, CREW_START_NOTIFICATION, REMINDER, CHALLENGE_NOTIFICATION |
 
 #### 상태 전이 규칙
 

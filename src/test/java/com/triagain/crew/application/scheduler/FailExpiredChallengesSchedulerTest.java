@@ -59,6 +59,11 @@ class FailExpiredChallengesSchedulerTest {
             return null;
         }).when(transactionTemplate).executeWithoutResult(any());
 
+        lenient().doAnswer(invocation -> {
+            org.springframework.transaction.support.TransactionCallback<?> callback = invocation.getArgument(0);
+            return callback.doInTransaction(null);
+        }).when(transactionTemplate).execute(any());
+
         ChunkProcessor chunkProcessor = new ChunkProcessor(transactionTemplate);
         scheduler = new FailExpiredChallengesScheduler(challengeRepositoryPort, crewRepositoryPort, notificationPort, chunkProcessor, deadLetterRepositoryPort);
     }
