@@ -33,7 +33,13 @@ public class RefreshTokenService implements RefreshTokenUseCase {
         User user = userRepositoryPort.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        String accessToken = jwtProvider.createAccessToken(user.getId(), user.getProvider());
+        // tokenVersion 검증 — 탈퇴/로그아웃 후 refresh 시도 차단
+        int tokenVersion = jwtProvider.getTokenVersion(command.refreshToken());
+        if (tokenVersion != user.getTokenVersion()) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        String accessToken = jwtProvider.createAccessToken(user.getId(), user.getProvider(), user.getTokenVersion());
 
         return new RefreshResult(accessToken, jwtProvider.getAccessTokenExpirationSeconds());
     }

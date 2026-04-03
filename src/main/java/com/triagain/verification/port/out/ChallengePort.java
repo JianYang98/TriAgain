@@ -9,7 +9,8 @@ public interface ChallengePort {
 
     Optional<ChallengeInfo> findChallengeById(String challengeId);
 
-    void recordCompletion(String challengeId);
+    /** 인증 완료 기록 — 챌린지 SUCCESS 시 true 반환 */
+    boolean recordCompletion(String challengeId);
 
     /** 유저의 활성 챌린지 조회 — 피드 myProgress 표시에 사용 */
     Optional<ActiveChallengeInfo> findActiveByUserIdAndCrewId(String userId, String crewId);

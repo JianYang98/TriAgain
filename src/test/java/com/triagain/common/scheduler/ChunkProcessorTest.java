@@ -7,6 +7,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
@@ -33,6 +34,11 @@ class ChunkProcessorTest {
             return null;
         }).when(transactionTemplate).executeWithoutResult(any());
 
+        lenient().doAnswer(invocation -> {
+            TransactionCallback<?> callback = invocation.getArgument(0);
+            return callback.doInTransaction(null);
+        }).when(transactionTemplate).execute(any());
+
         chunkProcessor = new ChunkProcessor(transactionTemplate);
     }
 
@@ -45,22 +51,10 @@ class ChunkProcessorTest {
 
         AtomicInteger chunkCallCount = new AtomicInteger(0);
 
-        // 청크 트랜잭션: 첫 호출에서 item1 상태 변이 후 item2에서 예외 발생
-        // per-item retry: rehydrator가 fresh 인스턴스 반환 → 정상 처리
+        // 청크 트랜잭션(executeWithoutResult): 양쪽 아이템 모두 PENDING이므로 청크 성공
         doAnswer(invocation -> {
             Consumer<TransactionStatus> action = invocation.getArgument(0);
-            int call = chunkCallCount.incrementAndGet();
-            if (call == 1) {
-                // 첫 번째 호출: 청크 트랜잭션 — 예외 발생시켜 롤백 시뮬레이션
-                try {
-                    action.accept(null);
-                } catch (Exception e) {
-                    throw e;
-                }
-            } else {
-                // 이후 호출: per-item retry
-                action.accept(null);
-            }
+            action.accept(null);
             return null;
         }).when(transactionTemplate).executeWithoutResult(any());
 
@@ -83,10 +77,12 @@ class ChunkProcessorTest {
                 stale -> new MutableItem(stale.id, "PENDING")  // DB에서 fresh 조회 시뮬레이션
         );
 
-        // Then — rehydrator 덕분에 2건 모두 성공
+        // Then — rehydrator 덕분에 2건 모두 성공, successItems는 fresh 인스턴스
         assertThat(result.successCount()).isEqualTo(2);
         assertThat(result.failedCount()).isEqualTo(0);
         assertThat(result.failedItems()).isEmpty();
+        assertThat(result.successItems()).hasSize(2);
+        assertThat(result.successItems()).allSatisfy(item -> assertThat(item.status).isEqualTo("DONE"));
     }
 
     @Test
@@ -127,6 +123,7 @@ class ChunkProcessorTest {
         // Then — per-item retry에서 동일 인스턴스로 재시도
         assertThat(result.successCount()).isEqualTo(1);
         assertThat(result.failedCount()).isEqualTo(0);
+        assertThat(result.successItems()).hasSize(1);
     }
 
     @Test
@@ -148,6 +145,7 @@ class ChunkProcessorTest {
         // Then
         assertThat(result.successCount()).isEqualTo(3);
         assertThat(rehydrateCount.get()).isEqualTo(0);
+        assertThat(result.successItems()).containsExactly("a", "b", "c");
     }
 
     // --- 테스트 헬퍼 ---

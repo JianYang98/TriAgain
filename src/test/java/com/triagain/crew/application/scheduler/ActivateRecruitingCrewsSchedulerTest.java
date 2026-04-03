@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 
+import org.springframework.transaction.support.TransactionCallback;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
@@ -54,6 +56,11 @@ class ActivateRecruitingCrewsSchedulerTest {
             invocation.<Consumer<TransactionStatus>>getArgument(0).accept(null);
             return null;
         }).when(transactionTemplate).executeWithoutResult(any());
+
+        lenient().doAnswer(invocation -> {
+            TransactionCallback<?> callback = invocation.getArgument(0);
+            return callback.doInTransaction(null);
+        }).when(transactionTemplate).execute(any());
 
         ChunkProcessor chunkProcessor = new ChunkProcessor(transactionTemplate);
         scheduler = new ActivateRecruitingCrewsScheduler(crewRepositoryPort, chunkProcessor, deadLetterRepositoryPort);

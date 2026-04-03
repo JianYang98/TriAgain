@@ -20,10 +20,10 @@ public class ChallengeClientAdapter implements ChallengePort {
                 .map(this::toChallengeInfo);
     }
 
-    /** 챌린지 완료 기록 — ChallengeQueryUseCase에 위임 */
+    /** 챌린지 완료 기록 — SUCCESS 시 true 반환 */
     @Override
-    public void recordCompletion(String challengeId) {
-        challengeQueryUseCase.recordCompletion(challengeId);
+    public boolean recordCompletion(String challengeId) {
+        return challengeQueryUseCase.recordCompletion(challengeId);
     }
 
     /** 유저의 활성 챌린지 조회 — IN_PROGRESS 상태만 반환 */

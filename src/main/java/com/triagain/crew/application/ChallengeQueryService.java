@@ -38,14 +38,15 @@ public class ChallengeQueryService implements ChallengeQueryUseCase {
         return toDto(challenge);
     }
 
-    /** 인증 완료 기록 — completedDays 증가 + 저장 */
+    /** 인증 완료 기록 — completedDays 증가 + 저장, SUCCESS 시 true 반환 */
     @Override
     @Transactional
-    public void recordCompletion(String challengeId) {
+    public boolean recordCompletion(String challengeId) {
         Challenge challenge = challengeRepositoryPort.findById(challengeId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHALLENGE_NOT_FOUND));
         challenge.recordCompletion();
         challengeRepositoryPort.save(challenge);
+        return challenge.getStatus() == ChallengeStatus.SUCCESS;
     }
 
     @Override

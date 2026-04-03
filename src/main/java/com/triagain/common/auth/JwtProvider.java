@@ -28,25 +28,27 @@ public class JwtProvider {
         this.refreshTokenExpiration = refreshTokenExpiration;
     }
 
-    /** Access Token 생성 — userId + provider 클레임 포함 */
-    public String createAccessToken(String userId, String provider) {
+    /** Access Token 생성 — userId + provider + tokenVersion 클레임 포함 */
+    public String createAccessToken(String userId, String provider, int tokenVersion) {
         Date now = new Date();
         return Jwts.builder()
                 .subject(userId)
                 .claim("provider", provider)
                 .claim("type", "access")
+                .claim("tv", tokenVersion)
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + accessTokenExpiration))
                 .signWith(secretKey)
                 .compact();
     }
 
-    /** Refresh Token 생성 — userId만 포함 */
-    public String createRefreshToken(String userId) {
+    /** Refresh Token 생성 — userId + tokenVersion 클레임 포함 */
+    public String createRefreshToken(String userId, int tokenVersion) {
         Date now = new Date();
         return Jwts.builder()
                 .subject(userId)
                 .claim("type", "refresh")
+                .claim("tv", tokenVersion)
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + refreshTokenExpiration))
                 .signWith(secretKey)
@@ -71,6 +73,12 @@ public class JwtProvider {
     /** 토큰에서 type 클레임 추출 — access/refresh 구분 */
     public String getTokenType(String token) {
         return parseClaims(token).get("type", String.class);
+    }
+
+    /** 토큰에서 tokenVersion 추출 — 토큰 무효화 검증용 */
+    public int getTokenVersion(String token) {
+        Integer tv = parseClaims(token).get("tv", Integer.class);
+        return tv != null ? tv : 0;
     }
 
     /** Access Token 만료 시간(초) — 클라이언트 캐시용 */

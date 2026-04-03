@@ -27,6 +27,7 @@ public class ChunkProcessor {
     public <T> ChunkProcessingResult<T> execute(List<T> items, int chunkSize, Consumer<T> processor, Function<T, T> rehydrator) {
         int successCount = 0;
         List<FailedItem<T>> failedItems = new ArrayList<>();
+        List<T> successItems = new ArrayList<>();
 
         for (int i = 0; i < items.size(); i += chunkSize) {
             List<T> chunk = items.subList(i, Math.min(i + chunkSize, items.size()));
@@ -38,16 +39,19 @@ public class ChunkProcessor {
                     }
                 });
                 successCount += chunk.size();
+                successItems.addAll(chunk);
             } catch (Exception e) {
                 log.warn("청크 처리 실패 ({}~{}건), 건별 분리 재시도", i, i + chunk.size() - 1, e);
 
                 for (T item : chunk) {
                     try {
-                        transactionTemplate.executeWithoutResult(status -> {
-                            T fresh = rehydrator.apply(item);
-                            processor.accept(fresh);
+                        T fresh = transactionTemplate.execute(status -> {
+                            T rehydrated = rehydrator.apply(item);
+                            processor.accept(rehydrated);
+                            return rehydrated;
                         });
                         successCount++;
+                        successItems.add(fresh);
                     } catch (Exception itemEx) {
                         failedItems.add(new FailedItem<>(item, itemEx.getMessage()));
                     }
@@ -55,6 +59,6 @@ public class ChunkProcessor {
             }
         }
 
-        return new ChunkProcessingResult<>(successCount, failedItems.size(), failedItems);
+        return new ChunkProcessingResult<>(successCount, failedItems.size(), failedItems, successItems);
     }
 }

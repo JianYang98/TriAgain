@@ -55,6 +55,12 @@ public class CrewMembershipQueryService implements CrewMembershipQueryUseCase {
     }
 
     @Override
+    public String getCrewName(String crewId) {
+        Crew crew = findCrewOrThrow(crewId);
+        return crew.getName();
+    }
+
+    @Override
     public Optional<String> findCrewLeaderId(String crewId) {
         Crew crew = findCrewOrThrow(crewId);
         return crew.getMembers().stream()

@@ -8,6 +8,9 @@ import com.triagain.common.scheduler.ChunkProcessor;
 import com.triagain.common.scheduler.FailedItem;
 import com.triagain.crew.domain.model.Challenge;
 import com.triagain.crew.port.out.ChallengeRepositoryPort;
+import com.triagain.crew.port.out.CrewRepositoryPort;
+import com.triagain.crew.port.out.NotificationPort;
+import com.triagain.crew.port.out.NotificationPort.ChallengeFailedInfo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -15,6 +18,8 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -25,6 +30,8 @@ public class FailExpiredChallengesScheduler {
     private static final int WINDOW_MINUTES = 5;
 
     private final ChallengeRepositoryPort challengeRepositoryPort;
+    private final CrewRepositoryPort crewRepositoryPort;
+    private final NotificationPort notificationPort;
     private final ChunkProcessor chunkProcessor;
     private final DeadLetterRepositoryPort deadLetterRepositoryPort;
 
@@ -59,7 +66,38 @@ public class FailExpiredChallengesScheduler {
             ));
         }
 
+        // 실패 처리 성공 건에 대해 알림 발송 — ChunkProcessor가 수집한 안전한 리스트 사용
+        sendFailedNotifications(result.successItems());
+
         log.info("챌린지 실패 처리: 전체 {}건, 성공 {}건, 실패 {}건",
                 expired.size(), result.successCount(), result.failedCount());
+    }
+
+    /** 챌린지 실패 알림 발송 — 크루명 배치 조회 후 NotificationPort에 위임 */
+    private void sendFailedNotifications(List<Challenge> failedChallenges) {
+        if (failedChallenges.isEmpty()) return;
+
+        try {
+            List<String> crewIds = failedChallenges.stream()
+                    .map(Challenge::getCrewId)
+                    .distinct()
+                    .toList();
+
+            Map<String, String> crewNameMap = crewRepositoryPort.findAllByIds(crewIds).stream()
+                    .collect(Collectors.toMap(
+                            com.triagain.crew.domain.model.Crew::getId,
+                            com.triagain.crew.domain.model.Crew::getName
+                    ));
+
+            List<ChallengeFailedInfo> infos = failedChallenges.stream()
+                    .map(c -> new ChallengeFailedInfo(
+                            c.getUserId(), c.getCrewId(),
+                            crewNameMap.getOrDefault(c.getCrewId(), "크루")))
+                    .toList();
+
+            notificationPort.sendChallengeFailedNotifications(infos);
+        } catch (Exception e) {
+            log.warn("챌린지 실패 알림 발송 중 오류: {}", e.getMessage());
+        }
     }
 }

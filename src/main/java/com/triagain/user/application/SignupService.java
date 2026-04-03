@@ -39,8 +39,22 @@ public class SignupService implements SignupUseCase {
         }
 
 
-        if (userRepositoryPort.findById(kakaoUser.id()).isPresent()) {
-            throw new BusinessException(ErrorCode.USER_ALREADY_EXISTS);
+        // 탈퇴 계정 재활성화 확인
+        var existingUser = userRepositoryPort.findByIdIncludingWithdrawn(kakaoUser.id());
+        if (existingUser.isPresent()) {
+            User existing = existingUser.get();
+            if (!existing.isWithdrawn()) {
+                throw new BusinessException(ErrorCode.USER_ALREADY_EXISTS);
+            }
+            // 탈퇴 계정 재활성화
+            existing.reactivate(trimmedNickname, kakaoUser.email(), kakaoUser.profileImageUrl());
+            User saved = userRepositoryPort.save(existing);
+            String accessToken = jwtProvider.createAccessToken(saved.getId(), saved.getProvider(), saved.getTokenVersion());
+            String refreshToken = jwtProvider.createRefreshToken(saved.getId(), saved.getTokenVersion());
+            return new SignupResult(
+                    accessToken, refreshToken, jwtProvider.getAccessTokenExpirationSeconds(),
+                    new SignupUserInfo(saved.getId(), saved.getNickname(), saved.getProfileImageUrl())
+            );
         }
 
         User user = User.createFromKakao(
@@ -48,8 +62,8 @@ public class SignupService implements SignupUseCase {
         );
         User saved = userRepositoryPort.save(user);
 
-        String accessToken = jwtProvider.createAccessToken(saved.getId(), saved.getProvider());
-        String refreshToken = jwtProvider.createRefreshToken(saved.getId());
+        String accessToken = jwtProvider.createAccessToken(saved.getId(), saved.getProvider(), saved.getTokenVersion());
+        String refreshToken = jwtProvider.createRefreshToken(saved.getId(), saved.getTokenVersion());
 
         // 회원가입된 유저 + 생성된 토큰  리턴
         return new SignupResult(
