@@ -1,3 +1,4 @@
+
 spring:
   profiles:
     active: local
@@ -27,7 +28,7 @@ jwt:
   refresh-token-expiration: 1209600000
 
 apple:
-  client-id: ${APPLE_CLIENT_ID:com.triagain.app}
+  client-id: ${APPLE_CLIENT_ID:com.triagain.triagain}
 
 crew:
   max-duration-days: 30
