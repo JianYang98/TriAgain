@@ -18,6 +18,9 @@ public interface CrewMembershipQueryUseCase {
     /** 크루 인증방식 조회 — PHOTO/TEXT 반환 */
     String getVerificationType(String crewId);
 
+    /** 크루 이름 조회 — 알림 메시지에 사용 */
+    String getCrewName(String crewId);
+
     /** 크루 기간 조회 — 인증 날짜 범위 제한에 사용 */
     CrewPeriodDto getCrewPeriod(String crewId);
 

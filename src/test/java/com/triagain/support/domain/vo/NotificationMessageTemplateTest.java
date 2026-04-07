@@ -79,4 +79,32 @@ class NotificationMessageTemplateTest {
         assertThat(message.title()).isNotNull().isNotEmpty();
         assertThat(message.content()).isNotNull().isNotEmpty();
     }
+
+    @DisplayName("챌린지 성공 메시지 title/content가 non-null이고 title에 크루명이 포함된다")
+    @Test
+    void challengeSuccess_titleContainsCrewNameAndContentNotNull() {
+        // given
+        String crewName = "운동 크루";
+
+        // when
+        NotificationMessage message = NotificationMessageTemplate.challengeSuccess(crewName);
+
+        // then
+        assertThat(message.title()).isNotNull().contains(crewName);
+        assertThat(message.content()).isNotNull().isNotEmpty();
+    }
+
+    @DisplayName("챌린지 실패 메시지 title/content가 non-null이고 title에 크루명이 포함된다")
+    @Test
+    void challengeFailed_titleContainsCrewNameAndContentNotNull() {
+        // given
+        String crewName = "독서 모임";
+
+        // when
+        NotificationMessage message = NotificationMessageTemplate.challengeFailed(crewName);
+
+        // then
+        assertThat(message.title()).isNotNull().contains(crewName);
+        assertThat(message.content()).isNotNull().isNotEmpty();
+    }
 }

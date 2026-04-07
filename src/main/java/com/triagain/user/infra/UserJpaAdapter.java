@@ -20,9 +20,10 @@ public class UserJpaAdapter implements UserRepositoryPort {
         return userJpaRepository.save(entity).toDomain();
     }
 
+    /** 활성 유저만 조회 — deleted_at IS NULL */
     @Override
     public Optional<User> findById(String id) {
-        return userJpaRepository.findById(id)
+        return userJpaRepository.findByIdAndDeletedAtIsNull(id)
                 .map(UserJpaEntity::toDomain);
     }
 
@@ -31,5 +32,17 @@ public class UserJpaAdapter implements UserRepositoryPort {
         return userJpaRepository.findAllById(ids).stream()
                 .map(UserJpaEntity::toDomain)
                 .toList();
+    }
+
+    @Override
+    public Optional<Integer> findTokenVersionById(String userId) {
+        return userJpaRepository.findTokenVersionById(userId);
+    }
+
+    /** 탈퇴 포함 전체 유저 조회 — 재가입 시 기존 탈퇴 계정 확인용 */
+    @Override
+    public Optional<User> findByIdIncludingWithdrawn(String id) {
+        return userJpaRepository.findById(id)
+                .map(UserJpaEntity::toDomain);
     }
 }

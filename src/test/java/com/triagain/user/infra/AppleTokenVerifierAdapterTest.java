@@ -37,7 +37,7 @@ class AppleTokenVerifierAdapterTest {
     private RestClient.RequestHeadersUriSpec<?> requestHeadersUriSpec;
     private RestClient.ResponseSpec responseSpec;
 
-    private static final String CLIENT_ID = "com.triagain.app";
+    private static final String CLIENT_ID = "com.triagain.triagain";
     private static final String KID = "test-kid-123";
 
     @BeforeEach

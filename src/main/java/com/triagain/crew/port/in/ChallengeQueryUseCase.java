@@ -15,8 +15,8 @@ public interface ChallengeQueryUseCase {
     /** 활성 챌린지 조회 또는 자동 생성 — 인증 시 챌린지가 없으면 생성 */
     ChallengeInfoDto findOrCreateActive(String userId, String crewId);
 
-    /** 인증 완료 기록 — completedDays 증가 + SUCCESS 전환 */
-    void recordCompletion(String challengeId);
+    /** 인증 완료 기록 — completedDays 증가 + SUCCESS 전환, SUCCESS 시 true 반환 */
+    boolean recordCompletion(String challengeId);
 
     /** 유저의 SUCCESS 챌린지 수 조회 — 작심삼일 달성 횟수 */
     int countCompletedChallenges(String userId, String crewId);

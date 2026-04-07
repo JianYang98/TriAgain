@@ -35,15 +35,17 @@ class ChallengeClientAdapterTest {
     }
 
     @Test
-    @DisplayName("recordCompletion 정상 — ChallengeQueryUseCase에 위임")
+    @DisplayName("recordCompletion 정상 — ChallengeQueryUseCase에 위임, boolean 반환")
     void recordCompletion_success() {
         // Given
         String challengeId = "CHAL-001";
+        given(challengeQueryUseCase.recordCompletion(challengeId)).willReturn(true);
 
         // When
-        challengeClientAdapter.recordCompletion(challengeId);
+        boolean result = challengeClientAdapter.recordCompletion(challengeId);
 
         // Then
+        assertThat(result).isTrue();
         verify(challengeQueryUseCase).recordCompletion(challengeId);
     }
 

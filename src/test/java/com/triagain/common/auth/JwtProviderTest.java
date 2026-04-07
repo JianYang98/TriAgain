@@ -30,7 +30,7 @@ class JwtProviderTest {
         String provider = "KAKAO";
 
         // When
-        String token = jwtProvider.createAccessToken(userId, provider);
+        String token = jwtProvider.createAccessToken(userId, provider, 0);
 
         // Then
         assertThat(jwtProvider.getUserId(token)).isEqualTo(userId);
@@ -44,7 +44,7 @@ class JwtProviderTest {
         String userId = "user-456";
 
         // When
-        String token = jwtProvider.createRefreshToken(userId);
+        String token = jwtProvider.createRefreshToken(userId, 0);
 
         // Then
         assertThat(jwtProvider.getUserId(token)).isEqualTo(userId);
@@ -58,7 +58,7 @@ class JwtProviderTest {
         JwtProvider expiredProvider = new JwtProvider(SECRET, 0L, 0L);
 
         // When
-        String token = expiredProvider.createAccessToken("user-123", "KAKAO");
+        String token = expiredProvider.createAccessToken("user-123", "KAKAO", 0);
 
         // Then
         assertThat(jwtProvider.validateToken(token)).isFalse();
@@ -68,7 +68,7 @@ class JwtProviderTest {
     @DisplayName("위조된 토큰은 유효하지 않다")
     void tamperedToken_isInvalid() {
         // Given
-        String token = jwtProvider.createAccessToken("user-123", "KAKAO");
+        String token = jwtProvider.createAccessToken("user-123", "KAKAO", 0);
         String tampered = token + "tampered";
 
         // Then
@@ -82,7 +82,7 @@ class JwtProviderTest {
         String otherSecret = Base64.getEncoder().encodeToString(
                 "other-secret-key-that-is-different-from-original-key".getBytes());
         JwtProvider otherProvider = new JwtProvider(otherSecret, ACCESS_TOKEN_EXPIRATION, REFRESH_TOKEN_EXPIRATION);
-        String token = otherProvider.createAccessToken("user-123", "KAKAO");
+        String token = otherProvider.createAccessToken("user-123", "KAKAO", 0);
 
         // Then
         assertThat(jwtProvider.validateToken(token)).isFalse();
@@ -92,7 +92,7 @@ class JwtProviderTest {
     @DisplayName("Access Token의 type 클레임은 'access'이다")
     void accessToken_hasAccessType() {
         // Given
-        String token = jwtProvider.createAccessToken("user-123", "KAKAO");
+        String token = jwtProvider.createAccessToken("user-123", "KAKAO", 0);
 
         // When
         String type = jwtProvider.getTokenType(token);
@@ -105,7 +105,7 @@ class JwtProviderTest {
     @DisplayName("Refresh Token의 type 클레임은 'refresh'이다")
     void refreshToken_hasRefreshType() {
         // Given
-        String token = jwtProvider.createRefreshToken("user-123");
+        String token = jwtProvider.createRefreshToken("user-123", 0);
 
         // When
         String type = jwtProvider.getTokenType(token);

@@ -32,8 +32,10 @@ erDiagram
         string nickname
         string profile_image_url
         string fcm_token "nullable — FCM 디바이스 토큰, VARCHAR(500)"
+        int token_version "NOT NULL DEFAULT 0 — 토큰 무효화용 버전"
         timestamp created_at
         timestamp terms_agreed_at "nullable — 약관 동의 일시 (NULL이면 기존 유저)"
+        timestamp deleted_at "nullable — 탈퇴 일시 (null이면 활성)"
     }
     
     crews {
@@ -143,6 +145,19 @@ erDiagram
         varchar status "PENDING / COMPLETED / EXPIRED"
         timestamp requested_at
         timestamp created_at
+    }
+
+    dead_letters {
+        varchar(36) id PK
+        varchar(30) task_type "CHALLENGE_FAIL / CREW_ACTIVATE / CREW_COMPLETE / SESSION_EXPIRE / CREW_START_NOTIFICATION / REMINDER / CHALLENGE_NOTIFICATION"
+        varchar(36) target_id "실패 대상 엔티티 ID"
+        text error_message "nullable"
+        varchar(20) status "PENDING / RESOLVED / ABANDONED"
+        int retry_count "DEFAULT 0"
+        int max_retries "DEFAULT 3"
+        timestamp next_retry_at "nullable"
+        timestamp created_at
+        timestamp updated_at
     }
 ```
 
@@ -257,6 +272,24 @@ erDiagram
 | REJECT | 반려 (부적절) |
 | PENDING | 보류 (추가 검토 필요) |
 
+### dead_letters.status
+| 값 | 의미 |
+|----|------|
+| PENDING | 재시도 대기 |
+| RESOLVED | 수동 해결 완료 |
+| ABANDONED | 재시도 포기 (max_retries 초과) |
+
+### dead_letters.task_type
+| 값 | 의미 |
+|----|------|
+| CHALLENGE_FAIL | 챌린지 실패 처리 |
+| CREW_ACTIVATE | 크루 활성화 (RECRUITING → ACTIVE) |
+| CREW_COMPLETE | 크루 종료 (ACTIVE → COMPLETED) |
+| SESSION_EXPIRE | 업로드 세션 만료 (PENDING → EXPIRED) |
+| CREW_START_NOTIFICATION | 크루 시작 알림 |
+| REMINDER | 미인증 리마인더 알림 |
+| CHALLENGE_NOTIFICATION | 챌린지 성공/실패 알림 |
+
 ### notifications.type
 | 값 | 의미 |
 |----|------|
@@ -348,6 +381,18 @@ ON notifications (user_id, created_at DESC);
 -- 알림 생성일 기준 조회/정리 (Flyway V11)
 CREATE INDEX idx_notification_created
 ON notifications (created_at);
+```
+
+### Dead Letter 관련 인덱스
+
+```sql
+-- 재시도 대상 조회 (상태 + 다음 재시도 시각 기준, Flyway V14)
+CREATE INDEX idx_dead_letters_status_retry
+ON dead_letters (status, next_retry_at);
+
+-- 작업 유형별 조회 (Flyway V14)
+CREATE INDEX idx_dead_letters_task_type
+ON dead_letters (task_type);
 ```
 
 ## 5. 설계 트레이드오프: Verification의 3-way FK

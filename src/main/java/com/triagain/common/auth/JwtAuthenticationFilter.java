@@ -1,5 +1,6 @@
 package com.triagain.common.auth;
 
+import com.triagain.user.port.out.UserRepositoryPort;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,6 +13,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
@@ -21,6 +23,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtProvider jwtProvider;
+    private final UserRepositoryPort userRepositoryPort;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -33,12 +36,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // 2) 토큰 검증 + userId 추출
             String userId = jwtProvider.getUserId(token);
 
-            // 3) SecurityContext에 저장
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(userId, null, List.of());
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+            // 3) tokenVersion 검증 — DB와 불일치 시 인증 거부 (탈퇴/로그아웃 즉시 반영)
+            int tokenVersion = jwtProvider.getTokenVersion(token);
+            Optional<Integer> dbVersion = userRepositoryPort.findTokenVersionById(userId);
+            if (dbVersion.isPresent() && dbVersion.get() == tokenVersion) {
+                // 4) SecurityContext에 저장
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(userId, null, List.of());
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            }
         }
-        // 4) 다음 필터로 넘기기
+        // 5) 다음 필터로 넘기기
         filterChain.doFilter(request, response);
     }
 

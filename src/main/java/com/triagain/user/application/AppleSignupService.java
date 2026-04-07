@@ -37,15 +37,28 @@ public class AppleSignupService implements AppleSignupUseCase {
             throw new BusinessException(ErrorCode.APPLE_ID_MISMATCH);
         }
 
-        if (userRepositoryPort.findById(appleUser.sub()).isPresent()) {
-            throw new BusinessException(ErrorCode.USER_ALREADY_EXISTS);
+        // 탈퇴 계정 재활성화 확인
+        var existingUser = userRepositoryPort.findByIdIncludingWithdrawn(appleUser.sub());
+        if (existingUser.isPresent()) {
+            User existing = existingUser.get();
+            if (!existing.isWithdrawn()) {
+                throw new BusinessException(ErrorCode.USER_ALREADY_EXISTS);
+            }
+            existing.reactivate(trimmedNickname, appleUser.email(), null);
+            User saved = userRepositoryPort.save(existing);
+            String accessToken = jwtProvider.createAccessToken(saved.getId(), saved.getProvider(), saved.getTokenVersion());
+            String refreshToken = jwtProvider.createRefreshToken(saved.getId(), saved.getTokenVersion());
+            return new AppleSignupResult(
+                    accessToken, refreshToken, jwtProvider.getAccessTokenExpirationSeconds(),
+                    new AppleSignupUserInfo(saved.getId(), saved.getNickname(), saved.getProfileImageUrl())
+            );
         }
 
         User user = User.createFromApple(appleUser.sub(), trimmedNickname, appleUser.email());
         User saved = userRepositoryPort.save(user);
 
-        String accessToken = jwtProvider.createAccessToken(saved.getId(), saved.getProvider());
-        String refreshToken = jwtProvider.createRefreshToken(saved.getId());
+        String accessToken = jwtProvider.createAccessToken(saved.getId(), saved.getProvider(), saved.getTokenVersion());
+        String refreshToken = jwtProvider.createRefreshToken(saved.getId(), saved.getTokenVersion());
 
         return new AppleSignupResult(
                 accessToken,

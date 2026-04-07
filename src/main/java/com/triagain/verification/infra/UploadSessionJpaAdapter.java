@@ -48,4 +48,13 @@ public class UploadSessionJpaAdapter implements UploadSessionRepositoryPort {
                 .map(UploadSessionJpaEntity::toDomain)
                 .toList();
     }
+
+    @Override
+    public List<UploadSession> findPendingSessionsInWindow(LocalDateTime from, LocalDateTime to) {
+        return uploadSessionJpaRepository
+                .findByStatusAndCreatedAtBetween(UploadSessionStatus.PENDING, from, to)
+                .stream()
+                .map(UploadSessionJpaEntity::toDomain)
+                .toList();
+    }
 }

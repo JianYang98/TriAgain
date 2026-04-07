@@ -6,6 +6,59 @@
 
 ---
 
+### [2026-03-27] BC 경계 위반 리팩토링 (D-C1, D-C2)
+
+- 현재 상태:
+  - D-C1: UserCrewMembershipAdapter (User Context)가 Crew Context의 JPA 인프라를 직접 import
+  - D-C2: NotificationAdapter, VerificationNotificationAdapter가 Support Context의 Notification 도메인 모델을 직접 생성
+- 필요 시점: Phase 2 또는 마이크로서비스 분리 시
+- 이유: 모노리스 단일 배포이므로 Phase 1에서는 실질적 문제 없음. 리팩토링 범위가 크고 기능 변경 없으므로 별도 PR로 분리
+
+---
+
+### [2026-03-27] 부하 테스트 우선순위
+
+- 현재 상태: Phase 1 (500명, TPS 50 목표), 부하 테스트 미실시
+- 필요 시점: Phase 1 출시 전 (1~3번), 데이터 축적 후 (4~5번)
+- 우선순위:
+
+| 순위 | 대상 | 핵심 이유 | 테스트 시나리오 |
+|------|------|----------|---------------|
+| 1 | `POST /verifications` | 트랜잭션 내 FCM 동기 호출 + 마감 직전 피크 몰림 | 마감 10분 전, 50명 동시 인증 |
+| 2 | `GET /crews/{crewId}/feed` | 가장 빈번한 조회 + 복합 데이터 조합 | 100명이 각자 다른 크루 피드 동시 조회 |
+| 3 | `POST /crews/join` | 비관적 락 경합 + 정원 동시성 정합성 검증 | 정원 10명 크루에 20명 동시 가입 → 10명만 성공? |
+| 4 | 리마인더 스케줄러 (`findReminderTargets`) | 4-way JOIN (crews→crew_members→verifications→users) 풀스캔 가능성 | 크루 100개 × 멤버 10명 상태에서 쿼리 시간 측정 |
+| 5 | `GET /crews` | 홈 화면 진입 = 전원 동시 호출 + todayVerified 배치 쿼리 검증 | 200명 동시 홈 화면 진입 |
+
+---
+
+### [2026-03-27] CreateVerificationService — 트랜잭션 내 FCM 동기 호출 분리
+
+- 현재 상태: `CreateVerificationService.createVerification()`이 `@Transactional` 내부에서 `verificationNotificationPort.sendChallengeSuccessNotification()`을 동기 호출. 이 안에서 FCM 발송(`FcmAdapter.send()`)이 `@Retryable` 3회(1s+2s+4s, 최악 7초) 블로킹되며, 그동안 DB 커넥션을 점유
+- 필요 시점: Phase 2 또는 트래픽 증가 시
+- 이유: CLAUDE.md Anti-Pattern "트랜잭션 안에 외부 API 호출 금지" 위반. Phase 1(TPS 50, 500명)에서는 커넥션 풀 고갈 가능성 낮으나, 트래픽 증가 시 인증 API 응답 지연 + 커넥션 풀 고갈 위험. 해결 방향: (1) `@Async` + 스레드 풀로 FCM 비동기 분리, (2) 트랜잭션 커밋 후 이벤트(`@TransactionalEventListener`)로 FCM 발송, (3) 스케줄러처럼 트랜잭션 밖으로 FCM 호출 이동
+- 검증: 리팩토링 전후로 `POST /verifications` 부하 테스트 실시하여 응답 시간 및 커넥션 풀 사용량 비교 필요
+
+---
+
+### [2026-03-27] BC 경계 위반 리팩토링 (D-C1, D-C2)
+
+- 현재 상태:
+  - D-C1: UserCrewMembershipAdapter (User Context)가 Crew Context의 JPA 인프라를 직접 import
+  - D-C2: NotificationAdapter, VerificationNotificationAdapter가 Support Context의 Notification 도메인 모델을 직접 생성
+- 필요 시점: Phase 2 또는 마이크로서비스 분리 시
+- 이유: 모노리스 단일 배포이므로 Phase 1에서는 실질적 문제 없음. 리팩토링 범위가 크고 기능 변경 없으므로 별도 PR로 분리
+
+---
+
+### [2026-03-25] Dead Letter 자동 재시도 스케줄러
+
+- 현재 상태: DeadLetter 도메인에 `retry()`, `resolve()` 메서드 구현 완료. DeadLetterRepositoryPort에 `findRetryable()` 메서드 존재. 재시도 스케줄러는 미구현
+- 필요 시점: Phase 2 또는 Dead Letter 건수 증가 시
+- 이유: Phase 1에서는 실패 건이 적고 수동 모니터링으로 충분. 지수 백오프(10분, 20분, 40분) 로직은 도메인에 구현되어 있어, 스케줄러만 추가하면 됨
+
+---
+
 ### [2026-03-20] 알림 테이블 정리 스케줄러 (30일 삭제)
 
 - 현재 상태: NotificationRepositoryPort.deleteOlderThan() 메서드는 구현 완료, 호출하는 스케줄러는 미구현
