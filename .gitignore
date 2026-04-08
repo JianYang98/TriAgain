@@ -70,3 +70,6 @@ lambda/Ldeploy.sh
 
 #키
 triagain-admin_accessKeys.csv
+
+#p8
+*.p8

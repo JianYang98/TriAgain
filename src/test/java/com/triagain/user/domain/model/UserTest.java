@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class UserTest {
 
     private User createActiveUser() {
-        return User.of("user-1", "KAKAO", "test@test.com", "테스트", null, null,
+        return User.of("user-1", "KAKAO", "test@test.com", "테스트", null, null, null,
                 LocalDateTime.now(), LocalDateTime.now(), null, 0);
     }
 
@@ -19,7 +19,7 @@ class UserTest {
     void withdraw_clearsPersonalInfo() {
         // Given
         User user = User.of("user-1", "KAKAO", "test@test.com", "테스트",
-                "https://img.com/profile.jpg", "fcm-token-123",
+                "https://img.com/profile.jpg", "fcm-token-123", null,
                 LocalDateTime.now(), LocalDateTime.now(), null, 0);
 
         // When
@@ -53,7 +53,7 @@ class UserTest {
         // Given
         User activeUser = createActiveUser();
         User withdrawnUser = User.of("user-2", "KAKAO", null, "탈퇴한 사용자",
-                null, null, LocalDateTime.now(), LocalDateTime.now(),
+                null, null, null, LocalDateTime.now(), LocalDateTime.now(),
                 LocalDateTime.now(), 1);
 
         // When & Then
@@ -66,12 +66,12 @@ class UserTest {
     void reactivate_clearsDeletedAtAndIncrementsTokenVersion() {
         // Given
         User user = User.of("user-1", "KAKAO", null, "탈퇴한 사용자",
-                null, null, LocalDateTime.now(), LocalDateTime.now(),
+                null, null, null, LocalDateTime.now(), LocalDateTime.now(),
                 LocalDateTime.now(), 1);
         int originalTokenVersion = user.getTokenVersion();
 
         // When
-        user.reactivate("새닉네임", "new@test.com", "https://img.com/new.jpg");
+        user.reactivate("새닉네임", "new@test.com", "https://img.com/new.jpg", null);
 
         // Then
         assertThat(user.getDeletedAt()).isNull();

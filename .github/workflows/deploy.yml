@@ -106,11 +106,14 @@ jobs:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_KEY_ID: ${{ secrets.APPLE_KEY_ID }}
+          APPLE_PRIVATE_KEY: ${{ secrets.APPLE_PRIVATE_KEY }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: DB_URL,DB_USERNAME,DB_PASSWORD,JWT_SECRET,INTERNAL_API_KEY
+          envs: DB_URL,DB_USERNAME,DB_PASSWORD,JWT_SECRET,INTERNAL_API_KEY,APPLE_TEAM_ID,APPLE_KEY_ID,APPLE_PRIVATE_KEY
           script: |
             # Firebase 키 파일 존재 체크
             FIREBASE_KEY_PATH="/home/ec2-user/triagain/config/triagain-firebase-service-account.json"
@@ -133,6 +136,9 @@ jobs:
               -e "DB_PASSWORD=$DB_PASSWORD" \
               -e "JWT_SECRET=$JWT_SECRET" \
               -e "INTERNAL_API_KEY=$INTERNAL_API_KEY" \
+              -e "APPLE_TEAM_ID=$APPLE_TEAM_ID" \
+              -e "APPLE_KEY_ID=$APPLE_KEY_ID" \
+              -e "APPLE_PRIVATE_KEY=$APPLE_PRIVATE_KEY" \
               -e "FIREBASE_ENABLED=$FIREBASE_ENABLED" \
               -e "FIREBASE_SERVICE_ACCOUNT_PATH=/opt/triagain/config/triagain-firebase-service-account.json" \
               devjian/triagain:latest

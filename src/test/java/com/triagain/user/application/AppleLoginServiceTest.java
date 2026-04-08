@@ -6,6 +6,7 @@ import com.triagain.common.exception.ErrorCode;
 import com.triagain.user.domain.model.User;
 import com.triagain.user.port.in.AppleLoginUseCase.AppleLoginCommand;
 import com.triagain.user.port.in.AppleLoginUseCase.AppleLoginResult;
+import com.triagain.user.port.out.AppleOAuthPort;
 import com.triagain.user.port.out.AppleTokenVerifierPort;
 import com.triagain.user.port.out.AppleTokenVerifierPort.AppleUserInfo;
 import com.triagain.user.port.out.UserRepositoryPort;
@@ -13,9 +14,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -32,11 +33,13 @@ import static org.mockito.Mockito.verify;
 @ExtendWith(MockitoExtension.class)
 class AppleLoginServiceTest {
 
-    @InjectMocks
     private AppleLoginService appleLoginService;
 
     @Mock
     private AppleTokenVerifierPort appleTokenVerifierPort;
+
+    @Mock
+    private AppleOAuthPort appleOAuthPort;
 
     @Mock
     private UserRepositoryPort userRepositoryPort;
@@ -49,6 +52,9 @@ class AppleLoginServiceTest {
     @BeforeEach
     void setUp() {
         appleUserInfo = new AppleUserInfo("001234.abcdef.5678", "apple@privaterelay.appleid.com");
+        appleLoginService = new AppleLoginService(
+                appleTokenVerifierPort, appleOAuthPort, userRepositoryPort, jwtProvider, null);
+        ReflectionTestUtils.setField(appleLoginService, "self", appleLoginService);
     }
 
     @Test
@@ -56,7 +62,7 @@ class AppleLoginServiceTest {
     void login_existingUser_returnsJwt() {
         // Given
         User existingUser = User.of("001234.abcdef.5678", "APPLE", "apple@test.com", "애플유저", null,
-                null, LocalDateTime.now(), LocalDateTime.now(), null, 0);
+                null, null, LocalDateTime.now(), LocalDateTime.now(), null, 0);
         given(appleTokenVerifierPort.verify("valid-token")).willReturn(appleUserInfo);
         given(userRepositoryPort.findById("001234.abcdef.5678")).willReturn(Optional.of(existingUser));
         given(userRepositoryPort.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
@@ -65,7 +71,7 @@ class AppleLoginServiceTest {
         given(jwtProvider.getAccessTokenExpirationSeconds()).willReturn(1800L);
 
         // When
-        AppleLoginResult result = appleLoginService.login(new AppleLoginCommand("valid-token"));
+        AppleLoginResult result = appleLoginService.login(new AppleLoginCommand("valid-token", null));
 
         // Then
         assertThat(result.isNewUser()).isFalse();
@@ -84,7 +90,7 @@ class AppleLoginServiceTest {
         given(userRepositoryPort.findById("001234.abcdef.5678")).willReturn(Optional.empty());
 
         // When
-        AppleLoginResult result = appleLoginService.login(new AppleLoginCommand("valid-token"));
+        AppleLoginResult result = appleLoginService.login(new AppleLoginCommand("valid-token", null));
 
         // Then
         assertThat(result.isNewUser()).isTrue();
@@ -101,7 +107,7 @@ class AppleLoginServiceTest {
     void login_existingUser_emailChanged_saves() {
         // Given
         User existingUser = User.of("001234.abcdef.5678", "APPLE", "old@test.com", "애플유저", null,
-                null, LocalDateTime.now(), LocalDateTime.now(), null, 0);
+                null, null, LocalDateTime.now(), LocalDateTime.now(), null, 0);
         given(appleTokenVerifierPort.verify("valid-token")).willReturn(appleUserInfo);
         given(userRepositoryPort.findById("001234.abcdef.5678")).willReturn(Optional.of(existingUser));
         given(userRepositoryPort.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
@@ -110,7 +116,7 @@ class AppleLoginServiceTest {
         given(jwtProvider.getAccessTokenExpirationSeconds()).willReturn(1800L);
 
         // When
-        appleLoginService.login(new AppleLoginCommand("valid-token"));
+        appleLoginService.login(new AppleLoginCommand("valid-token", null));
 
         // Then
         verify(userRepositoryPort).save(any(User.class));
@@ -122,7 +128,7 @@ class AppleLoginServiceTest {
         // Given
         AppleUserInfo noEmailUser = new AppleUserInfo("001234.abcdef.5678", null);
         User existingUser = User.of("001234.abcdef.5678", "APPLE", "existing@test.com", "애플유저", null,
-                null, LocalDateTime.now(), LocalDateTime.now(), null, 0);
+                null, null, LocalDateTime.now(), LocalDateTime.now(), null, 0);
         given(appleTokenVerifierPort.verify("valid-token")).willReturn(noEmailUser);
         given(userRepositoryPort.findById("001234.abcdef.5678")).willReturn(Optional.of(existingUser));
         given(jwtProvider.createAccessToken(anyString(), anyString(), anyInt())).willReturn("access-token");
@@ -130,7 +136,7 @@ class AppleLoginServiceTest {
         given(jwtProvider.getAccessTokenExpirationSeconds()).willReturn(1800L);
 
         // When
-        AppleLoginResult result = appleLoginService.login(new AppleLoginCommand("valid-token"));
+        AppleLoginResult result = appleLoginService.login(new AppleLoginCommand("valid-token", null));
 
         // Then
         assertThat(result.isNewUser()).isFalse();
@@ -145,7 +151,7 @@ class AppleLoginServiceTest {
                 .willThrow(new BusinessException(ErrorCode.INVALID_APPLE_TOKEN));
 
         // When & Then
-        assertThatThrownBy(() -> appleLoginService.login(new AppleLoginCommand("invalid-token")))
+        assertThatThrownBy(() -> appleLoginService.login(new AppleLoginCommand("invalid-token", null)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.INVALID_APPLE_TOKEN);
     }
@@ -158,8 +164,116 @@ class AppleLoginServiceTest {
                 .willThrow(new BusinessException(ErrorCode.APPLE_TOKEN_VERIFICATION_ERROR));
 
         // When & Then
-        assertThatThrownBy(() -> appleLoginService.login(new AppleLoginCommand("any-token")))
+        assertThatThrownBy(() -> appleLoginService.login(new AppleLoginCommand("any-token", null)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.APPLE_TOKEN_VERIFICATION_ERROR);
+    }
+
+    @Test
+    @DisplayName("기존 유저 + authorizationCode 있음 → backfill 호출되어 refresh_token이 갱신된다")
+    void login_existingUser_withAuthorizationCode_backfillsRefreshToken() {
+        // Given — email은 stub과 동일하게 (syncAppleProfile false)
+        User existingUser = User.of("001234.abcdef.5678", "APPLE", "apple@privaterelay.appleid.com", "애플유저", null,
+                null, null, LocalDateTime.now(), LocalDateTime.now(), null, 0);
+        given(appleTokenVerifierPort.verify("valid-token")).willReturn(appleUserInfo);
+        given(userRepositoryPort.findById("001234.abcdef.5678")).willReturn(Optional.of(existingUser));
+        given(appleOAuthPort.isEnabled()).willReturn(true);
+        given(appleOAuthPort.exchangeAuthorizationCode("auth-code")).willReturn("backfilled-refresh-token");
+        given(userRepositoryPort.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
+        given(jwtProvider.createAccessToken(anyString(), anyString(), anyInt())).willReturn("access-token");
+        given(jwtProvider.createRefreshToken(anyString(), anyInt())).willReturn("refresh-token");
+        given(jwtProvider.getAccessTokenExpirationSeconds()).willReturn(1800L);
+
+        // When
+        AppleLoginResult result = appleLoginService.login(new AppleLoginCommand("valid-token", "auth-code"));
+
+        // Then
+        assertThat(result.isNewUser()).isFalse();
+        verify(appleOAuthPort).exchangeAuthorizationCode("auth-code");
+        assertThat(existingUser.getAppleRefreshToken()).isEqualTo("backfilled-refresh-token");
+        verify(userRepositoryPort).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("기존 유저 + authorizationCode 있음 + backfill 예외 → graceful 처리, 로그인 정상 진행")
+    void login_existingUser_backfillThrows_loginStillSucceeds() {
+        // Given
+        User existingUser = User.of("001234.abcdef.5678", "APPLE", "apple@privaterelay.appleid.com", "애플유저", null,
+                null, "old-refresh-token", LocalDateTime.now(), LocalDateTime.now(), null, 0);
+        given(appleTokenVerifierPort.verify("valid-token")).willReturn(appleUserInfo);
+        given(userRepositoryPort.findById("001234.abcdef.5678")).willReturn(Optional.of(existingUser));
+        given(appleOAuthPort.isEnabled()).willReturn(true);
+        given(appleOAuthPort.exchangeAuthorizationCode("bad-code"))
+                .willThrow(new BusinessException(ErrorCode.APPLE_TOKEN_EXCHANGE_ERROR));
+        given(jwtProvider.createAccessToken(anyString(), anyString(), anyInt())).willReturn("access-token");
+        given(jwtProvider.createRefreshToken(anyString(), anyInt())).willReturn("refresh-token");
+        given(jwtProvider.getAccessTokenExpirationSeconds()).willReturn(1800L);
+
+        // When
+        AppleLoginResult result = appleLoginService.login(new AppleLoginCommand("valid-token", "bad-code"));
+
+        // Then
+        assertThat(result.isNewUser()).isFalse();
+        assertThat(result.accessToken()).isEqualTo("access-token");
+        // 기존 refresh_token 그대로 유지 (backfill 실패가 기존 값을 덮어쓰지 않음)
+        assertThat(existingUser.getAppleRefreshToken()).isEqualTo("old-refresh-token");
+    }
+
+    @Test
+    @DisplayName("기존 유저 + authorizationCode 없음 → backfill 호출 안 함")
+    void login_existingUser_withoutAuthorizationCode_skipsBackfill() {
+        // Given — email은 stub과 동일하게 (syncAppleProfile false)
+        User existingUser = User.of("001234.abcdef.5678", "APPLE", "apple@privaterelay.appleid.com", "애플유저", null,
+                null, null, LocalDateTime.now(), LocalDateTime.now(), null, 0);
+        given(appleTokenVerifierPort.verify("valid-token")).willReturn(appleUserInfo);
+        given(userRepositoryPort.findById("001234.abcdef.5678")).willReturn(Optional.of(existingUser));
+        given(jwtProvider.createAccessToken(anyString(), anyString(), anyInt())).willReturn("access-token");
+        given(jwtProvider.createRefreshToken(anyString(), anyInt())).willReturn("refresh-token");
+        given(jwtProvider.getAccessTokenExpirationSeconds()).willReturn(1800L);
+
+        // When
+        AppleLoginResult result = appleLoginService.login(new AppleLoginCommand("valid-token", null));
+
+        // Then
+        assertThat(result.isNewUser()).isFalse();
+        verify(appleOAuthPort, never()).exchangeAuthorizationCode(any());
+    }
+
+    @Test
+    @DisplayName("신규 유저 + authorizationCode 있음 → 신규 유저 응답만 (backfill은 회원가입 시점 처리)")
+    void login_newUser_withAuthorizationCode_skipsBackfill() {
+        // Given
+        given(appleTokenVerifierPort.verify("valid-token")).willReturn(appleUserInfo);
+        given(userRepositoryPort.findById("001234.abcdef.5678")).willReturn(Optional.empty());
+
+        // When
+        AppleLoginResult result = appleLoginService.login(new AppleLoginCommand("valid-token", "auth-code"));
+
+        // Then
+        assertThat(result.isNewUser()).isTrue();
+        assertThat(result.appleId()).isEqualTo("001234.abcdef.5678");
+        verify(appleOAuthPort, never()).exchangeAuthorizationCode(any());
+        verify(userRepositoryPort, never()).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("Apple OAuth disabled 상태 → backfill 호출 안 함, 로그인은 정상")
+    void login_appleOAuthDisabled_skipsBackfill() {
+        // Given — email은 stub과 동일하게 (syncAppleProfile false)
+        User existingUser = User.of("001234.abcdef.5678", "APPLE", "apple@privaterelay.appleid.com", "애플유저", null,
+                null, null, LocalDateTime.now(), LocalDateTime.now(), null, 0);
+        given(appleTokenVerifierPort.verify("valid-token")).willReturn(appleUserInfo);
+        given(userRepositoryPort.findById("001234.abcdef.5678")).willReturn(Optional.of(existingUser));
+        given(appleOAuthPort.isEnabled()).willReturn(false);
+        given(jwtProvider.createAccessToken(anyString(), anyString(), anyInt())).willReturn("access-token");
+        given(jwtProvider.createRefreshToken(anyString(), anyInt())).willReturn("refresh-token");
+        given(jwtProvider.getAccessTokenExpirationSeconds()).willReturn(1800L);
+
+        // When
+        AppleLoginResult result = appleLoginService.login(new AppleLoginCommand("valid-token", "auth-code"));
+
+        // Then
+        assertThat(result.isNewUser()).isFalse();
+        verify(appleOAuthPort, never()).exchangeAuthorizationCode(any());
     }
 }

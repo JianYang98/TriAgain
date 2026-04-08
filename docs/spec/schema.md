@@ -32,6 +32,7 @@ erDiagram
         string nickname
         string profile_image_url
         string fcm_token "nullable — FCM 디바이스 토큰, VARCHAR(500)"
+        string apple_refresh_token "nullable — Apple OAuth refresh_token, VARCHAR(500). APPLE provider만 저장. 탈퇴 시 Apple revoke 호출에 사용"
         int token_version "NOT NULL DEFAULT 0 — 토큰 무효화용 버전"
         timestamp created_at
         timestamp terms_agreed_at "nullable — 약관 동의 일시 (NULL이면 기존 유저)"
