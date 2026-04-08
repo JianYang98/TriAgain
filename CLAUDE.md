@@ -178,6 +178,14 @@ com.triagain.verification
 - `model/`: Entity, Aggregate Root
 - `vo/`: Value Object (도메인 개념을 타입으로 표현할 때 사용)
 
+### 작업 실행 규칙
+
+실행 순서: Phase A(문서 확정) → Phase B(구현) → Phase C(테스트)
+Phase A: 관련 문서(biz-logic.md, api-spec.md, schema.md 등)를 먼저 읽고 기존 포맷과 구조를 파악한 뒤 수정할 것
+Phase A 완료 후 사용자 검토를 받은 뒤에만 Phase B 진입
+Phase B 구현 중 문서에 없는 결정이 필요하면 멈추고 문서부터 갱신할 것
+
+
 ### 네이밍 규칙
 
 - 메서드: camelCase (`createVerification`, `findByCrewId`)

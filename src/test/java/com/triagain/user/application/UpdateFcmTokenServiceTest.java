@@ -34,7 +34,7 @@ class UpdateFcmTokenServiceTest {
     void updateFcmToken_success() {
         // given
         User user = User.of(USER_ID, "KAKAO", "test@test.com", "테스트유저",
-                null, null, null, null, null, 0);
+                null, null, null, null, null, null, 0);
         given(userRepositoryPort.findById(USER_ID)).willReturn(Optional.of(user));
 
         String newToken = "new-fcm-token-123";

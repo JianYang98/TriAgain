@@ -31,6 +31,9 @@ public class UserJpaEntity {
     @Column(name = "fcm_token", length = 500)
     private String fcmToken;
 
+    @Column(name = "apple_refresh_token", length = 500)
+    private String appleRefreshToken;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -47,7 +50,7 @@ public class UserJpaEntity {
     }
 
     public User toDomain() {
-        return User.of(id, provider, email, nickname, profileImageUrl, fcmToken,
+        return User.of(id, provider, email, nickname, profileImageUrl, fcmToken, appleRefreshToken,
                 createdAt, termsAgreedAt, deletedAt, tokenVersion);
     }
 
@@ -59,6 +62,7 @@ public class UserJpaEntity {
         entity.nickname = user.getNickname();
         entity.profileImageUrl = user.getProfileImageUrl();
         entity.fcmToken = user.getFcmToken();
+        entity.appleRefreshToken = user.getAppleRefreshToken();
         entity.createdAt = user.getCreatedAt();
         entity.termsAgreedAt = user.getTermsAgreedAt();
         entity.deletedAt = user.getDeletedAt();

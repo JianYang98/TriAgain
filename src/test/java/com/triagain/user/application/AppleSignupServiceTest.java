@@ -6,6 +6,7 @@ import com.triagain.common.exception.ErrorCode;
 import com.triagain.user.domain.model.User;
 import com.triagain.user.port.in.AppleSignupUseCase.AppleSignupCommand;
 import com.triagain.user.port.in.AppleSignupUseCase.AppleSignupResult;
+import com.triagain.user.port.out.AppleOAuthPort;
 import com.triagain.user.port.out.AppleTokenVerifierPort;
 import com.triagain.user.port.out.AppleTokenVerifierPort.AppleUserInfo;
 import com.triagain.user.port.out.UserRepositoryPort;
@@ -13,9 +14,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 
@@ -25,17 +26,20 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class AppleSignupServiceTest {
 
-    @InjectMocks
     private AppleSignupService appleSignupService;
 
     @Mock
     private AppleTokenVerifierPort appleTokenVerifierPort;
+
+    @Mock
+    private AppleOAuthPort appleOAuthPort;
 
     @Mock
     private UserRepositoryPort userRepositoryPort;
@@ -48,13 +52,17 @@ class AppleSignupServiceTest {
     @BeforeEach
     void setUp() {
         appleUserInfo = new AppleUserInfo("001234.abcdef.5678", "apple@privaterelay.appleid.com");
+        appleSignupService = new AppleSignupService(
+                appleTokenVerifierPort, appleOAuthPort, userRepositoryPort, jwtProvider, null);
+        ReflectionTestUtils.setField(appleSignupService, "self", appleSignupService);
     }
 
     @Test
-    @DisplayName("정상 회원가입 — 유저 생성 + JWT 발급")
+    @DisplayName("정상 회원가입 — authorizationCode → refresh_token 교환 후 유저 생성 + JWT 발급")
     void signup_success() {
         // Given
         given(appleTokenVerifierPort.verify("valid-token")).willReturn(appleUserInfo);
+        given(appleOAuthPort.exchangeAuthorizationCode("auth-code")).willReturn("apple-refresh-token-xyz");
         given(userRepositoryPort.findByIdIncludingWithdrawn("001234.abcdef.5678")).willReturn(Optional.empty());
         given(userRepositoryPort.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
         given(jwtProvider.createAccessToken(anyString(), anyString(), anyInt())).willReturn("access-token");
@@ -62,7 +70,7 @@ class AppleSignupServiceTest {
         given(jwtProvider.getAccessTokenExpirationSeconds()).willReturn(1800L);
 
         AppleSignupCommand command = new AppleSignupCommand(
-                "valid-token", "001234.abcdef.5678", "내닉네임", true);
+                "valid-token", "001234.abcdef.5678", "내닉네임", true, "auth-code");
 
         // When
         AppleSignupResult result = appleSignupService.signup(command);
@@ -74,7 +82,27 @@ class AppleSignupServiceTest {
         assertThat(result.user().id()).isEqualTo("001234.abcdef.5678");
         assertThat(result.user().nickname()).isEqualTo("내닉네임");
         assertThat(result.user().profileImageUrl()).isNull();
+        verify(appleOAuthPort).exchangeAuthorizationCode("auth-code");
         verify(userRepositoryPort).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("Apple authorizationCode 교환 실패 → APPLE_TOKEN_EXCHANGE_ERROR로 회원가입 차단")
+    void signup_authorizationCodeExchangeFails_throwsException() {
+        // Given
+        given(appleTokenVerifierPort.verify("valid-token")).willReturn(appleUserInfo);
+        willThrow(new BusinessException(ErrorCode.APPLE_TOKEN_EXCHANGE_ERROR))
+                .given(appleOAuthPort).exchangeAuthorizationCode("bad-code");
+
+        AppleSignupCommand command = new AppleSignupCommand(
+                "valid-token", "001234.abcdef.5678", "내닉네임", true, "bad-code");
+
+        // When & Then
+        assertThatThrownBy(() -> appleSignupService.signup(command))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.APPLE_TOKEN_EXCHANGE_ERROR);
+
+        verify(userRepositoryPort, never()).save(any(User.class));
     }
 
     @Test
@@ -82,7 +110,7 @@ class AppleSignupServiceTest {
     void signup_termsNotAgreed_throwsException() {
         // Given
         AppleSignupCommand command = new AppleSignupCommand(
-                "valid-token", "001234.abcdef.5678", "내닉네임", false);
+                "valid-token", "001234.abcdef.5678", "내닉네임", false, "auth-code");
 
         // When & Then
         assertThatThrownBy(() -> appleSignupService.signup(command))
@@ -100,11 +128,11 @@ class AppleSignupServiceTest {
         given(appleTokenVerifierPort.verify("valid-token")).willReturn(appleUserInfo);
         given(userRepositoryPort.findByIdIncludingWithdrawn("001234.abcdef.5678")).willReturn(
                 Optional.of(User.of("001234.abcdef.5678", "APPLE", "apple@test.com", "기존유저", null,
-                        null, java.time.LocalDateTime.now(), java.time.LocalDateTime.now(), null, 0))
+                        null, null, java.time.LocalDateTime.now(), java.time.LocalDateTime.now(), null, 0))
         );
 
         AppleSignupCommand command = new AppleSignupCommand(
-                "valid-token", "001234.abcdef.5678", "내닉네임", true);
+                "valid-token", "001234.abcdef.5678", "내닉네임", true, "auth-code");
 
         // When & Then
         assertThatThrownBy(() -> appleSignupService.signup(command))
@@ -121,7 +149,7 @@ class AppleSignupServiceTest {
         given(appleTokenVerifierPort.verify("valid-token")).willReturn(appleUserInfo);
 
         AppleSignupCommand command = new AppleSignupCommand(
-                "valid-token", "wrong-apple-id", "내닉네임", true);
+                "valid-token", "wrong-apple-id", "내닉네임", true, "auth-code");
 
         // When & Then
         assertThatThrownBy(() -> appleSignupService.signup(command))
@@ -139,7 +167,7 @@ class AppleSignupServiceTest {
                 .willThrow(new BusinessException(ErrorCode.INVALID_APPLE_TOKEN));
 
         AppleSignupCommand command = new AppleSignupCommand(
-                "invalid-token", "001234.abcdef.5678", "내닉네임", true);
+                "invalid-token", "001234.abcdef.5678", "내닉네임", true, "auth-code");
 
         // When & Then
         assertThatThrownBy(() -> appleSignupService.signup(command))
@@ -152,7 +180,7 @@ class AppleSignupServiceTest {
     void signup_nicknameTooShort_throwsException() {
         // Given
         AppleSignupCommand command = new AppleSignupCommand(
-                "valid-token", "001234.abcdef.5678", "가", true);
+                "valid-token", "001234.abcdef.5678", "가", true, "auth-code");
 
         // When & Then
         assertThatThrownBy(() -> appleSignupService.signup(command))
@@ -165,7 +193,7 @@ class AppleSignupServiceTest {
     void signup_nicknameBlank_throwsException() {
         // Given
         AppleSignupCommand command = new AppleSignupCommand(
-                "valid-token", "001234.abcdef.5678", "   ", true);
+                "valid-token", "001234.abcdef.5678", "   ", true, "auth-code");
 
         // When & Then
         assertThatThrownBy(() -> appleSignupService.signup(command))
@@ -185,7 +213,7 @@ class AppleSignupServiceTest {
         given(jwtProvider.getAccessTokenExpirationSeconds()).willReturn(1800L);
 
         AppleSignupCommand command = new AppleSignupCommand(
-                "valid-token", "001234.abcdef.5678", "  내닉네임  ", true);
+                "valid-token", "001234.abcdef.5678", "  내닉네임  ", true, "auth-code");
 
         // When
         AppleSignupResult result = appleSignupService.signup(command);
