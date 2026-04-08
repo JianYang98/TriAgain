@@ -1141,8 +1141,8 @@ Content-Type: application/json
 - `verificationContent`: (필수) 인증 내용 (최대 50자)
 - `verificationType`: (필수) 인증 방식 — `TEXT` / `PHOTO`
 - `maxMembers`: (필수) 최대 정원 (1~10)
-- `startDate`: (필수) 크루 시작일
-- `endDate`: (필수) 크루 종료일
+- `startDate`: (필수) 크루 시작일 (오늘+1 이후)
+- `endDate`: (필수) 크루 종료일 (시작일 + 최소 6일 = 최소 7일 기간 / 최대 `crew.max-duration-days`일, 기본 30일)
 - `allowLateJoin`: (선택) 중간 가입 허용 여부 (기본값 false)
 - `deadlineTime`: (선택) 일일 인증 마감 시간 (기본값 23:59:59)
 - `category`: (필수) 크루 카테고리 — `EXERCISE` / `STUDY` / `LIFESTYLE` / `SELF_DEV` / `ETC`
@@ -1174,6 +1174,14 @@ Content-Type: application/json
   "error": null
 }
 ```
+
+**에러 응답**
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 400 | CR011 | 시작일은 내일 이후여야 합니다. | startDate가 오늘 이전 |
+| 400 | CR012 | 종료일은 시작일 이후여야 합니다. | endDate ≤ startDate |
+| 400 | CR024 | 크루 기간은 최소 7일 이상이어야 합니다. | (endDate - startDate) < 6일 |
+| 400 | CR016 | 크루 기간은 최대 {N}일까지 가능합니다. | (endDate - startDate) > `crew.max-duration-days` |
 
 ---
 
