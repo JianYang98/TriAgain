@@ -6,6 +6,16 @@
 
 ---
 
+### [2026-04-09] DeadlinePolicy LocalTime 비교 → LocalDateTime/Clock 리팩토링
+
+- 현재 상태: `DeadlinePolicy.todayDeadline(LocalTime)`이 `LocalDate.now().atTime(time)`으로 오늘의 deadline을 만든다. `isWithinDeadline`은 LocalDateTime 비교지만 deadline 값 자체가 LocalTime에서 파생되어 자정 wrap에 취약하다. `LocalTime.now().minusMinutes(N)`으로 "과거 시각"을 만들려는 단위테스트가 자정 직후 00:00 ~ 00:1X 영역에서 wrap되어 어제 23:5X로 잘못 해석되고 비결정적으로 실패한다.
+- 영향 받은 테스트: `FindOrCreateActiveChallengeServiceTest.deadlineTimeExceeded_throws`, `CreateUploadSessionServiceTest.noActiveChallengeAfterCrewDeadline_throws` — BE-P1-2 PR에서 `Assumptions.assumeTrue` 가드로 임시 회피 (자정 ~ 00:15 사이엔 skip)
+- 필요 시점: Phase 2 또는 production 측에서 실제 자정 경계 버그가 보고되는 시점
+- 이유: production 코드가 deadline을 LocalTime → LocalDateTime으로 변환하는 순간 "오늘 날짜 + 그 시각"이라는 가정이 들어가는데, 자정 직후 호출 시 어제의 deadline을 오늘로 해석하거나 그 반대로 해석할 가능성이 있다. 해결 옵션: (1) deadline을 처음부터 LocalDateTime으로 들고 다닌다, (2) `Clock`을 DI해서 테스트에서 고정 시각 주입, (3) 도메인 정책을 "challenge.startDate + completedDays + deadlineTime"으로 상시 LocalDateTime 계산
+- 우선순위: 자정 직후 트래픽 거의 없는 Phase 1에서는 실서비스 영향 매우 낮음. 테스트만 임시 회피해두고 Phase 2에서 LocalDateTime 기반 리팩토링과 함께 처리
+
+---
+
 ### [2026-04-08] Apple revoke 후 트랜잭션 실패 시 정합성 트레이드오프
 
 - 현재 상태: `WithdrawUserService`가 트랜잭션 밖에서 Apple `/auth/revoke` 호출 후 트랜잭션 진입. revoke 성공 직후 `completeWithdraw()` 트랜잭션이 실패하면 → Apple 측은 revoke 완료 / DB는 active 상태로 inconsistency 발생
