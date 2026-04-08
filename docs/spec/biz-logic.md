@@ -199,7 +199,7 @@
 
 | 항목 | 내용 |
 |------|------|
-| 리더 + 다른 멤버 있음 | 탈퇴 거부 (U011) — 먼저 크루를 삭제하거나 리더를 위임해야 함 |
+| 리더 + 다른 멤버 있음 | **자동 위임** — `joined_at` 기준 가장 오래된 멤버에게 LEADER 역할 + `crews.creator_id`를 이관한 뒤 탈퇴자는 크루에서 제거. 위임 대상은 탈퇴자를 제외한 멤버 중에서 선정 |
 | 리더 + 혼자 | 크루 + 연관 데이터(crew_members, challenges, verifications) 하드 삭제 후 탈퇴 |
 | MEMBER | 크루에서 제거 후 탈퇴 |
 | 개인정보 초기화 | 닉네임 → "탈퇴한 사용자", email/profileImageUrl/fcmToken → null, apple_refresh_token → null |
@@ -210,7 +210,7 @@
 
 **Apple revoke 처리 흐름**
 
-1. 검증 단계 통과 (USER_NOT_FOUND, USER_WITHDRAWN, LEADER_CANNOT_WITHDRAW)
+1. 검증 단계 통과 (USER_NOT_FOUND, USER_WITHDRAWN)
 2. provider == APPLE && apple_refresh_token != null → 트랜잭션 **밖에서** Apple `/auth/revoke` 호출 (실패 시 WARN 로그만, 예외 던지지 않음)
 3. 트랜잭션 안에서 크루 정리 + 개인정보 초기화 + tokenVersion++ + apple_refresh_token=null
 4. 외부 API 호출과 DB 트랜잭션은 분리한다 (프로젝트 컨벤션)

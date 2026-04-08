@@ -33,7 +33,6 @@ public enum ErrorCode {
     KAKAO_ID_MISMATCH(400, "U008"),
     APPLE_ID_MISMATCH(400, "U009"),
     USER_WITHDRAWN(403, "U010"),
-    LEADER_CANNOT_WITHDRAW(409, "U011"),
 
     // Crew
     CREW_NOT_FOUND(404, "CR001"),
