@@ -130,16 +130,43 @@
 
 ### 1.12 회원가입/로그인
 
+**공통**
+
 | 항목 | 내용 |
 |------|------|
-| 방식 | 카카오 소셜 로그인 |
-| 플로우 | 카카오 로그인 → 신규 유저면 isNewUser=true 반환 → 별도 회원가입 API 호출 |
-| 회원가입 요구사항 | 카카오 토큰 + 닉네임 + 약관 동의(필수) |
+| 방식 | 카카오 / Apple 소셜 로그인 |
+| 플로우 | 소셜 로그인 → 신규 유저면 isNewUser=true 반환 → 별도 회원가입 API 호출 |
 | 약관 동의 | termsAgreed=true 필수, 서버에서 검증, terms_agreed_at 타임스탬프 저장 |
 | 닉네임 규칙 | 2~12자, 한글/영문/숫자/언더스코어만 허용, 앞뒤 공백 트림 |
+| 기존 유저 | terms_agreed_at=NULL이어도 정상 로그인 가능 (이미 동의한 것으로 간주) |
+
+**카카오**
+
+| 항목 | 내용 |
+|------|------|
+| 회원가입 요구사항 | 카카오 토큰 + 닉네임 + 약관 동의 |
 | kakaoId 검증 | 회원가입 시 카카오 API 재호출하여 요청의 kakaoId와 일치 여부 검증 |
 | 저장 정보 | 닉네임(사용자 입력), 이메일/프로필이미지(카카오에서 가져옴), 약관 동의 일시 |
-| 기존 유저 | terms_agreed_at=NULL이어도 정상 로그인 가능 (이미 동의한 것으로 간주) |
+
+**Apple**
+
+| 항목 | 내용 |
+|------|------|
+| 회원가입 요구사항 | identityToken + appleId + 닉네임 + 약관 동의 + **authorizationCode** |
+| identityToken 검증 | Apple JWKS 공개키로 RS256 서명 검증 (sub, email 추출) |
+| appleId 검증 | identityToken에서 추출한 sub와 요청의 appleId 일치 여부 검증 |
+| **authorizationCode 교환** | 회원가입 시점에 Apple `/auth/token` 호출(`grant_type=authorization_code`)로 **refresh_token 발급받아 저장** — 회원탈퇴 시 revoke 호출에 사용 |
+| **authorizationCode (로그인)** | 옵셔널. 기존 사용자가 로그인 시 함께 보내면 refresh_token 갱신·저장(backfill). 누락 시 기존 흐름 그대로 |
+| email 동기화 | Apple은 최초 1회만 email 제공. 재로그인 시 email=null 가능 (기존값 유지) |
+| 프로필 이미지 | Apple 미제공 (profileImageUrl은 항상 null) |
+| Apple Client Secret | revoke/token 호출 시마다 ES256 JWT 즉석 생성 (캐싱 안 함, exp = now + 5분) |
+
+**Apple authorizationCode 교환 실패 정책**
+
+| 시점 | 정책 |
+|------|------|
+| 회원가입 (`/auth/apple-signup`) | **차단** — `APPLE_TOKEN_EXCHANGE_ERROR`로 회원가입 실패 처리. refresh_token 없이 가입하면 향후 탈퇴 시 revoke 불가하므로 |
+| 로그인 backfill (`/auth/apple`) | **무시** — backfill은 best-effort. 교환 실패해도 로그인은 정상 진행. WARN 로그만 |
 
 > 상세 설계는 [docs/spec/user.md](user.md) 참고
 
@@ -175,10 +202,27 @@
 | 리더 + 다른 멤버 있음 | 탈퇴 거부 (U011) — 먼저 크루를 삭제하거나 리더를 위임해야 함 |
 | 리더 + 혼자 | 크루 + 연관 데이터(crew_members, challenges, verifications) 하드 삭제 후 탈퇴 |
 | MEMBER | 크루에서 제거 후 탈퇴 |
-| 개인정보 초기화 | 닉네임 → "탈퇴한 사용자", email/profileImageUrl/fcmToken → null |
+| 개인정보 초기화 | 닉네임 → "탈퇴한 사용자", email/profileImageUrl/fcmToken → null, apple_refresh_token → null |
 | 토큰 무효화 | tokenVersion 증가로 기존 accessToken/refreshToken 즉시 무효화 |
+| **Apple 연결 해제** | provider=APPLE이고 apple_refresh_token이 있으면 Apple `/auth/revoke` 호출. 실패해도 탈퇴는 graceful 진행 (App Store 5.1.1(v) 요건) |
 | 재가입 | 동일 소셜 계정으로 재가입 가능 (탈퇴 계정 재활성화, deleted_at → null) |
 | 탈퇴 기록 | deleted_at에 탈퇴 일시 기록 (null이면 활성 사용자) |
+
+**Apple revoke 처리 흐름**
+
+1. 검증 단계 통과 (USER_NOT_FOUND, USER_WITHDRAWN, LEADER_CANNOT_WITHDRAW)
+2. provider == APPLE && apple_refresh_token != null → 트랜잭션 **밖에서** Apple `/auth/revoke` 호출 (실패 시 WARN 로그만, 예외 던지지 않음)
+3. 트랜잭션 안에서 크루 정리 + 개인정보 초기화 + tokenVersion++ + apple_refresh_token=null
+4. 외부 API 호출과 DB 트랜잭션은 분리한다 (프로젝트 컨벤션)
+
+**Apple revoke 실패 정책**
+
+| 상황 | 처리 |
+|------|------|
+| Apple `/auth/revoke` HTTP 200 | 정상 — 진행 |
+| Apple `/auth/revoke` 실패 (네트워크/4xx/5xx) | WARN 로그 + 탈퇴 계속 진행. App Store는 "성실한 시도"를 요구하므로 시도 자체가 핵심 |
+| apple_refresh_token == null (기존 사용자) | revoke 미호출 — 다음 로그인 시 backfill되지만 그 전 탈퇴는 어쩔 수 없음 |
+| provider == KAKAO | revoke 미호출 |
 
 ---
 

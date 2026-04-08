@@ -5,7 +5,7 @@ public interface AppleLoginUseCase {
     /** Apple 로그인 — 기존 유저면 JWT 발급, 신규 유저면 회원가입 필요 응답 */
     AppleLoginResult login(AppleLoginCommand command);
 
-    record AppleLoginCommand(String identityToken) {
+    record AppleLoginCommand(String identityToken, String authorizationCode) {
     }
 
     /** 로그인 결과 — isNewUser로 분기 */

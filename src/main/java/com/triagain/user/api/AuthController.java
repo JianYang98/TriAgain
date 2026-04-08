@@ -73,7 +73,9 @@ public class AuthController {
     public ResponseEntity<ApiResponse<AppleLoginResult>> appleLogin(
             @Valid @RequestBody AppleLoginRequest request
     ) {
-        AppleLoginResult result = appleLoginUseCase.login(new AppleLoginCommand(request.identityToken()));
+        AppleLoginResult result = appleLoginUseCase.login(new AppleLoginCommand(
+                request.identityToken(), request.authorizationCode()
+        ));
         return ResponseEntity.ok(ApiResponse.ok(result));
     }
 
@@ -84,7 +86,8 @@ public class AuthController {
     ) {
         AppleSignupResult result = appleSignupUseCase.signup(new AppleSignupCommand(
                 request.identityToken(), request.appleId(),
-                request.nickname(), request.termsAgreed()
+                request.nickname(), request.termsAgreed(),
+                request.authorizationCode()
         ));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(result));
     }
@@ -109,14 +112,18 @@ public class AuthController {
     record RefreshTokenRequest(@NotBlank String refreshToken) {
     }
 
-    record AppleLoginRequest(@NotBlank String identityToken) {
+    record AppleLoginRequest(
+            @NotBlank String identityToken,
+            String authorizationCode
+    ) {
     }
 
     record AppleSignupRequest(
             @NotBlank String identityToken,
             @NotBlank String appleId,
             @NotBlank String nickname,
-            @NotNull Boolean termsAgreed
+            @NotNull Boolean termsAgreed,
+            @NotBlank String authorizationCode
     ) {
     }
 }

@@ -279,7 +279,7 @@ public class CrewFeedSteps {
             return;
         }
         if (userRepositoryPort.findById(userId).isEmpty()) {
-            User user = User.of(userId, "KAKAO", userId + "@test.com", userId, null, null, LocalDateTime.now(), LocalDateTime.now(), null, 0);
+            User user = User.of(userId, "KAKAO", userId + "@test.com", userId, null, null, null, LocalDateTime.now(), LocalDateTime.now(), null, 0);
             userRepositoryPort.save(user);
         }
         savedUserIds.add(userId);

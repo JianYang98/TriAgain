@@ -29,6 +29,9 @@ jwt:
 
 apple:
   client-id: ${APPLE_CLIENT_ID:com.triagain.triagain}
+  team-id: ${APPLE_TEAM_ID:}
+  key-id: ${APPLE_KEY_ID:}
+  private-key: ${APPLE_PRIVATE_KEY:}
 
 crew:
   max-duration-days: 30

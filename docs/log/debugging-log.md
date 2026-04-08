@@ -5,6 +5,21 @@
 
 ---
 
+### [2026-04-08] Apple Sign-In Token Revoke 구현 — refresh_token 일회용 관리
+
+- 상황: App Store Review Guideline 5.1.1(v) 대응으로 Apple 회원탈퇴 시 `/auth/revoke` 호출 필요. revoke에 필요한 Apple refresh_token이 DB에 저장되지 않은 상태였음
+- 내 판단:
+  1. **refresh_token은 "탈퇴 시 1회용"으로만 취급** — Apple 권장(24시간마다 갱신)을 따르지 않음. 우리는 자체 JWT로 세션 관리하므로 Apple refresh_token으로 사용자 정보를 주기적으로 가져올 일이 없음. 갱신 로직 없으면 코드 단순화
+  2. **Apple Client Secret JWT는 매 호출마다 즉석 생성** — 캐싱 안 함. ES256 서명은 빠르고, exp=5분으로 짧게. 캐싱 = 만료 처리 + 재생성 로직 + 동시성 = 복잡도 증가
+  3. **revoke 실패는 graceful** — App Store는 "성실한 시도"를 요구하므로 호출 자체가 핵심. 실패 시 WARN만 남기고 탈퇴 진행
+  4. **기존 Apple 사용자는 다음 로그인 시 backfill** — 강제 재로그인 미사용. backfill 전에 탈퇴하는 사용자는 어쩔 수 없는 것으로 수용 (사용자가 직접 Apple ID 설정에서 해제 가능)
+  5. **`/auth/apple-signup`에는 authorizationCode 필수** — refresh_token 없이 가입하면 향후 탈퇴 revoke 불가. 가입 시점에 차단하는 게 안전
+  6. **`/auth/apple` backfill에는 authorizationCode 옵셔널** — 기존 사용자 부담을 줄이고 best-effort로
+- AI 역할: WithdrawUserService/AppleSignupService/AppleLoginService 흐름 분석, biz-logic.md/api-spec.md/schema.md 정본 갱신, Doc-First 실행 순서로 정리
+- 배운 점: Apple OAuth는 다른 OAuth 제공자와 달리 client_secret이 고정 문자열이 아니라 매번 직접 서명한 JWT라는 점이 핵심 차이. 그래서 Team ID + Key ID + .p8 private key 인프라 셋업이 필요함
+
+---
+
 ### [2026-03-20] 알림 인프라 설계 — 스케줄러 장애 격리 + 인앱 API
 
 - 상황: FCM 푸시 + 인앱 알림 기능 구현. 스케줄러에서 한 건 실패 시 전체 중단 방지 필요

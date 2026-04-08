@@ -38,7 +38,7 @@ class RefreshTokenServiceTest {
     void refresh_validToken_returnsNewAccessToken() {
         // Given
         String refreshToken = "valid-refresh-token";
-        User user = User.of("user-123", "KAKAO", "test@test.com", "테스트", null, null, LocalDateTime.now(), LocalDateTime.now(), null, 0);
+        User user = User.of("user-123", "KAKAO", "test@test.com", "테스트", null, null, null, LocalDateTime.now(), LocalDateTime.now(), null, 0);
 
         given(jwtProvider.validateToken(refreshToken)).willReturn(true);
         given(jwtProvider.getTokenType(refreshToken)).willReturn("refresh");
@@ -88,7 +88,7 @@ class RefreshTokenServiceTest {
     void refresh_tokenVersionMismatch_throwsException() {
         // Given — JWT tokenVersion=0, User tokenVersion=1 (탈퇴 후 버전 증가)
         String refreshToken = "valid-refresh-token";
-        User user = User.of("user-123", "KAKAO", "test@test.com", "테스트", null, null, LocalDateTime.now(), LocalDateTime.now(), null, 1);
+        User user = User.of("user-123", "KAKAO", "test@test.com", "테스트", null, null, null, LocalDateTime.now(), LocalDateTime.now(), null, 1);
 
         given(jwtProvider.validateToken(refreshToken)).willReturn(true);
         given(jwtProvider.getTokenType(refreshToken)).willReturn("refresh");

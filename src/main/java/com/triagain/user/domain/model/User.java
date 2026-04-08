@@ -16,13 +16,15 @@ public class User {
     private String nickname;
     private String profileImageUrl;
     private String fcmToken;
+    private String appleRefreshToken;
     private final LocalDateTime createdAt;
     private final LocalDateTime termsAgreedAt;
     private LocalDateTime deletedAt;
     private int tokenVersion;
 
     private User(String id, String provider, String email, String nickname,
-                 String profileImageUrl, String fcmToken, LocalDateTime createdAt, LocalDateTime termsAgreedAt,
+                 String profileImageUrl, String fcmToken, String appleRefreshToken,
+                 LocalDateTime createdAt, LocalDateTime termsAgreedAt,
                  LocalDateTime deletedAt, int tokenVersion) {
         this.id = id;
         this.provider = provider;
@@ -30,6 +32,7 @@ public class User {
         this.nickname = nickname;
         this.profileImageUrl = profileImageUrl;
         this.fcmToken = fcmToken;
+        this.appleRefreshToken = appleRefreshToken;
         this.createdAt = createdAt;
         this.termsAgreedAt = termsAgreedAt;
         this.deletedAt = deletedAt;
@@ -40,34 +43,36 @@ public class User {
     public static User createFromKakao(String kakaoId, String nickname, String email, String profileImageUrl) {
         validateNickname(nickname);
         return new User(
-                kakaoId, "KAKAO", email, nickname, profileImageUrl, null,
+                kakaoId, "KAKAO", email, nickname, profileImageUrl, null, null,
                 LocalDateTime.now(), LocalDateTime.now(), null, 0
         );
     }
 
-    /** Apple 회원가입으로 신규 유저 생성 — appleId(sub)를 PK로 사용, 프로필 이미지 없음 */
-    public static User createFromApple(String appleId, String nickname, String email) {
+    /** Apple 회원가입으로 신규 유저 생성 — appleId(sub)를 PK로 사용, 프로필 이미지 없음, refresh_token 저장 */
+    public static User createFromApple(String appleId, String nickname, String email, String appleRefreshToken) {
         validateNickname(nickname);
         return new User(
-                appleId, "APPLE", email, nickname, null, null,
+                appleId, "APPLE", email, nickname, null, null, appleRefreshToken,
                 LocalDateTime.now(), LocalDateTime.now(), null, 0
         );
     }
 
     /** DB 조회 결과 → 도메인 객체 복원 */
     public static User of(String id, String provider, String email, String nickname,
-                          String profileImageUrl, String fcmToken, LocalDateTime createdAt, LocalDateTime termsAgreedAt,
+                          String profileImageUrl, String fcmToken, String appleRefreshToken,
+                          LocalDateTime createdAt, LocalDateTime termsAgreedAt,
                           LocalDateTime deletedAt, int tokenVersion) {
-        return new User(id, provider, email, nickname, profileImageUrl, fcmToken, createdAt, termsAgreedAt,
-                deletedAt, tokenVersion);
+        return new User(id, provider, email, nickname, profileImageUrl, fcmToken, appleRefreshToken,
+                createdAt, termsAgreedAt, deletedAt, tokenVersion);
     }
 
-    /** 회원탈퇴 — 개인정보 초기화 + 토큰 무효화 */
+    /** 회원탈퇴 — 개인정보 초기화 + 토큰 무효화 + Apple refresh_token 제거 */
     public void withdraw() {
         this.nickname = "탈퇴한 사용자";
         this.email = null;
         this.profileImageUrl = null;
         this.fcmToken = null;
+        this.appleRefreshToken = null;
         this.deletedAt = LocalDateTime.now();
         this.tokenVersion++;
     }
@@ -82,12 +87,13 @@ public class User {
         return deletedAt != null;
     }
 
-    /** 탈퇴 계정 재활성화 — 동일 소셜 계정으로 재가입 시 사용 */
-    public void reactivate(String nickname, String email, String profileImageUrl) {
+    /** 탈퇴 계정 재활성화 — 동일 소셜 계정으로 재가입 시 사용 (Apple은 appleRefreshToken도 함께 갱신) */
+    public void reactivate(String nickname, String email, String profileImageUrl, String appleRefreshToken) {
         validateNickname(nickname);
         this.nickname = nickname.trim();
         this.email = email;
         this.profileImageUrl = profileImageUrl;
+        this.appleRefreshToken = appleRefreshToken;
         this.deletedAt = null;
         this.tokenVersion++;
     }
@@ -153,4 +159,11 @@ public class User {
     }
 
     public String getFcmToken() { return fcmToken; }
+
+    /** Apple OAuth refresh_token 갱신 — Apple 로그인 backfill 또는 재가입 시 */
+    public void updateAppleRefreshToken(String appleRefreshToken) {
+        this.appleRefreshToken = appleRefreshToken;
+    }
+
+    public String getAppleRefreshToken() { return appleRefreshToken; }
 }

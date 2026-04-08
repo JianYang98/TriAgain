@@ -78,7 +78,7 @@ class KakaoLoginServiceTest {
     void login_existingUser_profileChanged_savesAndReturnsJwt() {
         // Given
         User existingUser = User.of("12345", "KAKAO", "old@test.com", "기존유저", null,
-                null, LocalDateTime.now(), LocalDateTime.now(), null, 0);
+                null, null, LocalDateTime.now(), LocalDateTime.now(), null, 0);
         given(kakaoApiPort.getUserInfo("valid-token")).willReturn(kakaoUserInfo);
         given(userRepositoryPort.findById("12345")).willReturn(Optional.of(existingUser));
         given(userRepositoryPort.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
@@ -103,7 +103,7 @@ class KakaoLoginServiceTest {
     void login_existingUser_profileUnchanged_skipsave() {
         // Given — 카카오 정보와 동일한 기존 유저
         User existingUser = User.of("12345", "KAKAO", "kakao@test.com", "기존유저",
-                "https://img.kakao.com/profile.jpg", null, LocalDateTime.now(), LocalDateTime.now(), null, 0);
+                "https://img.kakao.com/profile.jpg", null, null, LocalDateTime.now(), LocalDateTime.now(), null, 0);
         given(kakaoApiPort.getUserInfo("valid-token")).willReturn(kakaoUserInfo);
         given(userRepositoryPort.findById("12345")).willReturn(Optional.of(existingUser));
         given(jwtProvider.createAccessToken(anyString(), anyString(), anyInt())).willReturn("access-token");

@@ -411,9 +411,14 @@ Content-Type: application/json
 ```
 ```json
 {
-  "identityToken": "Apple_SDK에서_받은_identity_token"
+  "identityToken": "Apple_SDK에서_받은_identity_token",
+  "authorizationCode": "Apple_SDK에서_받은_authorization_code"
 }
 ```
+
+**필드 설명:**
+- `identityToken`: (필수) Apple SDK에서 받은 Identity Token (JWT)
+- `authorizationCode`: (옵셔널) Apple SDK에서 받은 authorization code. 기존 사용자가 함께 보내면 서버가 Apple `/auth/token`과 교환하여 refresh_token을 backfill 저장 (회원탈퇴 시 revoke에 사용). 누락해도 로그인은 정상 진행. **가능하면 항상 전송 권장**.
 
 **시나리오 1: 기존 유저 로그인 성공 (200 OK)**
 ```json
@@ -467,6 +472,7 @@ Content-Type: application/json
 **참고:**
 - Apple은 email을 최초 로그인 시에만 제공. 재로그인 시 email은 null일 수 있음
 - Apple은 프로필 이미지를 제공하지 않음 (profileImageUrl은 항상 null)
+- `authorizationCode` backfill: 기존 사용자가 보내면 서버가 Apple `/auth/token` 교환으로 refresh_token 발급·저장. 교환 실패해도 로그인 자체는 성공 처리(WARN 로그). **신규 유저 응답 분기에서는 backfill을 시도하지 않는다** (회원가입 시점에 처리).
 
 **에러 응답**
 | HTTP | 코드 | 메시지 |
@@ -490,7 +496,8 @@ Content-Type: application/json
   "identityToken": "Apple_SDK에서_받은_identity_token",
   "appleId": "001234.abcdef.5678",
   "nickname": "내닉네임",
-  "termsAgreed": true
+  "termsAgreed": true,
+  "authorizationCode": "Apple_SDK에서_받은_authorization_code"
 }
 ```
 
@@ -499,6 +506,7 @@ Content-Type: application/json
 - `appleId`: (필수) POST /auth/apple 응답의 `appleId` 값
 - `nickname`: (필수) 2~12자, 한글/영문/숫자/언더스코어만 허용
 - `termsAgreed`: (필수) 약관 동의 여부 (true만 허용)
+- `authorizationCode`: **(필수)** Apple SDK에서 받은 authorization code. 서버가 Apple `/auth/token`과 교환하여 refresh_token을 발급받아 저장한다. 회원탈퇴 시 Apple `/auth/revoke` 호출에 사용 (App Store 5.1.1(v) 요건). 1회용이므로 로그인 화면에서 받은 값을 회원가입 화면까지 state로 전달해야 한다.
 
 **성공 응답 (201 Created)**
 ```json
@@ -527,6 +535,7 @@ Content-Type: application/json
 | 400 | U009 | 애플 계정 정보가 일치하지 않습니다. | appleId 불일치 |
 | 401 | A005 | 유효하지 않은 애플 토큰입니다. | 만료/잘못된 토큰 |
 | 409 | U006 | 이미 가입된 사용자입니다. | 중복 가입 |
+| 502 | A007 | 애플 인증 코드 교환 중 오류가 발생했습니다. | authorizationCode → refresh_token 교환 실패. 회원가입 차단 |
 
 ---
 
@@ -676,6 +685,11 @@ DELETE /users/me HTTP/1.1
 Authorization: Bearer <token>
 ```
 
+**처리 흐름:**
+1. 검증: USER_NOT_FOUND, USER_WITHDRAWN, LEADER_CANNOT_WITHDRAW
+2. **Apple 연결 해제** (provider=APPLE && apple_refresh_token != null): Apple `/auth/revoke` 호출 (트랜잭션 밖, 실패해도 graceful 진행)
+3. 트랜잭션: 크루 정리(LEADER+혼자 → 하드 삭제 / MEMBER → 제거) → 개인정보 초기화 → tokenVersion++ → apple_refresh_token=null
+
 **성공 응답 (200 OK)**
 ```json
 {
@@ -684,6 +698,11 @@ Authorization: Bearer <token>
   "error": null
 }
 ```
+
+**참고:**
+- Apple 사용자 탈퇴 시 Apple `/auth/revoke` 호출 결과는 응답에 영향을 주지 않는다 (성공/실패 모두 200 OK)
+- App Store Review Guideline 5.1.1(v) 요건: Sign in with Apple 사용자는 탈퇴 시 Apple 연결 해제 호출이 필수
+- backfill 안 된 기존 Apple 사용자(`apple_refresh_token == null`)는 Apple 측 연결이 그대로 남는다 — 다음 로그인 backfill 후 재탈퇴하거나, 사용자가 직접 Apple ID 설정에서 해제 필요
 
 **에러 응답**
 | HTTP | 코드 | 메시지 | 설명 |
