@@ -28,5 +28,10 @@ public class LeaveCrewService implements LeaveCrewUseCase {
         crew.removeMember(userId, hasStartedChallenge);
         crewRepositoryPort.save(crew);
         crewRepositoryPort.deleteMemberByCrewIdAndUserId(crewId, userId);
+
+        // 빈 크루 자동 정리 — 방어 로직 (회원탈퇴 LEADER 자동 위임 등으로 도달 가능)
+        if (crew.getCurrentMembers() == 0) {
+            crewRepositoryPort.deleteById(crewId);
+        }
     }
 }
