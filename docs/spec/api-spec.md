@@ -1396,13 +1396,18 @@ Authorization: Bearer <token>
 
 ### DELETE /crews/{crewId}/members/me (크루 탈퇴)
 
-크루원(MEMBER)이 RECRUITING 상태 크루에서 탈퇴한다. LEADER는 탈퇴 불가 (크루 삭제를 사용).
+크루원(MEMBER)이 크루에서 탈퇴한다. RECRUITING은 무조건 가능, ACTIVE는 챌린지를 한 번도 시작하지 않은 멤버만 가능. LEADER는 탈퇴 불가 (크루 삭제 또는 회원탈퇴 시 자동 위임 사용).
 
 **요청 (Request)**
 ```
 DELETE /crews/{crewId}/members/me HTTP/1.1
 Authorization: Bearer <token>
 ```
+
+**처리 정책:**
+- RECRUITING → 무조건 탈퇴 가능
+- ACTIVE + 챌린지 미시작(`challenges` 테이블에 (user_id, crew_id) 레코드 없음) → 탈퇴 가능
+- ACTIVE + 챌린지 시작 / COMPLETED / FAILED → 거부 (`CR025`)
 
 **성공 응답 (204 No Content)**
 
@@ -1411,7 +1416,7 @@ Authorization: Bearer <token>
 **에러 응답**
 | HTTP | 코드 | 메시지 | 설명 |
 |------|------|--------|------|
-| 400 | CR003 | 모집 중인 크루가 아닙니다. | RECRUITING 상태가 아님 |
+| 400 | CR025 | 진행 중인 크루는 챌린지를 시작하지 않은 멤버만 탈퇴할 수 있습니다. | ACTIVE + 챌린지 시작 / COMPLETED / FAILED |
 | 403 | CR020 | 크루장은 탈퇴할 수 없습니다. | LEADER 탈퇴 시도 |
 | 404 | CR001 | 크루를 찾을 수 없습니다. | 존재하지 않는 crewId |
 | 404 | CR021 | 해당 크루의 멤버가 아닙니다. | crew_member 레코드 없음 |

@@ -70,11 +70,14 @@
 
 | 항목 | 내용 |
 |------|------|
-| 권한 | MEMBER만 가능 (LEADER 탈퇴 불가) |
-| 상태 조건 | 크루 상태 = RECRUITING |
-| 탈퇴 방식 | crew_member 테이블에서 해당 유저의 레코드 삭제 |
-| LEADER 탈퇴 | 불가 — 크루 삭제(DELETE /crews/{crewId})를 사용해야 함 |
-| 비멤버 탈퇴 | crew_member 레코드 없으면 404 |
+| 권한 | MEMBER만 가능 (LEADER 탈퇴 불가 — `CR020 LEADER_CANNOT_LEAVE`) |
+| RECRUITING | 무조건 탈퇴 가능 |
+| ACTIVE + 챌린지 미시작 | 탈퇴 가능 — 챌린지 한 번도 시작 안 한 멤버는 이탈 허용 |
+| ACTIVE + 챌린지 시작 / COMPLETED / FAILED | 탈퇴 거부 — `CR025 CANNOT_LEAVE_ACTIVE_CREW` |
+| 챌린지 시작 판정 | `challenges` 테이블에 (user_id, crew_id) 레코드가 1건이라도 존재하면 "시작함"으로 본다 (상태 무관: IN_PROGRESS/SUCCESS/FAILED 모두 포함) |
+| 탈퇴 방식 | crew_member 테이블에서 해당 유저의 레코드 삭제 + crews.current_members 감소 |
+| LEADER 탈퇴 | 불가 — 크루 삭제(DELETE /crews/{crewId}) 또는 회원탈퇴 시 자동 위임(BE-P0-1) 사용 |
+| 비멤버 탈퇴 | crew_member 레코드 없으면 `CR021 CREW_MEMBER_NOT_FOUND` |
 
 ### 1.7 크루 상태 전이
 

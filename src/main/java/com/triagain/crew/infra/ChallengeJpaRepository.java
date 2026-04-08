@@ -76,4 +76,7 @@ public interface ChallengeJpaRepository extends JpaRepository<ChallengeJpaEntity
     /** 유저·크루의 SUCCESS 챌린지 수 조회 — 작심삼일 달성 횟수 */
     @Query("SELECT COUNT(c) FROM ChallengeJpaEntity c WHERE c.userId = :userId AND c.crewId = :crewId AND c.status = 'SUCCESS'")
     int countSuccessByUserIdAndCrewId(@Param("userId") String userId, @Param("crewId") String crewId);
+
+    /** 유저·크루의 챌린지 존재 여부 확인 — ACTIVE 크루 탈퇴 시 챌린지 시작 여부 판단 */
+    boolean existsByUserIdAndCrewId(String userId, String crewId);
 }

@@ -82,6 +82,12 @@ public class ChallengeJpaAdapter implements ChallengeRepositoryPort {
         return challengeJpaRepository.countSuccessByUserIdAndCrewId(userId, crewId);
     }
 
+    /** 유저·크루의 챌린지 존재 여부 확인 — ACTIVE 크루 탈퇴 시 챌린지 시작 여부 판단에 사용 */
+    @Override
+    public boolean existsByUserIdAndCrewId(String userId, String crewId) {
+        return challengeJpaRepository.existsByUserIdAndCrewId(userId, crewId);
+    }
+
     /** 크루 멤버별 성공 횟수 조회 — 작심삼일 성공 카운트에 사용 */
     @Override
     public Map<String, Integer> countSuccessByCrewId(String crewId) {
