@@ -637,7 +637,7 @@ class CrewTest {
             Crew crew = recruitingCrew(5, 3);
 
             // When
-            crew.removeMember("user2");
+            crew.removeMember("user2", false);
 
             // Then
             assertThat(crew.getCurrentMembers()).isEqualTo(2);
@@ -651,23 +651,49 @@ class CrewTest {
             Crew crew = recruitingCrew(5, 1);
 
             // When & Then
-            assertThatThrownBy(() -> crew.removeMember("unknown"))
+            assertThatThrownBy(() -> crew.removeMember("unknown", false))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.CREW_MEMBER_NOT_FOUND);
         }
 
         @Test
-        @DisplayName("ACTIVE 상태에서 removeMember하면 CREW_NOT_RECRUITING 예외가 발생한다")
-        void activeCannotRemove() {
+        @DisplayName("ACTIVE 크루에서 챌린지 미시작 멤버는 탈퇴할 수 있다")
+        void activeWithoutChallenge_success() {
+            // Given
+            Crew crew = crewWithStatus(CrewStatus.ACTIVE, 5, 2, false);
+
+            // When
+            crew.removeMember("user2", false);
+
+            // Then
+            assertThat(crew.getCurrentMembers()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("ACTIVE 크루에서 챌린지를 시작한 멤버는 CANNOT_LEAVE_ACTIVE_CREW 예외가 발생한다")
+        void activeWithChallenge_throws() {
             // Given
             Crew crew = crewWithStatus(CrewStatus.ACTIVE, 5, 2, false);
 
             // When & Then
-            assertThatThrownBy(() -> crew.removeMember("user2"))
+            assertThatThrownBy(() -> crew.removeMember("user2", true))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
-                    .isEqualTo(ErrorCode.CREW_NOT_RECRUITING);
+                    .isEqualTo(ErrorCode.CANNOT_LEAVE_ACTIVE_CREW);
+        }
+
+        @Test
+        @DisplayName("COMPLETED 크루에서 removeMember하면 CANNOT_LEAVE_ACTIVE_CREW 예외가 발생한다")
+        void completedCannotRemove() {
+            // Given
+            Crew crew = crewWithStatus(CrewStatus.COMPLETED, 5, 2, false);
+
+            // When & Then
+            assertThatThrownBy(() -> crew.removeMember("user2", false))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.CANNOT_LEAVE_ACTIVE_CREW);
         }
 
         @Test
@@ -677,7 +703,7 @@ class CrewTest {
             Crew crew = recruitingCrew(5, 2);
 
             // When & Then
-            assertThatThrownBy(() -> crew.removeMember("leader"))
+            assertThatThrownBy(() -> crew.removeMember("leader", false))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.LEADER_CANNOT_LEAVE);

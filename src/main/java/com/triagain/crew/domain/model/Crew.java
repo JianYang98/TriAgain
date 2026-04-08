@@ -155,15 +155,21 @@ public class Crew {
         if (visibility != null) this.visibility = visibility;
     }
 
-    /** 멤버 제거 — RECRUITING 상태에서 MEMBER만 탈퇴 가능 */
-    public void removeMember(String userId) {
-        if (this.status != CrewStatus.RECRUITING) {
-            throw new BusinessException(ErrorCode.CREW_NOT_RECRUITING);
-        }
+    /** 멤버 제거 — RECRUITING은 무조건, ACTIVE는 챌린지 미시작 멤버만 탈퇴 가능 */
+    public void removeMember(String userId, boolean hasStartedChallenge) {
         CrewMember member = findMemberByUserId(userId);
         if (member.isLeader()) {
             throw new BusinessException(ErrorCode.LEADER_CANNOT_LEAVE);
         }
+
+        if (this.status == CrewStatus.RECRUITING) {
+            // RECRUITING: 무조건 탈퇴 가능
+        } else if (this.status == CrewStatus.ACTIVE && !hasStartedChallenge) {
+            // ACTIVE + 챌린지 미시작: 탈퇴 가능
+        } else {
+            throw new BusinessException(ErrorCode.CANNOT_LEAVE_ACTIVE_CREW);
+        }
+
         this.members.remove(member);
         this.currentMembers--;
     }
