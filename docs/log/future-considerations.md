@@ -6,15 +6,6 @@
 
 ---
 
-### [2026-04-08] WithdrawUserService LEADER 검증 race condition (블로그 글감 후보)
-
-- 현재 상태: `WithdrawUserService.withdraw()` 진입 메서드에서 LEADER 멤버 카운트 검증 → 트랜잭션 밖 Apple `/auth/revoke` 호출 → `@Lazy self.completeWithdraw()` 트랜잭션 진입의 3단계 흐름. 사전 검증과 트랜잭션 진입 사이 시간 갭 동안 다른 사용자가 해당 크루에 가입하면 `LEADER_CANNOT_WITHDRAW` 검증을 우회 가능 (`completeWithdraw`는 LEADER 재검증을 하지 않음)
-- 필요 시점: Phase 2 또는 동시성 이슈 보고 시
-- 이유: Phase 1(TPS 50, 500명) 트래픽에서는 발생 확률 매우 낮음. 본 PR(Apple revoke) 범위와 직교하므로 별도 이슈로 분리. 해결 옵션: (1) `completeWithdraw()` 진입 직후 LEADER 재검증, (2) 크루 row에 비관적 락 후 멤버 카운트 재확인, (3) 현 상태 유지
-- **블로그 글감 메모**: "트랜잭션 안에 외부 API 호출 금지" 컨벤션을 지키려고 외부 호출을 트랜잭션 밖으로 빼는 순간, 사전 검증과 트랜잭션 사이에 race window가 생긴다는 트레이드오프. 카카오 탈퇴에는 외부 호출이 없어 race가 없고, Apple 탈퇴에만 등장한다는 비대칭성이 훅. App Store 5.1.1(v) 외부 요건이 내부 아키텍처 결정(self-injection 패턴)을 흔든 구조라는 점도 흥미로움. 기존 블로그(`blog-dead-letter-chunk-processor.md`, `blog-jpa-idclass-pitfall.md`)의 "문제 해결 경험" 톤과 일치. 제목 후보: "트랜잭션 밖으로 외부 API를 빼면 생기는 동시성 트레이드오프 — Apple Sign-In Revoke 사례"
-
----
-
 ### [2026-04-08] Apple revoke 후 트랜잭션 실패 시 정합성 트레이드오프
 
 - 현재 상태: `WithdrawUserService`가 트랜잭션 밖에서 Apple `/auth/revoke` 호출 후 트랜잭션 진입. revoke 성공 직후 `completeWithdraw()` 트랜잭션이 실패하면 → Apple 측은 revoke 완료 / DB는 active 상태로 inconsistency 발생

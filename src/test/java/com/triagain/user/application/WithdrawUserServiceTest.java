@@ -110,9 +110,9 @@ class WithdrawUserServiceTest {
         verify(userRepositoryPort).save(user);
     }
 
-    @DisplayName("LEADER + 멤버 있는 크루 → LEADER_CANNOT_WITHDRAW 예외")
+    @DisplayName("LEADER + 멤버 있는 크루 → 가장 오래된 멤버에게 자동 위임 후 본인 제거된다")
     @Test
-    void withdraw_leaderWithMembers_throwsLeaderCannotWithdraw() {
+    void withdraw_leaderWithMembers_transfersLeaderAndRemovesSelf() {
         // Given
         String userId = "user-1";
         User user = createActiveKakaoUser(userId);
@@ -120,16 +120,18 @@ class WithdrawUserServiceTest {
 
         given(userRepositoryPort.findById(userId)).willReturn(Optional.of(user));
         given(crewMembershipPort.findAllByUserId(userId)).willReturn(List.of(membership));
+        given(userRepositoryPort.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
 
-        // When & Then
-        assertThatThrownBy(() -> withdrawUserService.withdraw(userId))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(ErrorCode.LEADER_CANNOT_WITHDRAW);
+        // When
+        withdrawUserService.withdraw(userId);
 
-        verify(userRepositoryPort, never()).save(any());
-        verify(crewMembershipPort, never()).removeMember(any(), any());
+        // Then
+        assertThat(user.isWithdrawn()).isTrue();
+        verify(crewMembershipPort).endActiveChallenges(userId, "crew-1");
+        verify(crewMembershipPort).transferLeaderToOldestMember("crew-1", userId);
+        verify(crewMembershipPort).removeMember("crew-1", userId);
         verify(crewMembershipPort, never()).deleteCrewWithAllData(any());
-        verify(appleOAuthPort, never()).revokeRefreshToken(any());
+        verify(userRepositoryPort).save(user);
     }
 
     @DisplayName("이미 탈퇴한 유저 → USER_WITHDRAWN 예외")

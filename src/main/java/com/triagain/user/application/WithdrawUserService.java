@@ -52,14 +52,6 @@ public class WithdrawUserService implements WithdrawUserUseCase {
             throw new BusinessException(ErrorCode.USER_WITHDRAWN);
         }
 
-        // LEADER + 다른 멤버 있는 크루 존재 → 탈퇴 거부 (트랜잭션 밖에서 미리 검증)
-        List<MembershipInfo> memberships = crewMembershipPort.findAllByUserId(userId);
-        boolean hasLeaderCrewWithMembers = memberships.stream()
-                .anyMatch(m -> "LEADER".equals(m.role()) && m.memberCount() > 1);
-        if (hasLeaderCrewWithMembers) {
-            throw new BusinessException(ErrorCode.LEADER_CANNOT_WITHDRAW);
-        }
-
         // Apple 사용자: revoke 호출 (트랜잭션 밖, graceful — 어댑터가 graceful이지만 서비스에서도 방어적으로 wrap)
         if (PROVIDER_APPLE.equals(user.getProvider()) && user.getAppleRefreshToken() != null) {
             try {
@@ -86,6 +78,10 @@ public class WithdrawUserService implements WithdrawUserUseCase {
             if ("LEADER".equals(membership.role()) && membership.memberCount() == 1) {
                 // LEADER + 혼자 → 크루 + 연관 데이터 하드 삭제
                 crewMembershipPort.deleteCrewWithAllData(membership.crewId());
+            } else if ("LEADER".equals(membership.role()) && membership.memberCount() > 1) {
+                // LEADER + 다른 멤버 → 가장 오래된 멤버에게 자동 위임 후 본인 제거
+                crewMembershipPort.transferLeaderToOldestMember(membership.crewId(), userId);
+                crewMembershipPort.removeMember(membership.crewId(), userId);
             } else {
                 // MEMBER → 멤버 제거
                 crewMembershipPort.removeMember(membership.crewId(), userId);

@@ -686,9 +686,9 @@ Authorization: Bearer <token>
 ```
 
 **처리 흐름:**
-1. 검증: USER_NOT_FOUND, USER_WITHDRAWN, LEADER_CANNOT_WITHDRAW
+1. 검증: USER_NOT_FOUND, USER_WITHDRAWN
 2. **Apple 연결 해제** (provider=APPLE && apple_refresh_token != null): Apple `/auth/revoke` 호출 (트랜잭션 밖, 실패해도 graceful 진행)
-3. 트랜잭션: 크루 정리(LEADER+혼자 → 하드 삭제 / MEMBER → 제거) → 개인정보 초기화 → tokenVersion++ → apple_refresh_token=null
+3. 트랜잭션: 크루 정리(LEADER+혼자 → 하드 삭제 / LEADER+멤버≥1 → 가장 오래된 멤버에게 자동 위임 후 본인 제거 / MEMBER → 제거) → 개인정보 초기화 → tokenVersion++ → apple_refresh_token=null
 
 **성공 응답 (200 OK)**
 ```json
@@ -708,7 +708,6 @@ Authorization: Bearer <token>
 | HTTP | 코드 | 메시지 | 설명 |
 |------|------|--------|------|
 | 403 | U010 | 탈퇴한 사용자입니다. | deleted_at이 이미 설정됨 |
-| 409 | U011 | 멤버가 있는 크루의 리더는 탈퇴할 수 없습니다. | 리더 + 다른 멤버 존재 |
 
 ---
 

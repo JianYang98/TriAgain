@@ -93,6 +93,44 @@ public class UserCrewMembershipAdapter implements CrewMembershipPort {
         crewJpaRepository.deleteById(crewId);
     }
 
+    /** 가장 오래된 MEMBER에게 리더 자동 위임 — 회원탈퇴 시 LEADER+멤버 있는 크루 처리 */
+    @Override
+    public void transferLeaderToOldestMember(String crewId, String currentLeaderId) {
+        // 1) 가장 오래된 멤버 조회 (joined_at ASC, 탈퇴자 제외)
+        @SuppressWarnings("unchecked")
+        List<String> candidates = entityManager.createNativeQuery("""
+                SELECT cm.user_id
+                FROM crew_members cm
+                WHERE cm.crew_id = :crewId
+                  AND cm.user_id != :currentLeaderId
+                ORDER BY cm.joined_at ASC
+                LIMIT 1
+                """)
+                .setParameter("crewId", crewId)
+                .setParameter("currentLeaderId", currentLeaderId)
+                .getResultList();
+
+        if (candidates.isEmpty()) {
+            return;
+        }
+
+        String newLeaderId = candidates.get(0);
+
+        // 2) 새 리더로 role 변경
+        entityManager.createNativeQuery(
+                "UPDATE crew_members SET role = 'LEADER' WHERE crew_id = :crewId AND user_id = :newLeaderId")
+                .setParameter("crewId", crewId)
+                .setParameter("newLeaderId", newLeaderId)
+                .executeUpdate();
+
+        // 3) 크루의 creator_id도 새 리더로 변경
+        entityManager.createNativeQuery(
+                "UPDATE crews SET creator_id = :newLeaderId WHERE id = :crewId")
+                .setParameter("crewId", crewId)
+                .setParameter("newLeaderId", newLeaderId)
+                .executeUpdate();
+    }
+
     @Override
     public void endActiveChallenges(String userId, String crewId) {
         challengeJpaRepository.findByUserIdAndCrewIdAndStatus(userId, crewId, ChallengeStatus.IN_PROGRESS)
