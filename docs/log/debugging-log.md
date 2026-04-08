@@ -5,6 +5,19 @@
 
 ---
 
+### [2026-04-09] Stack PR base 미전환으로 PR #45/#46이 develop에 도달 못 한 사고
+
+- 상황: BE-P1-1(PR #45)과 BE-P1-3(PR #46)을 stack PR로 만들었음. PR #45 base = `feat/crew-min-duration`(=PR #44 head), PR #46 base = `feat/active-crew-leave`(=PR #45 head). PR #44 머지 직후 PR #45/#46을 차례로 squash-merge → develop에는 PR #47만 추가됨. 다음날 release PR 만들려고 develop log를 보니 #45/#46이 아예 없음. production에 BE-P1-1(CR025), BE-P1-3(빈 크루 정리)가 빠진 상태로 진행돼 있었음
+- 내 판단:
+  1. **GitHub squash merge는 stack 부모 PR이 머지돼도 자식 PR의 base를 자동 전환하지 않는다.** PR #45를 stack 부모(`feat/crew-min-duration`)에 머지하면 그 squash 커밋은 부모 브랜치 안에서만 살아있고 develop에는 안 들어감. PR #46도 동일
+  2. **복구는 cherry-pick이 가장 안전.** 두 squash 커밋(`39b5da9`, `ed4d579`)은 develop의 #47과 변경 영역이 disjoint해서 conflict 없이 cherry-pick 가능. 새 브랜치 `recovery/be-p1-1-and-p1-3`를 develop에서 분기 → 두 커밋 cherry-pick → recovery PR(#48) → rebase merge로 PR boundary 보존
+  3. **rebase merge 선택 이유**: squash merge로 합치면 PR #45/#46 두 변경의 commit boundary가 사라져 history 추적이 어려워짐. rebase는 두 cherry-pick 커밋을 그대로 추가
+  4. **향후 stack PR 작성 시**: 부모 PR 머지 전에 자식 PR의 base를 develop으로 직접 변경하거나, 부모 머지 직후 자식 base를 develop으로 갱신해야 함. GitHub UI의 "Edit base branch" 기능 사용
+- AI 역할: develop log와 PR #45/#46 base 비교로 누락 진단, 두 squash 커밋의 parent chain 분석으로 cherry-pick 가능성 확인, recovery PR 생성/CI 모니터링/머지까지 일괄 수행
+- 배운 점: stack PR은 GitHub 네이티브 기능이 약하다. graphite 같은 툴을 안 쓰면 base 자동 전환이 없어 사고 위험이 큼. 다음부터는 (a) stack 만들지 말고 순차 PR로 가거나 (b) 부모 머지 직후 자식 base를 즉시 develop으로 갱신하는 절차를 박아둘 것
+
+---
+
 ### [2026-04-08] Apple Sign-In Token Revoke 구현 — refresh_token 일회용 관리
 
 - 상황: App Store Review Guideline 5.1.1(v) 대응으로 Apple 회원탈퇴 시 `/auth/revoke` 호출 필요. revoke에 필요한 Apple refresh_token이 DB에 저장되지 않은 상태였음
