@@ -13,9 +13,10 @@ public class ChallengeSuccessEventListener {
 
     private final VerificationNotificationPort verificationNotificationPort;
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void handle(ChallengeSuccessEvent event) {
-        verificationNotificationPort.sendChallengeSuccessNotification(
-                event.userId(), event.crewId());
-    }
+    // TODO: 챌린지 성공 알림 임시 비활성화 — 유저 알림 on/off 설정 UI 구현 후 복원
+    // @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    // public void handle(ChallengeSuccessEvent event) {
+    //     verificationNotificationPort.sendChallengeSuccessNotification(
+    //             event.userId(), event.crewId());
+    // }
 }

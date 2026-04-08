@@ -95,7 +95,8 @@ public class FailExpiredChallengesScheduler {
                             crewNameMap.getOrDefault(c.getCrewId(), "크루")))
                     .toList();
 
-            notificationPort.sendChallengeFailedNotifications(infos);
+            // TODO: 챌린지 실패 알림 임시 비활성화 — 유저 알림 on/off 설정 UI 구현 후 복원
+            // notificationPort.sendChallengeFailedNotifications(infos);
         } catch (Exception e) {
             log.warn("챌린지 실패 알림 발송 중 오류: {}", e.getMessage());
         }
