@@ -10,8 +10,8 @@ import com.triagain.verification.port.out.ChallengePort;
 import com.triagain.verification.port.out.ChallengePort.ChallengeInfo;
 import com.triagain.verification.port.out.CrewPort;
 import com.triagain.verification.port.out.StoragePort;
+import com.triagain.verification.application.event.ChallengeSuccessEvent;
 import com.triagain.verification.port.out.UploadSessionRepositoryPort;
-import com.triagain.verification.port.out.VerificationNotificationPort;
 import com.triagain.verification.port.out.VerificationRepositoryPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -51,7 +52,7 @@ class CreateVerificationServiceTest {
     private StoragePort storagePort;
 
     @Mock
-    private VerificationNotificationPort verificationNotificationPort;
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private CreateVerificationService createVerificationService;
@@ -281,8 +282,8 @@ class CreateVerificationServiceTest {
         // When
         createVerificationService.createVerification(command);
 
-        // Then — 챌린지 성공 알림 발송 확인
-        verify(verificationNotificationPort).sendChallengeSuccessNotification(USER_ID, CREW_ID);
+        // Then — 챌린지 성공 이벤트 발행 확인 (트랜잭션 커밋 후 listener가 알림 발송)
+        verify(eventPublisher).publishEvent(new ChallengeSuccessEvent(USER_ID, CREW_ID));
     }
 
     @Test
@@ -304,8 +305,8 @@ class CreateVerificationServiceTest {
         // When
         createVerificationService.createVerification(command);
 
-        // Then — 챌린지 성공 알림 미발송 확인
-        verify(verificationNotificationPort, never()).sendChallengeSuccessNotification(any(), any());
+        // Then — 챌린지 성공 이벤트 미발행 확인
+        verify(eventPublisher, never()).publishEvent(any(ChallengeSuccessEvent.class));
     }
 
     @Test
