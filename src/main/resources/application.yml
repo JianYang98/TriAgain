@@ -27,6 +27,11 @@ jwt:
   access-token-expiration: 1800000
   refresh-token-expiration: 1209600000
 
+app:
+  crypto:
+    # Apple refresh_token AES-256-GCM 암호화 키 (Base64 인코딩 32바이트). 운영은 ${APPLE_REFRESH_KEY} 필수.
+    apple-refresh-key: ${APPLE_REFRESH_KEY:dGVzdC1rZXktMzItYnl0ZXMtZm9yLWFlcy0yNTYtISE=}
+
 apple:
   client-id: ${APPLE_CLIENT_ID:com.triagain.triagain}
   team-id: ${APPLE_TEAM_ID:}

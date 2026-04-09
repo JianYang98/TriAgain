@@ -470,13 +470,14 @@ PENDING → resolve() → RESOLVED (수동 해결)
 |----------|------|-----------|------|
 | ActivateRecruitingCrewsScheduler | 매일 00:00 | start_date ≤ 오늘 | RECRUITING → ACTIVE |
 | CompleteExpiredCrewsScheduler | 매일 00:05 | end_date < 오늘 | ACTIVE → COMPLETED + IN_PROGRESS 챌린지 ENDED |
-| FailExpiredChallengesScheduler | 매 5분 | 5분 윈도우 조회 | deadline 초과 + 미인증 챌린지 FAILED |
-| ExpireUploadSessionScheduler | 매 5분 | 5분 윈도우 조회 | 15분 경과 PENDING 세션 EXPIRED |
+| FailExpiredChallengesScheduler | 매 5분 | 전량 스캔 (Phase 1) | deadline 초과 + 미인증 챌린지 FAILED |
+| ExpireUploadSessionScheduler | 매 5분 | 전량 스캔 (Phase 1) | 15분 경과 PENDING 세션 EXPIRED |
 
-**5분 윈도우 조회:**
-- FailExpiredChallenges: `deadline BETWEEN (now - 5분) AND now`
-- ExpireUploadSession: `requested_at BETWEEN (now - 20분) AND (now - 15분)`
-- 장점: 전체 스캔 방지, 이전 주기에서 처리된 건 재조회 최소화
+**전량 스캔 (Phase 1, 500명 규모):**
+- FailExpiredChallenges: 마감 + grace 5분 초과한 IN_PROGRESS 챌린지 모두 조회
+- ExpireUploadSession: 15분 이전에 생성된 PENDING 세션 모두 조회
+- 이유: 윈도우 조회는 한 틱 누락 시(GC pause/배포/지연) 영구 미판정 위험 → 전량 스캔으로 회귀 (DOM-C2, 2026-04-09 PR review)
+- 부하 분산용 윈도우+보정 이중 구조는 후속 과제 (`/docs/log/future-considerations.md` 2026-04-09 참조)
 
 ### 6.4 서버 시작 보정 (StartupCompensationRunner)
 

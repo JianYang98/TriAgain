@@ -6,6 +6,12 @@
 
 ---
 
+### [2026-04-09] 스케줄러 윈도우 + 보정 이중 구조 (부하 분산)
+
+- 현재 상태: `FailExpiredChallengesScheduler` / `ExpireUploadSessionScheduler` 모두 5분마다 전량 스캔으로 단순화 (Phase 1, 500명 규모 기준 안전). 별도 startup compensation runner도 동일 스케줄러 메서드를 호출.
+- 필요 시점: Phase 2 또는 challenges/upload_sessions 누적량이 만 단위에 도달 시
+- 이유: 윈도우 조회 구조는 한 틱(GC pause/배포/지연)을 놓치면 영구 미판정 위험이 있어 PR 리뷰(DOM-C2, 2026-04-09)에서 제거. 부하 분산 목적의 윈도우+보정 이중 구조는 멀티 인스턴스 스케줄러 조정, 분산 락(`DistributedLockPort`), 미처리 추적 테이블과 함께 재설계해야 안전하다. Phase 1 규모에서는 단순 전량 스캔이 더 견고.
+
 ### [2026-04-09] DeadlinePolicy LocalTime 비교 → LocalDateTime/Clock 리팩토링
 
 - 현재 상태: `DeadlinePolicy.todayDeadline(LocalTime)`이 `LocalDate.now().atTime(time)`으로 오늘의 deadline을 만든다. `isWithinDeadline`은 LocalDateTime 비교지만 deadline 값 자체가 LocalTime에서 파생되어 자정 wrap에 취약하다. `LocalTime.now().minusMinutes(N)`으로 "과거 시각"을 만들려는 단위테스트가 자정 직후 00:00 ~ 00:1X 영역에서 wrap되어 어제 23:5X로 잘못 해석되고 비결정적으로 실패한다.
@@ -24,11 +30,10 @@
 
 ---
 
-### [2026-04-08] users.apple_refresh_token DB 평문 저장 → application-level 암호화
+### [2026-04-08] ~~users.apple_refresh_token DB 평문 저장 → application-level 암호화~~ ✅ RESOLVED 2026-04-09
 
-- 현재 상태: V16 마이그레이션으로 `apple_refresh_token VARCHAR(500) NULL` 평문 저장
-- 필요 시점: Phase 2 또는 보안 감사 시
-- 이유: OAuth refresh_token은 application-level 암호화(KMS / Jasypt) 권장 자산. 누출 시 공격자가 사용자 Apple 권한을 직접 얻지는 못하지만(Apple은 revoke만 가능) 보호 가치가 있는 인증 자산. Phase 1에서는 RDS 외부 노출이 없고 backup 암호화가 적용되어 있어 acceptable
+- ~~현재 상태: V16 마이그레이션으로 `apple_refresh_token VARCHAR(500) NULL` 평문 저장~~
+- **해결**: SEC-C1 PR 리뷰 대응으로 AES-256-GCM AttributeConverter(`AesGcmStringConverter`) 적용 + V17로 컬럼 1024 확장. 키는 `APPLE_REFRESH_KEY` 환경변수 (GitHub Actions Secrets). KMS / Secrets Manager 승급은 Phase 2 후속 과제로 유지.
 
 ---
 
@@ -40,10 +45,10 @@
 
 ---
 
-### [2026-03-27] BC 경계 위반 리팩토링 (D-C1, D-C2)
+### [2026-03-27] BC 경계 위반 리팩토링 (D-C1, D-C2) — D-C1만 부분 해결
 
+- ~~D-C1: UserCrewMembershipAdapter (User Context)가 Crew Context의 JPA 인프라를 직접 import~~ ✅ **2026-04-09 해결 (최소 침습)**: 어댑터를 `crew.infra.adapter.UserCrewMembershipAdapter`로 이동. `CrewMembershipPort`는 `user.port.out`에 그대로 두고 Crew BC가 구현하는 형태(다른 BC가 Output Port 구현 — 헥사고날 정당 패턴). **권장 옵션**(`UserWithdrawnEvent` 발행 → 각 BC 자체 정리)는 후속 PR로 분리.
 - 현재 상태:
-  - D-C1: UserCrewMembershipAdapter (User Context)가 Crew Context의 JPA 인프라를 직접 import
   - D-C2: NotificationAdapter, VerificationNotificationAdapter가 Support Context의 Notification 도메인 모델을 직접 생성
 - 필요 시점: Phase 2 또는 마이크로서비스 분리 시
 - 이유: 모노리스 단일 배포이므로 Phase 1에서는 실질적 문제 없음. 리팩토링 범위가 크고 기능 변경 없으므로 별도 PR로 분리
@@ -75,13 +80,10 @@
 
 ---
 
-### [2026-03-27] BC 경계 위반 리팩토링 (D-C1, D-C2)
+### [2026-03-27] BC 경계 위반 리팩토링 (D-C1, D-C2) — 중복 항목, 위 [2026-03-27]로 통합됨
 
-- 현재 상태:
-  - D-C1: UserCrewMembershipAdapter (User Context)가 Crew Context의 JPA 인프라를 직접 import
-  - D-C2: NotificationAdapter, VerificationNotificationAdapter가 Support Context의 Notification 도메인 모델을 직접 생성
-- 필요 시점: Phase 2 또는 마이크로서비스 분리 시
-- 이유: 모노리스 단일 배포이므로 Phase 1에서는 실질적 문제 없음. 리팩토링 범위가 크고 기능 변경 없으므로 별도 PR로 분리
+- 위 동일 일자 항목 참조 (D-C1는 2026-04-09 해결)
+- D-C2만 잔여: NotificationAdapter, VerificationNotificationAdapter가 Support Context의 Notification 도메인 모델을 직접 생성
 
 ---
 

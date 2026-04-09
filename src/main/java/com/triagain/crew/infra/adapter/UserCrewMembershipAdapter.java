@@ -1,7 +1,8 @@
-package com.triagain.user.infra;
+package com.triagain.crew.infra.adapter;
 
 import com.triagain.crew.domain.model.Challenge;
 import com.triagain.crew.domain.vo.ChallengeStatus;
+import com.triagain.crew.infra.ChallengeJpaEntity;
 import com.triagain.crew.infra.ChallengeJpaRepository;
 import com.triagain.crew.infra.CrewJpaRepository;
 import com.triagain.crew.infra.CrewMemberJpaRepository;
@@ -12,6 +13,11 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
+/**
+ * 회원탈퇴용 CrewMembershipPort 어댑터 — User Context가 정의한 Port를 Crew Context가 구현.
+ * BC 경계 준수를 위해 crew.infra.adapter에 위치 (DOM-C1, 2026-04-09 PR review).
+ * 클래스명에 User 접두어를 둔 것은 같은 BC의 다른 어댑터(verification.infra.CrewMembershipAdapter)와 단순 이름 충돌을 피하기 위함.
+ */
 @Repository
 @RequiredArgsConstructor
 public class UserCrewMembershipAdapter implements CrewMembershipPort {
@@ -137,7 +143,7 @@ public class UserCrewMembershipAdapter implements CrewMembershipPort {
                 .ifPresent(entity -> {
                     Challenge challenge = entity.toDomain();
                     challenge.end();
-                    challengeJpaRepository.save(com.triagain.crew.infra.ChallengeJpaEntity.fromDomain(challenge));
+                    challengeJpaRepository.save(ChallengeJpaEntity.fromDomain(challenge));
                 });
     }
 }

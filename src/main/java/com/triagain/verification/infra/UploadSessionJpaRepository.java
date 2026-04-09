@@ -15,7 +15,4 @@ public interface UploadSessionJpaRepository extends JpaRepository<UploadSessionJ
 
     List<UploadSessionJpaEntity> findByStatusAndCreatedAtBefore(
             UploadSessionStatus status, LocalDateTime threshold);
-
-    List<UploadSessionJpaEntity> findByStatusAndCreatedAtBetween(
-            UploadSessionStatus status, LocalDateTime from, LocalDateTime to);
 }

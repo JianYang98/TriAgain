@@ -29,6 +29,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+
 @ExtendWith(MockitoExtension.class)
 class ExpireUploadSessionSchedulerTest {
 
@@ -67,7 +68,7 @@ class ExpireUploadSessionSchedulerTest {
                 .willReturn(Collections.emptyList());
 
         // When
-        scheduler.compensateAllExpiredSessions();
+        scheduler.expirePendingSessions();
 
         // Then
         verify(uploadSessionRepositoryPort, never()).save(any());
@@ -85,7 +86,7 @@ class ExpireUploadSessionSchedulerTest {
         given(uploadSessionRepositoryPort.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         // When
-        scheduler.compensateAllExpiredSessions();
+        scheduler.expirePendingSessions();
 
         // Then
         assertThat(session.getStatus()).isEqualTo(UploadSessionStatus.EXPIRED);
@@ -106,7 +107,7 @@ class ExpireUploadSessionSchedulerTest {
         given(uploadSessionRepositoryPort.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         // When
-        scheduler.compensateAllExpiredSessions();
+        scheduler.expirePendingSessions();
 
         // Then
         assertThat(session1.getStatus()).isEqualTo(UploadSessionStatus.EXPIRED);
@@ -139,7 +140,7 @@ class ExpireUploadSessionSchedulerTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         // When & Then — 예외 전파 없음
-        assertThatCode(() -> scheduler.compensateAllExpiredSessions())
+        assertThatCode(() -> scheduler.expirePendingSessions())
                 .doesNotThrowAnyException();
 
         // rehydrate된 fresh 인스턴스가 EXPIRED로 처리됨
@@ -150,23 +151,4 @@ class ExpireUploadSessionSchedulerTest {
         verify(deadLetterRepositoryPort, never()).save(any());
     }
 
-    @Test
-    @DisplayName("윈도우 조회로 만료 세션 처리")
-    void expirePendingSessions_usesWindowQuery() {
-        // Given
-        UploadSession session = UploadSession.of(1L, "user-1", "crew-1", "key-1", "image/jpeg",
-                UploadSessionStatus.PENDING, LocalDateTime.now().minusMinutes(20), LocalDateTime.now().minusMinutes(20));
-
-        given(uploadSessionRepositoryPort.findPendingSessionsInWindow(any(), any()))
-                .willReturn(List.of(session));
-        given(uploadSessionRepositoryPort.save(any())).willAnswer(inv -> inv.getArgument(0));
-
-        // When
-        scheduler.expirePendingSessions();
-
-        // Then — 윈도우 조회 사용, EXPIRED 처리
-        verify(uploadSessionRepositoryPort).findPendingSessionsInWindow(any(), any());
-        verify(uploadSessionRepositoryPort, never()).findPendingSessionsBefore(any());
-        assertThat(session.getStatus()).isEqualTo(UploadSessionStatus.EXPIRED);
-    }
 }

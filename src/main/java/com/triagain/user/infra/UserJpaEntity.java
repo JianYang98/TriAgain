@@ -1,7 +1,9 @@
 package com.triagain.user.infra;
 
+import com.triagain.common.security.crypto.AesGcmStringConverter;
 import com.triagain.user.domain.model.User;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -31,7 +33,8 @@ public class UserJpaEntity {
     @Column(name = "fcm_token", length = 500)
     private String fcmToken;
 
-    @Column(name = "apple_refresh_token", length = 500)
+    @Convert(converter = AesGcmStringConverter.class)
+    @Column(name = "apple_refresh_token", length = 1024)
     private String appleRefreshToken;
 
     @Column(name = "created_at", nullable = false, updatable = false)

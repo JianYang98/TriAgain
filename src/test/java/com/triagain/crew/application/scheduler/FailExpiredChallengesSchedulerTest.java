@@ -76,7 +76,7 @@ class FailExpiredChallengesSchedulerTest {
                 .willReturn(Collections.emptyList());
 
         // When
-        scheduler.compensateAllExpired();
+        scheduler.failExpiredChallenges();
 
         // Then
         verify(challengeRepositoryPort, never()).save(any());
@@ -95,7 +95,7 @@ class FailExpiredChallengesSchedulerTest {
         given(challengeRepositoryPort.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         // When
-        scheduler.compensateAllExpired();
+        scheduler.failExpiredChallenges();
 
         // Then — FAILED 저장 1회만 (새 챌린지 미생성)
         assertThat(expired.getStatus()).isEqualTo(ChallengeStatus.FAILED);
@@ -118,7 +118,7 @@ class FailExpiredChallengesSchedulerTest {
         given(challengeRepositoryPort.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         // When
-        scheduler.compensateAllExpired();
+        scheduler.failExpiredChallenges();
 
         // Then — 2건 모두 FAILED, save 2회
         assertThat(expired1.getStatus()).isEqualTo(ChallengeStatus.FAILED);
@@ -155,7 +155,7 @@ class FailExpiredChallengesSchedulerTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         // When & Then — 예외 전파 없음
-        assertThatCode(() -> scheduler.compensateAllExpired())
+        assertThatCode(() -> scheduler.failExpiredChallenges())
                 .doesNotThrowAnyException();
 
         // rehydrate된 fresh 인스턴스가 FAILED로 처리됨
@@ -167,23 +167,22 @@ class FailExpiredChallengesSchedulerTest {
     }
 
     @Test
-    @DisplayName("윈도우 조회로 만료 챌린지 실패 처리")
-    void failExpiredChallenges_usesWindowQuery() {
+    @DisplayName("정기 스케줄러는 전량 스캔으로 만료 챌린지 실패 처리")
+    void failExpiredChallenges_usesFullScan() {
         // Given
         Challenge expired = Challenge.of("CHAL-1", "user-1", "crew-1", 1, 3, 0,
                 ChallengeStatus.IN_PROGRESS, LocalDate.of(2026, 3, 1),
                 LocalDateTime.of(2026, 3, 4, 23, 59, 59), LocalDateTime.now());
 
-        given(challengeRepositoryPort.findExpiredInWindow(any(), any()))
+        given(challengeRepositoryPort.findExpiredWithoutVerification())
                 .willReturn(List.of(expired));
         given(challengeRepositoryPort.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         // When
         scheduler.failExpiredChallenges();
 
-        // Then — 윈도우 조회 사용, FAILED 처리
-        verify(challengeRepositoryPort).findExpiredInWindow(any(), any());
-        verify(challengeRepositoryPort, never()).findExpiredWithoutVerification();
+        // Then — 전량 스캔 사용, FAILED 처리
+        verify(challengeRepositoryPort).findExpiredWithoutVerification();
         assertThat(expired.getStatus()).isEqualTo(ChallengeStatus.FAILED);
     }
 }
