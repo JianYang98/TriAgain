@@ -40,7 +40,7 @@ class StartupCompensationRunnerTest {
         // Then
         InOrder inOrder = inOrder(activateScheduler, failScheduler, completeScheduler);
         inOrder.verify(activateScheduler).compensateAllRecruitingCrews();
-        inOrder.verify(failScheduler).compensateAllExpired();
+        inOrder.verify(failScheduler).failExpiredChallenges();
         inOrder.verify(completeScheduler).compensateAllExpiredCrews();
     }
 
@@ -55,7 +55,7 @@ class StartupCompensationRunnerTest {
         runner.compensateMissedSchedulerJobs();
 
         // Then
-        verify(failScheduler).compensateAllExpired();
+        verify(failScheduler).failExpiredChallenges();
         verify(completeScheduler).compensateAllExpiredCrews();
     }
 
@@ -64,7 +64,7 @@ class StartupCompensationRunnerTest {
     void step2Fails_remainingStepsStillRun() {
         // Given
         doThrow(new RuntimeException("scheduler error"))
-                .when(failScheduler).compensateAllExpired();
+                .when(failScheduler).failExpiredChallenges();
 
         // When
         runner.compensateMissedSchedulerJobs();

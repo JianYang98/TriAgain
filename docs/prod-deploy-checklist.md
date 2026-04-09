@@ -24,6 +24,7 @@
 | `DB_USERNAME` | DB 사용자명 | - |
 | `DB_PASSWORD` | DB 비밀번호 | - |
 | `JWT_SECRET` | JWT 서명 키 (Base64 인코딩, 256bit 이상) | - |
+| `APPLE_REFRESH_KEY` | Apple refresh_token AES-256-GCM 암호화 키 (Base64 인코딩 32바이트) | `openssl rand -base64 32` |
 
 ---
 
@@ -43,12 +44,19 @@
 - AWS Secrets Manager 또는 Parameter Store로 관리 권장
 - 기본값(하드코딩) 사용 절대 금지
 
+### Apple refresh_token 암호화 키 관리 (`APPLE_REFRESH_KEY`)
+- AES-256-GCM 컬럼 암호화에 사용 (`AesGcmStringConverter`)
+- 32바이트 키를 Base64 인코딩한 문자열 (`openssl rand -base64 32`)
+- 운영은 GitHub Actions Secrets → EC2 환경변수로 주입 (deploy.yml 처리)
+- **키 손실 시 기존 암호화 데이터 복호화 불가** → 백업/로테이션 정책 필요
+- Phase 2에서 KMS / Secrets Manager로 승급 예정
+
 ---
 
 ## 운영 전 확인 사항
 
 - [ ] `spring.profiles.active=prod` 설정 확인
-- [ ] 필수 환경변수 4개 (`DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`) 설정
+- [ ] 필수 환경변수 5개 (`DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `APPLE_REFRESH_KEY`) 설정
 - [ ] `aws.s3.bucket`, `aws.s3.region` 설정 (application-prod.yml에 하드코딩됨, 필요시 환경변수로 변경)
 - [ ] DB 스키마 직접 생성 (`ddl-auto: validate`이므로 자동 생성 안 됨)
 - [ ] DB 마이그레이션 도구 도입 검토 (Flyway/Liquibase)

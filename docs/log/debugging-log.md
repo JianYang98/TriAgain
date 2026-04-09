@@ -5,6 +5,28 @@
 
 ---
 
+### [2026-04-09] develop→main PR 리뷰 Critical 3건 일괄 수정 + BC 어댑터 클래스명 충돌
+
+- 상황: PR 리뷰에서 SEC-C1(Apple refresh_token 평문), DOM-C1(User→Crew BC 위반), DOM-C2(스케줄러 5분 윈도우 누락) 3건이 머지 차단으로 식별. C2 수정 중 어댑터를 `crew.infra.adapter.CrewMembershipAdapter`로 옮겼더니 기존 `verification.infra.CrewMembershipAdapter`(Verification → Crew 위임용 다른 어댑터)와 단순 클래스명 충돌 → Spring `ConflictingBeanDefinitionException`로 컨텍스트 로딩 실패
+- 내 판단: (1) C1은 GitHub Actions Secrets 패턴(JWT_SECRET과 동일)으로 환경변수 주입, KMS 승급은 Phase 2로 분리. (2) C2는 어댑터를 `crew.infra.adapter`로 이동하는 최소 침습 — 권장된 `UserWithdrawnEvent` 이벤트 기반 분리는 후속 PR. 클래스명은 `UserCrewMembershipAdapter`로 되돌려 충돌 회피 (패키지로 BC 소속을 표현, 클래스명으로 용도 구분). (3) C3는 윈도우 제거 후 전량 스캔으로 회귀하면서 `compensateAllExpired*()` 메서드와 `@Scheduled` 메서드가 동일 동작이 되어 통합. 윈도우+보정 이중 구조는 future-considerations에 후속 과제로 기록 (Phase 2 분산 락과 함께 재설계 필요)
+- AI 역할: 3개 Critical 묶음 플랜 작성 → 코드 수정 → 테스트/문서 동기화. 클래스명 충돌은 빌드 실패 후 grep으로 기존 동명 어댑터 발견 → 즉시 rename
+- 배운 점: 한 BC 안에서 같은 클래스명을 다른 용도로 쓰지 않도록 사전에 grep으로 충돌 검사. 패키지가 다르더라도 Spring `@Component`/`@Repository`의 기본 빈 이름은 클래스명 기반이라 충돌함
+
+---
+
+### [2026-04-09] Stack PR base 미전환으로 PR #45/#46이 develop에 도달 못 한 사고
+
+- 상황: BE-P1-1(PR #45)과 BE-P1-3(PR #46)을 stack PR로 만들었음. PR #45 base = `feat/crew-min-duration`(=PR #44 head), PR #46 base = `feat/active-crew-leave`(=PR #45 head). PR #44 머지 직후 PR #45/#46을 차례로 squash-merge → develop에는 PR #47만 추가됨. 다음날 release PR 만들려고 develop log를 보니 #45/#46이 아예 없음. production에 BE-P1-1(CR025), BE-P1-3(빈 크루 정리)가 빠진 상태로 진행돼 있었음
+- 내 판단:
+  1. **GitHub squash merge는 stack 부모 PR이 머지돼도 자식 PR의 base를 자동 전환하지 않는다.** PR #45를 stack 부모(`feat/crew-min-duration`)에 머지하면 그 squash 커밋은 부모 브랜치 안에서만 살아있고 develop에는 안 들어감. PR #46도 동일
+  2. **복구는 cherry-pick이 가장 안전.** 두 squash 커밋(`39b5da9`, `ed4d579`)은 develop의 #47과 변경 영역이 disjoint해서 conflict 없이 cherry-pick 가능. 새 브랜치 `recovery/be-p1-1-and-p1-3`를 develop에서 분기 → 두 커밋 cherry-pick → recovery PR(#48) → rebase merge로 PR boundary 보존
+  3. **rebase merge 선택 이유**: squash merge로 합치면 PR #45/#46 두 변경의 commit boundary가 사라져 history 추적이 어려워짐. rebase는 두 cherry-pick 커밋을 그대로 추가
+  4. **향후 stack PR 작성 시**: 부모 PR 머지 전에 자식 PR의 base를 develop으로 직접 변경하거나, 부모 머지 직후 자식 base를 develop으로 갱신해야 함. GitHub UI의 "Edit base branch" 기능 사용
+- AI 역할: develop log와 PR #45/#46 base 비교로 누락 진단, 두 squash 커밋의 parent chain 분석으로 cherry-pick 가능성 확인, recovery PR 생성/CI 모니터링/머지까지 일괄 수행
+- 배운 점: stack PR은 GitHub 네이티브 기능이 약하다. graphite 같은 툴을 안 쓰면 base 자동 전환이 없어 사고 위험이 큼. 다음부터는 (a) stack 만들지 말고 순차 PR로 가거나 (b) 부모 머지 직후 자식 base를 즉시 develop으로 갱신하는 절차를 박아둘 것
+
+---
+
 ### [2026-04-08] Apple Sign-In Token Revoke 구현 — refresh_token 일회용 관리
 
 - 상황: App Store Review Guideline 5.1.1(v) 대응으로 Apple 회원탈퇴 시 `/auth/revoke` 호출 필요. revoke에 필요한 Apple refresh_token이 DB에 저장되지 않은 상태였음

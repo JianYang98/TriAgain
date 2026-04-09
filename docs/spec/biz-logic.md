@@ -11,8 +11,8 @@
 | 최대 인원 | 2~10명 (프론트 UI 제한. 백엔드는 솔로 테스트용 @Min(1) 허용) |
 | 기간 설정 | 시작일 ~ 종료일 |
 | 시작일 제약 | 내일(오늘+1) 이후만 선택 가능, 초기값은 내일 |
-| 종료일 제약 | 시작일 선택 후에만 선택 가능, 최소 시작일+6일 (작심삼일 2회 보장) |
-| 기간 제한 | 크루 최대 기간 yml에서 설정 (crew.max-duration-days, 기본값 30일) |
+| 종료일 제약 | 시작일 선택 후에만 선택 가능, 최소 시작일+6일 (작심삼일 2회 보장) — 위반 시 `CR024 CREW_DURATION_TOO_SHORT` |
+| 기간 제한 | 크루 최대 기간 yml에서 설정 (crew.max-duration-days, 기본값 30일) — 초과 시 `CR016 CREW_DURATION_TOO_LONG` |
 | 인증 방식 | TEXT(텍스트 필수) / PHOTO(사진 필수 + 텍스트 선택) |
 | 인증 내용 (verificationContent) | 필수 입력, 최대 50자 (크루원이 무엇을 인증해야 하는지 설명) |
 | 초대코드 | 크루 생성 시 자동 발급 (6자리 영숫자, 0/O/I/L 제외) |
@@ -70,11 +70,14 @@
 
 | 항목 | 내용 |
 |------|------|
-| 권한 | MEMBER만 가능 (LEADER 탈퇴 불가) |
-| 상태 조건 | 크루 상태 = RECRUITING |
-| 탈퇴 방식 | crew_member 테이블에서 해당 유저의 레코드 삭제 |
-| LEADER 탈퇴 | 불가 — 크루 삭제(DELETE /crews/{crewId})를 사용해야 함 |
-| 비멤버 탈퇴 | crew_member 레코드 없으면 404 |
+| 권한 | MEMBER만 가능 (LEADER 탈퇴 불가 — `CR020 LEADER_CANNOT_LEAVE`) |
+| RECRUITING | 무조건 탈퇴 가능 |
+| ACTIVE + 챌린지 미시작 | 탈퇴 가능 — 챌린지 한 번도 시작 안 한 멤버는 이탈 허용 |
+| ACTIVE + 챌린지 시작 / COMPLETED / FAILED | 탈퇴 거부 — `CR025 CANNOT_LEAVE_ACTIVE_CREW` |
+| 챌린지 시작 판정 | `challenges` 테이블에 (user_id, crew_id) 레코드가 1건이라도 존재하면 "시작함"으로 본다 (상태 무관: IN_PROGRESS/SUCCESS/FAILED 모두 포함) |
+| 탈퇴 방식 | crew_member 테이블에서 해당 유저의 레코드 삭제 + crews.current_members 감소 |
+| LEADER 탈퇴 | 불가 — 크루 삭제(DELETE /crews/{crewId}) 또는 회원탈퇴 시 자동 위임(BE-P0-1) 사용 |
+| 비멤버 탈퇴 | crew_member 레코드 없으면 `CR021 CREW_MEMBER_NOT_FOUND` |
 
 ### 1.7 크루 상태 전이
 
@@ -199,7 +202,7 @@
 
 | 항목 | 내용 |
 |------|------|
-| 리더 + 다른 멤버 있음 | 탈퇴 거부 (U011) — 먼저 크루를 삭제하거나 리더를 위임해야 함 |
+| 리더 + 다른 멤버 있음 | **자동 위임** — `joined_at` 기준 가장 오래된 멤버에게 LEADER 역할 + `crews.creator_id`를 이관한 뒤 탈퇴자는 크루에서 제거. 위임 대상은 탈퇴자를 제외한 멤버 중에서 선정 |
 | 리더 + 혼자 | 크루 + 연관 데이터(crew_members, challenges, verifications) 하드 삭제 후 탈퇴 |
 | MEMBER | 크루에서 제거 후 탈퇴 |
 | 개인정보 초기화 | 닉네임 → "탈퇴한 사용자", email/profileImageUrl/fcmToken → null, apple_refresh_token → null |
@@ -210,7 +213,7 @@
 
 **Apple revoke 처리 흐름**
 
-1. 검증 단계 통과 (USER_NOT_FOUND, USER_WITHDRAWN, LEADER_CANNOT_WITHDRAW)
+1. 검증 단계 통과 (USER_NOT_FOUND, USER_WITHDRAWN)
 2. provider == APPLE && apple_refresh_token != null → 트랜잭션 **밖에서** Apple `/auth/revoke` 호출 (실패 시 WARN 로그만, 예외 던지지 않음)
 3. 트랜잭션 안에서 크루 정리 + 개인정보 초기화 + tokenVersion++ + apple_refresh_token=null
 4. 외부 API 호출과 DB 트랜잭션은 분리한다 (프로젝트 컨벤션)
@@ -467,13 +470,14 @@ PENDING → resolve() → RESOLVED (수동 해결)
 |----------|------|-----------|------|
 | ActivateRecruitingCrewsScheduler | 매일 00:00 | start_date ≤ 오늘 | RECRUITING → ACTIVE |
 | CompleteExpiredCrewsScheduler | 매일 00:05 | end_date < 오늘 | ACTIVE → COMPLETED + IN_PROGRESS 챌린지 ENDED |
-| FailExpiredChallengesScheduler | 매 5분 | 5분 윈도우 조회 | deadline 초과 + 미인증 챌린지 FAILED |
-| ExpireUploadSessionScheduler | 매 5분 | 5분 윈도우 조회 | 15분 경과 PENDING 세션 EXPIRED |
+| FailExpiredChallengesScheduler | 매 5분 | 전량 스캔 (Phase 1) | deadline 초과 + 미인증 챌린지 FAILED |
+| ExpireUploadSessionScheduler | 매 5분 | 전량 스캔 (Phase 1) | 15분 경과 PENDING 세션 EXPIRED |
 
-**5분 윈도우 조회:**
-- FailExpiredChallenges: `deadline BETWEEN (now - 5분) AND now`
-- ExpireUploadSession: `requested_at BETWEEN (now - 20분) AND (now - 15분)`
-- 장점: 전체 스캔 방지, 이전 주기에서 처리된 건 재조회 최소화
+**전량 스캔 (Phase 1, 500명 규모):**
+- FailExpiredChallenges: 마감 + grace 5분 초과한 IN_PROGRESS 챌린지 모두 조회
+- ExpireUploadSession: 15분 이전에 생성된 PENDING 세션 모두 조회
+- 이유: 윈도우 조회는 한 틱 누락 시(GC pause/배포/지연) 영구 미판정 위험 → 전량 스캔으로 회귀 (DOM-C2, 2026-04-09 PR review)
+- 부하 분산용 윈도우+보정 이중 구조는 후속 과제 (`/docs/log/future-considerations.md` 2026-04-09 참조)
 
 ### 6.4 서버 시작 보정 (StartupCompensationRunner)
 

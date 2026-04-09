@@ -17,5 +17,8 @@ public interface CrewMembershipPort {
     /** 유저의 특정 크루 내 활성 챌린지 종료 처리 */
     void endActiveChallenges(String userId, String crewId);
 
+    /** 가장 오래된 MEMBER에게 리더 자동 위임 — 회원탈퇴 시 LEADER+멤버 있는 크루 처리 */
+    void transferLeaderToOldestMember(String crewId, String currentLeaderId);
+
     record MembershipInfo(String crewId, String role, String crewStatus, int memberCount) {}
 }

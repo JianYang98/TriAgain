@@ -23,7 +23,7 @@ public class StartupCompensationRunner {
         log.info("[Crew Startup Compensation] 밀린 스케줄러 작업 보정 시작");
 
         runStep("크루 활성화 보정", activateScheduler::compensateAllRecruitingCrews);
-        runStep("챌린지 실패 보정", failScheduler::compensateAllExpired);
+        runStep("챌린지 실패 보정", failScheduler::failExpiredChallenges);
         runStep("크루 종료 보정", completeScheduler::compensateAllExpiredCrews);
 
         log.info("[Crew Startup Compensation] 보정 완료");

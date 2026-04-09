@@ -23,25 +23,18 @@ public class ExpireUploadSessionScheduler {
 
     private static final int EXPIRY_MINUTES = 15;
     private static final int CHUNK_SIZE = 50;
-    private static final int WINDOW_MINUTES = 5;
 
     private final UploadSessionRepositoryPort uploadSessionRepositoryPort;
     private final ChunkProcessor chunkProcessor;
     private final DeadLetterRepositoryPort deadLetterRepositoryPort;
 
-    /** PENDING 상태 세션 만료 처리 — 5분 윈도우 내 15분 경과 세션을 EXPIRED로 전환 */
+    /**
+     * PENDING 상태 세션 만료 처리 — 5분마다 전량 스캔 (Phase 1, 500명 규모 기준 안전).
+     * 15분 경과한 PENDING 세션을 EXPIRED로 전환.
+     * 윈도우+보정 이중 구조는 후속 과제 (future-considerations.md 2026-04-09 참조).
+     */
     @Scheduled(fixedRate = 300_000)
     public void expirePendingSessions() {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime threshold = now.minusMinutes(EXPIRY_MINUTES);
-        LocalDateTime windowFrom = now.minusMinutes(EXPIRY_MINUTES + WINDOW_MINUTES);
-        List<UploadSession> expiredSessions = uploadSessionRepositoryPort
-                .findPendingSessionsInWindow(windowFrom, threshold);
-        processSessions(expiredSessions);
-    }
-
-    /** 서버 시작 보정용 — 전체 미처리 건 조회 */
-    public void compensateAllExpiredSessions() {
         LocalDateTime threshold = LocalDateTime.now().minusMinutes(EXPIRY_MINUTES);
         List<UploadSession> expiredSessions = uploadSessionRepositoryPort
                 .findPendingSessionsBefore(threshold);

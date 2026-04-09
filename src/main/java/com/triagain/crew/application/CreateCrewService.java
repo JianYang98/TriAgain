@@ -67,9 +67,12 @@ public class CreateCrewService implements CreateCrewUseCase {
         );
     }
 
-    /** 크루 기간 검증 — 최대 기간 초과 시 예외 */
+    /** 크루 기간 검증 — 최소 7일(=days≥6) / 최대 기간 초과 시 예외 */
     private void validateDuration(CreateCrewCommand command) {
         long days = ChronoUnit.DAYS.between(command.startDate(), command.endDate());
+        if (days < 6) {
+            throw new BusinessException(ErrorCode.CREW_DURATION_TOO_SHORT);
+        }
         if (days > maxDurationDays) {
             throw new BusinessException(ErrorCode.CREW_DURATION_TOO_LONG, maxDurationDays);
         }

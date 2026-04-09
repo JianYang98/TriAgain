@@ -254,7 +254,7 @@ PR 리뷰 후속 개선 항목 4건:
 #### `/docs/prod-deploy-checklist.md`
 
 운영 배포 전 확인사항:
-- 필수 환경변수 4개: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`
+- 필수 환경변수 5개: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `APPLE_REFRESH_KEY`
 - AWS S3 버킷/CORS 설정
 - `/internal/**` VPC 접근 제어
 - DB 마이그레이션 도구 도입 (Flyway/Liquibase)
@@ -333,6 +333,7 @@ Redis 캐시, AWS SQS 비동기 이벤트, FCM 푸시 알림, 분산 락(Redis),
 | **`/auth/test-login`** | `@Profile("!prod")` — prod에서는 빈 자체가 로드되지 않음. 카카오 로그인 없이 JWT 발급 |
 | **`/internal/**` 경로** | Spring Security `permitAll()`이지만 **VPC Security Group으로 Lambda만 접근 허용** 필수 |
 | **JWT Secret** | 운영에서 `${JWT_SECRET}` 환경변수 필수. 하드코딩 기본값 절대 금지 |
+| **Apple refresh_token 암호화** | `${APPLE_REFRESH_KEY}` 필수 (AES-256-GCM, Base64 32바이트). 키 손실 시 기존 데이터 복호화 불가 |
 | **프로필 분리** | `LocalStorageAdapter`(!prod) / `S3StorageAdapter`(prod) — 프로필에 따라 자동 전환 |
 
 ### 8.3 문서 우선 참조

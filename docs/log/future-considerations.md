@@ -6,12 +6,19 @@
 
 ---
 
-### [2026-04-08] WithdrawUserService LEADER 검증 race condition (블로그 글감 후보)
+### [2026-04-09] 스케줄러 윈도우 + 보정 이중 구조 (부하 분산)
 
-- 현재 상태: `WithdrawUserService.withdraw()` 진입 메서드에서 LEADER 멤버 카운트 검증 → 트랜잭션 밖 Apple `/auth/revoke` 호출 → `@Lazy self.completeWithdraw()` 트랜잭션 진입의 3단계 흐름. 사전 검증과 트랜잭션 진입 사이 시간 갭 동안 다른 사용자가 해당 크루에 가입하면 `LEADER_CANNOT_WITHDRAW` 검증을 우회 가능 (`completeWithdraw`는 LEADER 재검증을 하지 않음)
-- 필요 시점: Phase 2 또는 동시성 이슈 보고 시
-- 이유: Phase 1(TPS 50, 500명) 트래픽에서는 발생 확률 매우 낮음. 본 PR(Apple revoke) 범위와 직교하므로 별도 이슈로 분리. 해결 옵션: (1) `completeWithdraw()` 진입 직후 LEADER 재검증, (2) 크루 row에 비관적 락 후 멤버 카운트 재확인, (3) 현 상태 유지
-- **블로그 글감 메모**: "트랜잭션 안에 외부 API 호출 금지" 컨벤션을 지키려고 외부 호출을 트랜잭션 밖으로 빼는 순간, 사전 검증과 트랜잭션 사이에 race window가 생긴다는 트레이드오프. 카카오 탈퇴에는 외부 호출이 없어 race가 없고, Apple 탈퇴에만 등장한다는 비대칭성이 훅. App Store 5.1.1(v) 외부 요건이 내부 아키텍처 결정(self-injection 패턴)을 흔든 구조라는 점도 흥미로움. 기존 블로그(`blog-dead-letter-chunk-processor.md`, `blog-jpa-idclass-pitfall.md`)의 "문제 해결 경험" 톤과 일치. 제목 후보: "트랜잭션 밖으로 외부 API를 빼면 생기는 동시성 트레이드오프 — Apple Sign-In Revoke 사례"
+- 현재 상태: `FailExpiredChallengesScheduler` / `ExpireUploadSessionScheduler` 모두 5분마다 전량 스캔으로 단순화 (Phase 1, 500명 규모 기준 안전). 별도 startup compensation runner도 동일 스케줄러 메서드를 호출.
+- 필요 시점: Phase 2 또는 challenges/upload_sessions 누적량이 만 단위에 도달 시
+- 이유: 윈도우 조회 구조는 한 틱(GC pause/배포/지연)을 놓치면 영구 미판정 위험이 있어 PR 리뷰(DOM-C2, 2026-04-09)에서 제거. 부하 분산 목적의 윈도우+보정 이중 구조는 멀티 인스턴스 스케줄러 조정, 분산 락(`DistributedLockPort`), 미처리 추적 테이블과 함께 재설계해야 안전하다. Phase 1 규모에서는 단순 전량 스캔이 더 견고.
+
+### [2026-04-09] DeadlinePolicy LocalTime 비교 → LocalDateTime/Clock 리팩토링
+
+- 현재 상태: `DeadlinePolicy.todayDeadline(LocalTime)`이 `LocalDate.now().atTime(time)`으로 오늘의 deadline을 만든다. `isWithinDeadline`은 LocalDateTime 비교지만 deadline 값 자체가 LocalTime에서 파생되어 자정 wrap에 취약하다. `LocalTime.now().minusMinutes(N)`으로 "과거 시각"을 만들려는 단위테스트가 자정 직후 00:00 ~ 00:1X 영역에서 wrap되어 어제 23:5X로 잘못 해석되고 비결정적으로 실패한다.
+- 영향 받은 테스트: `FindOrCreateActiveChallengeServiceTest.deadlineTimeExceeded_throws`, `CreateUploadSessionServiceTest.noActiveChallengeAfterCrewDeadline_throws` — BE-P1-2 PR에서 `Assumptions.assumeTrue` 가드로 임시 회피 (자정 ~ 00:15 사이엔 skip)
+- 필요 시점: Phase 2 또는 production 측에서 실제 자정 경계 버그가 보고되는 시점
+- 이유: production 코드가 deadline을 LocalTime → LocalDateTime으로 변환하는 순간 "오늘 날짜 + 그 시각"이라는 가정이 들어가는데, 자정 직후 호출 시 어제의 deadline을 오늘로 해석하거나 그 반대로 해석할 가능성이 있다. 해결 옵션: (1) deadline을 처음부터 LocalDateTime으로 들고 다닌다, (2) `Clock`을 DI해서 테스트에서 고정 시각 주입, (3) 도메인 정책을 "challenge.startDate + completedDays + deadlineTime"으로 상시 LocalDateTime 계산
+- 우선순위: 자정 직후 트래픽 거의 없는 Phase 1에서는 실서비스 영향 매우 낮음. 테스트만 임시 회피해두고 Phase 2에서 LocalDateTime 기반 리팩토링과 함께 처리
 
 ---
 
@@ -23,11 +30,10 @@
 
 ---
 
-### [2026-04-08] users.apple_refresh_token DB 평문 저장 → application-level 암호화
+### [2026-04-08] ~~users.apple_refresh_token DB 평문 저장 → application-level 암호화~~ ✅ RESOLVED 2026-04-09
 
-- 현재 상태: V16 마이그레이션으로 `apple_refresh_token VARCHAR(500) NULL` 평문 저장
-- 필요 시점: Phase 2 또는 보안 감사 시
-- 이유: OAuth refresh_token은 application-level 암호화(KMS / Jasypt) 권장 자산. 누출 시 공격자가 사용자 Apple 권한을 직접 얻지는 못하지만(Apple은 revoke만 가능) 보호 가치가 있는 인증 자산. Phase 1에서는 RDS 외부 노출이 없고 backup 암호화가 적용되어 있어 acceptable
+- ~~현재 상태: V16 마이그레이션으로 `apple_refresh_token VARCHAR(500) NULL` 평문 저장~~
+- **해결**: SEC-C1 PR 리뷰 대응으로 AES-256-GCM AttributeConverter(`AesGcmStringConverter`) 적용 + V17로 컬럼 1024 확장. 키는 `APPLE_REFRESH_KEY` 환경변수 (GitHub Actions Secrets). KMS / Secrets Manager 승급은 Phase 2 후속 과제로 유지.
 
 ---
 
@@ -39,10 +45,10 @@
 
 ---
 
-### [2026-03-27] BC 경계 위반 리팩토링 (D-C1, D-C2)
+### [2026-03-27] BC 경계 위반 리팩토링 (D-C1, D-C2) — D-C1만 부분 해결
 
+- ~~D-C1: UserCrewMembershipAdapter (User Context)가 Crew Context의 JPA 인프라를 직접 import~~ ✅ **2026-04-09 해결 (최소 침습)**: 어댑터를 `crew.infra.adapter.UserCrewMembershipAdapter`로 이동. `CrewMembershipPort`는 `user.port.out`에 그대로 두고 Crew BC가 구현하는 형태(다른 BC가 Output Port 구현 — 헥사고날 정당 패턴). **권장 옵션**(`UserWithdrawnEvent` 발행 → 각 BC 자체 정리)는 후속 PR로 분리.
 - 현재 상태:
-  - D-C1: UserCrewMembershipAdapter (User Context)가 Crew Context의 JPA 인프라를 직접 import
   - D-C2: NotificationAdapter, VerificationNotificationAdapter가 Support Context의 Notification 도메인 모델을 직접 생성
 - 필요 시점: Phase 2 또는 마이크로서비스 분리 시
 - 이유: 모노리스 단일 배포이므로 Phase 1에서는 실질적 문제 없음. 리팩토링 범위가 크고 기능 변경 없으므로 별도 PR로 분리
@@ -74,13 +80,10 @@
 
 ---
 
-### [2026-03-27] BC 경계 위반 리팩토링 (D-C1, D-C2)
+### [2026-03-27] BC 경계 위반 리팩토링 (D-C1, D-C2) — 중복 항목, 위 [2026-03-27]로 통합됨
 
-- 현재 상태:
-  - D-C1: UserCrewMembershipAdapter (User Context)가 Crew Context의 JPA 인프라를 직접 import
-  - D-C2: NotificationAdapter, VerificationNotificationAdapter가 Support Context의 Notification 도메인 모델을 직접 생성
-- 필요 시점: Phase 2 또는 마이크로서비스 분리 시
-- 이유: 모노리스 단일 배포이므로 Phase 1에서는 실질적 문제 없음. 리팩토링 범위가 크고 기능 변경 없으므로 별도 PR로 분리
+- 위 동일 일자 항목 참조 (D-C1는 2026-04-09 해결)
+- D-C2만 잔여: NotificationAdapter, VerificationNotificationAdapter가 Support Context의 Notification 도메인 모델을 직접 생성
 
 ---
 

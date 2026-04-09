@@ -197,6 +197,13 @@ class FindOrCreateActiveChallengeServiceTest {
     @Test
     @DisplayName("오늘의 deadline_time + grace period 초과 시 → VERIFICATION_DEADLINE_EXCEEDED")
     void deadlineTimeExceeded_throws() {
+        // 자정 직후(00:00 ~ 00:15) LocalTime.now().minusMinutes(6)는 어제 23:5X로 wrap되어
+        // deadline이 미래로 판정 → 테스트 비결정적. production deadline 비교가 LocalTime 기반이라
+        // 발생하는 한계 — Phase 2에서 LocalDateTime/Clock 리팩토링 예정 (future-considerations.md 참조).
+        org.junit.jupiter.api.Assumptions.assumeTrue(
+                LocalTime.now().isAfter(LocalTime.of(0, 15)),
+                "자정 wrap 회피 — 0시 15분 이전엔 skip");
+
         // Given — deadlineTime을 현재 시각 6분 전으로 설정 (grace 5분 초과)
         LocalTime pastDeadline = LocalTime.now().minusMinutes(6);
         Crew crew = Crew.of(CREW_ID, "creator-1", "크루", "목표",

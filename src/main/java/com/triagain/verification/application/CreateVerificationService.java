@@ -10,10 +10,11 @@ import com.triagain.verification.port.out.ChallengePort;
 import com.triagain.verification.port.out.ChallengePort.ChallengeInfo;
 import com.triagain.verification.port.out.CrewPort;
 import com.triagain.verification.port.out.StoragePort;
+import com.triagain.verification.application.event.ChallengeSuccessEvent;
 import com.triagain.verification.port.out.UploadSessionRepositoryPort;
-import com.triagain.verification.port.out.VerificationNotificationPort;
 import com.triagain.verification.port.out.VerificationRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,7 +30,7 @@ public class CreateVerificationService implements CreateVerificationUseCase {
     private final ChallengePort challengePort;
     private final CrewPort crewPort;
     private final StoragePort storagePort;
-    private final VerificationNotificationPort verificationNotificationPort;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -88,8 +89,9 @@ public class CreateVerificationService implements CreateVerificationUseCase {
 
         boolean challengeSuccess = challengePort.recordCompletion(challenge.id());
         if (challengeSuccess) {
-            verificationNotificationPort.sendChallengeSuccessNotification(
-                    command.userId(), challenge.crewId());
+            // 트랜잭션 커밋 후 알림 발송 — DB 커넥션 점유 시간 단축 + 외부 호출 트랜잭션 분리
+            eventPublisher.publishEvent(new ChallengeSuccessEvent(
+                    command.userId(), challenge.crewId()));
         }
 
         return new VerificationResult(

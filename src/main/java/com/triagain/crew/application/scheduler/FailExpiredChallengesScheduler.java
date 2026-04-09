@@ -16,7 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -27,7 +26,6 @@ import java.util.stream.Collectors;
 public class FailExpiredChallengesScheduler {
 
     private static final int CHUNK_SIZE = 50;
-    private static final int WINDOW_MINUTES = 5;
 
     private final ChallengeRepositoryPort challengeRepositoryPort;
     private final CrewRepositoryPort crewRepositoryPort;
@@ -35,17 +33,12 @@ public class FailExpiredChallengesScheduler {
     private final ChunkProcessor chunkProcessor;
     private final DeadLetterRepositoryPort deadLetterRepositoryPort;
 
-    /** 마감 초과 챌린지 실패 처리 — 매 5분마다 윈도우 조회로 판정 */
+    /**
+     * 마감 초과 챌린지 실패 처리 — 5분마다 전량 스캔 (Phase 1, 500명 규모 기준 안전).
+     * 윈도우+보정 이중 구조는 후속 과제 (future-considerations.md 2026-04-09 참조).
+     */
     @Scheduled(fixedRate = 300_000)
     public void failExpiredChallenges() {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime windowStart = now.minusMinutes(WINDOW_MINUTES);
-        List<Challenge> expired = challengeRepositoryPort.findExpiredInWindow(windowStart, now);
-        processExpired(expired);
-    }
-
-    /** 서버 시작 보정용 — 전체 미처리 건 조회 */
-    public void compensateAllExpired() {
         List<Challenge> expired = challengeRepositoryPort.findExpiredWithoutVerification();
         processExpired(expired);
     }
@@ -95,7 +88,8 @@ public class FailExpiredChallengesScheduler {
                             crewNameMap.getOrDefault(c.getCrewId(), "크루")))
                     .toList();
 
-            notificationPort.sendChallengeFailedNotifications(infos);
+            // TODO: 챌린지 실패 알림 임시 비활성화 — 유저 알림 on/off 설정 UI 구현 후 복원
+            // notificationPort.sendChallengeFailedNotifications(infos);
         } catch (Exception e) {
             log.warn("챌린지 실패 알림 발송 중 오류: {}", e.getMessage());
         }

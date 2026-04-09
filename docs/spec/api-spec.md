@@ -686,9 +686,9 @@ Authorization: Bearer <token>
 ```
 
 **처리 흐름:**
-1. 검증: USER_NOT_FOUND, USER_WITHDRAWN, LEADER_CANNOT_WITHDRAW
+1. 검증: USER_NOT_FOUND, USER_WITHDRAWN
 2. **Apple 연결 해제** (provider=APPLE && apple_refresh_token != null): Apple `/auth/revoke` 호출 (트랜잭션 밖, 실패해도 graceful 진행)
-3. 트랜잭션: 크루 정리(LEADER+혼자 → 하드 삭제 / MEMBER → 제거) → 개인정보 초기화 → tokenVersion++ → apple_refresh_token=null
+3. 트랜잭션: 크루 정리(LEADER+혼자 → 하드 삭제 / LEADER+멤버≥1 → 가장 오래된 멤버에게 자동 위임 후 본인 제거 / MEMBER → 제거) → 개인정보 초기화 → tokenVersion++ → apple_refresh_token=null
 
 **성공 응답 (200 OK)**
 ```json
@@ -708,7 +708,6 @@ Authorization: Bearer <token>
 | HTTP | 코드 | 메시지 | 설명 |
 |------|------|--------|------|
 | 403 | U010 | 탈퇴한 사용자입니다. | deleted_at이 이미 설정됨 |
-| 409 | U011 | 멤버가 있는 크루의 리더는 탈퇴할 수 없습니다. | 리더 + 다른 멤버 존재 |
 
 ---
 
@@ -1142,8 +1141,8 @@ Content-Type: application/json
 - `verificationContent`: (필수) 인증 내용 (최대 50자)
 - `verificationType`: (필수) 인증 방식 — `TEXT` / `PHOTO`
 - `maxMembers`: (필수) 최대 정원 (1~10)
-- `startDate`: (필수) 크루 시작일
-- `endDate`: (필수) 크루 종료일
+- `startDate`: (필수) 크루 시작일 (오늘+1 이후)
+- `endDate`: (필수) 크루 종료일 (시작일 + 최소 6일 = 최소 7일 기간 / 최대 `crew.max-duration-days`일, 기본 30일)
 - `allowLateJoin`: (선택) 중간 가입 허용 여부 (기본값 false)
 - `deadlineTime`: (선택) 일일 인증 마감 시간 (기본값 23:59:59)
 - `category`: (필수) 크루 카테고리 — `EXERCISE` / `STUDY` / `LIFESTYLE` / `SELF_DEV` / `ETC`
@@ -1175,6 +1174,14 @@ Content-Type: application/json
   "error": null
 }
 ```
+
+**에러 응답**
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 400 | CR011 | 시작일은 내일 이후여야 합니다. | startDate가 오늘 이전 |
+| 400 | CR012 | 종료일은 시작일 이후여야 합니다. | endDate ≤ startDate |
+| 400 | CR024 | 크루 기간은 최소 7일 이상이어야 합니다. | (endDate - startDate) < 6일 |
+| 400 | CR016 | 크루 기간은 최대 {N}일까지 가능합니다. | (endDate - startDate) > `crew.max-duration-days` |
 
 ---
 
@@ -1389,13 +1396,18 @@ Authorization: Bearer <token>
 
 ### DELETE /crews/{crewId}/members/me (크루 탈퇴)
 
-크루원(MEMBER)이 RECRUITING 상태 크루에서 탈퇴한다. LEADER는 탈퇴 불가 (크루 삭제를 사용).
+크루원(MEMBER)이 크루에서 탈퇴한다. RECRUITING은 무조건 가능, ACTIVE는 챌린지를 한 번도 시작하지 않은 멤버만 가능. LEADER는 탈퇴 불가 (크루 삭제 또는 회원탈퇴 시 자동 위임 사용).
 
 **요청 (Request)**
 ```
 DELETE /crews/{crewId}/members/me HTTP/1.1
 Authorization: Bearer <token>
 ```
+
+**처리 정책:**
+- RECRUITING → 무조건 탈퇴 가능
+- ACTIVE + 챌린지 미시작(`challenges` 테이블에 (user_id, crew_id) 레코드 없음) → 탈퇴 가능
+- ACTIVE + 챌린지 시작 / COMPLETED / FAILED → 거부 (`CR025`)
 
 **성공 응답 (204 No Content)**
 
@@ -1404,7 +1416,7 @@ Authorization: Bearer <token>
 **에러 응답**
 | HTTP | 코드 | 메시지 | 설명 |
 |------|------|--------|------|
-| 400 | CR003 | 모집 중인 크루가 아닙니다. | RECRUITING 상태가 아님 |
+| 400 | CR025 | 진행 중인 크루는 챌린지를 시작하지 않은 멤버만 탈퇴할 수 있습니다. | ACTIVE + 챌린지 시작 / COMPLETED / FAILED |
 | 403 | CR020 | 크루장은 탈퇴할 수 없습니다. | LEADER 탈퇴 시도 |
 | 404 | CR001 | 크루를 찾을 수 없습니다. | 존재하지 않는 crewId |
 | 404 | CR021 | 해당 크루의 멤버가 아닙니다. | crew_member 레코드 없음 |

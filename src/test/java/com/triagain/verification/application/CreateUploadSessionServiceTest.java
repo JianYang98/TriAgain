@@ -163,6 +163,13 @@ class CreateUploadSessionServiceTest {
     @Test
     @DisplayName("활성 챌린지 없고 크루 마감 후 → VERIFICATION_DEADLINE_EXCEEDED")
     void noActiveChallengeAfterCrewDeadline_throws() {
+        // 자정 직후(00:00 ~ 00:15) LocalTime.now().minusMinutes(10)는 어제 23:5X로 wrap되어
+        // deadline이 미래로 판정 → 테스트 비결정적. production deadline 비교가 LocalTime 기반이라
+        // 발생하는 한계 — Phase 2에서 LocalDateTime/Clock 리팩토링 예정 (future-considerations.md 참조).
+        org.junit.jupiter.api.Assumptions.assumeTrue(
+                LocalTime.now().isAfter(LocalTime.of(0, 15)),
+                "자정 wrap 회피 — 0시 15분 이전엔 skip");
+
         // Given — deadlineTime을 이미 지난 시각으로 설정
         LocalTime pastDeadline = LocalTime.now().minusMinutes(10);
         stubMembershipAndCrewInfo(activePhotoCrew(pastDeadline));

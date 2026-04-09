@@ -6,7 +6,6 @@ import com.triagain.crew.port.out.ChallengeRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,14 +54,6 @@ public class ChallengeJpaAdapter implements ChallengeRepositoryPort {
                 .toList();
     }
 
-    /** 시간 윈도우 내 마감 초과 + 미인증 챌린지 조회 — 정기 스케줄러에서 사용 */
-    @Override
-    public List<Challenge> findExpiredInWindow(LocalDateTime from, LocalDateTime to) {
-        return challengeJpaRepository.findExpiredInWindow(from, to).stream()
-                .map(ChallengeJpaEntity::toDomain)
-                .toList();
-    }
-
     /** 비관적 락으로 IN_PROGRESS 챌린지 조회 — 동시 챌린지 생성 방지에 사용 */
     @Override
     public Optional<Challenge> findByUserIdAndCrewIdAndStatusWithLock(String userId, String crewId, ChallengeStatus status) {
@@ -80,6 +71,12 @@ public class ChallengeJpaAdapter implements ChallengeRepositoryPort {
     @Override
     public int countSuccessByUserIdAndCrewId(String userId, String crewId) {
         return challengeJpaRepository.countSuccessByUserIdAndCrewId(userId, crewId);
+    }
+
+    /** 유저·크루의 챌린지 존재 여부 확인 — ACTIVE 크루 탈퇴 시 챌린지 시작 여부 판단에 사용 */
+    @Override
+    public boolean existsByUserIdAndCrewId(String userId, String crewId) {
+        return challengeJpaRepository.existsByUserIdAndCrewId(userId, crewId);
     }
 
     /** 크루 멤버별 성공 횟수 조회 — 작심삼일 성공 카운트에 사용 */

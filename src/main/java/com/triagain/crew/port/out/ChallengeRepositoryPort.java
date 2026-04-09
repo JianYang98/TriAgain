@@ -3,7 +3,6 @@ package com.triagain.crew.port.out;
 import com.triagain.crew.domain.model.Challenge;
 import com.triagain.crew.domain.vo.ChallengeStatus;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -28,9 +27,6 @@ public interface ChallengeRepositoryPort {
     /** 마감 초과 + 미인증 챌린지 조회 — 실패 판정 스케줄러에서 사용 */
     List<Challenge> findExpiredWithoutVerification();
 
-    /** 시간 윈도우 내 마감 초과 + 미인증 챌린지 조회 — 정기 스케줄러에서 사용 */
-    List<Challenge> findExpiredInWindow(LocalDateTime from, LocalDateTime to);
-
     /** 비관적 락으로 IN_PROGRESS 챌린지 조회 — 동시 챌린지 생성 방지에 사용 */
     Optional<Challenge> findByUserIdAndCrewIdAndStatusWithLock(String userId, String crewId, ChallengeStatus status);
 
@@ -39,4 +35,7 @@ public interface ChallengeRepositoryPort {
 
     /** 유저·크루의 SUCCESS 챌린지 수 조회 — 작심삼일 달성 횟수에 사용 */
     int countSuccessByUserIdAndCrewId(String userId, String crewId);
+
+    /** 유저·크루의 챌린지 존재 여부 확인 — ACTIVE 크루 탈퇴 시 챌린지 시작 여부 판단에 사용 */
+    boolean existsByUserIdAndCrewId(String userId, String crewId);
 }

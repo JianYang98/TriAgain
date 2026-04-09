@@ -21,7 +21,7 @@ public class VerificationStartupCompensationRunner {
         log.info("[Verification Startup Compensation] 밀린 스케줄러 작업 보정 시작");
 
         try {
-            expireSessionScheduler.compensateAllExpiredSessions();
+            expireSessionScheduler.expirePendingSessions();
         } catch (Exception e) {
             log.error("[Verification Startup Compensation] 업로드 세션 만료 보정 실패", e);
         }
