@@ -27,7 +27,7 @@ public class VerificationJpaEntity {
     @Column(name = "challenge_id", nullable = false, length = 36)
     private String challengeId;
 
-    @Column(name = "user_id", nullable = false, length = 36)
+    @Column(name = "user_id", nullable = false, length = 64)
     private String userId;
 
     @Column(name = "crew_id", nullable = false, length = 36)
