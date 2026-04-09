@@ -139,7 +139,7 @@ erDiagram
     
     upload_session {
         bigint id PK
-        varchar(36) user_id FK
+        varchar(64) user_id FK
         varchar(36) crew_id FK "nullable — 크루 연결 (cross-crew 검증용)"
         varchar image_key
         varchar content_type
