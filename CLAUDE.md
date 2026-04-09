@@ -320,6 +320,7 @@ Optional<Crew> findByIdWithLock(String id);
 
 - N+1 문제 주의 → Fetch Join 또는 Batch Size 설정
 - 복잡한 조회는 MyBatis 사용, 단순 CRUD는 JPA
+- PK/FK 컬럼 타입 변경 시, schema.md에서 해당 컬럼을 FK로 참조하는 테이블을 먼저 전부 찾고 문서를 고친 뒤 마이그레이션을 작성한다 (V5에서 users.id만 확장하고 FK 9곳 누락한 사례)
 
 ### Common Pitfalls
 
