@@ -19,7 +19,7 @@ public class ReactionJpaEntity {
     @Column(name = "verification_id", nullable = false, length = 36)
     private String verificationId;
 
-    @Column(name = "user_id", nullable = false, length = 36)
+    @Column(name = "user_id", nullable = false, length = 64)
     private String userId;
 
     @Column(nullable = false)

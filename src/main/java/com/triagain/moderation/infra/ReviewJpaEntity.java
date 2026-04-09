@@ -23,7 +23,7 @@ public class ReviewJpaEntity {
     @Column(name = "report_id", nullable = false, length = 36)
     private String reportId;
 
-    @Column(name = "reviewer_id", nullable = false, length = 36)
+    @Column(name = "reviewer_id", nullable = false, length = 64)
     private String reviewerId;
 
     @Enumerated(EnumType.STRING)

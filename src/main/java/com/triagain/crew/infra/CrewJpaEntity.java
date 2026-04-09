@@ -25,7 +25,7 @@ public class CrewJpaEntity {
     @Column(length = 36)
     private String id;
 
-    @Column(name = "creator_id", nullable = false, length = 36)
+    @Column(name = "creator_id", nullable = false, length = 64)
     private String creatorId;
 
     @Column(nullable = false)

@@ -26,7 +26,7 @@ public class ReportJpaEntity {
     @Column(name = "verification_id", nullable = false, length = 36)
     private String verificationId;
 
-    @Column(name = "reporter_id", nullable = false, length = 36)
+    @Column(name = "reporter_id", nullable = false, length = 64)
     private String reporterId;
 
     @Enumerated(EnumType.STRING)

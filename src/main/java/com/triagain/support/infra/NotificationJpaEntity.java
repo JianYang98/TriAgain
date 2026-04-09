@@ -20,7 +20,7 @@ public class NotificationJpaEntity {
     @Column(length = 36)
     private String id;
 
-    @Column(name = "user_id", nullable = false, length = 36)
+    @Column(name = "user_id", nullable = false, length = 64)
     private String userId;
 
     @Enumerated(EnumType.STRING)
