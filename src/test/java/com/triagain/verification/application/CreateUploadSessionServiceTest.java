@@ -1,5 +1,27 @@
 package com.triagain.verification.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.Optional;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
 import com.triagain.verification.domain.model.UploadSession;
@@ -10,301 +32,286 @@ import com.triagain.verification.port.out.CrewPort;
 import com.triagain.verification.port.out.CrewPort.CrewVerificationWindowInfo;
 import com.triagain.verification.port.out.StoragePort;
 import com.triagain.verification.port.out.UploadSessionRepositoryPort;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doThrow;
 
 @ExtendWith(MockitoExtension.class)
 class CreateUploadSessionServiceTest {
 
-    @Mock
-    private UploadSessionRepositoryPort uploadSessionRepositoryPort;
+	private static final ZoneId ZONE = ZoneId.systemDefault();
+	private static final LocalDateTime FIXED_NOW = LocalDateTime.of(2026, 4, 13, 14, 0, 0);
+	private static final Clock FIXED_CLOCK = Clock.fixed(
+			FIXED_NOW.atZone(ZONE).toInstant(), ZONE);
+	private static final LocalDate TODAY = FIXED_NOW.toLocalDate();
 
-    @Mock
-    private StoragePort storagePort;
+	private static final String USER_ID = "user-1";
+	private static final String CREW_ID = "crew-1";
+	private static final String CHALLENGE_ID = "challenge-1";
+	private static final String FILE_NAME = "photo.jpg";
+	private static final String FILE_TYPE = "image/jpeg";
+	private static final long FILE_SIZE = 1024 * 1024; // 1MB
+	private static final String IMAGE_KEY = "upload-sessions/user-1/abc123.jpg";
+	private static final String PRESIGNED_URL = "https://s3.example.com/presigned";
+	private static final String IMAGE_URL = "https://s3.example.com/image.jpg";
 
-    @Mock
-    private ChallengePort challengePort;
+	@Mock
+	private UploadSessionRepositoryPort uploadSessionRepositoryPort;
 
-    @Mock
-    private CrewPort crewPort;
+	@Mock
+	private StoragePort storagePort;
 
-    @InjectMocks
-    private CreateUploadSessionService createUploadSessionService;
+	@Mock
+	private ChallengePort challengePort;
 
-    private static final String USER_ID = "user-1";
-    private static final String CREW_ID = "crew-1";
-    private static final String CHALLENGE_ID = "challenge-1";
-    private static final String FILE_NAME = "photo.jpg";
-    private static final String FILE_TYPE = "image/jpeg";
-    private static final long FILE_SIZE = 1024 * 1024; // 1MB
-    private static final String IMAGE_KEY = "upload-sessions/user-1/abc123.jpg";
-    private static final String PRESIGNED_URL = "https://s3.example.com/presigned";
-    private static final String IMAGE_URL = "https://s3.example.com/image.jpg";
+	@Mock
+	private CrewPort crewPort;
 
-    private static CrewVerificationWindowInfo activePhotoCrew(LocalTime deadlineTime) {
-        return new CrewVerificationWindowInfo(
-                "PHOTO", "ACTIVE",
-                LocalDate.now().minusDays(1), LocalDate.now().plusDays(10),
-                false, deadlineTime
-        );
-    }
+	private CreateUploadSessionService createUploadSessionService;
 
-    private static ActiveChallengeInfo activeChallengeWithDeadline(LocalDateTime deadline) {
-        return new ActiveChallengeInfo(CHALLENGE_ID, "IN_PROGRESS", 1, 3, deadline);
-    }
+	@BeforeEach
+	void setUp() {
+		createUploadSessionService = new CreateUploadSessionService(
+				uploadSessionRepositoryPort, storagePort, challengePort, crewPort, FIXED_CLOCK);
+	}
 
-    private CreateUploadSessionCommand defaultCommand() {
-        return new CreateUploadSessionCommand(USER_ID, CREW_ID, FILE_NAME, FILE_TYPE, FILE_SIZE);
-    }
+	private static CrewVerificationWindowInfo activePhotoCrew(LocalTime deadlineTime) {
+		return new CrewVerificationWindowInfo(
+				"PHOTO", "ACTIVE",
+				TODAY.minusDays(1), TODAY.plusDays(10),
+				false, deadlineTime
+		);
+	}
 
-    private void stubMembershipAndCrewInfo(CrewVerificationWindowInfo crewInfo) {
-        doNothing().when(crewPort).validateMembership(CREW_ID, USER_ID);
-        given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(crewInfo);
-    }
+	private static ActiveChallengeInfo activeChallengeWithDeadline(LocalDateTime deadline) {
+		return new ActiveChallengeInfo(CHALLENGE_ID, "IN_PROGRESS", 1, 3, deadline);
+	}
 
-    private void stubStorageAndRepository() {
-        given(storagePort.generateImageKey(anyString(), anyString())).willReturn(IMAGE_KEY);
-        given(storagePort.generatePresignedUrl(anyString(), anyString())).willReturn(PRESIGNED_URL);
-        given(storagePort.getImageUrl(anyString())).willReturn(IMAGE_URL);
-        given(uploadSessionRepositoryPort.save(any(UploadSession.class)))
-                .willAnswer(invocation -> {
-                    UploadSession session = invocation.getArgument(0);
-                    return UploadSession.of(1L, session.getUserId(), session.getCrewId(),
-                            session.getImageKey(), session.getContentType(),
-                            session.getStatus(), session.getRequestedAt(), session.getCreatedAt());
-                });
-    }
+	private CreateUploadSessionCommand defaultCommand() {
+		return new CreateUploadSessionCommand(USER_ID, CREW_ID, FILE_NAME, FILE_TYPE, FILE_SIZE);
+	}
 
-    @Test
-    @DisplayName("활성 챌린지 있고 마감 전 → 성공")
-    void activeChallengeBeforeDeadline_success() {
-        // Given
-        LocalDateTime deadline = LocalDateTime.now().plusMinutes(30);
-        stubMembershipAndCrewInfo(activePhotoCrew(LocalTime.of(23, 59, 59)));
-        given(challengePort.findActiveByUserIdAndCrewId(USER_ID, CREW_ID))
-                .willReturn(Optional.of(activeChallengeWithDeadline(deadline)));
-        stubStorageAndRepository();
+	private void stubMembershipAndCrewInfo(CrewVerificationWindowInfo crewInfo) {
+		doNothing().when(crewPort).validateMembership(CREW_ID, USER_ID);
+		given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(crewInfo);
+	}
 
-        // When
-        var result = createUploadSessionService.createUploadSession(defaultCommand());
+	private void stubStorageAndRepository() {
+		given(storagePort.generateImageKey(anyString(), anyString())).willReturn(IMAGE_KEY);
+		given(storagePort.generatePresignedUrl(anyString(), anyString())).willReturn(PRESIGNED_URL);
+		given(storagePort.getImageUrl(anyString())).willReturn(IMAGE_URL);
+		given(uploadSessionRepositoryPort.save(any(UploadSession.class)))
+				.willAnswer(invocation -> {
+					UploadSession session = invocation.getArgument(0);
+					return UploadSession.of(1L, session.getUserId(), session.getCrewId(),
+							session.getImageKey(), session.getContentType(),
+							session.getStatus(), session.getRequestedAt(), session.getCreatedAt());
+				});
+	}
 
-        // Then
-        assertThat(result).isNotNull();
-        assertThat(result.presignedUrl()).isEqualTo(PRESIGNED_URL);
-    }
+	@Test
+	@DisplayName("활성 챌린지 있고 마감 전 → 성공")
+	void activeChallengeBeforeDeadline_success() {
+		// Given
+		LocalDateTime deadline = FIXED_NOW.plusMinutes(30);
+		stubMembershipAndCrewInfo(activePhotoCrew(LocalTime.of(23, 59, 59)));
+		given(challengePort.findActiveByUserIdAndCrewId(USER_ID, CREW_ID))
+				.willReturn(Optional.of(activeChallengeWithDeadline(deadline)));
+		stubStorageAndRepository();
 
-    @Test
-    @DisplayName("활성 챌린지 있고 마감 + 3분 → 성공 (grace period 5분 이내)")
-    void activeChallengeWithinGrace_success() {
-        // Given
-        LocalDateTime deadline = LocalDateTime.now().minusMinutes(3);
-        stubMembershipAndCrewInfo(activePhotoCrew(LocalTime.of(23, 59, 59)));
-        given(challengePort.findActiveByUserIdAndCrewId(USER_ID, CREW_ID))
-                .willReturn(Optional.of(activeChallengeWithDeadline(deadline)));
-        stubStorageAndRepository();
+		// When
+		var result = createUploadSessionService.createUploadSession(defaultCommand());
 
-        // When
-        var result = createUploadSessionService.createUploadSession(defaultCommand());
+		// Then
+		assertThat(result).isNotNull();
+		assertThat(result.presignedUrl()).isEqualTo(PRESIGNED_URL);
+	}
 
-        // Then
-        assertThat(result).isNotNull();
-    }
+	@Test
+	@DisplayName("활성 챌린지 있고 마감 + 3분 → 성공 (grace period 5분 이내)")
+	void activeChallengeWithinGrace_success() {
+		// Given
+		LocalDateTime deadline = FIXED_NOW.minusMinutes(3);
+		stubMembershipAndCrewInfo(activePhotoCrew(LocalTime.of(23, 59, 59)));
+		given(challengePort.findActiveByUserIdAndCrewId(USER_ID, CREW_ID))
+				.willReturn(Optional.of(activeChallengeWithDeadline(deadline)));
+		stubStorageAndRepository();
 
-    @Test
-    @DisplayName("활성 챌린지 있고 마감 + 6분 → VERIFICATION_DEADLINE_EXCEEDED (grace 초과)")
-    void activeChallengeExceedsGrace_throws() {
-        // Given
-        LocalDateTime deadline = LocalDateTime.now().minusMinutes(6);
-        stubMembershipAndCrewInfo(activePhotoCrew(LocalTime.of(23, 59, 59)));
-        given(challengePort.findActiveByUserIdAndCrewId(USER_ID, CREW_ID))
-                .willReturn(Optional.of(activeChallengeWithDeadline(deadline)));
+		// When
+		var result = createUploadSessionService.createUploadSession(defaultCommand());
 
-        // When & Then
-        assertThatThrownBy(() -> createUploadSessionService.createUploadSession(defaultCommand()))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
-    }
+		// Then
+		assertThat(result).isNotNull();
+	}
 
-    @Test
-    @DisplayName("활성 챌린지 없고 크루 마감 전 → 성공 (crew-level deadline)")
-    void noActiveChallengeBeforeCrewDeadline_success() {
-        // Given — deadlineTime을 23:59:59로 설정하면 오늘 마감 전
-        stubMembershipAndCrewInfo(activePhotoCrew(LocalTime.of(23, 59, 59)));
-        given(challengePort.findActiveByUserIdAndCrewId(USER_ID, CREW_ID))
-                .willReturn(Optional.empty());
-        stubStorageAndRepository();
+	@Test
+	@DisplayName("활성 챌린지 있고 마감 + 6분 → VERIFICATION_DEADLINE_EXCEEDED (grace 초과)")
+	void activeChallengeExceedsGrace_throws() {
+		// Given
+		LocalDateTime deadline = FIXED_NOW.minusMinutes(6);
+		stubMembershipAndCrewInfo(activePhotoCrew(LocalTime.of(23, 59, 59)));
+		given(challengePort.findActiveByUserIdAndCrewId(USER_ID, CREW_ID))
+				.willReturn(Optional.of(activeChallengeWithDeadline(deadline)));
 
-        // When
-        var result = createUploadSessionService.createUploadSession(defaultCommand());
+		// When & Then
+		assertThatThrownBy(() -> createUploadSessionService.createUploadSession(defaultCommand()))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
+	}
 
-        // Then
-        assertThat(result).isNotNull();
-        assertThat(result.presignedUrl()).isEqualTo(PRESIGNED_URL);
-    }
+	@Test
+	@DisplayName("활성 챌린지 없고 크루 마감 전 → 성공 (crew-level deadline)")
+	void noActiveChallengeBeforeCrewDeadline_success() {
+		// Given — deadlineTime을 23:59:59로 설정하면 오늘 마감 전
+		stubMembershipAndCrewInfo(activePhotoCrew(LocalTime.of(23, 59, 59)));
+		given(challengePort.findActiveByUserIdAndCrewId(USER_ID, CREW_ID))
+				.willReturn(Optional.empty());
+		stubStorageAndRepository();
 
-    @Test
-    @DisplayName("활성 챌린지 없고 크루 마감 후 → VERIFICATION_DEADLINE_EXCEEDED")
-    void noActiveChallengeAfterCrewDeadline_throws() {
-        // 자정 직후(00:00 ~ 00:15) LocalTime.now().minusMinutes(10)는 어제 23:5X로 wrap되어
-        // deadline이 미래로 판정 → 테스트 비결정적. production deadline 비교가 LocalTime 기반이라
-        // 발생하는 한계 — Phase 2에서 LocalDateTime/Clock 리팩토링 예정 (future-considerations.md 참조).
-        org.junit.jupiter.api.Assumptions.assumeTrue(
-                LocalTime.now().isAfter(LocalTime.of(0, 15)),
-                "자정 wrap 회피 — 0시 15분 이전엔 skip");
+		// When
+		var result = createUploadSessionService.createUploadSession(defaultCommand());
 
-        // Given — deadlineTime을 이미 지난 시각으로 설정
-        LocalTime pastDeadline = LocalTime.now().minusMinutes(10);
-        stubMembershipAndCrewInfo(activePhotoCrew(pastDeadline));
-        given(challengePort.findActiveByUserIdAndCrewId(USER_ID, CREW_ID))
-                .willReturn(Optional.empty());
+		// Then
+		assertThat(result).isNotNull();
+		assertThat(result.presignedUrl()).isEqualTo(PRESIGNED_URL);
+	}
 
-        // When & Then
-        assertThatThrownBy(() -> createUploadSessionService.createUploadSession(defaultCommand()))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
-    }
+	@Test
+	@DisplayName("활성 챌린지 없고 크루 마감 후 → VERIFICATION_DEADLINE_EXCEEDED")
+	void noActiveChallengeAfterCrewDeadline_throws() {
+		// Given — deadlineTime을 고정 시각(14:00) 10분 전으로 설정 (grace 5분 초과)
+		LocalTime pastDeadline = LocalTime.of(13, 50);
+		stubMembershipAndCrewInfo(activePhotoCrew(pastDeadline));
+		given(challengePort.findActiveByUserIdAndCrewId(USER_ID, CREW_ID))
+				.willReturn(Optional.empty());
 
-    @Test
-    @DisplayName("비활성 크루 → CREW_NOT_ACTIVE")
-    void inactiveCrew_throws() {
-        // Given
-        doNothing().when(crewPort).validateMembership(CREW_ID, USER_ID);
-        given(crewPort.getCrewVerificationWindowInfo(CREW_ID))
-                .willReturn(new CrewVerificationWindowInfo(
-                        "PHOTO", "RECRUITING",
-                        LocalDate.now().plusDays(1), LocalDate.now().plusDays(10),
-                        false, LocalTime.of(23, 59, 59)
-                ));
+		// When & Then
+		assertThatThrownBy(() -> createUploadSessionService.createUploadSession(defaultCommand()))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
+	}
 
-        // When & Then
-        assertThatThrownBy(() -> createUploadSessionService.createUploadSession(defaultCommand()))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.CREW_NOT_ACTIVE);
-    }
+	@Test
+	@DisplayName("비활성 크루 → CREW_NOT_ACTIVE")
+	void inactiveCrew_throws() {
+		// Given
+		doNothing().when(crewPort).validateMembership(CREW_ID, USER_ID);
+		given(crewPort.getCrewVerificationWindowInfo(CREW_ID))
+				.willReturn(new CrewVerificationWindowInfo(
+						"PHOTO", "RECRUITING",
+						TODAY.plusDays(1), TODAY.plusDays(10),
+						false, LocalTime.of(23, 59, 59)
+				));
 
-    @Test
-    @DisplayName("크루 기간 종료 → CREW_PERIOD_ENDED")
-    void crewPeriodEnded_throws() {
-        // Given
-        doNothing().when(crewPort).validateMembership(CREW_ID, USER_ID);
-        given(crewPort.getCrewVerificationWindowInfo(CREW_ID))
-                .willReturn(new CrewVerificationWindowInfo(
-                        "PHOTO", "ACTIVE",
-                        LocalDate.now().minusDays(10), LocalDate.now().minusDays(1),
-                        false, LocalTime.of(23, 59, 59)
-                ));
+		// When & Then
+		assertThatThrownBy(() -> createUploadSessionService.createUploadSession(defaultCommand()))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.CREW_NOT_ACTIVE);
+	}
 
-        // When & Then
-        assertThatThrownBy(() -> createUploadSessionService.createUploadSession(defaultCommand()))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.CREW_PERIOD_ENDED);
-    }
+	@Test
+	@DisplayName("크루 기간 종료 → CREW_PERIOD_ENDED")
+	void crewPeriodEnded_throws() {
+		// Given
+		doNothing().when(crewPort).validateMembership(CREW_ID, USER_ID);
+		given(crewPort.getCrewVerificationWindowInfo(CREW_ID))
+				.willReturn(new CrewVerificationWindowInfo(
+						"PHOTO", "ACTIVE",
+						TODAY.minusDays(10), TODAY.minusDays(1),
+						false, LocalTime.of(23, 59, 59)
+				));
 
-    @Test
-    @DisplayName("크루 시작 전 → CREW_NOT_STARTED")
-    void crewNotStarted_throws() {
-        // Given
-        doNothing().when(crewPort).validateMembership(CREW_ID, USER_ID);
-        given(crewPort.getCrewVerificationWindowInfo(CREW_ID))
-                .willReturn(new CrewVerificationWindowInfo(
-                        "PHOTO", "ACTIVE",
-                        LocalDate.now().plusDays(1), LocalDate.now().plusDays(10),
-                        false, LocalTime.of(23, 59, 59)
-                ));
+		// When & Then
+		assertThatThrownBy(() -> createUploadSessionService.createUploadSession(defaultCommand()))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.CREW_PERIOD_ENDED);
+	}
 
-        // When & Then
-        assertThatThrownBy(() -> createUploadSessionService.createUploadSession(defaultCommand()))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.CREW_NOT_STARTED);
-    }
+	@Test
+	@DisplayName("크루 시작 전 → CREW_NOT_STARTED")
+	void crewNotStarted_throws() {
+		// Given
+		doNothing().when(crewPort).validateMembership(CREW_ID, USER_ID);
+		given(crewPort.getCrewVerificationWindowInfo(CREW_ID))
+				.willReturn(new CrewVerificationWindowInfo(
+						"PHOTO", "ACTIVE",
+						TODAY.plusDays(1), TODAY.plusDays(10),
+						false, LocalTime.of(23, 59, 59)
+				));
 
-    @Test
-    @DisplayName("비회원 → CREW_ACCESS_DENIED")
-    void nonMember_throws() {
-        // Given
-        doThrow(new BusinessException(ErrorCode.CREW_ACCESS_DENIED))
-                .when(crewPort).validateMembership(CREW_ID, USER_ID);
+		// When & Then
+		assertThatThrownBy(() -> createUploadSessionService.createUploadSession(defaultCommand()))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.CREW_NOT_STARTED);
+	}
 
-        // When & Then
-        assertThatThrownBy(() -> createUploadSessionService.createUploadSession(defaultCommand()))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.CREW_ACCESS_DENIED);
-    }
+	@Test
+	@DisplayName("비회원 → CREW_ACCESS_DENIED")
+	void nonMember_throws() {
+		// Given
+		doThrow(new BusinessException(ErrorCode.CREW_ACCESS_DENIED))
+				.when(crewPort).validateMembership(CREW_ID, USER_ID);
 
-    @Test
-    @DisplayName("TEXT 크루 → UPLOAD_SESSION_NOT_REQUIRED")
-    void textCrew_throws() {
-        // Given
-        doNothing().when(crewPort).validateMembership(CREW_ID, USER_ID);
-        given(crewPort.getCrewVerificationWindowInfo(CREW_ID))
-                .willReturn(new CrewVerificationWindowInfo(
-                        "TEXT", "ACTIVE",
-                        LocalDate.now().minusDays(1), LocalDate.now().plusDays(10),
-                        false, LocalTime.of(23, 59, 59)
-                ));
+		// When & Then
+		assertThatThrownBy(() -> createUploadSessionService.createUploadSession(defaultCommand()))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.CREW_ACCESS_DENIED);
+	}
 
-        // When & Then
-        assertThatThrownBy(() -> createUploadSessionService.createUploadSession(defaultCommand()))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.UPLOAD_SESSION_NOT_REQUIRED);
-    }
+	@Test
+	@DisplayName("TEXT 크루 → UPLOAD_SESSION_NOT_REQUIRED")
+	void textCrew_throws() {
+		// Given
+		doNothing().when(crewPort).validateMembership(CREW_ID, USER_ID);
+		given(crewPort.getCrewVerificationWindowInfo(CREW_ID))
+				.willReturn(new CrewVerificationWindowInfo(
+						"TEXT", "ACTIVE",
+						TODAY.minusDays(1), TODAY.plusDays(10),
+						false, LocalTime.of(23, 59, 59)
+				));
 
-    @Test
-    @DisplayName("허용되지 않는 파일 타입 → INVALID_FILE_TYPE")
-    void invalidFileType_throws() {
-        // Given
-        stubMembershipAndCrewInfo(activePhotoCrew(LocalTime.of(23, 59, 59)));
-        given(challengePort.findActiveByUserIdAndCrewId(USER_ID, CREW_ID))
-                .willReturn(Optional.of(activeChallengeWithDeadline(LocalDateTime.now().plusHours(1))));
-        CreateUploadSessionCommand command = new CreateUploadSessionCommand(
-                USER_ID, CREW_ID, "doc.pdf", "application/pdf", FILE_SIZE);
+		// When & Then
+		assertThatThrownBy(() -> createUploadSessionService.createUploadSession(defaultCommand()))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.UPLOAD_SESSION_NOT_REQUIRED);
+	}
 
-        // When & Then
-        assertThatThrownBy(() -> createUploadSessionService.createUploadSession(command))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.INVALID_FILE_TYPE);
-    }
+	@Test
+	@DisplayName("허용되지 않는 파일 타입 → INVALID_FILE_TYPE")
+	void invalidFileType_throws() {
+		// Given
+		stubMembershipAndCrewInfo(activePhotoCrew(LocalTime.of(23, 59, 59)));
+		given(challengePort.findActiveByUserIdAndCrewId(USER_ID, CREW_ID))
+				.willReturn(Optional.of(activeChallengeWithDeadline(FIXED_NOW.plusHours(1))));
+		CreateUploadSessionCommand command = new CreateUploadSessionCommand(
+				USER_ID, CREW_ID, "doc.pdf", "application/pdf", FILE_SIZE);
 
-    @Test
-    @DisplayName("파일 크기 초과 → FILE_TOO_LARGE")
-    void fileTooLarge_throws() {
-        // Given
-        stubMembershipAndCrewInfo(activePhotoCrew(LocalTime.of(23, 59, 59)));
-        given(challengePort.findActiveByUserIdAndCrewId(USER_ID, CREW_ID))
-                .willReturn(Optional.of(activeChallengeWithDeadline(LocalDateTime.now().plusHours(1))));
-        long oversizedFile = 6 * 1024 * 1024; // 6MB (max 5MB)
-        CreateUploadSessionCommand command = new CreateUploadSessionCommand(
-                USER_ID, CREW_ID, FILE_NAME, FILE_TYPE, oversizedFile);
+		// When & Then
+		assertThatThrownBy(() -> createUploadSessionService.createUploadSession(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.INVALID_FILE_TYPE);
+	}
 
-        // When & Then
-        assertThatThrownBy(() -> createUploadSessionService.createUploadSession(command))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.FILE_TOO_LARGE);
-    }
+	@Test
+	@DisplayName("파일 크기 초과 → FILE_TOO_LARGE")
+	void fileTooLarge_throws() {
+		// Given
+		stubMembershipAndCrewInfo(activePhotoCrew(LocalTime.of(23, 59, 59)));
+		given(challengePort.findActiveByUserIdAndCrewId(USER_ID, CREW_ID))
+				.willReturn(Optional.of(activeChallengeWithDeadline(FIXED_NOW.plusHours(1))));
+		long oversizedFile = 6 * 1024 * 1024; // 6MB (max 5MB)
+		CreateUploadSessionCommand command = new CreateUploadSessionCommand(
+				USER_ID, CREW_ID, FILE_NAME, FILE_TYPE, oversizedFile);
+
+		// When & Then
+		assertThatThrownBy(() -> createUploadSessionService.createUploadSession(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.FILE_TOO_LARGE);
+	}
 }
