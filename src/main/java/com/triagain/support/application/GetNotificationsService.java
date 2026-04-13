@@ -17,14 +17,14 @@ public class GetNotificationsService implements GetNotificationsUseCase {
 
     private final NotificationRepositoryPort notificationRepositoryPort;
 
-    /** 내 알림 목록 조회 — 최신순 Slice 페이지네이션 */
+    /** 내 알림 목록 조회 — 최신순 Slice 페이지네이션, isRead 필터 지원 */
     @Override
     @Transactional(readOnly = true)
-    public NotificationListResult getNotifications(String userId, int page, int size) {
+    public NotificationListResult getNotifications(String userId, Boolean isRead, int page, int size) {
         if (page < 0) page = 0;
         if (size <= 0 || size > 50) size = 20;
 
-        NotificationSlice slice = notificationRepositoryPort.findByUserId(userId, page, size);
+        NotificationSlice slice = notificationRepositoryPort.findByUserId(userId, isRead, page, size);
         List<NotificationItem> items = slice.notifications().stream()
                 .map(n -> new NotificationItem(
                         n.getId(),

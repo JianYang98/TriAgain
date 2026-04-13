@@ -1574,11 +1574,12 @@ Content-Type: application/json
 
 **요청 (Request)**
 ```
-GET /notifications?page=0&size=20 HTTP/1.1
+GET /notifications?isRead=false&page=0&size=20 HTTP/1.1
 Authorization: Bearer <token>
 ```
 
 **쿼리 파라미터:**
+- `isRead`: (선택) 읽음 필터 — 미전달 시 전체, `false`: 안 읽은 알림만, `true`: 읽은 알림만
 - `page`: (선택) 페이지 번호 (기본값 0)
 - `size`: (선택) 페이지 크기 (기본값 20, 최대 50)
 
@@ -1682,6 +1683,58 @@ Authorization: Bearer <token>
 |------|------|--------|------|
 | 401 | A003 | 인증이 필요합니다. | 미인증 |
 | 404 | S001 | 알림을 찾을 수 없습니다. | 존재하지 않거나 본인 알림 아님 |
+
+---
+
+### DELETE /notifications (알림 전체 삭제)
+
+본인의 알림을 전체 삭제한다. Hard Delete. 0건이어도 200 OK (멱등).
+
+**요청 (Request)**
+```
+DELETE /notifications HTTP/1.1
+Authorization: Bearer <token>
+```
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": null,
+  "error": null
+}
+```
+
+**에러 응답**
+| HTTP | 코드 | 메시지 |
+|------|------|--------|
+| 401 | A003 | 인증이 필요합니다. |
+
+---
+
+### PATCH /notifications/read-all (알림 전체 읽음)
+
+본인의 안 읽은 알림을 전체 읽음 처리한다. 이미 전부 읽은 상태여도 200 OK (멱등).
+
+**요청 (Request)**
+```
+PATCH /notifications/read-all HTTP/1.1
+Authorization: Bearer <token>
+```
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": null,
+  "error": null
+}
+```
+
+**에러 응답**
+| HTTP | 코드 | 메시지 |
+|------|------|--------|
+| 401 | A003 | 인증이 필요합니다. |
 
 ---
 
