@@ -17,6 +17,7 @@ build/
 
 # Gradle wrapper jar is required
 !gradle/wrapper/gradle-wrapper.jar
+!config/checkstyle/checkstyle-*-all.jar
 
 # OS
 .DS_Store
