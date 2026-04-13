@@ -9,7 +9,7 @@ import com.triagain.verification.port.out.ChallengePort;
 import com.triagain.verification.port.out.ChallengePort.ActiveChallengeInfo;
 import com.triagain.verification.port.out.CrewPort;
 import com.triagain.verification.port.out.CrewPort.CrewVerificationWindowInfo;
-import com.triagain.verification.port.out.StoragePort;
+import com.triagain.common.port.out.StoragePort;
 import com.triagain.verification.port.out.UploadSessionRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -43,12 +43,12 @@ public class CreateUploadSessionService implements CreateUploadSessionUseCase {
         validateFileType(command.fileType());
         validateFileSize(command.fileSize());
 
-        String imageKey = storagePort.generateImageKey(command.userId(), command.fileName());
+        String imageKey = storagePort.generateImageKey(command.userId(), command.fileType());
 
         UploadSession session = UploadSession.create(command.userId(), command.crewId(), imageKey, command.fileType());
         UploadSession saved = uploadSessionRepositoryPort.save(session);
 
-        String presignedUrl = storagePort.generatePresignedUrl(imageKey, command.fileType());
+        String presignedUrl = storagePort.generatePresignedUrl(imageKey, command.fileType(), command.fileSize());
         String imageUrl = storagePort.getImageUrl(imageKey);
 
         return new UploadSessionResult(
@@ -105,7 +105,7 @@ public class CreateUploadSessionService implements CreateUploadSessionUseCase {
     }
 
     private void validateFileSize(long fileSize) {
-        if (fileSize > MAX_FILE_SIZE) {
+        if (fileSize <= 0 || fileSize > MAX_FILE_SIZE) {
             throw new BusinessException(ErrorCode.FILE_TOO_LARGE);
         }
     }

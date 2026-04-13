@@ -8,8 +8,8 @@ import org.springframework.stereotype.Service;
 
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
+import com.triagain.common.port.out.StoragePort;
 import com.triagain.user.port.in.CreateProfileUploadSessionUseCase;
-import com.triagain.verification.port.out.StoragePort;
 
 import lombok.RequiredArgsConstructor;
 
@@ -22,7 +22,6 @@ public class CreateProfileUploadSessionService implements CreateProfileUploadSes
 	);
 	private static final long MAX_FILE_SIZE = 5 * 1024 * 1024;
 	private static final int PRESIGNED_URL_EXPIRY_MINUTES = 15;
-	private static final String PROFILE_PREFIX = "profiles";
 
 	private final StoragePort storagePort;
 	private final Clock clock;
@@ -34,9 +33,9 @@ public class CreateProfileUploadSessionService implements CreateProfileUploadSes
 		validateFileSize(command.fileSize());
 
 		String imageKey = storagePort.generateImageKey(
-				PROFILE_PREFIX, command.userId(), command.fileName());
+				StoragePort.PROFILE_PREFIX, command.userId(), command.fileType());
 		String presignedUrl = storagePort.generatePresignedUrl(
-				imageKey, command.fileType());
+				imageKey, command.fileType(), command.fileSize());
 		String imageUrl = storagePort.getImageUrl(imageKey);
 
 		return new ProfileUploadSessionResult(
@@ -51,7 +50,7 @@ public class CreateProfileUploadSessionService implements CreateProfileUploadSes
 	}
 
 	private void validateFileSize(long fileSize) {
-		if (fileSize > MAX_FILE_SIZE) {
+		if (fileSize <= 0 || fileSize > MAX_FILE_SIZE) {
 			throw new BusinessException(ErrorCode.FILE_TOO_LARGE);
 		}
 	}

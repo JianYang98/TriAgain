@@ -52,6 +52,8 @@
     <suppress files="CreateCrewService\.java$" checks=".*"/>
     <suppress files="CreateCrewUseCase\.java$" checks=".*"/>
     <suppress files="CreateUploadSessionRequest\.java$" checks=".*"/>
+    <suppress files="CreateProfileUploadSessionService\.java$" checks=".*"/>
+    <suppress files="CreateProfileUploadSessionServiceTest\.java$" checks=".*"/>
     <suppress files="CreateUploadSessionService\.java$" checks=".*"/>
     <suppress files="CreateUploadSessionUseCase\.java$" checks=".*"/>
     <suppress files="CreateVerificationRequest\.java$" checks=".*"/>

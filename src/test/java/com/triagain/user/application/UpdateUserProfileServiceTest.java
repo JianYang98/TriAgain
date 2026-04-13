@@ -1,10 +1,8 @@
 package com.triagain.user.application;
 
-import com.triagain.common.exception.BusinessException;
-import com.triagain.common.exception.ErrorCode;
-import com.triagain.user.domain.model.User;
-import com.triagain.user.port.out.UserRepositoryPort;
-import com.triagain.verification.port.out.StoragePort;
+import java.time.LocalDateTime;
+import java.util.Optional;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,8 +10,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
-import java.util.Optional;
+import com.triagain.common.exception.BusinessException;
+import com.triagain.common.exception.ErrorCode;
+import com.triagain.common.port.out.StoragePort;
+import com.triagain.user.domain.model.User;
+import com.triagain.user.port.out.UserRepositoryPort;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -44,10 +45,11 @@ class UpdateUserProfileServiceTest {
 
         // When
         var result = updateUserProfileService.updateProfileImage(
-                "user-1", "https://s3.com/profiles/user-1/new.jpg");
+                "user-1", "https://s3.com/profiles/user-1/550e8400-e29b-41d4-a716-446655440000.jpg");
 
         // Then
-        assertThat(result.profileImageUrl()).isEqualTo("https://s3.com/profiles/user-1/new.jpg");
+        assertThat(result.profileImageUrl()).isEqualTo(
+                "https://s3.com/profiles/user-1/550e8400-e29b-41d4-a716-446655440000.jpg");
     }
 
     @Test
@@ -76,7 +78,7 @@ class UpdateUserProfileServiceTest {
 
         // When & Then
         assertThatThrownBy(() -> updateUserProfileService.updateProfileImage(
-                "nonexistent", "https://s3.com/profiles/nonexistent/new.jpg"))
+                "nonexistent", "https://s3.com/profiles/nonexistent/550e8400-e29b-41d4-a716-446655440000.jpg"))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.USER_NOT_FOUND);
     }
@@ -89,7 +91,7 @@ class UpdateUserProfileServiceTest {
 
         // When & Then
         assertThatThrownBy(() -> updateUserProfileService.updateProfileImage(
-                "user-1", "https://s3.com/profiles/other-user/image.jpg"))
+                "user-1", "https://s3.com/profiles/other-user/550e8400-e29b-41d4-a716-446655440000.jpg"))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.INVALID_IMAGE_URL);
     }
