@@ -249,7 +249,7 @@ public class Crew {
             throw new BusinessException(ErrorCode.INVALID_END_DATE);
         }
         if (endDate.isBefore(startDate.plusDays(6))) {
-            throw new BusinessException(ErrorCode.INVALID_END_DATE);
+            throw new BusinessException(ErrorCode.CREW_DURATION_TOO_SHORT);
         }
     }
 

@@ -14,6 +14,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -24,6 +25,7 @@ public class FindOrCreateActiveChallengeService {
 
     private final ChallengeRepositoryPort challengeRepositoryPort;
     private final CrewRepositoryPort crewRepositoryPort;
+    private final Clock clock;
 
     /** 활성 챌린지 조회 또는 생성 — 인증 시 챌린지가 없으면 자동 생성 */
     @Transactional
@@ -39,7 +41,7 @@ public class FindOrCreateActiveChallengeService {
 
         validateCrewActive(crew);
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         LocalDate startDate = today;
         LocalDate deadlineDate = startDate.plusDays(3);
         if (deadlineDate.isAfter(crew.getEndDate())) {
@@ -68,11 +70,11 @@ public class FindOrCreateActiveChallengeService {
         if (crew.getStatus() != CrewStatus.ACTIVE) {
             throw new BusinessException(ErrorCode.CREW_NOT_ACTIVE);
         }
-        if (LocalDate.now().isAfter(crew.getEndDate())) {
+        if (LocalDate.now(clock).isAfter(crew.getEndDate())) {
             throw new BusinessException(ErrorCode.CREW_PERIOD_ENDED);
         }
-        LocalDateTime todayDeadline = DeadlinePolicy.todayDeadline(crew.getDeadlineTime());
-        if (!DeadlinePolicy.isWithinDeadline(LocalDateTime.now(), todayDeadline)) {
+        LocalDateTime todayDeadline = DeadlinePolicy.todayDeadline(crew.getDeadlineTime(), clock);
+        if (!DeadlinePolicy.isWithinDeadline(LocalDateTime.now(clock), todayDeadline)) {
             throw new BusinessException(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
         }
     }

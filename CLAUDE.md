@@ -331,6 +331,22 @@ Optional<Crew> findByIdWithLock(String id);
 
 ---
 
+## 코드 품질 규칙
+
+### Checkstyle (필수)
+- 네이버 Java 코딩 컨벤션 기반 (`config/checkstyle/triagain-checkstyle-rules.xml`)
+- 메소드 길이: 최대 30줄 (빈 줄 제외)
+- .java 파일 수정 시 Claude Code Hook이 자동으로 Checkstyle 실행
+- 위반 발견 시 반드시 수정 후 다음 작업 진행
+
+### 커밋 전 체크리스트
+1. `./gradlew checkstyleMain` → 위반 0건 확인
+2. `./gradlew compileJava compileTestJava -x test` → 컴파일 통과
+3. `./gradlew test` → 테스트 통과
+4. 위 3개 모두 통과 후에만 `git commit`
+
+---
+
 ## Git Convention
 
 ### 브랜치 전략

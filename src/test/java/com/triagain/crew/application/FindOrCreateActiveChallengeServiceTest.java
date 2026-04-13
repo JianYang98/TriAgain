@@ -1,5 +1,28 @@
 package com.triagain.crew.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.Collections;
+import java.util.Optional;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
+
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
 import com.triagain.crew.domain.model.Challenge;
@@ -9,226 +32,210 @@ import com.triagain.crew.domain.vo.CrewStatus;
 import com.triagain.crew.domain.vo.VerificationType;
 import com.triagain.crew.port.out.ChallengeRepositoryPort;
 import com.triagain.crew.port.out.CrewRepositoryPort;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.Collections;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class FindOrCreateActiveChallengeServiceTest {
 
-    @Mock
-    private ChallengeRepositoryPort challengeRepositoryPort;
+	private static final ZoneId ZONE = ZoneId.systemDefault();
+	private static final LocalDateTime FIXED_NOW = LocalDateTime.of(2026, 4, 13, 14, 0, 0);
+	private static final Clock FIXED_CLOCK = Clock.fixed(
+			FIXED_NOW.atZone(ZONE).toInstant(), ZONE);
+	private static final LocalDate TODAY = FIXED_NOW.toLocalDate();
 
-    @Mock
-    private CrewRepositoryPort crewRepositoryPort;
+	private static final String USER_ID = "user-1";
+	private static final String CREW_ID = "crew-1";
+	private static final LocalTime DEADLINE_TIME = LocalTime.of(23, 59, 59);
 
-    @InjectMocks
-    private FindOrCreateActiveChallengeService service;
+	@Mock
+	private ChallengeRepositoryPort challengeRepositoryPort;
 
-    private static final String USER_ID = "user-1";
-    private static final String CREW_ID = "crew-1";
-    private static final LocalTime DEADLINE_TIME = LocalTime.of(23, 59, 59);
+	@Mock
+	private CrewRepositoryPort crewRepositoryPort;
 
-    @Test
-    @DisplayName("IN_PROGRESS 챌린지 존재 시 그대로 반환")
-    void existingInProgressChallenge_returned() {
-        // Given
-        Challenge existing = Challenge.of("CHAL-1", USER_ID, CREW_ID, 1, 3, 1,
-                ChallengeStatus.IN_PROGRESS, LocalDate.now(),
-                LocalDateTime.now().plusDays(3), LocalDateTime.now());
-        given(challengeRepositoryPort.findByUserIdAndCrewIdAndStatusWithLock(
-                USER_ID, CREW_ID, ChallengeStatus.IN_PROGRESS))
-                .willReturn(Optional.of(existing));
+	private FindOrCreateActiveChallengeService service;
 
-        // When
-        Challenge result = service.findOrCreate(USER_ID, CREW_ID);
+	@BeforeEach
+	void setUp() {
+		service = new FindOrCreateActiveChallengeService(
+				challengeRepositoryPort, crewRepositoryPort, FIXED_CLOCK);
+	}
 
-        // Then
-        assertThat(result.getId()).isEqualTo("CHAL-1");
-        verify(crewRepositoryPort, never()).findById(any());
-    }
+	@Test
+	@DisplayName("IN_PROGRESS 챌린지 존재 시 그대로 반환")
+	void existingInProgressChallenge_returned() {
+		// Given
+		Challenge existing = Challenge.of("CHAL-1", USER_ID, CREW_ID, 1, 3, 1,
+				ChallengeStatus.IN_PROGRESS, TODAY,
+				FIXED_NOW.plusDays(3), FIXED_NOW);
+		given(challengeRepositoryPort.findByUserIdAndCrewIdAndStatusWithLock(
+				USER_ID, CREW_ID, ChallengeStatus.IN_PROGRESS))
+				.willReturn(Optional.of(existing));
 
-    @Test
-    @DisplayName("첫 챌린지 생성 — maxCycleNumber=0이면 createFirst")
-    void noExistingChallenge_createsFirst() {
-        // Given
-        Crew crew = activeCrew(CREW_ID, LocalDate.now().minusDays(1), LocalDate.now().plusDays(30));
+		// When
+		Challenge result = service.findOrCreate(USER_ID, CREW_ID);
 
-        given(challengeRepositoryPort.findByUserIdAndCrewIdAndStatusWithLock(
-                USER_ID, CREW_ID, ChallengeStatus.IN_PROGRESS))
-                .willReturn(Optional.empty());
-        given(crewRepositoryPort.findById(CREW_ID)).willReturn(Optional.of(crew));
-        given(challengeRepositoryPort.findMaxCycleNumber(USER_ID, CREW_ID)).willReturn(0);
-        given(challengeRepositoryPort.save(any())).willAnswer(inv -> inv.getArgument(0));
+		// Then
+		assertThat(result.getId()).isEqualTo("CHAL-1");
+		verify(crewRepositoryPort, never()).findById(any());
+	}
 
-        // When
-        Challenge result = service.findOrCreate(USER_ID, CREW_ID);
+	@Test
+	@DisplayName("첫 챌린지 생성 — maxCycleNumber=0이면 createFirst")
+	void noExistingChallenge_createsFirst() {
+		// Given
+		Crew crew = activeCrew(CREW_ID, TODAY.minusDays(1), TODAY.plusDays(30));
 
-        // Then
-        assertThat(result.getCycleNumber()).isEqualTo(1);
-        assertThat(result.getStatus()).isEqualTo(ChallengeStatus.IN_PROGRESS);
-        assertThat(result.getStartDate()).isEqualTo(LocalDate.now());
-    }
+		given(challengeRepositoryPort.findByUserIdAndCrewIdAndStatusWithLock(
+				USER_ID, CREW_ID, ChallengeStatus.IN_PROGRESS))
+				.willReturn(Optional.empty());
+		given(crewRepositoryPort.findById(CREW_ID)).willReturn(Optional.of(crew));
+		given(challengeRepositoryPort.findMaxCycleNumber(USER_ID, CREW_ID)).willReturn(0);
+		given(challengeRepositoryPort.save(any())).willAnswer(inv -> inv.getArgument(0));
 
-    @Test
-    @DisplayName("재도전 챌린지 생성 — maxCycleNumber=2이면 cycleNumber=3")
-    void existingCycles_createsNext() {
-        // Given
-        Crew crew = activeCrew(CREW_ID, LocalDate.now().minusDays(10), LocalDate.now().plusDays(20));
+		// When
+		Challenge result = service.findOrCreate(USER_ID, CREW_ID);
 
-        given(challengeRepositoryPort.findByUserIdAndCrewIdAndStatusWithLock(
-                USER_ID, CREW_ID, ChallengeStatus.IN_PROGRESS))
-                .willReturn(Optional.empty());
-        given(crewRepositoryPort.findById(CREW_ID)).willReturn(Optional.of(crew));
-        given(challengeRepositoryPort.findMaxCycleNumber(USER_ID, CREW_ID)).willReturn(2);
-        given(challengeRepositoryPort.save(any())).willAnswer(inv -> inv.getArgument(0));
+		// Then
+		assertThat(result.getCycleNumber()).isEqualTo(1);
+		assertThat(result.getStatus()).isEqualTo(ChallengeStatus.IN_PROGRESS);
+		assertThat(result.getStartDate()).isEqualTo(TODAY);
+	}
 
-        // When
-        Challenge result = service.findOrCreate(USER_ID, CREW_ID);
+	@Test
+	@DisplayName("재도전 챌린지 생성 — maxCycleNumber=2이면 cycleNumber=3")
+	void existingCycles_createsNext() {
+		// Given
+		Crew crew = activeCrew(CREW_ID, TODAY.minusDays(10), TODAY.plusDays(20));
 
-        // Then
-        assertThat(result.getCycleNumber()).isEqualTo(3);
-    }
+		given(challengeRepositoryPort.findByUserIdAndCrewIdAndStatusWithLock(
+				USER_ID, CREW_ID, ChallengeStatus.IN_PROGRESS))
+				.willReturn(Optional.empty());
+		given(crewRepositoryPort.findById(CREW_ID)).willReturn(Optional.of(crew));
+		given(challengeRepositoryPort.findMaxCycleNumber(USER_ID, CREW_ID)).willReturn(2);
+		given(challengeRepositoryPort.save(any())).willAnswer(inv -> inv.getArgument(0));
 
-    @Test
-    @DisplayName("크루 endDate가 가까우면 deadline이 endDate로 제한된다")
-    void crewEndingSoon_deadlineClampedToEndDate() {
-        // Given — endDate가 내일
-        LocalDate endDate = LocalDate.now().plusDays(1);
-        Crew crew = activeCrew(CREW_ID, LocalDate.now().minusDays(5), endDate);
+		// When
+		Challenge result = service.findOrCreate(USER_ID, CREW_ID);
 
-        given(challengeRepositoryPort.findByUserIdAndCrewIdAndStatusWithLock(
-                USER_ID, CREW_ID, ChallengeStatus.IN_PROGRESS))
-                .willReturn(Optional.empty());
-        given(crewRepositoryPort.findById(CREW_ID)).willReturn(Optional.of(crew));
-        given(challengeRepositoryPort.findMaxCycleNumber(USER_ID, CREW_ID)).willReturn(0);
-        given(challengeRepositoryPort.save(any())).willAnswer(inv -> inv.getArgument(0));
+		// Then
+		assertThat(result.getCycleNumber()).isEqualTo(3);
+	}
 
-        // When
-        Challenge result = service.findOrCreate(USER_ID, CREW_ID);
+	@Test
+	@DisplayName("크루 endDate가 가까��면 deadline이 endDate로 제한된다")
+	void crewEndingSoon_deadlineClampedToEndDate() {
+		// Given — endDate가 내일
+		LocalDate endDate = TODAY.plusDays(1);
+		Crew crew = activeCrew(CREW_ID, TODAY.minusDays(5), endDate);
 
-        // Then — deadline은 endDate의 deadlineTime
-        assertThat(result.getDeadline()).isEqualTo(endDate.atTime(DEADLINE_TIME));
-    }
+		given(challengeRepositoryPort.findByUserIdAndCrewIdAndStatusWithLock(
+				USER_ID, CREW_ID, ChallengeStatus.IN_PROGRESS))
+				.willReturn(Optional.empty());
+		given(crewRepositoryPort.findById(CREW_ID)).willReturn(Optional.of(crew));
+		given(challengeRepositoryPort.findMaxCycleNumber(USER_ID, CREW_ID)).willReturn(0);
+		given(challengeRepositoryPort.save(any())).willAnswer(inv -> inv.getArgument(0));
 
-    @Test
-    @DisplayName("COMPLETED 크루에서 챌린지 생성 시도 → CREW_NOT_ACTIVE")
-    void completedCrew_throwsNotActive() {
-        // Given
-        Crew completedCrew = Crew.of(CREW_ID, "creator-1", "크루", "목표",
-                "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.COMPLETED,
-                LocalDate.now().minusDays(10), LocalDate.now().minusDays(1),
-                false, "ABC123", LocalDateTime.now(), DEADLINE_TIME, null, null, Collections.emptyList());
+		// When
+		Challenge result = service.findOrCreate(USER_ID, CREW_ID);
 
-        given(challengeRepositoryPort.findByUserIdAndCrewIdAndStatusWithLock(
-                USER_ID, CREW_ID, ChallengeStatus.IN_PROGRESS))
-                .willReturn(Optional.empty());
-        given(crewRepositoryPort.findById(CREW_ID)).willReturn(Optional.of(completedCrew));
+		// Then — deadline은 endDate의 deadlineTime
+		assertThat(result.getDeadline()).isEqualTo(endDate.atTime(DEADLINE_TIME));
+	}
 
-        // When & Then
-        assertThatThrownBy(() -> service.findOrCreate(USER_ID, CREW_ID))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.CREW_NOT_ACTIVE);
-    }
+	@Test
+	@DisplayName("COMPLETED 크루에서 챌린지 생성 시도 → CREW_NOT_ACTIVE")
+	void completedCrew_throwsNotActive() {
+		// Given
+		Crew completedCrew = Crew.of(CREW_ID, "creator-1", "크루", "목표",
+				"인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.COMPLETED,
+				TODAY.minusDays(10), TODAY.minusDays(1),
+				false, "ABC123", FIXED_NOW, DEADLINE_TIME, null, null, Collections.emptyList());
 
-    @Test
-    @DisplayName("크루 기간 만료 후 챌린지 생성 시도 → CREW_PERIOD_ENDED")
-    void crewPeriodEnded_throws() {
-        // Given — ACTIVE지만 endDate 지남
-        Crew expiredCrew = Crew.of(CREW_ID, "creator-1", "크루", "목표",
-                "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
-                LocalDate.now().minusDays(10), LocalDate.now().minusDays(1),
-                false, "ABC123", LocalDateTime.now(), DEADLINE_TIME, null, null, Collections.emptyList());
+		given(challengeRepositoryPort.findByUserIdAndCrewIdAndStatusWithLock(
+				USER_ID, CREW_ID, ChallengeStatus.IN_PROGRESS))
+				.willReturn(Optional.empty());
+		given(crewRepositoryPort.findById(CREW_ID)).willReturn(Optional.of(completedCrew));
 
-        given(challengeRepositoryPort.findByUserIdAndCrewIdAndStatusWithLock(
-                USER_ID, CREW_ID, ChallengeStatus.IN_PROGRESS))
-                .willReturn(Optional.empty());
-        given(crewRepositoryPort.findById(CREW_ID)).willReturn(Optional.of(expiredCrew));
+		// When & Then
+		assertThatThrownBy(() -> service.findOrCreate(USER_ID, CREW_ID))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.CREW_NOT_ACTIVE);
+	}
 
-        // When & Then
-        assertThatThrownBy(() -> service.findOrCreate(USER_ID, CREW_ID))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.CREW_PERIOD_ENDED);
-    }
+	@Test
+	@DisplayName("크루 기간 만료 후 챌린지 생성 시도 → CREW_PERIOD_ENDED")
+	void crewPeriodEnded_throws() {
+		// Given — ACTIVE지만 endDate 지남
+		Crew expiredCrew = Crew.of(CREW_ID, "creator-1", "크루", "목표",
+				"인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
+				TODAY.minusDays(10), TODAY.minusDays(1),
+				false, "ABC123", FIXED_NOW, DEADLINE_TIME, null, null, Collections.emptyList());
 
-    @Test
-    @DisplayName("동시 요청 — DataIntegrityViolationException 발생 시 재조회")
-    void concurrentRequest_retriesOnConstraintViolation() {
-        // Given
-        Crew crew = activeCrew(CREW_ID, LocalDate.now().minusDays(1), LocalDate.now().plusDays(30));
-        Challenge existingFromOtherThread = Challenge.of("CHAL-OTHER", USER_ID, CREW_ID, 1, 3, 0,
-                ChallengeStatus.IN_PROGRESS, LocalDate.now(),
-                LocalDateTime.now().plusDays(3), LocalDateTime.now());
+		given(challengeRepositoryPort.findByUserIdAndCrewIdAndStatusWithLock(
+				USER_ID, CREW_ID, ChallengeStatus.IN_PROGRESS))
+				.willReturn(Optional.empty());
+		given(crewRepositoryPort.findById(CREW_ID)).willReturn(Optional.of(expiredCrew));
 
-        given(challengeRepositoryPort.findByUserIdAndCrewIdAndStatusWithLock(
-                USER_ID, CREW_ID, ChallengeStatus.IN_PROGRESS))
-                .willReturn(Optional.empty())
-                .willReturn(Optional.of(existingFromOtherThread));
-        given(crewRepositoryPort.findById(CREW_ID)).willReturn(Optional.of(crew));
-        given(challengeRepositoryPort.findMaxCycleNumber(USER_ID, CREW_ID)).willReturn(0);
-        given(challengeRepositoryPort.save(any())).willThrow(new DataIntegrityViolationException("UK violation"));
+		// When & Then
+		assertThatThrownBy(() -> service.findOrCreate(USER_ID, CREW_ID))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.CREW_PERIOD_ENDED);
+	}
 
-        // When
-        Challenge result = service.findOrCreate(USER_ID, CREW_ID);
+	@Test
+	@DisplayName("동시 요청 — DataIntegrityViolationException 발생 시 재조회")
+	void concurrentRequest_retriesOnConstraintViolation() {
+		// Given
+		Crew crew = activeCrew(CREW_ID, TODAY.minusDays(1), TODAY.plusDays(30));
+		Challenge existingFromOtherThread = Challenge.of("CHAL-OTHER", USER_ID, CREW_ID, 1, 3, 0,
+				ChallengeStatus.IN_PROGRESS, TODAY,
+				FIXED_NOW.plusDays(3), FIXED_NOW);
 
-        // Then — 재조회해서 다른 스레드가 만든 챌린지 반환
-        assertThat(result.getId()).isEqualTo("CHAL-OTHER");
-    }
+		given(challengeRepositoryPort.findByUserIdAndCrewIdAndStatusWithLock(
+				USER_ID, CREW_ID, ChallengeStatus.IN_PROGRESS))
+				.willReturn(Optional.empty())
+				.willReturn(Optional.of(existingFromOtherThread));
+		given(crewRepositoryPort.findById(CREW_ID)).willReturn(Optional.of(crew));
+		given(challengeRepositoryPort.findMaxCycleNumber(USER_ID, CREW_ID)).willReturn(0);
+		given(challengeRepositoryPort.save(any())).willThrow(new DataIntegrityViolationException("UK violation"));
 
-    @Test
-    @DisplayName("오늘의 deadline_time + grace period 초과 시 → VERIFICATION_DEADLINE_EXCEEDED")
-    void deadlineTimeExceeded_throws() {
-        // 자정 직후(00:00 ~ 00:15) LocalTime.now().minusMinutes(6)는 어제 23:5X로 wrap되어
-        // deadline이 미래로 판정 → 테스트 비결정적. production deadline 비교가 LocalTime 기반이라
-        // 발생하는 한계 — Phase 2에서 LocalDateTime/Clock 리팩토링 예정 (future-considerations.md 참조).
-        org.junit.jupiter.api.Assumptions.assumeTrue(
-                LocalTime.now().isAfter(LocalTime.of(0, 15)),
-                "자정 wrap 회피 — 0시 15분 이전엔 skip");
+		// When
+		Challenge result = service.findOrCreate(USER_ID, CREW_ID);
 
-        // Given — deadlineTime을 현재 시각 6분 전으로 설정 (grace 5분 초과)
-        LocalTime pastDeadline = LocalTime.now().minusMinutes(6);
-        Crew crew = Crew.of(CREW_ID, "creator-1", "크루", "목표",
-                "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
-                LocalDate.now().minusDays(1), LocalDate.now().plusDays(30),
-                false, "ABC123", LocalDateTime.now(), pastDeadline, null, null, Collections.emptyList());
+		// Then — 재조회해서 다른 스레드가 만든 챌린지 반환
+		assertThat(result.getId()).isEqualTo("CHAL-OTHER");
+	}
 
-        given(challengeRepositoryPort.findByUserIdAndCrewIdAndStatusWithLock(
-                USER_ID, CREW_ID, ChallengeStatus.IN_PROGRESS))
-                .willReturn(Optional.empty());
-        given(crewRepositoryPort.findById(CREW_ID)).willReturn(Optional.of(crew));
+	@Test
+	@DisplayName("오늘의 deadline_time + grace period 초과 시 → VERIFICATION_DEADLINE_EXCEEDED")
+	void deadlineTimeExceeded_throws() {
+		// Given — deadlineTime을 고정 시각(14:00) 6분 전으로 설정 (grace 5분 초과)
+		LocalTime pastDeadline = LocalTime.of(13, 54);
+		Crew crew = Crew.of(CREW_ID, "creator-1", "크루", "목표",
+				"인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
+				TODAY.minusDays(1), TODAY.plusDays(30),
+				false, "ABC123", FIXED_NOW, pastDeadline, null, null, Collections.emptyList());
 
-        // When & Then
-        assertThatThrownBy(() -> service.findOrCreate(USER_ID, CREW_ID))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
-    }
+		given(challengeRepositoryPort.findByUserIdAndCrewIdAndStatusWithLock(
+				USER_ID, CREW_ID, ChallengeStatus.IN_PROGRESS))
+				.willReturn(Optional.empty());
+		given(crewRepositoryPort.findById(CREW_ID)).willReturn(Optional.of(crew));
 
-    // --- 헬퍼 메서드 ---
+		// When & Then
+		assertThatThrownBy(() -> service.findOrCreate(USER_ID, CREW_ID))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
+	}
 
-    private static Crew activeCrew(String id, LocalDate startDate, LocalDate endDate) {
-        return Crew.of(id, "creator-1", "테스트 크루", "목표",
-                "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
-                startDate, endDate, false, "ABC123",
-                LocalDateTime.now(), DEADLINE_TIME, null, null, Collections.emptyList());
-    }
+	// --- 헬퍼 메서드 ---
+
+	private static Crew activeCrew(String id, LocalDate startDate, LocalDate endDate) {
+		return Crew.of(id, "creator-1", "테스트 크루", "목표",
+				"인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
+				startDate, endDate, false, "ABC123",
+				FIXED_NOW, DEADLINE_TIME, null, null, Collections.emptyList());
+	}
 }

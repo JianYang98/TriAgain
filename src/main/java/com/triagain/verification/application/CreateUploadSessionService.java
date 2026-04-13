@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -33,6 +34,7 @@ public class CreateUploadSessionService implements CreateUploadSessionUseCase {
     private final StoragePort storagePort;
     private final ChallengePort challengePort;
     private final CrewPort crewPort;
+    private final Clock clock;
 
     @Override
     @Transactional
@@ -53,7 +55,7 @@ public class CreateUploadSessionService implements CreateUploadSessionUseCase {
                 saved.getId(),
                 presignedUrl,
                 imageUrl,
-                LocalDateTime.now().plusMinutes(PRESIGNED_URL_EXPIRY_MINUTES),
+                LocalDateTime.now(clock).plusMinutes(PRESIGNED_URL_EXPIRY_MINUTES),
                 MAX_FILE_SIZE,
                 List.copyOf(ALLOWED_TYPES)
         );
@@ -73,7 +75,7 @@ public class CreateUploadSessionService implements CreateUploadSessionUseCase {
             throw new BusinessException(ErrorCode.CREW_NOT_ACTIVE);
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         if (today.isBefore(crewInfo.startDate())) {
             throw new BusinessException(ErrorCode.CREW_NOT_STARTED);
         }
@@ -85,12 +87,12 @@ public class CreateUploadSessionService implements CreateUploadSessionUseCase {
                 .findActiveByUserIdAndCrewId(userId, crewId);
 
         if (active.isPresent()) {
-            if (!DeadlinePolicy.isWithinDeadline(LocalDateTime.now(), active.get().deadline())) {
+            if (!DeadlinePolicy.isWithinDeadline(LocalDateTime.now(clock), active.get().deadline())) {
                 throw new BusinessException(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
             }
         } else {
-            LocalDateTime todayDeadline = DeadlinePolicy.todayDeadline(crewInfo.deadlineTime());
-            if (!DeadlinePolicy.isWithinDeadline(LocalDateTime.now(), todayDeadline)) {
+            LocalDateTime todayDeadline = DeadlinePolicy.todayDeadline(crewInfo.deadlineTime(), clock);
+            if (!DeadlinePolicy.isWithinDeadline(LocalDateTime.now(clock), todayDeadline)) {
                 throw new BusinessException(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
             }
         }
