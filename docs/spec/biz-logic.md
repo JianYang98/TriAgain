@@ -230,6 +230,35 @@
 | apple_refresh_token == null (기존 사용자) | revoke 미호출 — 다음 로그인 시 backfill되지만 그 전 탈퇴는 어쩔 수 없음 |
 | provider == KAKAO | revoke 미호출 |
 
+### 1.15 프로필 이미지 관리
+
+**카카오 프로필 이미지 동기화 정책**
+
+| 시점 | 동작 |
+|------|------|
+| 회원가입 (POST /auth/signup) | 카카오 프로필 이미지 URL 저장 (최초 1회) |
+| 재가입 (reactivate) | 카카오 → 카카오 프로필 이미지 저장, Apple → null |
+| 로그인 (POST /auth/kakao) | 프로필 이미지 건드리지 않음 (email만 동기화) |
+
+**프로필 이미지 변경**
+
+| 항목 | 규칙 |
+|------|------|
+| 권한 | 인증된 사용자 (본인만) |
+| 업로드 방식 | Presigned URL → S3 직접 업로드 (기존 StoragePort 재사용) |
+| 이미지 제약 | 최대 5MB, jpg/jpeg/png/webp |
+| S3 경로 | profiles/{userId}/{uuid}.{ext} |
+| 기존 이미지 | 새 이미지 업로드 시 기존 이미지 유지 (삭제는 Phase 2) |
+| 기본 이미지 | profileImageUrl이 null이면 FE에서 기본 아바타 표시 |
+| URL 검증 | imageUrl이 값이 있으면 S3 버킷 도메인 + profiles/{userId}/ 경로 검증 (외부 URL/타인 경로 차단) |
+
+**업로드 흐름**
+1. POST /users/me/profile-image/upload-session → presignedUrl 수신
+2. S3에 직접 업로드 (PUT presignedUrl)
+3. PATCH /users/me/profile-image → imageUrl 확정 (DB 업데이트)
+
+> SSE/Lambda 콜백 불필요. 클라이언트가 S3 업로드 성공 후 바로 PATCH 호출.
+
 ---
 
 ## 2. 인증 방식 및 상태 정의

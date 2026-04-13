@@ -41,8 +41,8 @@ public class KakaoLoginService implements KakaoLoginUseCase {
 
         // 기존 유저라면 액세스토큰/리프레쉬 토큰 발급
         User user = existing.get();
-        boolean profileChanged = user.syncKakaoProfile(kakaoUser.email(), kakaoUser.profileImageUrl());
-        if (profileChanged) { // 프로필 변경시 체인지! 프로필 이미지!
+        boolean profileChanged = user.syncKakaoProfile(kakaoUser.email());
+        if (profileChanged) {
             user = userRepositoryPort.save(user);
         }
 
