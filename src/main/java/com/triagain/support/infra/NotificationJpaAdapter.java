@@ -31,16 +31,6 @@ public class NotificationJpaAdapter implements NotificationRepositoryPort {
     }
 
     @Override
-    public NotificationSlice findByUserId(String userId, int page, int size) {
-        Slice<NotificationJpaEntity> slice = notificationJpaRepository
-                .findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(page, size));
-        List<Notification> notifications = slice.getContent().stream()
-                .map(NotificationJpaEntity::toDomain)
-                .toList();
-        return new NotificationSlice(notifications, slice.hasNext());
-    }
-
-    @Override
     public NotificationSlice findByUserId(String userId, Boolean isRead, int page, int size) {
         Slice<NotificationJpaEntity> slice = notificationJpaRepository
                 .findByUserIdAndIsReadFilter(userId, isRead, PageRequest.of(page, size));
@@ -62,13 +52,11 @@ public class NotificationJpaAdapter implements NotificationRepositoryPort {
     }
 
     @Override
-    @Transactional
     public void deleteAllByUserId(String userId) {
         notificationJpaRepository.deleteAllByUserId(userId);
     }
 
     @Override
-    @Transactional
     public void markAllAsReadByUserId(String userId) {
         notificationJpaRepository.markAllAsReadByUserId(userId);
     }

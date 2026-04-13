@@ -30,12 +30,12 @@ public interface NotificationJpaRepository extends JpaRepository<NotificationJpa
     void deleteByCreatedAtBefore(LocalDateTime dateTime);
 
     /** 사용자의 알림 전체 삭제 */
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("DELETE FROM NotificationJpaEntity n WHERE n.userId = :userId")
     void deleteAllByUserId(@Param("userId") String userId);
 
     /** 사용자의 안 읽은 알림 전체 읽음 처리 */
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("UPDATE NotificationJpaEntity n SET n.isRead = true "
             + "WHERE n.userId = :userId AND n.isRead = false")
     void markAllAsReadByUserId(@Param("userId") String userId);

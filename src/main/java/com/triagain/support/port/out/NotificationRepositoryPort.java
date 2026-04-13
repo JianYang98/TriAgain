@@ -15,13 +15,10 @@ public interface NotificationRepositoryPort {
     /** 알림 페이지네이션 결과 */
     record NotificationSlice(List<Notification> notifications, boolean hasNext) {}
 
-    /** 사용자별 알림 최신순 페이지네이션 조회 — page: 0-based */
-    NotificationSlice findByUserId(String userId, int page, int size);
-
-    long countUnreadByUserId(String userId);
-
     /** 사용자별 알림 최신순 페이지네이션 조회 — isRead 필터 지원 (null이면 전체) */
     NotificationSlice findByUserId(String userId, Boolean isRead, int page, int size);
+
+    long countUnreadByUserId(String userId);
 
     /** 지정 일시 이전 알림 일괄 삭제 — 스케줄러용 (30일 지난 알림 정리) */
     void deleteOlderThan(LocalDateTime dateTime);
