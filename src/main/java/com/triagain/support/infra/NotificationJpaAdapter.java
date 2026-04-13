@@ -31,9 +31,9 @@ public class NotificationJpaAdapter implements NotificationRepositoryPort {
     }
 
     @Override
-    public NotificationSlice findByUserId(String userId, int page, int size) {
+    public NotificationSlice findByUserId(String userId, Boolean isRead, int page, int size) {
         Slice<NotificationJpaEntity> slice = notificationJpaRepository
-                .findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(page, size));
+                .findByUserIdAndIsReadFilter(userId, isRead, PageRequest.of(page, size));
         List<Notification> notifications = slice.getContent().stream()
                 .map(NotificationJpaEntity::toDomain)
                 .toList();
@@ -49,5 +49,15 @@ public class NotificationJpaAdapter implements NotificationRepositoryPort {
     @Transactional
     public void deleteOlderThan(LocalDateTime dateTime) {
         notificationJpaRepository.deleteByCreatedAtBefore(dateTime);
+    }
+
+    @Override
+    public void deleteAllByUserId(String userId) {
+        notificationJpaRepository.deleteAllByUserId(userId);
+    }
+
+    @Override
+    public void markAllAsReadByUserId(String userId) {
+        notificationJpaRepository.markAllAsReadByUserId(userId);
     }
 }

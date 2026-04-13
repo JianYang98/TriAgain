@@ -136,7 +136,7 @@ class CrewTest {
                     "인증 내용", VerificationType.TEXT, 5, startDate, endDate, false, null, CrewCategory.EXERCISE, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
-                    .isEqualTo(ErrorCode.INVALID_END_DATE);
+                    .isEqualTo(ErrorCode.CREW_DURATION_TOO_SHORT);
         }
 
         @Test
