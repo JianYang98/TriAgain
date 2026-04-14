@@ -46,288 +46,29 @@
 
 ### Tech Stack
 
-- **Client:** Flutter 3.16.0 (iOS + Android)
 - **Backend:** Java 17, Spring Boot 3.4 (최신 patch)
-- **ORM:** Spring Data JPA + MyBatis
+- **ORM:** Spring Data JPA (CRUD/쓰기) + MyBatis (복잡한 조회)
 - **Database:** PostgreSQL 16
 - **Storage:** AWS S3 (Pre-signed URL)
 - **Serverless:** AWS Lambda (S3 업로드 완료 감지 → session COMPLETED 처리)
 - **실시간 통신:** SSE (Server-Sent Events) — 업로드 완료 알림
 - **Infra:** AWS (EC2 + RDS), GitHub Actions CI/CD
-
-### ORM 전략
-
-- JPA: 기본 CRUD, 엔티티 관리, 쓰기 작업
-- MyBatis: 복잡한 조회 쿼리, 집계, 피드 조회
-- Phase 2에서 동일 쿼리 JPA vs MyBatis 성능 비교 예정
-
-### Phase 2 확장 예정
-
-- Cache: Redis (ElastiCache)
-- Message Queue: AWS SQS
+- **Phase 2 예정:** Redis (ElastiCache), AWS SQS
 
 ### Architecture
 
-- DDD 기반 5개 Bounded Context
-  - User Context: 회원/인증
-  - Crew Context: 크루, 챌린지 핵심 로직
-  - Verification Context: 인증, 업로드 세션
-  - Moderation Context: 신고, 검토
-  - Support Context: 알림, 반응
-
-### 헥사고날 아키텍처
-
-도메인이 외부 인프라에 의존하지 않는다. 모든 외부 통신은 Port를 통한다.
-
-#### Input Ports (인바운드)
-
-| Port | Adapter | 용도 |
-|------|---------|------|
-| REST Input Port | REST Controllers | HTTP 요청 → UseCase 위임 |
-| Internal Input Port | InternalUploadSessionController | Lambda → session COMPLETED + SSE 발행 |
-
-#### Output Ports (아웃바운드)
-
-| Output Port | 용도 | Adapter 예시 |
-|-------------|------|-------------|
-| UserRepositoryPort | 회원 정보 저장/조회 | UserJpaAdapter |
-| CrewRepositoryPort | 크루/멤버/챌린지 저장 및 조회 | CrewJpaAdapter |
-| VerificationRepositoryPort | 인증 저장/조회 | VerificationJpaAdapter / VerificationMyBatisAdapter(조회) |
-| UploadSessionRepositoryPort | upload_session 저장/조회/만료 처리 | UploadSessionJpaAdapter |
-| ReportRepositoryPort | 신고 데이터 CRUD | ReportJpaAdapter |
-| ReviewRepositoryPort | 검토 데이터 CRUD | ReviewJpaAdapter |
-| NotificationRepositoryPort | 알림 저장/조회 | NotificationJpaAdapter |
-| ReactionRepositoryPort | 반응(이모지) 저장/조회 | ReactionJpaAdapter |
-| StoragePort | S3 presigned URL 발급/키 생성 | S3PresignAdapter |
-| SsePort | SSE 이벤트 전송 (업로드 완료 알림) | SseEmitterAdapter |
-| ChallengePort | Verification → Crew 챌린지 정보 조회 | ChallengeClientAdapter |
-| VerificationPort | Moderation → Verification 인증 상태 변경 | VerificationClientAdapter |
-| CrewPort | Moderation → Crew 크루장 조회 | CrewClientAdapter |
-| NotificationSenderPort (Phase2) | 푸시 발송 | FcmAdapter |
-| IdempotencyStorePort (Phase2) | 멱등 키 저장 | RedisIdempotencyAdapter |
-| DistributedLockPort (Phase2) | 분산 락 획득/해제 | RedisLockAdapter |
-| AiReviewPort (Phase3) | AI 기반 인증 검토 | OpenAiAdapter |
-
-#### Port 분리 원칙
-
-- **Persistence Port**: 도메인별로 각각 존재. User, Crew, Verification 등 도메인마다 별도의 포트와 어댑터
-- **StoragePort**: 파일 업로드/관리를 추상화. S3 외 다른 스토리지로 교체 시 어댑터만 구현
-- **컨텍스트 간 통신 Port**: 바운디드 컨텍스트 간 참조는 직접 의존이 아닌 Port를 통해 통신
-- **External Port**: Phase별 확장 시 어댑터만 추가 (FCM, OpenAI 등)
-- **SsePort**: SSE 이벤트 전송을 추상화. 향후 WebSocket 등으로 교체 가능
+- DDD 기반 5개 Bounded Context: User, Crew, Verification, Moderation, Support
+- 헥사고날 아키텍처 — 도메인이 외부 인프라에 의존하지 않음, 모든 외부 통신은 Port를 통함
+- Port/Adapter 상세는 `/docs/spec/architecture.md` 참고
 
 ---
 
-## Coding Convention
-
-### 패키지 구조
-
-최상위는 바운디드 컨텍스트 기준으로 분리한다. 각 컨텍스트 내부는 헥사고날 아키텍처의 계층별로 나눈다.
-
-```
-com.triagain
-├── user/              // User Context
-├── crew/              // Crew Context
-├── verification/      // Verification Context
-├── moderation/        // Moderation Context
-└── support/           // Support Context
-
-// 각 컨텍스트 내부 구조
-com.triagain.verification
-├── api/               // Controller, Request/Response DTO
-│   └── internal/      // Lambda 전용 Internal Controller
-├── application/       // UseCase 구현체
-├── domain/
-│   ├── model/         // Entity, Aggregate Root
-│   └── vo/            // Value Object
-├── port/
-│   ├── in/            // UseCase 인터페이스
-│   └── out/           // Repository Port, External Port
-└── infra/             // JPA, MyBatis, S3, SSE Adapter
-```
-
-### 계층별 규약
-
-**Controller (api/)**
-- UseCase 인터페이스에만 의존한다
-- 비즈니스 로직 금지, 요청값 검증(@Valid) + UseCase 위임만 수행한다
-- 모든 응답은 공통 응답 DTO로 래핑한다
-- Request/Response DTO는 여기서 정의한다
-- `/internal/**` 경로는 외부 접근 차단 (Spring Security 설정)
-
-**UseCase (port/in/)**
-- 하나의 유스케이스는 하나의 비즈니스 행위를 표현한다
-- 네이밍: 동사 + 명사 (예: CreateVerificationUseCase)
-
-**Service (application/)**
-- UseCase 인터페이스를 구현한다
-- 외부 연동이 필요한 경우 Output Port 인터페이스에만 의존한다
-- 쓰기 작업에 `@Transactional`을 선언한다
-- 도메인 객체를 조합하여 유스케이스 흐름을 조율한다
-
-**Adapter (infra/)**
-- Output Port 인터페이스를 구현한다
-- JPA Entity ↔ Domain Model 변환은 여기서 처리한다
-- 외부 시스템과의 통신 구현 (DB, S3, 외부 API)
-
-**Domain (domain/)**
-- 외부 의존 없이 순수 비즈니스 로직만 포함한다 (POJO)
-- Aggregate 내부의 Entity/VO 변경은 반드시 Aggregate Root를 통해서만 수행한다
-- Aggregate 간 참조는 ID로만 한다
-- 도메인 정책(Policy)은 별도 클래스로 분리한다
-- `model/`: Entity, Aggregate Root
-- `vo/`: Value Object (도메인 개념을 타입으로 표현할 때 사용)
-
-### 작업 실행 규칙
+## 작업 실행 규칙
 
 실행 순서: Phase A(문서 확정) → Phase B(구현) → Phase C(테스트)
 Phase A: 관련 문서(biz-logic.md, api-spec.md, schema.md 등)를 먼저 읽고 기존 포맷과 구조를 파악한 뒤 수정할 것
 Phase A 완료 후 사용자 검토를 받은 뒤에만 Phase B 진입
 Phase B 구현 중 문서에 없는 결정이 필요하면 멈추고 문서부터 갱신할 것
-
-
-### 네이밍 규칙
-
-- 메서드: camelCase (`createVerification`, `findByCrewId`)
-- 클래스: PascalCase (`VerificationController`, `CrewJoinFacade`)
-- 상수: UPPER_SNAKE_CASE (`MAX_CREW_MEMBERS`)
-- 패키지: lowercase (`verification`, `crew`)
-
-### 의존성 주입
-
-- 모든 의존성은 `@RequiredArgsConstructor` + `private final`로 생성자 주입
-- `@Autowired` 필드 주입 금지
-
-### DTO
-
-- Java `record` 사용 (Lombok 의존 없이 불변 객체)
-- Entity를 Controller에서 직접 반환 금지, 반드시 DTO로 변환
-
-### Native SQL 작성 컨벤션
-
-- SELECT 컬럼은 줄바꿈 + 들여쓰기로 나열
-- JOIN / LEFT JOIN은 줄바꿈, ON 조건은 3칸 들여쓰기
-- 복합 ON 조건은 AND를 줄바꿈 + 2칸 들여쓰기로 정렬
-- WHERE / AND는 줄바꿈 + 2칸 들여쓰기
-
-```sql
-SELECT DISTINCT
-       cm.user_id,
-       u.fcm_token,
-       c.id   AS crew_id,
-       c.name AS crew_name
-FROM crews c
-JOIN crew_members cm
-   ON cm.crew_id = c.id
-LEFT JOIN verifications v
-   ON v.user_id = cm.user_id
-  AND v.crew_id = c.id
-  AND v.target_date = :targetDate
-JOIN users u
-   ON u.id = cm.user_id
-WHERE c.status = 'ACTIVE'
-  AND v.id IS NULL
-```
-
-### 예외 처리
-
-- 커스텀 예외 사용 (`BusinessException` 상속)
-- `throw new RuntimeException()` 금지
-- 도메인별 구체적 예외 정의 (예: `CrewFullException`, `VerificationDeadlineException`)
-
-### 테스트 전략
-
-#### 역할 분담
-
-- **사람**: 쿠컴버 시나리오 작성 + 리뷰 (비즈니스 플로우 검증)
-- **AI**: 단위테스트 작성 (비즈니스 규칙 검증)
-- **E2E**: CI에서 배포 전 자동 실행 (핵심 해피패스 5개)
-
-#### 단위테스트 규칙 (AI 필수 준수)
-
-- 반드시 비즈니스 규칙을 검증해야 한다
-- mock으로 의존성만 때리고 assertNotNull만 하는 테스트 금지
-- 각 테스트명은 "~하면 ~한다" 형식으로 비즈니스 의도 명확히 표현
-- BDD 스타일 (Given-When-Then) 주석으로 구조화
-- 성공 케이스 + 예외 케이스(Unhappy Path) 반드시 1개 이상 포함
-- 검증 예시:
-  - IN_PROGRESS 챌린지가 user/crew당 1개인지
-  - deadline + grace 이후에 인증이 거부되는지
-  - FAILED 챌린지에 인증이 불가능한지
-  - 정원 초과 시 가입이 거부되는지
-
-#### 단위테스트 범위
-
-- 대상: 도메인 모델 + 서비스(커맨드) + 인프라 어댑터
-- 제외: 조회(read-only) 서비스는 Cucumber로 커버, 단위테스트 불필요
-
-#### 작성 시점
-
-- 커맨드 서비스/도메인 모델 구현 완료 시 단위테스트 같이 작성
-- 쿠컴버 시나리오는 기능 구현 전 또는 구현과 동시에 작성
-- 다음 기능으로 넘어가기 전에 테스트 통과 확인 필수
-
-#### E2E 테스트 (CI 자동화)
-
-- 대상: 핵심 해피패스 5개 (회원가입→크루생성→참여→인증→사이클완료)
-- 실행: CI에서 배포 전 자동 실행, `./gradlew e2eTest`로 분리 실행 가능
-- 인프라: TestContainers + PostgreSQL (Cucumber과 동일)
-- 인증: X-User-Id 헤더 (dev/test 환경)
-- 위치: `src/test/java/com/triagain/e2e/`
-
-#### 검증 흐름
-
-```
-쿠컴버 (비즈니스 시나리오) → 단위테스트 (비즈니스 규칙) → E2E (CI 자동 해피패스)
-사람이 시나리오를 잡고, AI가 규칙을 촘촘히 채운다.
-```
-
-### 주석
-
-- 모든 public 메서드에 한 줄 한국어 Javadoc 주석 작성
-- 단순 getter/accessor는 제외 (메서드명만으로 의미가 명확한 경우)
-- 형식: `/** 무엇을 하는지 — 언제/왜 쓰는지 */`
-- 메서드명이 "뭘 하는지", 주석이 "언제/왜 쓰는지"를 설명
-
-```java
-/** 초대코드로 크루 조회 — 크루 참여 시 사용 */
-Optional<Crew> findByInviteCode(String inviteCode);
-
-/** 비관적 락으로 크루 조회 — 동시 참여 시 정원 초과 방지 */
-Optional<Crew> findByIdWithLock(String id);
-```
-
----
-
-## Anti-Patterns (금지 사항)
-
-### OOP & Clean Code
-
-- `@Autowired` 필드 주입 금지
-- Entity를 Controller에서 직접 반환 금지
-- `throw new RuntimeException()` 금지
-- Lombok `@Data` 사용 금지 → record 사용
-- 메서드 20라인 초과 시 분리 고려
-
-### Architecture
-
-- Controller에 비즈니스 로직 금지 → UseCase에 위임
-- Domain 계층에서 JPA, HTTP 등 인프라 기술 의존 금지
-- Port 인터페이스 없이 Adapter 직접 참조 금지
-- 트랜잭션 안에 외부 API 호출 금지 (S3 등)
-
-### Data Access
-
-- N+1 문제 주의 → Fetch Join 또는 Batch Size 설정
-- 복잡한 조회는 MyBatis 사용, 단순 CRUD는 JPA
-- DB 컬럼 타입/길이 변경 시, 반드시 3곳을 한 세트로 수정한다: ① schema.md (정본 문서) ② Flyway 마이그레이션 (V{N}__.sql) ③ JPA 엔티티 (@Column length/type). PK/FK 변경 시 해당 컬럼을 FK로 참조하는 테이블도 전부 찾아서 3곳 모두 일괄 수정한다 (V5에서 users.id만 확장하고 FK 9곳 + JPA 엔티티 누락한 사례)
-
-### Common Pitfalls
-
-- Pre-signed URL 생성은 S3 통신이 아님 (내부 서명 생성)
-- upload_session COMPLETED 처리는 Lambda → /internal API에서 수행 (트랜잭션 분리)
-- /verifications는 session이 COMPLETED인지 확인만 하고 인증 생성에 집중
-- SSE 타임아웃 60초, 클라이언트는 fallback으로 폴링 대비 필요
 
 ---
 
@@ -347,147 +88,6 @@ Optional<Crew> findByIdWithLock(String id);
 
 ---
 
-## Git Convention
-
-### 브랜치 전략
-
-- main: 운영 배포 (직접 push 금지, develop에서 PR로만 병합)
-- develop: 통합 브랜치 (feat→develop PR, CI + E2E 통과 필수)
-- feat/*: 기능 개발 브랜치 (develop에서 분기, develop으로 PR)
-- fix/*: 버그 수정 브랜치 (develop에서 분기, develop으로 PR)
-
-### 커밋 메시지 (AngularJS Convention)
-
-**형식**
-```
-<type>: <한국어 메시지>
-- 부연 설명 (선택, 최대 2줄)
-```
-
-**예시**
-```
-feat: 인증 기능 추가
-- 사진 인증 시 presignedUrl 발급 로직 추가
-```
-
-```
-fix: 크루 정원 초과 버그 수정
-- SELECT FOR UPDATE 락 누락 수정
-```
-
-```
-refactor: Verification 도메인 계층 분리
-- UseCase와 Policy 클래스 분리
-```
-
-**커밋 타입**
-
-| 타입 | 용도 |
-|------|------|
-| feat | 새로운 기능 추가 |
-| fix | 버그 수정 |
-| refactor | 리팩토링 (기능 변경 없음) |
-| test | 테스트 추가/수정 |
-| docs | 문서 변경 |
-| chore | 빌드, 설정 등 기타 |
-
----
-
-## 디버깅 & AI 협업 로그 기록 규칙
-
-아래 기준에 해당할 때만 `/docs/log/debugging-log.md`에 기록한다.
-
-**기록 O:**
-1. 버그/에러를 수정했을 때
-2. 설계 방향을 여러 개 중 하나로 결정했을 때
-3. AI의 제안을 거부하거나 방향을 수정했을 때
-
-**기록 X:** 단순 구현, 오타 수정, 설정 변경 등
-
-```
-### [날짜] 제목 (한 줄)
-
-- 상황: (한 줄)
-- 내 판단: (결정 + 이유)
-- AI 역할: (AI가 도운 것)
-- 배운 점: (한 줄)
-```
-
-**예시:**
-
-```
-### [2026-02-28] JPA @IdClass 복합 PK INSERT 실패
-
-- 상황: DB는 서로게이트 PK인데 JPA는 복합 PK → id 컬럼 누락으로 INSERT 실패
-- 내 판단: @IdClass 제거하고 서로게이트 PK로 통일 (조인 테이블 추가될 때마다 복합 PK 문제 반복될 것 같아서)
-- AI 역할: DTO → 엔티티 → DB 스키마 4개 파일 추적해서 원인 분석
-- 배운 점: 프로젝트 전체 ID 전략은 초기에 통일해야 함
-```
-
----
-
-## 추후 고려 사항 기록 규칙
-
-구현 중 "지금은 안 하지만 나중에 필요할 것"을 발견하면 `/docs/log/future-considerations.md`에 기록한다.
-**최신 항목을 파일 상단에 추가한다 (prepend).**
-
-**기록 O:**
-1. Phase 2/3에서 필요한 개선 사항 (성능, 확장성, 보안)
-2. 현재 단계에서 의도적으로 생략한 기능이나 처리
-3. 기술 부채로 인식했지만 당장 해결하지 않기로 한 항목
-
-**기록 X:** 현재 Phase에서 바로 처리할 버그나 기능 → 이슈/TODO로 관리
-
-```
-### [YYYY-MM-DD HH:mm] 제목
-
-- 현재 상태: (지금 어떻게 되어 있는지)
-- 필요 시점: Phase N 또는 조건
-- 이유: (왜 나중으로 미루는지)
-```
-
----
-
-## API 엔드포인트 요약
-
-상세 명세는 `/docs/spec/api-spec.md` 참고.
-
-### 구현 완료
-
-| Method | Path | 설명 |
-|--------|------|------|
-| POST | /upload-sessions | 이미지 업로드 세션 생성 (Presigned URL 발급) |
-| GET | /upload-sessions/{id}/events | SSE 구독 (업로드 완료 알림) |
-| PUT | /internal/upload-sessions/complete | Lambda 콜백 (Internal API) |
-| POST | /verifications | 인증 생성 |
-| POST | /auth/kakao | 카카오 로그인 |
-| POST | /auth/signup | 회원가입 |
-| POST | /auth/apple | Apple 로그인 |
-| POST | /auth/apple-signup | Apple 회원가입 |
-| POST | /auth/refresh | 토큰 갱신 |
-| POST | /auth/logout | 로그아웃 |
-| GET | /users/me | 내 프로필 조회 |
-| PATCH | /users/me/nickname | 닉네임 변경 |
-| POST | /crews | 크루 생성 |
-| GET | /crews | 내 크루 목록 조회 |
-| GET | /crews/{crewId} | 크루 상세 조회 |
-| GET | /crews/invite/{inviteCode} | 초대코드로 크루 미리보기 |
-| GET | /crews/{crewId}/preview | 공개 크루 미리보기 (검색 → 상세) |
-| POST | /crews/join | 초대코드로 크루 참여 |
-| GET | /crews/{crewId}/feed | 크루 피드 조회 |
-| GET | /crews/{crewId}/my-verifications | 내 인증 현황 조회 |
-| PATCH | /crews/{crewId} | 크루 수정 (LEADER, RECRUITING 상태만) |
-| DELETE | /crews/{crewId} | 크루 삭제 (LEADER, RECRUITING + 본인만) |
-| DELETE | /crews/{crewId}/members/me | 크루 탈퇴 (MEMBER, RECRUITING 상태만) |
-| GET | /crews/search | 크루 검색 (공개 크루, permitAll) |
-| POST | /crews/{crewId}/join | 공개 크루 직접 가입 |
-| PATCH | /users/me/fcm-token | FCM 토큰 등록/갱신 |
-| GET | /notifications | 내 알림 목록 조회 |
-| GET | /notifications/unread-count | 안 읽은 알림 수 조회 |
-| PATCH | /notifications/{id}/read | 알림 읽음 처리 |
-
----
-
 ## Skills 트리거
 
 다음 상황에서는 반드시 해당 skill 파일을 읽고 작업한다.
@@ -499,17 +99,11 @@ skill 파일을 읽지 않고 작업하는 것은 규칙 위반이다.
 | 새 API 엔드포인트 추가, 기존 API 수정 (요청/응답/경로/에러코드 변경) | `.claude/skills/new-api.md` |
 | 테스트 작성/수정, 도메인 변경 후 테스트 파급력 분석 | `.claude/skills/write-test.md` |
 
-### 복합 작업 시
-
 하나의 작업이 여러 skill에 해당하면, 해당 skill을 모두 읽는다.
-예: "크루에 새 필드 추가하고 API도 수정해" → `new-domain.md` + `new-api.md` + `write-test.md` 순서로 읽는다.
 
+---
 
 ## /docs 참조 가이드
-
-- 상세 비즈니스 규칙은 `/docs/spec/biz-logic.md`를 참고해.
-- ERD와 엔티티 설계는 `/docs/spec/schema.md`를 준수해.
-- API 명세는 `/docs/spec/api-spec.md`를 준수해.
 
 | 문서 | 경로 | 설명 |
 |------|------|------|
@@ -522,4 +116,12 @@ skill 파일을 읽지 않고 작업하는 것은 규칙 위반이다.
 | 디버깅 로그 | `/docs/log/debugging-log.md` | 버그 수정, 설계 판단, AI 방향 수정 기록 |
 | 추후 고려 사항 | `/docs/log/future-considerations.md` | 스케일업 시 필요한 개선 사항, 미래 참고용 |
 
+---
 
+## 실수 학습 규칙
+코드 리뷰, /simplify, 버그 수정 중 아키텍처 위반, 버그, 안티패턴을 발견하면:
+
+근본 원인("왜?")을 분석한다
+.claude/rules/lessons-learned.md에 교훈을 추가한다
+
+구현 전에 반드시 .claude/rules/lessons-learned.md를 읽고, 같은 실수를 반복하지 않는다.
