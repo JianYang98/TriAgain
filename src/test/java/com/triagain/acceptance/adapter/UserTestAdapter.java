@@ -49,6 +49,16 @@ public class UserTestAdapter extends BaseTestAdapter {
                 .extract();
     }
 
+    /** 회원탈퇴 — DELETE /users/me */
+    public ExtractableResponse<Response> withdraw(String userId) {
+        return givenAuthRequest(userId)
+                .when()
+                .delete("/users/me")
+                .then()
+                .log().ifError()
+                .extract();
+    }
+
     /** 로그아웃 — POST /auth/logout */
     public ExtractableResponse<Response> logout() {
         return givenRequest()

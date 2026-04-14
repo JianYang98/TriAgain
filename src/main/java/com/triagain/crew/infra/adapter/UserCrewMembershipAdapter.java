@@ -79,7 +79,7 @@ public class UserCrewMembershipAdapter implements CrewMembershipPort {
                 .setParameter("crewId", crewId).executeUpdate();
         // 4) upload_session → crew_id null 처리
         entityManager.createNativeQuery(
-                "UPDATE upload_sessions SET crew_id = NULL WHERE crew_id = :crewId")
+                "UPDATE upload_session SET crew_id = NULL WHERE crew_id = :crewId")
                 .setParameter("crewId", crewId).executeUpdate();
         // 5) verifications
         entityManager.createNativeQuery(
