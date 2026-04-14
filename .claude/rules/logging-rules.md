@@ -1,6 +1,6 @@
 ---
 description: 디버깅 로그 및 추후 고려 사항 기록 규칙 (언제/어떻게 기록하는지)
-globs: "docs/log/**/*.md"
+paths: "docs/log/**/*.md"
 ---
 
 # 디버깅 & 로그 기록 규칙

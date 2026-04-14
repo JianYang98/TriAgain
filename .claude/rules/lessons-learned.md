@@ -1,6 +1,6 @@
 ---
 description: 과거 실수에서 배운 교훈 — 구현 전 반드시 읽고 같은 실수 반복 방지
-globs: "src/**/*.java"
+paths: "src/**/*.java"
 ---
 
 # Lessons Learned — 실전에서 배운 교훈

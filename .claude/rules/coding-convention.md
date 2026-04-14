@@ -1,6 +1,6 @@
 ---
 description: Java 코드 작성/수정/리팩토링 시 참고하는 코딩 컨벤션 (패키지 구조, 계층별 규약, 네이밍, DI, DTO, SQL, 예외처리, 주석)
-globs: "src/main/**/*.java"
+paths: "src/main/**/*.java"
 ---
 
 # Coding Convention

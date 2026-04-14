@@ -1,6 +1,6 @@
 ---
 description: 코드 작성 시 금지 사항 (OOP, 아키텍처, Data Access, Common Pitfalls)
-globs: "src/**/*.java"
+paths: "src/**/*.java"
 ---
 
 # Anti-Patterns (금지 사항)

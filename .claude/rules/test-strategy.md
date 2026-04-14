@@ -1,6 +1,6 @@
 ---
 description: 테스트 작성 시 참고하는 전략 (역할분담, 단위테스트 규칙/범위, E2E, Cucumber 검증 흐름)
-globs: "src/test/**/*.java, **/*.feature"
+paths: "src/test/**/*.java, **/*.feature"
 ---
 
 # 테스트 전략
