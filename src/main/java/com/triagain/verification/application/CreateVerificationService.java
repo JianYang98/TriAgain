@@ -9,7 +9,7 @@ import com.triagain.verification.port.in.CreateVerificationUseCase;
 import com.triagain.verification.port.out.ChallengePort;
 import com.triagain.verification.port.out.ChallengePort.ChallengeInfo;
 import com.triagain.verification.port.out.CrewPort;
-import com.triagain.verification.port.out.StoragePort;
+import com.triagain.common.port.out.StoragePort;
 import com.triagain.verification.application.event.ChallengeSuccessEvent;
 import com.triagain.verification.port.out.UploadSessionRepositoryPort;
 import com.triagain.verification.port.out.VerificationRepositoryPort;

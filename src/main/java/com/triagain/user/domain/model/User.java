@@ -120,6 +120,11 @@ public class User {
         }
     }
 
+    /** 프로필 이미지 변경 — null이면 기본 이미지로 리셋 */
+    public void updateProfileImage(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
+    }
+
     /** Apple 재로그인 시 email 동기화 — email이 null이면 기존값 유지 (Apple은 최초 1회만 email 제공) */
     public boolean syncAppleProfile(String email) {
         if (email != null && !java.util.Objects.equals(this.email, email)) {
@@ -129,18 +134,13 @@ public class User {
         return false;
     }
 
-    /** 카카오 재로그인 시 email/profileImageUrl 동기화 — 닉네임은 서비스 고유값이므로 갱신하지 않음 */
-    public boolean syncKakaoProfile(String email, String profileImageUrl) {
-        boolean changed = false;
-        if (!java.util.Objects.equals(this.email, email)) {
+    /** 카카오 email 수동 동기화 — email이 null이면 기존값 유지. 현재 재로그인에서는 미사용 */
+    public boolean syncKakaoProfile(String email) {
+        if (email != null && !java.util.Objects.equals(this.email, email)) {
             this.email = email;
-            changed = true;
+            return true;
         }
-        if (!java.util.Objects.equals(this.profileImageUrl, profileImageUrl)) {
-            this.profileImageUrl = profileImageUrl;
-            changed = true;
-        }
-        return changed;
+        return false;
     }
 
     public String getId() { return id; }

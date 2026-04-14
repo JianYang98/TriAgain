@@ -3,6 +3,7 @@ package com.triagain.verification.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
@@ -30,7 +31,7 @@ import com.triagain.verification.port.out.ChallengePort;
 import com.triagain.verification.port.out.ChallengePort.ActiveChallengeInfo;
 import com.triagain.verification.port.out.CrewPort;
 import com.triagain.verification.port.out.CrewPort.CrewVerificationWindowInfo;
-import com.triagain.verification.port.out.StoragePort;
+import com.triagain.common.port.out.StoragePort;
 import com.triagain.verification.port.out.UploadSessionRepositoryPort;
 
 @ExtendWith(MockitoExtension.class)
@@ -95,7 +96,7 @@ class CreateUploadSessionServiceTest {
 
 	private void stubStorageAndRepository() {
 		given(storagePort.generateImageKey(anyString(), anyString())).willReturn(IMAGE_KEY);
-		given(storagePort.generatePresignedUrl(anyString(), anyString())).willReturn(PRESIGNED_URL);
+		given(storagePort.generatePresignedUrl(anyString(), anyString(), anyLong())).willReturn(PRESIGNED_URL);
 		given(storagePort.getImageUrl(anyString())).willReturn(IMAGE_URL);
 		given(uploadSessionRepositoryPort.save(any(UploadSession.class)))
 				.willAnswer(invocation -> {

@@ -269,7 +269,7 @@ Idempotency-Key: <uuid>
 ### POST /auth/kakao (카카오 로그인)
 
 카카오 Access Token으로 기존 유저 여부를 확인한다.
-- **기존 유저** → JWT 발급 (로그인 완료)
+- **기존 유저** → JWT 발급 (로그인 완료). **email·profileImageUrl 모두 동기화하지 않음** (최초 가입 시에만 저장, 이후 유저가 직접 관리)
 - **신규 유저** → `isNewUser=true` + 카카오 프로필 반환 (JWT 미발급, 유저 미생성)
 
 **요청 (Request)**
@@ -670,6 +670,102 @@ Content-Type: application/json
 |------|------|--------|
 | 400 | U007 | 닉네임은 2~12자의 한글, 영문, 숫자, 언더스코어만 사용할 수 있습니다. |
 | 401 | A003 | 인증이 필요합니다. |
+
+---
+
+### POST /users/me/profile-image/upload-session (프로필 이미지 업로드 세션)
+
+프로필 이미지를 S3에 직접 업로드할 수 있도록 Presigned URL을 발급한다.
+
+**요청 (Request)**
+```
+POST /users/me/profile-image/upload-session HTTP/1.1
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+```json
+{
+  "fileName": "profile.jpg",
+  "fileType": "image/jpeg",
+  "fileSize": 512000
+}
+```
+
+**필드 설명:**
+- `fileName`: (필수) 파일명
+- `fileType`: (필수) MIME 타입 — image/jpeg, image/png, image/webp만 허용
+- `fileSize`: (필수) 파일 크기 (바이트) — 최대 5MB
+
+**성공 응답 (201 Created)**
+```json
+{
+  "success": true,
+  "data": {
+    "presignedUrl": "https://s3.amazonaws.com/bucket/profiles/user_456/abc123.jpg?X-Amz-Algorithm=...",
+    "imageUrl": "https://s3.amazonaws.com/bucket/profiles/user_456/abc123.jpg",
+    "expiresAt": "2026-04-14T15:00:00"
+  },
+  "error": null
+}
+```
+
+**에러 응답**
+| HTTP | 코드 | 메시지 |
+|------|------|--------|
+| 400 | V007 | 지원하지 않는 파일 형식입니다. |
+| 400 | V008 | 파일 크기가 너무 큽니다. |
+| 401 | A003 | 인증이 필요합니다. |
+
+**제약 사항:**
+- 최대 크기: 5MB
+- 허용 타입: JPEG, PNG, WebP
+- Presigned URL 유효기간: 15분
+- S3 경로: profiles/{userId}/{uuid}.{ext}
+
+---
+
+### PATCH /users/me/profile-image (프로필 이미지 변경 확정)
+
+S3 업로드 완료 후 프로필 이미지 URL을 DB에 반영한다.
+
+**요청 (Request)**
+```
+PATCH /users/me/profile-image HTTP/1.1
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+```json
+{
+  "imageUrl": "https://s3.amazonaws.com/bucket/profiles/user_456/abc123.jpg"
+}
+```
+
+**필드 설명:**
+- `imageUrl`: (nullable) 이미지 URL — null이면 기본 이미지로 리셋, 값이 있으면 S3 버킷 + profiles/{userId}/ 경로 검증
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "user_456",
+    "nickname": "지안",
+    "profileImageUrl": "https://s3.amazonaws.com/bucket/profiles/user_456/abc123.jpg",
+    "email": "user@kakao.com"
+  },
+  "error": null
+}
+```
+
+**에러 응답**
+| HTTP | 코드 | 메시지 |
+|------|------|--------|
+| 400 | U011 | 유효하지 않은 이미지 URL입니다. |
+| 401 | A003 | 인증이 필요합니다. |
+
+**검증 규칙:**
+- imageUrl이 null이면 기본 이미지로 리셋 (profileImageUrl = null → FE에서 기본 아바타 표시)
+- imageUrl이 값이 있으면: 우리 S3 버킷 경로인지 확인 + 해당 유저의 profiles/{userId}/ 경로인지 확인
 
 ---
 

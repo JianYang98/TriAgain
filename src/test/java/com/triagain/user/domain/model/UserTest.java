@@ -61,6 +61,84 @@ class UserTest {
         assertThat(withdrawnUser.isWithdrawn()).isTrue();
     }
 
+    @DisplayName("syncKakaoProfile() — email 변경 시 true 반환하고 email 갱신, profileImageUrl은 불변")
+    @Test
+    void syncKakaoProfile_emailChanged_updatesEmailOnly() {
+        // Given
+        User user = User.of("user-1", "KAKAO", "old@test.com", "테스트",
+                "https://my-custom.com/photo.jpg", null, null,
+                LocalDateTime.now(), LocalDateTime.now(), null, 0);
+
+        // When
+        boolean changed = user.syncKakaoProfile("new@test.com");
+
+        // Then
+        assertThat(changed).isTrue();
+        assertThat(user.getEmail()).isEqualTo("new@test.com");
+        assertThat(user.getProfileImageUrl()).isEqualTo("https://my-custom.com/photo.jpg");
+    }
+
+    @DisplayName("syncKakaoProfile() — email 동일 시 false 반환하고 아무것도 변경하지 않음")
+    @Test
+    void syncKakaoProfile_emailUnchanged_returnsFalse() {
+        // Given
+        User user = User.of("user-1", "KAKAO", "same@test.com", "테스트",
+                "https://my-custom.com/photo.jpg", null, null,
+                LocalDateTime.now(), LocalDateTime.now(), null, 0);
+
+        // When
+        boolean changed = user.syncKakaoProfile("same@test.com");
+
+        // Then
+        assertThat(changed).isFalse();
+        assertThat(user.getEmail()).isEqualTo("same@test.com");
+        assertThat(user.getProfileImageUrl()).isEqualTo("https://my-custom.com/photo.jpg");
+    }
+
+    @DisplayName("syncKakaoProfile() — null email 전달 시 기존 email 유지하고 false 반환")
+    @Test
+    void syncKakaoProfile_nullEmail_doesNotOverwrite() {
+        // Given
+        User user = User.of("user-1", "KAKAO", "existing@test.com", "테스트",
+                null, null, null,
+                LocalDateTime.now(), LocalDateTime.now(), null, 0);
+
+        // When
+        boolean changed = user.syncKakaoProfile(null);
+
+        // Then
+        assertThat(changed).isFalse();
+        assertThat(user.getEmail()).isEqualTo("existing@test.com");
+    }
+
+    @DisplayName("updateProfileImage() — URL 설정하면 프로필 이미지 변경")
+    @Test
+    void updateProfileImage_setsNewUrl() {
+        // Given
+        User user = createActiveUser();
+
+        // When
+        user.updateProfileImage("https://s3.com/profiles/user-1/new.jpg");
+
+        // Then
+        assertThat(user.getProfileImageUrl()).isEqualTo("https://s3.com/profiles/user-1/new.jpg");
+    }
+
+    @DisplayName("updateProfileImage() — null 전달하면 기본 이미지로 리셋")
+    @Test
+    void updateProfileImage_nullResetsToDefault() {
+        // Given
+        User user = User.of("user-1", "KAKAO", "test@test.com", "테스트",
+                "https://s3.com/profiles/user-1/old.jpg", null, null,
+                LocalDateTime.now(), LocalDateTime.now(), null, 0);
+
+        // When
+        user.updateProfileImage(null);
+
+        // Then
+        assertThat(user.getProfileImageUrl()).isNull();
+    }
+
     @DisplayName("reactivate() 호출하면 deletedAt이 null이 되고 tokenVersion이 증가한다")
     @Test
     void reactivate_clearsDeletedAtAndIncrementsTokenVersion() {
