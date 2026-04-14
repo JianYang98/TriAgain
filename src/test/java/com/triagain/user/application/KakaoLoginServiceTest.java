@@ -74,15 +74,14 @@ class KakaoLoginServiceTest {
     }
 
     @Test
-    @DisplayName("기존 유저 (email 변경됨) — email만 동기화 후 save, 닉네임/프로필이미지는 유지")
-    void login_existingUser_profileChanged_savesAndReturnsJwt() {
-        // Given
+    @DisplayName("기존 유저 — 재로그인 시 email/프로필 동기화하지 않고 JWT만 발급")
+    void login_existingUser_returnsJwtWithoutSync() {
+        // Given — 카카오 email과 다른 email을 가진 기존 유저
         User existingUser = User.of("12345", "KAKAO", "old@test.com", "기존유저",
                 "https://my-custom.com/photo.jpg",
                 null, null, LocalDateTime.now(), LocalDateTime.now(), null, 0);
         given(kakaoApiPort.getUserInfo("valid-token")).willReturn(kakaoUserInfo);
         given(userRepositoryPort.findById("12345")).willReturn(Optional.of(existingUser));
-        given(userRepositoryPort.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
         given(jwtProvider.createAccessToken(anyString(), anyString(), anyInt())).willReturn("access-token");
         given(jwtProvider.createRefreshToken(anyString(), anyInt())).willReturn("refresh-token");
         given(jwtProvider.getAccessTokenExpirationSeconds()).willReturn(1800L);
@@ -93,32 +92,9 @@ class KakaoLoginServiceTest {
         // Then
         assertThat(result.isNewUser()).isFalse();
         assertThat(result.accessToken()).isEqualTo("access-token");
-        assertThat(result.user().nickname()).isEqualTo("기존유저"); // 닉네임은 카카오 값으로 덮어쓰지 않음
-        assertThat(result.user().profileImageUrl()).isEqualTo("https://my-custom.com/photo.jpg"); // 프로필이미지도 덮어쓰지 않음
-        assertThat(result.kakaoId()).isNull();
-        assertThat(result.kakaoProfile()).isNull();
-        verify(userRepositoryPort).save(any(User.class)); // email 변경 → save 호출
-    }
-
-    @Test
-    @DisplayName("기존 유저 (email 변경 없음) — save 호출하지 않고 JWT만 발급")
-    void login_existingUser_profileUnchanged_skipsave() {
-        // Given — 카카오 정보와 동일한 기존 유저
-        User existingUser = User.of("12345", "KAKAO", "kakao@test.com", "기존유저",
-                "https://img.kakao.com/profile.jpg", null, null, LocalDateTime.now(), LocalDateTime.now(), null, 0);
-        given(kakaoApiPort.getUserInfo("valid-token")).willReturn(kakaoUserInfo);
-        given(userRepositoryPort.findById("12345")).willReturn(Optional.of(existingUser));
-        given(jwtProvider.createAccessToken(anyString(), anyString(), anyInt())).willReturn("access-token");
-        given(jwtProvider.createRefreshToken(anyString(), anyInt())).willReturn("refresh-token");
-        given(jwtProvider.getAccessTokenExpirationSeconds()).willReturn(1800L);
-
-        // When
-        KakaoLoginResult result = kakaoLoginService.login(new KakaoLoginCommand("valid-token"));
-
-        // Then
-        assertThat(result.isNewUser()).isFalse();
-        assertThat(result.accessToken()).isEqualTo("access-token");
-        verify(userRepositoryPort, never()).save(any(User.class)); // 변경 없으면 save 안 함
+        assertThat(result.user().nickname()).isEqualTo("기존유저");
+        assertThat(result.user().profileImageUrl()).isEqualTo("https://my-custom.com/photo.jpg");
+        verify(userRepositoryPort, never()).save(any(User.class)); // 재로그인 시 save 호출 안 함
     }
 
     @Test

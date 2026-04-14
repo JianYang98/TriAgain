@@ -238,7 +238,7 @@
 |------|------|
 | 회원가입 (POST /auth/signup) | 카카오 프로필 이미지 URL 저장 (최초 1회) |
 | 재가입 (reactivate) | 카카오 → 카카오 프로필 이미지 저장, Apple → null |
-| 로그인 (POST /auth/kakao) | 프로필 이미지 건드리지 않음 (email만 동기화) |
+| 로그인 (POST /auth/kakao) | 프로필 이미지·email 모두 건드리지 않음 (최초 가입 시에만 저장) |
 
 **프로필 이미지 변경**
 

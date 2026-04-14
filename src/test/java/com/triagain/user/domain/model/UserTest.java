@@ -95,6 +95,22 @@ class UserTest {
         assertThat(user.getProfileImageUrl()).isEqualTo("https://my-custom.com/photo.jpg");
     }
 
+    @DisplayName("syncKakaoProfile() — null email 전달 시 기존 email 유지하고 false 반환")
+    @Test
+    void syncKakaoProfile_nullEmail_doesNotOverwrite() {
+        // Given
+        User user = User.of("user-1", "KAKAO", "existing@test.com", "테스트",
+                null, null, null,
+                LocalDateTime.now(), LocalDateTime.now(), null, 0);
+
+        // When
+        boolean changed = user.syncKakaoProfile(null);
+
+        // Then
+        assertThat(changed).isFalse();
+        assertThat(user.getEmail()).isEqualTo("existing@test.com");
+    }
+
     @DisplayName("updateProfileImage() — URL 설정하면 프로필 이미지 변경")
     @Test
     void updateProfileImage_setsNewUrl() {

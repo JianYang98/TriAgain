@@ -84,6 +84,19 @@ class UpdateUserProfileServiceTest {
     }
 
     @Test
+    @DisplayName("프로필 이미지 변경 — 외부 도메인 URL 시 INVALID_IMAGE_URL 예외")
+    void updateProfileImage_externalUrl_throwsInvalidImageUrl() {
+        // Given
+        given(storagePort.getBucketDomain()).willReturn("https://s3.com/");
+
+        // When & Then
+        assertThatThrownBy(() -> updateUserProfileService.updateProfileImage(
+                "user-1", "https://evil.com/profiles/user-1/550e8400-e29b-41d4-a716-446655440000.jpg"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.INVALID_IMAGE_URL);
+    }
+
+    @Test
     @DisplayName("프로필 이미지 변경 — 타인의 S3 경로 시 INVALID_IMAGE_URL 예외")
     void updateProfileImage_otherUsersPath_throwsException() {
         // Given

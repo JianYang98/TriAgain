@@ -134,9 +134,9 @@ public class User {
         return false;
     }
 
-    /** 카카오 재로그인 시 email만 동기화 — 닉네임/프로필이미지는 유저가 직접 관리하므로 갱신하지 않음 */
+    /** 카카오 email 수동 동기화 — email이 null이면 기존값 유지. 현재 재로그인에서는 미사용 */
     public boolean syncKakaoProfile(String email) {
-        if (!java.util.Objects.equals(this.email, email)) {
+        if (email != null && !java.util.Objects.equals(this.email, email)) {
             this.email = email;
             return true;
         }

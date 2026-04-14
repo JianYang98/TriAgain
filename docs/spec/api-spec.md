@@ -269,7 +269,7 @@ Idempotency-Key: <uuid>
 ### POST /auth/kakao (카카오 로그인)
 
 카카오 Access Token으로 기존 유저 여부를 확인한다.
-- **기존 유저** → JWT 발급 (로그인 완료). **email만 동기화하고 profileImageUrl은 갱신하지 않음** (프로필 이미지는 유저가 직접 관리)
+- **기존 유저** → JWT 발급 (로그인 완료). **email·profileImageUrl 모두 동기화하지 않음** (최초 가입 시에만 저장, 이후 유저가 직접 관리)
 - **신규 유저** → `isNewUser=true` + 카카오 프로필 반환 (JWT 미발급, 유저 미생성)
 
 **요청 (Request)**
