@@ -52,7 +52,7 @@ Flutter App                   Backend                     카카오 API
 | provider_id | 별도 컬럼 불필요 — `id` 자체가 카카오 ID |
 | 저장 정보 | 닉네임, 프로필 이미지 URL (카카오에서 가져옴) |
 | 이메일 | 카카오에서 제공 시 저장, 미동의 시 null 허용 |
-| 프로필 갱신 | 로그인할 때마다 카카오 최신 정보로 갱신 |
+| 프로필 갱신 | 로그인할 때마다 email만 동기화 (profileImageUrl은 갱신하지 않음 — 유저가 직접 관리) |
 | 인증 토큰 | 자체 JWT (Access + Refresh) |
 
 ---

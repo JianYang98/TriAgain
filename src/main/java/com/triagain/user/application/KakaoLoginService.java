@@ -39,12 +39,8 @@ public class KakaoLoginService implements KakaoLoginUseCase {
             );
         }
 
-        // 기존 유저라면 액세스토큰/리프레쉬 토큰 발급
+        // 기존 유저라면 액세스토큰/리프레쉬 토큰 발급 (email/프로필 동기화하지 않음 — 최초 가입 시에만 저장)
         User user = existing.get();
-        boolean profileChanged = user.syncKakaoProfile(kakaoUser.email(), kakaoUser.profileImageUrl());
-        if (profileChanged) { // 프로필 변경시 체인지! 프로필 이미지!
-            user = userRepositoryPort.save(user);
-        }
 
         String accessToken = jwtProvider.createAccessToken(user.getId(), user.getProvider(), user.getTokenVersion());
         String refreshToken = jwtProvider.createRefreshToken(user.getId(), user.getTokenVersion());
