@@ -1,0 +1,10 @@
+# ⚠️ 부하테스트 전용 — 운영 사용 금지
+# 사용법: --spring.profiles.active=local,loadtest (또는 dev,loadtest)
+# accessToken 만료를 24시간으로 늘려 부하테스트 중 토큰 만료를 방지한다.
+
+jwt:
+  access-token-expiration: 86400000  # 24시간 (ms)
+
+# FCM: firebase.enabled 미설정 → NoOpNotificationSendAdapter 자동 활성화
+# (FcmAdapter는 firebase.enabled=true일 때만 로드됨)
+# 실제 FCM 발송 없이 즉시 true 반환 → 비용 0, 발송 로직 검증에 집중
