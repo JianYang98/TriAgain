@@ -1,0 +1,230 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "panels": [
+    {
+      "title": "CPU Usage",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "system_cpu_usage{application=\"triagain\"}",
+          "legendFormat": "System CPU",
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }
+        },
+        {
+          "expr": "process_cpu_usage{application=\"triagain\"}",
+          "legendFormat": "Process CPU",
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }
+        }
+      ]
+    },
+    {
+      "title": "JVM Heap Memory",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "table", "calcs": ["lastNotNull"] }
+      },
+      "targets": [
+        {
+          "expr": "jvm_memory_used_bytes{area=\"heap\", application=\"triagain\"}",
+          "legendFormat": "{{id}}",
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }
+        },
+        {
+          "expr": "jvm_memory_max_bytes{area=\"heap\", application=\"triagain\"}",
+          "legendFormat": "Max {{id}}",
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }
+        }
+      ]
+    },
+    {
+      "title": "HTTP p95 / p99 Latency",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{application=\"triagain\"}[1m])) by (le))",
+          "legendFormat": "p95",
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{application=\"triagain\"}[1m])) by (le))",
+          "legendFormat": "p99",
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }
+        }
+      ]
+    },
+    {
+      "title": "TPS (Requests/sec)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{application=\"triagain\"}[1m]))",
+          "legendFormat": "Total TPS",
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }
+        },
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{application=\"triagain\", status=~\"2..\"}[1m]))",
+          "legendFormat": "2xx TPS",
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }
+        }
+      ]
+    },
+    {
+      "title": "HikariCP Connection Pool",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "hikaricp_connections_active{application=\"triagain\"}",
+          "legendFormat": "Active",
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }
+        },
+        {
+          "expr": "hikaricp_connections_idle{application=\"triagain\"}",
+          "legendFormat": "Idle",
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }
+        },
+        {
+          "expr": "hikaricp_connections_pending{application=\"triagain\"}",
+          "legendFormat": "Pending (waiting)",
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }
+        },
+        {
+          "expr": "hikaricp_connections_max{application=\"triagain\"}",
+          "legendFormat": "Max",
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }
+        }
+      ]
+    },
+    {
+      "title": "Scheduler Threads",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "executor_active_threads{application=\"triagain\", name=~\".*sched.*\"}",
+          "legendFormat": "Active ({{name}})",
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }
+        },
+        {
+          "expr": "executor_pool_size_threads{application=\"triagain\", name=~\".*sched.*\"}",
+          "legendFormat": "Pool Size ({{name}})",
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }
+        }
+      ]
+    },
+    {
+      "title": "GC Pause Time",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "rate(jvm_gc_pause_seconds_sum{application=\"triagain\"}[1m])",
+          "legendFormat": "GC Pause Rate ({{cause}} {{action}})",
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }
+        },
+        {
+          "expr": "rate(jvm_gc_pause_seconds_count{application=\"triagain\"}[1m])",
+          "legendFormat": "GC Count/sec ({{cause}} {{action}})",
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }
+        }
+      ]
+    },
+    {
+      "title": "Error Rate (5xx)",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.01 },
+              { "color": "red", "value": 0.05 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{application=\"triagain\", status=~\"5..\"}[1m])) / sum(rate(http_server_requests_seconds_count{application=\"triagain\"}[1m]))",
+          "legendFormat": "5xx Error Rate",
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }
+        }
+      ]
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "tags": ["triagain", "loadtest"],
+  "templating": { "list": [] },
+  "time": { "from": "now-15m", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "TriAgain Load Test",
+  "uid": "triagain-loadtest",
+  "version": 1
+}
