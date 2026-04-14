@@ -130,6 +130,11 @@ jobs:
             docker stop triagain || true && docker rm triagain || true
             docker run -d --name triagain --restart unless-stopped \
               -p 8080:8080 \
+              --log-driver=awslogs \
+              --log-opt awslogs-region=ap-northeast-2 \
+              --log-opt awslogs-group=/triagain/app \
+              --log-opt awslogs-stream-prefix=triagain \
+              --log-opt awslogs-create-group=true \
               -v /home/ec2-user/triagain/config:/opt/triagain/config:ro \
               -e SPRING_PROFILES_ACTIVE=prod \
               -e "DB_URL=$DB_URL" \

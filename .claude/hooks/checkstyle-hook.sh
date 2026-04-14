@@ -26,6 +26,20 @@ OUTPUT=$(java -jar "$JAR" \
   -c "$CONFIG" \
   -p <(echo "suppressionFile=$SUPPRESSIONS") \
   "$FILE_PATH" 2>&1)
+EXIT_CODE=$?
+
+# Checkstyle 실행 자체가 실패한 경우 (파싱 에러, 설정 오류 등)
+if [[ $EXIT_CODE -ne 0 ]]; then
+  ERRORS=$(echo "$OUTPUT" | grep "\[ERROR\]")
+  if [[ -n "$ERRORS" ]]; then
+    echo "Checkstyle 실행 에러:" >&2
+    echo "$ERRORS" >&2
+  else
+    echo "Checkstyle 실행 실패 (exit code: $EXIT_CODE):" >&2
+    echo "$OUTPUT" >&2
+  fi
+  exit 2
+fi
 
 # severity=warning이면 exit 0이므로, [WARN] 출력 여부로 판단
 VIOLATIONS=$(echo "$OUTPUT" | grep "\[WARN\]")
