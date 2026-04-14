@@ -133,7 +133,7 @@ jobs:
               --log-driver=awslogs \
               --log-opt awslogs-region=ap-northeast-2 \
               --log-opt awslogs-group=/triagain/app \
-              --log-opt awslogs-stream-prefix=triagain \
+              --log-opt awslogs-stream=triagain \
               --log-opt awslogs-create-group=true \
               -v /home/ec2-user/triagain/config:/opt/triagain/config:ro \
               -e SPRING_PROFILES_ACTIVE=prod \
