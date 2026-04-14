@@ -62,6 +62,9 @@ docs/guide/
 # Blog (기술 블로그 초안 — 로컬 전용)
 docs/blog/
 
+# Tasks (작업 기록 — 로컬 전용)
+docs/tasks/
+
 # Lambda build artifacts
 lambda/.aws-sam/
 lambda/Ldeploy.sh
@@ -74,3 +77,9 @@ triagain-admin_accessKeys.csv
 
 #p8
 *.p8
+
+# Load test artifacts
+load-test/monitoring/prometheus-resolved.yml
+load-test/k6/summary-*.json
+load-test/k6/concurrent-summary.json
+load-test/tokens.csv
