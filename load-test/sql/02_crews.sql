@@ -31,8 +31,9 @@ BEGIN
         v_crew_id := 'loadtest-crew-' || i;
         -- 크루장은 유저를 순환 배정 (1번 유저 → 크루1, 2번 유저 → 크루2, ...)
         v_creator_id := 'loadtest-user-' || ((i - 1) % v_user_count + 1);
-        -- 80% TEXT, 20% PHOTO
-        v_vtype := CASE WHEN i % 5 = 0 THEN 'PHOTO' ELSE 'TEXT' END;
+        -- 전 크루 TEXT (부하테스트 write 경로 통일)
+        -- PHOTO 인증은 S3 presigned URL + UploadSession 파이프라인이 별개 부하 특성이라 별도 벤치 필요
+        v_vtype := 'TEXT';
         -- 카테고리 랜덤 분배
         v_category := v_categories[1 + (i % 5)];
 

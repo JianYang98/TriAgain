@@ -83,3 +83,7 @@ load-test/monitoring/prometheus-resolved.yml
 load-test/k6/summary-*.json
 load-test/k6/concurrent-summary.json
 load-test/tokens.csv
+load-test/results/
+
+# Handoff (개인 인수인계 문서 — 로컬 전용)
+.claude/handoff.md

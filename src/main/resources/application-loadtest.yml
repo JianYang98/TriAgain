@@ -5,6 +5,15 @@
 jwt:
   access-token-expiration: 86400000  # 24시간 (ms)
 
+# prod 프로필이 디폴트 없이 ${APPLE_REFRESH_KEY}를 강제하므로,
+# 부하테스트에서는 application.yml의 테스트용 디폴트키로 오버라이드한다.
+app:
+  crypto:
+    apple-refresh-key: dGVzdC1rZXktMzItYnl0ZXMtZm9yLWFlcy0yNTYtISE=
+
+internal:
+  api-key: loadtest-internal-key
+
 # FCM: firebase.enabled 미설정 → NoOpNotificationSendAdapter 자동 활성화
 # (FcmAdapter는 firebase.enabled=true일 때만 로드됨)
 # 실제 FCM 발송 없이 즉시 true 반환 → 비용 0, 발송 로직 검증에 집중
