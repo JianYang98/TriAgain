@@ -16,6 +16,8 @@ SERVER_URL="${1:?Usage: $0 <SERVER_URL> <SCHEDULER_NAME> [SCALE]}"
 SCHEDULER_NAME="${2:?Usage: $0 <SERVER_URL> <SCHEDULER_NAME> [SCALE]}"
 SCALE="${3:-unknown}"
 WINDOW_MS=300000  # 5분
+# loadtest 프로필 기본값 (application-loadtest.yml:15 매칭). 필요 시 환경변수로 override.
+INTERNAL_API_KEY="${INTERNAL_API_KEY:-loadtest-internal-key}"
 
 echo ""
 echo "=== Scheduler Test ==="
@@ -25,7 +27,9 @@ echo "Scale:  $SCALE"
 echo ""
 
 # 스케줄러 트리거
-RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$SERVER_URL/internal/scheduler/$SCHEDULER_NAME")
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+    -H "X-Internal-Api-Key: $INTERNAL_API_KEY" \
+    "$SERVER_URL/internal/scheduler/$SCHEDULER_NAME")
 HTTP_CODE=$(echo "$RESPONSE" | tail -1)
 BODY=$(echo "$RESPONSE" | sed '$d')
 

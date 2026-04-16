@@ -24,6 +24,8 @@ SCALE="${2:?Usage: $0 <SERVER_URL> <SCALE>}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 K6_DIR="$SCRIPT_DIR/../k6"
 K6_SUMMARY="$SCRIPT_DIR/../k6/concurrent-summary.json"
+# loadtest 프로필 기본값 (application-loadtest.yml:15 매칭). 필요 시 환경변수로 override.
+INTERNAL_API_KEY="${INTERNAL_API_KEY:-loadtest-internal-key}"
 
 echo "=============================================="
 echo " Concurrent Test: k6 Peak + Scheduler"
@@ -48,7 +50,9 @@ sleep 60
 
 # 3. 스케줄러 트리거
 echo "[3/4] FailExpiredChallengesScheduler 트리거..."
-SCHED_RESPONSE=$(curl -s -X POST "$SERVER_URL/internal/scheduler/fail-expired")
+SCHED_RESPONSE=$(curl -s -X POST \
+    -H "X-Internal-Api-Key: $INTERNAL_API_KEY" \
+    "$SERVER_URL/internal/scheduler/fail-expired")
 SCHED_DURATION=$(echo "$SCHED_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['durationMs'])" 2>/dev/null || echo "?")
 echo "스케줄러 완료: ${SCHED_DURATION}ms"
 
