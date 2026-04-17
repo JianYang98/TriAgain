@@ -24,3 +24,5 @@ export const options = {
 export default function () {
 	crewRush();
 }
+
+export { handleSummary } from './lib/report.js';

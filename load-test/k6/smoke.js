@@ -18,3 +18,5 @@ export const options = {
 export default function () {
 	crewHome();
 }
+
+export { handleSummary } from './lib/report.js';

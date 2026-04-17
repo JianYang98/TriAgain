@@ -67,3 +67,5 @@ export function readScenario() {
 export function writeExec() {
 	writeScenario();
 }
+
+export { handleSummary } from './lib/report.js';

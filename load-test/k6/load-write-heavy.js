@@ -86,3 +86,5 @@ export function writePureExec() {
 		'write: 201 created': (r) => r.status === 201,
 	}, { kind: 'write' });
 }
+
+export { handleSummary } from './lib/report.js';
