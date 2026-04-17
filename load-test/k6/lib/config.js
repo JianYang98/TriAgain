@@ -16,7 +16,7 @@ const SCALE_MAP = {
 export const DATA = SCALE_MAP[SCALE];
 
 // === Rush crew config ===
-export const RUSH_CREW_COUNT = 10;
+export const RUSH_CREW_COUNT = parseInt(__ENV.RUSH_CREW_COUNT || '10');
 
 // === Tokens (SharedArray — init once, shared across VUs) ===
 export const tokens = new SharedArray('tokens', function () {

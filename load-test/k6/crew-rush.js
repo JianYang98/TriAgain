@@ -8,20 +8,34 @@
 //   psql ... -f load-test/sql/07_rush_reset.sql
 //
 // k6 run --env BASE_URL=http://<SERVER> crew-rush.js
+// k6 run --env BASE_URL=http://<SERVER> --env TARGET_VUS=100 --env RUSH_CREW_COUNT=1 crew-rush.js
 // ============================================================
 
 import { crewRush } from './lib/scenarios.js';
 
+const vus = parseInt(__ENV.TARGET_VUS || '50');
+const maxMembers = 10;
+const expectedFull = vus - maxMembers;
+
 export const options = {
-	vus: 50,
-	duration: '30s',
+	scenarios: {
+		rush: {
+			executor: 'per-vu-iterations',
+			exec: 'rushExec',
+			vus: vus,
+			iterations: 1,
+			maxDuration: '30s',
+		},
+	},
 	thresholds: {
 		http_req_duration: ['p(95)<1000'],
 		scenario_d_duration: ['p(95)<1000'],
+		join_success: [`count==${maxMembers}`],
+		join_full: [`count==${expectedFull}`],
 	},
 };
 
-export default function () {
+export function rushExec() {
 	crewRush();
 }
 
