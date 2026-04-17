@@ -20,11 +20,12 @@ DECLARE
     v_created INT := 0;
 BEGIN
     CASE v_scale
-        WHEN 'S'  THEN v_crew_count := 10;   v_user_count := 50;
-        WHEN 'M'  THEN v_crew_count := 50;   v_user_count := 250;
-        WHEN 'L'  THEN v_crew_count := 200;  v_user_count := 1000;
-        WHEN 'XL' THEN v_crew_count := 500;  v_user_count := 2500;
-        ELSE RAISE EXCEPTION 'Unknown scale: %. Use S/M/L/XL', v_scale;
+        WHEN 'S'   THEN v_crew_count := 10;   v_user_count := 50;
+        WHEN 'M'   THEN v_crew_count := 50;   v_user_count := 250;
+        WHEN 'L'   THEN v_crew_count := 200;  v_user_count := 1000;
+        WHEN 'XL'  THEN v_crew_count := 500;  v_user_count := 2500;
+        WHEN 'XXL' THEN v_crew_count := 2000; v_user_count := 10000;
+        ELSE RAISE EXCEPTION 'Unknown scale: %. Use S/M/L/XL/XXL', v_scale;
     END CASE;
 
     RAISE NOTICE '[04_challenges_api] scale=%, creating challenges for API test', v_scale;

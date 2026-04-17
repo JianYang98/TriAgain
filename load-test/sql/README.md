@@ -8,13 +8,18 @@
 | M    | 50      | 5         | 250     | 250       |
 | L    | 200     | 5         | 1,000   | 1,000     |
 | XL   | 500     | 5         | 2,500   | 2,500     |
+| XXL  | 2,000   | 5         | 10,000  | 10,000    |
+
+- **XXL**은 `load-write-heavy.js` (Day 7) 쓰기 TPS 측정 전용 —
+  매 iter마다 유효 INSERT가 되려면 (user_id, crew_id, target_date) UNIQUE 제약상
+  유저 풀 크기 = 가능한 유효 INSERT 수. 2분 × 80 TPS ≈ 9,600건 소화 가능.
 
 ## 실행 방법
 
 ### 초기 세팅 (01~06 순서대로, FK 의존성)
 
 ```bash
-# 1. 단계 파라미터 설정 (S/M/L/XL)
+# 1. 단계 파라미터 설정 (S/M/L/XL/XXL)
 export SCALE=S
 
 # 2. 초기화 (기존 loadtest 데이터 삭제)

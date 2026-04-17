@@ -4,6 +4,8 @@ import { Trend, Counter } from 'k6/metrics';
 export const scenarioADuration = new Trend('scenario_a_duration', true);
 export const scenarioBDuration = new Trend('scenario_b_duration', true);
 export const scenarioDDuration = new Trend('scenario_d_duration', true);
+// Day 7 — write-heavy 전용 Trend (POST /verifications만 포함, GET 미포함)
+export const scenarioWriteDuration = new Trend('scenario_write_duration', true);
 
 // --- Scenario B: write success vs duplicate ---
 export const verifyCreated = new Counter('verify_created');     // 201

@@ -1,7 +1,7 @@
 -- ============================================================
 -- 부하테스트 크루 멤버 매핑 (유저 5명씩 크루에 배정)
 -- 사용법: psql -v scale=S -f 03_crew_members.sql
---   scale: S(10크루×5명) / M(50×5) / L(200×5) / XL(500×5)
+--   scale: S(10크루×5명) / M(50×5) / L(200×5) / XL(500×5) / XXL(2000×5)
 -- 선행: 01_users.sql, 02_crews.sql 실행 완료
 -- ============================================================
 
@@ -19,11 +19,12 @@ DECLARE
     v_role TEXT;
 BEGIN
     CASE v_scale
-        WHEN 'S'  THEN v_crew_count := 10;   v_user_count := 50;
-        WHEN 'M'  THEN v_crew_count := 50;   v_user_count := 250;
-        WHEN 'L'  THEN v_crew_count := 200;  v_user_count := 1000;
-        WHEN 'XL' THEN v_crew_count := 500;  v_user_count := 2500;
-        ELSE RAISE EXCEPTION 'Unknown scale: %. Use S/M/L/XL', v_scale;
+        WHEN 'S'   THEN v_crew_count := 10;   v_user_count := 50;
+        WHEN 'M'   THEN v_crew_count := 50;   v_user_count := 250;
+        WHEN 'L'   THEN v_crew_count := 200;  v_user_count := 1000;
+        WHEN 'XL'  THEN v_crew_count := 500;  v_user_count := 2500;
+        WHEN 'XXL' THEN v_crew_count := 2000; v_user_count := 10000;
+        ELSE RAISE EXCEPTION 'Unknown scale: %. Use S/M/L/XL/XXL', v_scale;
     END CASE;
 
     RAISE NOTICE '[03_crew_members] scale=%, % crews x % members', v_scale, v_crew_count, v_members_per_crew;

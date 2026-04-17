@@ -7,10 +7,11 @@ export const SCALE = __ENV.SCALE || 'S';
 
 // === Scale -> data range ===
 const SCALE_MAP = {
-	S:  { users: 50,   crews: 10  },
-	M:  { users: 250,  crews: 50  },
-	L:  { users: 1000, crews: 200 },
-	XL: { users: 2500, crews: 500 },
+	S:   { users: 50,    crews: 10   },
+	M:   { users: 250,   crews: 50   },
+	L:   { users: 1000,  crews: 200  },
+	XL:  { users: 2500,  crews: 500  },
+	XXL: { users: 10000, crews: 2000 },
 };
 export const DATA = SCALE_MAP[SCALE];
 
