@@ -293,7 +293,7 @@ public class CrewFeedSteps {
                 "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
                 LocalDate.now(), LocalDate.now().plusDays(14), true,
                 generateInviteCode(), LocalDateTime.now(),
-                Crew.DEFAULT_DEADLINE_TIME, null, CrewVisibility.PRIVATE, java.util.List.of()
+                Crew.DEFAULT_DEADLINE_TIME, null, CrewVisibility.PRIVATE, 0L, java.util.List.of()
         );
         crewRepositoryPort.save(crew);
         crewRepositoryPort.saveMember(CrewMember.createLeader(creatorId, crewId));

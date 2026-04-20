@@ -39,6 +39,7 @@ public class Crew {
     private final LocalTime deadlineTime;
     private CrewCategory category;
     private CrewVisibility visibility;
+    private final Long version;
     private final List<CrewMember> members;
 
     private Crew(String id, String creatorId, String name, String goal,
@@ -48,7 +49,8 @@ public class Crew {
                  LocalDate endDate, boolean allowLateJoin,
                  String inviteCode, LocalDateTime createdAt,
                  LocalTime deadlineTime, CrewCategory category,
-                 CrewVisibility visibility, List<CrewMember> members) {
+                 CrewVisibility visibility, Long version,
+                 List<CrewMember> members) {
         this.id = id;
         this.creatorId = creatorId;
         this.name = name;
@@ -66,6 +68,7 @@ public class Crew {
         this.deadlineTime = deadlineTime;
         this.category = category;
         this.visibility = visibility;
+        this.version = version;
         this.members = new ArrayList<>(members);
     }
 
@@ -102,6 +105,7 @@ public class Crew {
                 deadlineTime != null ? deadlineTime : DEFAULT_DEADLINE_TIME,
                 category,
                 visibility != null ? visibility : CrewVisibility.PRIVATE,
+                null,
                 List.of(leader)
         );
     }
@@ -114,11 +118,12 @@ public class Crew {
                           LocalDate endDate, boolean allowLateJoin,
                           String inviteCode, LocalDateTime createdAt,
                           LocalTime deadlineTime, CrewCategory category,
-                          CrewVisibility visibility, List<CrewMember> members) {
+                          CrewVisibility visibility, Long version,
+                          List<CrewMember> members) {
         return new Crew(id, creatorId, name, goal, verificationContent, verificationType,
                 maxMembers, currentMembers, status, startDate,
                 endDate, allowLateJoin, inviteCode, createdAt,
-                deadlineTime, category, visibility, members);
+                deadlineTime, category, visibility, version, members);
     }
 
     /** 멤버 추가 — 정원·상태·마감일 검증 후 멤버 등록 */
@@ -328,6 +333,10 @@ public class Crew {
 
     public CrewVisibility getVisibility() {
         return visibility;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     /** 공개 크루 여부 확인 — 크루 검색/직접 가입 판단에 사용 */

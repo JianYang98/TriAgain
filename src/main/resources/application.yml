@@ -41,6 +41,10 @@ apple:
 crew:
   max-duration-days: 30
 
+triagain:
+  crew:
+    lock-strategy: OPTIMISTIC  # PESSIMISTIC | OPTIMISTIC
+
 mybatis:
   mapper-locations: classpath:mybatis/mapper/**/*.xml
   config-location: classpath:mybatis/mybatis-config.xml

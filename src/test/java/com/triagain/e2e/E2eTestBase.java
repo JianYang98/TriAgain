@@ -112,7 +112,7 @@ public abstract class E2eTestBase {
                 "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
                 LocalDate.now(), LocalDate.now().plusDays(14), true,
                 generateInviteCode(), LocalDateTime.now(),
-                Crew.DEFAULT_DEADLINE_TIME, null, CrewVisibility.PRIVATE, List.of()
+                Crew.DEFAULT_DEADLINE_TIME, null, CrewVisibility.PRIVATE, 0L, List.of()
         );
         crewRepositoryPort.save(crew);
         crewRepositoryPort.saveMember(CrewMember.createLeader(creatorId, crewId));
