@@ -8,7 +8,6 @@ import com.triagain.crew.domain.vo.CrewRole;
 import com.triagain.crew.domain.vo.CrewStatus;
 import com.triagain.crew.domain.vo.VerificationType;
 import com.triagain.crew.port.out.ChallengeRepositoryPort;
-import com.triagain.crew.infra.CrewLockProperties;
 import com.triagain.crew.port.out.CrewRepositoryPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

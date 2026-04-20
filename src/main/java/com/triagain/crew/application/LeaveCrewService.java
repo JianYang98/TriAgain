@@ -3,7 +3,6 @@ package com.triagain.crew.application;
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
 import com.triagain.crew.domain.model.Crew;
-import com.triagain.crew.infra.CrewLockProperties;
 import com.triagain.crew.port.in.LeaveCrewUseCase;
 import com.triagain.crew.port.out.ChallengeRepositoryPort;
 import com.triagain.crew.port.out.CrewRepositoryPort;
