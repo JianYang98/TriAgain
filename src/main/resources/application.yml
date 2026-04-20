@@ -58,7 +58,7 @@ crew:
 
 triagain:
   crew:
-    lock-strategy: OPTIMISTIC  # PESSIMISTIC | OPTIMISTIC
+    lock-strategy: PESSIMISTIC  # PESSIMISTIC | OPTIMISTIC (전환: --triagain.crew.lock-strategy=OPTIMISTIC)
 
 mybatis:
   mapper-locations: classpath:mybatis/mapper/**/*.xml
