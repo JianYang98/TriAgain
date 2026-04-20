@@ -17,8 +17,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class JoinCrewService implements JoinCrewUseCase {
 
-	private static final int MAX_RETRY = 3;
-
 	private final CrewRepositoryPort crewRepositoryPort;
 	private final CrewLockProperties lockProperties;
 	private final TransactionTemplate txTemplate;
@@ -35,7 +33,7 @@ public class JoinCrewService implements JoinCrewUseCase {
 
 	private JoinCrewResult joinWithOptimisticRetry(
 			JoinCrewCommand command) {
-		for (int attempt = 1; attempt <= MAX_RETRY; attempt++) {
+		for (int attempt = 1; attempt <= lockProperties.getMaxRetry(); attempt++) {
 			JoinCrewResult result = txTemplate.execute(
 				status -> doJoinOptimistic(command));
 			if (result != null) {

@@ -13,6 +13,8 @@ public class CrewLockProperties {
 
 	private LockStrategy lockStrategy = LockStrategy.OPTIMISTIC;
 
+	private int maxRetry = 3;
+
 	public enum LockStrategy { PESSIMISTIC, OPTIMISTIC }
 
 	public boolean isPessimistic() {

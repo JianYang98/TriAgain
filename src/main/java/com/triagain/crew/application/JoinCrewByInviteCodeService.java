@@ -17,7 +17,6 @@ import lombok.RequiredArgsConstructor;
 public class JoinCrewByInviteCodeService
 		implements JoinCrewByInviteCodeUseCase {
 
-	private static final int MAX_RETRY = 3;
 
 	private final CrewRepositoryPort crewRepositoryPort;
 	private final CrewLockProperties lockProperties;
@@ -36,7 +35,7 @@ public class JoinCrewByInviteCodeService
 
 	private JoinByInviteCodeResult joinWithOptimisticRetry(
 			JoinByInviteCodeCommand command) {
-		for (int attempt = 1; attempt <= MAX_RETRY; attempt++) {
+		for (int attempt = 1; attempt <= lockProperties.getMaxRetry(); attempt++) {
 			JoinByInviteCodeResult result = txTemplate.execute(
 				status -> doJoinOptimistic(command));
 			if (result != null) {
