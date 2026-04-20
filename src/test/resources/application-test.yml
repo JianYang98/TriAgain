@@ -12,3 +12,7 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: true
+
+triagain:
+  crew:
+    lock-strategy: PESSIMISTIC

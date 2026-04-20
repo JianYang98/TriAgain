@@ -57,6 +57,7 @@ erDiagram
         string invite_code UK
         string category "크루 카테고리 — VARCHAR(20) NULL"
         string visibility "공개 설정 — VARCHAR(10) NOT NULL DEFAULT 'PRIVATE'"
+        bigint version "낙관적 락 버전 — NOT NULL DEFAULT 0"
         timestamp created_at
     }
     

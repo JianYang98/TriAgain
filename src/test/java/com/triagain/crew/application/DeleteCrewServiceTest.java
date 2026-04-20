@@ -7,6 +7,7 @@ import com.triagain.crew.domain.model.CrewMember;
 import com.triagain.crew.domain.vo.CrewRole;
 import com.triagain.crew.domain.vo.CrewStatus;
 import com.triagain.crew.domain.vo.VerificationType;
+import com.triagain.crew.infra.CrewLockProperties;
 import com.triagain.crew.port.out.CrewRepositoryPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -32,8 +33,16 @@ class DeleteCrewServiceTest {
     @Mock
     private CrewRepositoryPort crewRepositoryPort;
 
+    @Mock
+    private CrewLockProperties lockProperties;
+
     @InjectMocks
     private DeleteCrewService deleteCrewService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        org.mockito.BDDMockito.given(lockProperties.isPessimistic()).willReturn(true);
+    }
 
     @Test
     @DisplayName("LEADER가 RECRUITING + 혼자인 크루를 삭제하면 성공한다")
@@ -97,7 +106,7 @@ class DeleteCrewServiceTest {
         Crew crew = Crew.of("CREW-1", "leader-1", "크루", "목표", "인증",
                 VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
                 LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true,
-                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null, null, List.of(leader));
+                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null, null, 0L, List.of(leader));
         given(crewRepositoryPort.findByIdWithLock("CREW-1")).willReturn(Optional.of(crew));
 
         // When & Then
@@ -114,7 +123,7 @@ class DeleteCrewServiceTest {
         return Crew.of("CREW-1", leaderId, "테스트 크루", "목표", "인증 내용",
                 VerificationType.TEXT, 10, 1, CrewStatus.RECRUITING,
                 LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true,
-                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null, null, List.of(leader));
+                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null, null, 0L, List.of(leader));
     }
 
     private Crew recruitingCrewWithLeaderAndMember(String leaderId, String memberId) {
@@ -123,6 +132,6 @@ class DeleteCrewServiceTest {
         return Crew.of("CREW-1", leaderId, "테스트 크루", "목표", "인증 내용",
                 VerificationType.TEXT, 10, 2, CrewStatus.RECRUITING,
                 LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true,
-                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null, null, List.of(leader, member));
+                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null, null, 0L, List.of(leader, member));
     }
 }

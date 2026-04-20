@@ -10,13 +10,17 @@ import com.triagain.crew.domain.vo.CrewVisibility;
 import com.triagain.crew.domain.vo.VerificationType;
 import com.triagain.crew.port.in.JoinCrewUseCase.JoinCrewCommand;
 import com.triagain.crew.port.in.JoinCrewUseCase.JoinCrewResult;
+import com.triagain.crew.infra.CrewLockProperties;
 import com.triagain.crew.port.out.CrewRepositoryPort;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -37,8 +41,23 @@ class JoinCrewServiceTest {
     @Mock
     private CrewRepositoryPort crewRepositoryPort;
 
+    @Mock
+    private CrewLockProperties lockProperties;
+
+    @Mock
+    private TransactionTemplate txTemplate;
+
     @InjectMocks
     private JoinCrewService joinCrewService;
+
+    @BeforeEach
+    void setUp() {
+        given(lockProperties.isPessimistic()).willReturn(true);
+        given(txTemplate.execute(any())).willAnswer(invocation -> {
+            TransactionCallback<?> cb = invocation.getArgument(0);
+            return cb.doInTransaction(null);
+        });
+    }
 
     @Test
     @DisplayName("PUBLIC 크루에 정상 가입하면 MEMBER 역할로 등록된다")
@@ -102,7 +121,7 @@ class JoinCrewServiceTest {
                 "인증 내용", VerificationType.TEXT, 10, 2,
                 CrewStatus.RECRUITING, LocalDate.now().plusDays(1), LocalDate.now().plusDays(30),
                 true, "ABC123", LocalDateTime.now(),
-                LocalTime.of(23, 59, 59), null, CrewVisibility.PUBLIC, List.of(leader, existing));
+                LocalTime.of(23, 59, 59), null, CrewVisibility.PUBLIC, 0L, List.of(leader, existing));
         given(crewRepositoryPort.findByIdWithLock("CREW-001")).willReturn(Optional.of(crew));
 
         JoinCrewCommand command = new JoinCrewCommand("user-1", "CREW-001");
@@ -160,7 +179,7 @@ class JoinCrewServiceTest {
                 "인증 내용", VerificationType.TEXT, 10, 1,
                 CrewStatus.RECRUITING, startDate, endDate,
                 true, "ABC123", LocalDateTime.now(),
-                LocalTime.of(23, 59, 59), null, CrewVisibility.PUBLIC, Collections.emptyList()
+                LocalTime.of(23, 59, 59), null, CrewVisibility.PUBLIC, 0L, Collections.emptyList()
         );
     }
 
@@ -170,7 +189,7 @@ class JoinCrewServiceTest {
                 "인증 내용", VerificationType.TEXT, 10, 1,
                 CrewStatus.RECRUITING, startDate, endDate,
                 true, "ABC123", LocalDateTime.now(),
-                LocalTime.of(23, 59, 59), null, CrewVisibility.PRIVATE, Collections.emptyList()
+                LocalTime.of(23, 59, 59), null, CrewVisibility.PRIVATE, 0L, Collections.emptyList()
         );
     }
 
@@ -181,7 +200,7 @@ class JoinCrewServiceTest {
                 "인증 내용", VerificationType.TEXT, maxMembers, currentMembers,
                 status, startDate, endDate,
                 true, "ABC123", LocalDateTime.now(),
-                LocalTime.of(23, 59, 59), null, CrewVisibility.PUBLIC, Collections.emptyList()
+                LocalTime.of(23, 59, 59), null, CrewVisibility.PUBLIC, 0L, Collections.emptyList()
         );
     }
 }

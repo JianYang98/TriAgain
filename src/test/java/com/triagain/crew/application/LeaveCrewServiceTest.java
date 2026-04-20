@@ -8,6 +8,7 @@ import com.triagain.crew.domain.vo.CrewRole;
 import com.triagain.crew.domain.vo.CrewStatus;
 import com.triagain.crew.domain.vo.VerificationType;
 import com.triagain.crew.port.out.ChallengeRepositoryPort;
+import com.triagain.crew.infra.CrewLockProperties;
 import com.triagain.crew.port.out.CrewRepositoryPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,8 +39,24 @@ class LeaveCrewServiceTest {
     @Mock
     private ChallengeRepositoryPort challengeRepositoryPort;
 
+    @Mock
+    private CrewLockProperties lockProperties;
+
+    @Mock
+    private org.springframework.transaction.support.TransactionTemplate txTemplate;
+
     @InjectMocks
     private LeaveCrewService leaveCrewService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        org.mockito.BDDMockito.given(lockProperties.isPessimistic()).willReturn(true);
+        org.mockito.Mockito.doAnswer(invocation -> {
+            java.util.function.Consumer<org.springframework.transaction.TransactionStatus> action = invocation.getArgument(0);
+            action.accept(null);
+            return null;
+        }).when(txTemplate).executeWithoutResult(org.mockito.ArgumentMatchers.any());
+    }
 
     @Test
     @DisplayName("MEMBER가 RECRUITING 크루에서 탈퇴하면 성공한다")
@@ -65,7 +82,7 @@ class LeaveCrewServiceTest {
         Crew crew = Crew.of("CREW-1", "former-leader", "테스트 크루", "목표", "인증 내용",
                 VerificationType.TEXT, 10, 1, CrewStatus.RECRUITING,
                 LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true,
-                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null, null, List.of(soloMember));
+                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null, null, 0L, List.of(soloMember));
         given(crewRepositoryPort.findByIdWithLock("CREW-1")).willReturn(Optional.of(crew));
         given(crewRepositoryPort.save(crew)).willReturn(crew);
 
@@ -158,7 +175,7 @@ class LeaveCrewServiceTest {
         Crew crew = Crew.of("CREW-1", "leader-1", "크루", "목표", "인증",
                 VerificationType.TEXT, 10, 2, CrewStatus.COMPLETED,
                 LocalDate.now().minusDays(20), LocalDate.now().minusDays(1), true,
-                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null, null, List.of(leader, member));
+                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null, null, 0L, List.of(leader, member));
         given(crewRepositoryPort.findByIdWithLock("CREW-1")).willReturn(Optional.of(crew));
         given(challengeRepositoryPort.existsByUserIdAndCrewId("member-1", "CREW-1")).willReturn(false);
 
@@ -176,7 +193,7 @@ class LeaveCrewServiceTest {
         return Crew.of("CREW-1", leaderId, "테스트 크루", "목표", "인증 내용",
                 VerificationType.TEXT, 10, 1, CrewStatus.RECRUITING,
                 LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true,
-                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null, null, List.of(leader));
+                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null, null, 0L, List.of(leader));
     }
 
     private Crew recruitingCrewWithLeaderAndMember(String leaderId, String memberId) {
@@ -185,7 +202,7 @@ class LeaveCrewServiceTest {
         return Crew.of("CREW-1", leaderId, "테스트 크루", "목표", "인증 내용",
                 VerificationType.TEXT, 10, 2, CrewStatus.RECRUITING,
                 LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true,
-                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null, null, List.of(leader, member));
+                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null, null, 0L, List.of(leader, member));
     }
 
     private Crew activeCrewWithLeaderAndMember(String leaderId, String memberId) {
@@ -194,6 +211,6 @@ class LeaveCrewServiceTest {
         return Crew.of("CREW-1", leaderId, "테스트 크루", "목표", "인증 내용",
                 VerificationType.TEXT, 10, 2, CrewStatus.ACTIVE,
                 LocalDate.now().minusDays(1), LocalDate.now().plusDays(13), true,
-                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null, null, List.of(leader, member));
+                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null, null, 0L, List.of(leader, member));
     }
 }

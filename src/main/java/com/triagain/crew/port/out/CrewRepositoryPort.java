@@ -22,6 +22,9 @@ public interface CrewRepositoryPort {
     /** 비관적 락으로 크루 조회 — 동시 참여 시 정원 초과 방지 */
     Optional<Crew> findByIdWithLock(String id);
 
+    /** 낙관적 락으로 멤버 수 갱신 — version 불일치 시 0 반환 */
+    int updateCurrentMembersWithVersion(String id, int currentMembers, Long version);
+
     /** 초대코드로 크루 조회 — 크루 참여 시 사용 */
     Optional<Crew> findByInviteCode(String inviteCode);
 

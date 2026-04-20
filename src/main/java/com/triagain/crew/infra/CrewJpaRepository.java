@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -30,6 +31,15 @@ public interface CrewJpaRepository extends JpaRepository<CrewJpaEntity, String> 
 
     /** 시작일 도래한 특정 상태 크루 조회 — 서버 시작 시 활성화 보정에 사용 */
     List<CrewJpaEntity> findAllByStatusAndStartDateLessThanEqual(CrewStatus status, LocalDate date);
+
+    /** 낙관적 락 — version 일치 시만 current_members 갱신 + version 증가 */
+    @Modifying
+    @Query("UPDATE CrewJpaEntity c SET c.currentMembers = :currentMembers, c.version = c.version + 1 " +
+            "WHERE c.id = :id AND c.version = :version")
+    int updateCurrentMembersWithVersion(
+            @Param("id") String id,
+            @Param("currentMembers") int currentMembers,
+            @Param("version") Long version);
 
     /** 공개 크루 검색 — 키워드/카테고리 필터 + 상태 조건 */
     @Query("SELECT c FROM CrewJpaEntity c WHERE c.visibility = :visibility " +

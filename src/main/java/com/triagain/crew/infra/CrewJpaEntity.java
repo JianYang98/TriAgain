@@ -80,6 +80,8 @@ public class CrewJpaEntity {
     @Column(nullable = false, length = 10)
     private CrewVisibility visibility;
 
+    private Long version;
+
     protected CrewJpaEntity() {
     }
 
@@ -88,7 +90,8 @@ public class CrewJpaEntity {
         return Crew.of(id, creatorId, name, goal, verificationContent, verificationType,
                 maxMembers, currentMembers, status, startDate,
                 endDate, allowLateJoin, inviteCode, createdAt,
-                deadlineTime, category, visibility, Collections.emptyList());
+                deadlineTime, category, visibility, version,
+                Collections.emptyList());
     }
 
     /** JPA 엔티티를 도메인 모델로 변환 — 멤버 포함 */
@@ -99,7 +102,7 @@ public class CrewJpaEntity {
         return Crew.of(id, creatorId, name, goal, verificationContent, verificationType,
                 maxMembers, currentMembers, status, startDate,
                 endDate, allowLateJoin, inviteCode, createdAt,
-                deadlineTime, category, visibility, members);
+                deadlineTime, category, visibility, version, members);
     }
 
     /** 도메인 모델을 JPA 엔티티로 변환 — 저장 시 사용 */
@@ -122,6 +125,7 @@ public class CrewJpaEntity {
         entity.deadlineTime = crew.getDeadlineTime();
         entity.category = crew.getCategory();
         entity.visibility = crew.getVisibility();
+        entity.version = crew.getVersion();
         return entity;
     }
 

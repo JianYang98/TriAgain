@@ -50,6 +50,12 @@ public class CrewJpaAdapter implements CrewRepositoryPort {
                 });
     }
 
+    /** 낙관적 락으로 멤버 수 갱신 — version 불일치 시 0 반환 */
+    @Override
+    public int updateCurrentMembersWithVersion(String id, int currentMembers, Long version) {
+        return crewJpaRepository.updateCurrentMembersWithVersion(id, currentMembers, version);
+    }
+
     /** 비관적 락으로 크루 조회 — 동시 참여 시 정원 초과 방지 */
     @Override
     public Optional<Crew> findByIdWithLock(String id) {

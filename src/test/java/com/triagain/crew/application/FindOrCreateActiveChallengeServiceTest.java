@@ -149,7 +149,7 @@ class FindOrCreateActiveChallengeServiceTest {
 		Crew completedCrew = Crew.of(CREW_ID, "creator-1", "크루", "목표",
 				"인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.COMPLETED,
 				TODAY.minusDays(10), TODAY.minusDays(1),
-				false, "ABC123", FIXED_NOW, DEADLINE_TIME, null, null, Collections.emptyList());
+				false, "ABC123", FIXED_NOW, DEADLINE_TIME, null, null, 0L, Collections.emptyList());
 
 		given(challengeRepositoryPort.findByUserIdAndCrewIdAndStatusWithLock(
 				USER_ID, CREW_ID, ChallengeStatus.IN_PROGRESS))
@@ -170,7 +170,7 @@ class FindOrCreateActiveChallengeServiceTest {
 		Crew expiredCrew = Crew.of(CREW_ID, "creator-1", "크루", "목표",
 				"인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
 				TODAY.minusDays(10), TODAY.minusDays(1),
-				false, "ABC123", FIXED_NOW, DEADLINE_TIME, null, null, Collections.emptyList());
+				false, "ABC123", FIXED_NOW, DEADLINE_TIME, null, null, 0L, Collections.emptyList());
 
 		given(challengeRepositoryPort.findByUserIdAndCrewIdAndStatusWithLock(
 				USER_ID, CREW_ID, ChallengeStatus.IN_PROGRESS))
@@ -216,7 +216,7 @@ class FindOrCreateActiveChallengeServiceTest {
 		Crew crew = Crew.of(CREW_ID, "creator-1", "크루", "목표",
 				"인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
 				TODAY.minusDays(1), TODAY.plusDays(30),
-				false, "ABC123", FIXED_NOW, pastDeadline, null, null, Collections.emptyList());
+				false, "ABC123", FIXED_NOW, pastDeadline, null, null, 0L, Collections.emptyList());
 
 		given(challengeRepositoryPort.findByUserIdAndCrewIdAndStatusWithLock(
 				USER_ID, CREW_ID, ChallengeStatus.IN_PROGRESS))
@@ -236,6 +236,6 @@ class FindOrCreateActiveChallengeServiceTest {
 		return Crew.of(id, "creator-1", "테스트 크루", "목표",
 				"인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
 				startDate, endDate, false, "ABC123",
-				FIXED_NOW, DEADLINE_TIME, null, null, Collections.emptyList());
+				FIXED_NOW, DEADLINE_TIME, null, null, 0L, Collections.emptyList());
 	}
 }

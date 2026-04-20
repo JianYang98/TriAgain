@@ -108,7 +108,7 @@ class GetMyCrewsServiceTest {
                 LocalDate.now().minusDays(1), LocalDate.now().plusDays(5),
                 false, "ABC123", LocalDateTime.now().minusDays(1),
                 LocalTime.of(23, 59, 59), CrewCategory.EXERCISE,
-                CrewVisibility.PRIVATE, List.of());
+                CrewVisibility.PRIVATE, 0L, List.of());
     }
 
     private static Crew recruitingCrew(String crewId, String name) {
@@ -117,6 +117,6 @@ class GetMyCrewsServiceTest {
                 LocalDate.now().plusDays(1), LocalDate.now().plusDays(7),
                 false, "DEF456", LocalDateTime.now(),
                 LocalTime.of(23, 59, 59), CrewCategory.STUDY,
-                CrewVisibility.PRIVATE, List.of());
+                CrewVisibility.PRIVATE, 0L, List.of());
     }
 }
