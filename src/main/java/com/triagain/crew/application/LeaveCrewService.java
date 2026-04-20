@@ -16,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class LeaveCrewService implements LeaveCrewUseCase {
 
-	private static final int MAX_RETRY = 3;
 
 	private final CrewRepositoryPort crewRepositoryPort;
 	private final ChallengeRepositoryPort challengeRepositoryPort;
@@ -36,7 +35,7 @@ public class LeaveCrewService implements LeaveCrewUseCase {
 
 	private void leaveWithOptimisticRetry(
 			String crewId, String userId) {
-		for (int attempt = 1; attempt <= MAX_RETRY; attempt++) {
+		for (int attempt = 1; attempt <= lockProperties.getMaxRetry(); attempt++) {
 			Boolean success = txTemplate.execute(
 				status -> doLeaveOptimistic(crewId, userId));
 			if (Boolean.TRUE.equals(success)) {
