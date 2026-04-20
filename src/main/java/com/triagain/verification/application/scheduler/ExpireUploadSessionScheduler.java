@@ -33,7 +33,7 @@ public class ExpireUploadSessionScheduler {
      * 15분 경과한 PENDING 세션을 EXPIRED로 전환.
      * 윈도우+보정 이중 구조는 후속 과제 (future-considerations.md 2026-04-09 참조).
      */
-    @Scheduled(fixedRate = 300_000)
+    @Scheduled(fixedDelay = 300_000)
     public void expirePendingSessions() {
         LocalDateTime threshold = LocalDateTime.now().minusMinutes(EXPIRY_MINUTES);
         List<UploadSession> expiredSessions = uploadSessionRepositoryPort
