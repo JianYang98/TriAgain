@@ -361,11 +361,13 @@
 ### 4.1 크루 정원 초과 참여
 
 - **영향:** 공정성 붕괴
-- **대응:** 낙관적 락(`@Version`) + 재시도(최대 3회) + 트랜잭션 처리
-  - crews 테이블 `version` 컬럼으로 동시 수정 감지
-  - UPDATE 시 `WHERE version = ?` 조건 — 버전 불일치 시 재시도
-  - 3회 재시도 실패 시 `CREW_JOIN_CONFLICT(409, CR023)` 응답
-  - Phase 1 적정 기술: 동시 가입 빈도 낮고, 재시도 비용 < 락 대기 비용
+- **대응:** yml 설정으로 비관적/낙관적 락 전환 가능 (`triagain.crew.lock-strategy`, 기본값 `PESSIMISTIC`)
+  - **PESSIMISTIC** (Phase 1 기본): `SELECT FOR UPDATE`로 직렬화, 안정성 우선
+  - **OPTIMISTIC** (트래픽 증가 시 전환): crews 테이블 `version` 컬럼으로 동시 수정 감지
+  - UPDATE 시 `WHERE version = ?` 조건 — 버전 불일치 시 재시도 (최대 `triagain.crew.max-retry`, 기본 3회)
+  - 재시도 전부 실패 시 `CREW_JOIN_CONFLICT(409, CR023)` 응답
+  - 전환: `--triagain.crew.lock-strategy=OPTIMISTIC` (재빌드 불필요)
+  - 삭제(`DeleteCrewService`)와 탈퇴(`LeaveCrewService`)는 빈도가 극히 낮아 항상 비관적 락 고정
 
 ### 4.2 마감 직전 동시 인증 폭주
 

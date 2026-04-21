@@ -1,4 +1,4 @@
-package com.triagain.crew.infra;
+package com.triagain.crew.application;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

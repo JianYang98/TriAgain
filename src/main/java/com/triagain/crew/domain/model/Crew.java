@@ -105,7 +105,7 @@ public class Crew {
                 deadlineTime != null ? deadlineTime : DEFAULT_DEADLINE_TIME,
                 category,
                 visibility != null ? visibility : CrewVisibility.PRIVATE,
-                null,
+                0L,
                 List.of(leader)
         );
     }
