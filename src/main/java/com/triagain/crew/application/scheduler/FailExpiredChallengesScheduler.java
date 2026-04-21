@@ -37,7 +37,7 @@ public class FailExpiredChallengesScheduler {
      * 마감 초과 챌린지 실패 처리 — 5분마다 전량 스캔 (Phase 1, 500명 규모 기준 안전).
      * 윈도우+보정 이중 구조는 후속 과제 (future-considerations.md 2026-04-09 참조).
      */
-    @Scheduled(fixedRate = 300_000)
+    @Scheduled(fixedDelay = 300_000)
     public void failExpiredChallenges() {
         List<Challenge> expired = challengeRepositoryPort.findExpiredWithoutVerification();
         processExpired(expired);
