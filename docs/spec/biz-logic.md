@@ -367,7 +367,7 @@
   - UPDATE 시 `WHERE version = ?` 조건 — 버전 불일치 시 재시도 (최대 `triagain.crew.max-retry`, 기본 3회)
   - 재시도 전부 실패 시 `CREW_JOIN_CONFLICT(409, CR023)` 응답
   - 전환: `--triagain.crew.lock-strategy=OPTIMISTIC` (재빌드 불필요)
-  - 삭제(`DeleteCrewService`)는 빈도가 극히 낮아 항상 비관적 락 고정
+  - 삭제(`DeleteCrewService`)와 탈퇴(`LeaveCrewService`)는 빈도가 극히 낮아 항상 비관적 락 고정
 
 ### 4.2 마감 직전 동시 인증 폭주
 
