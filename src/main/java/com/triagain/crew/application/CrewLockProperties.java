@@ -11,9 +11,9 @@ import lombok.Setter;
 @ConfigurationProperties(prefix = "triagain.crew")
 public class CrewLockProperties {
 
-	private LockStrategy lockStrategy = LockStrategy.OPTIMISTIC;
+	private LockStrategy lockStrategy;
 
-	private int maxRetry = 3;
+	private Integer maxRetry;
 
 	public enum LockStrategy { PESSIMISTIC, OPTIMISTIC }
 
