@@ -66,22 +66,74 @@ psql ... -f 08_reset_api_verifications.sql
 | `07_rush_crews.sql` | 러시 테스트 전용 크루 (max_members=10) | 러시 테스트 초기 1회 |
 | `07_rush_reset.sql` | 러시 크루 멤버/챌린지 롤백 | `crew-rush.js` 실행 사이마다 |
 | `08_reset_api_verifications.sql` | 오늘자 인증 삭제 + API 챌린지 초기화 | k6 write 시나리오 실행 사이마다 |
+| `09_sched_activate.sql` | ActivateRecruitingCrews 대상 (RECRUITING 크루) | 스케줄러 측정 전 |
+| `09_sched_complete.sql` | CompleteExpiredCrews 대상 (만료 ACTIVE 크루 + IN_PROGRESS 챌린지) | 스케줄러 측정 전 |
+| `09_sched_expire_session.sql` | ExpireUploadSession 대상 (PENDING 업로드 세션) | 스케줄러 측정 전 |
+| `09_sched_reminder.sql` | Reminder 대상 (마감 임박 + 미인증 멤버) | 스케줄러 측정 전 (30분 이내 트리거) |
+| `09_sched_start_noti.sql` | CrewStartNotification 대상 (오늘 시작 크루) | 스케줄러 측정 전 (당일만 유효) |
+| `09_sched_reset.sql` | 09_sched_* 데이터 일괄 삭제 | 재측정 전 |
 
 ## Prefix 매트릭스 (충돌 방지)
 
-세 종류의 테스트 데이터가 prefix로 격리되어 있어 서로 간섭하지 않는다.
+테스트 데이터가 prefix로 격리되어 있어 서로 간섭하지 않는다.
 
 | Prefix | 생성 스크립트 | 리셋 스크립트 | 용도 |
 |--------|--------------|--------------|------|
 | `loadtest-crew-*`       | `02_crews.sql`       | `08_reset_api_verifications.sql` | API read/write 테스트 |
-| `loadtest-sched-crew-*` | `05_challenges_scheduler.sql` | (없음 — 스케줄러 테스트 전 재생성) | 스케줄러 테스트 |
+| `loadtest-sched-crew-*` | `05_challenges_scheduler.sql` | (없음 — 스케줄러 테스트 전 재생성) | fail-expired 스케줄러 |
+| `loadtest-sched-recruit-*` | `09_sched_activate.sql` | `09_sched_reset.sql` | activate 스케줄러 |
+| `loadtest-sched-complete-*` | `09_sched_complete.sql` | `09_sched_reset.sql` | complete 스케줄러 |
+| `loadtest-sched-remind-*` | `09_sched_reminder.sql` | `09_sched_reset.sql` | reminder 스케줄러 |
+| `loadtest-sched-start-*` | `09_sched_start_noti.sql` | `09_sched_reset.sql` | start_noti 스케줄러 |
+| `loadtest-sched-upload/*` | `09_sched_expire_session.sql` | `09_sched_reset.sql` | expire_session 스케줄러 |
 | `loadtest-rush-crew-*`  | `07_rush_crews.sql`  | `07_rush_reset.sql`  | 크루 참가 동시성 테스트 |
 
-- `LIKE 'loadtest-crew-%'` 필터는 `loadtest-sched-crew-*`, `loadtest-rush-crew-*`를 매치하지 않는다 (접두사 분리)
+- `LIKE 'loadtest-crew-%'` 필터는 다른 prefix를 매치하지 않는다 (접두사 분리)
 - 각 리셋 스크립트는 자기 prefix만 건드리므로 다른 테스트 데이터 오염 없음
+- `09_sched_reset.sql`은 05번(fail-expired) 데이터를 건드리지 않음
+
+### invite_code 매트릭스
+
+| Prefix | 스크립트 | 범위 |
+|--------|---------|------|
+| `SC` | `05_challenges_scheduler.sql` | SC0001~ (fail-expired 크루) |
+| `SA` | `09_sched_activate.sql` | SA0001~ |
+| `CC` | `09_sched_complete.sql` | CC0001~ |
+| `SR` | `09_sched_reminder.sql` | SR0001~ |
+| `SS` | `09_sched_start_noti.sql` | SS0001~ |
+
+## 스케줄러 전체 측정 (09_sched)
+
+```bash
+# 선행: 01_users.sql 완료 (유저 존재해야 함)
+
+# 1. 리셋 (이전 데이터 정리)
+psql ... -f 09_sched_reset.sql
+
+# 2. 각 스케줄러 데이터 생성 (독립 — 순서 무관)
+psql ... -f 09_sched_activate.sql
+psql ... -f 09_sched_complete.sql
+psql ... -f 09_sched_expire_session.sql
+psql ... -f 09_sched_reminder.sql       # 30분 이내 트리거 필요
+psql ... -f 09_sched_start_noti.sql     # 당일만 유효
+
+# 3. 스케줄러 트리거 (Internal API)
+curl -X POST http://<host>/internal/scheduler/activate-crews \
+  -H 'X-Internal-Api-Key: loadtest-internal-key'
+
+curl -X POST http://<host>/internal/scheduler/complete-crews \
+  -H 'X-Internal-Api-Key: loadtest-internal-key'
+
+# ... (각 스케줄러별)
+
+# 4. 스케일 변경: 각 SQL 상단 \set crew_count / session_count 수정
+```
 
 ## 주의사항
 
 - 01~06은 반드시 번호 순서대로 실행 (FK 의존성)
 - 07, 08은 각자 독립적으로 반복 실행 가능 (idempotent)
+- 09는 서로 독립적, 순서 무관 (각자 자기 prefix 데이터만 관리)
 - `04_challenges_api.sql`의 챌린지는 당일 기준이므로, 날짜가 바뀌면 재생성 필요
+- `09_sched_reminder.sql`은 실행 후 30분 이내에 스케줄러 트리거해야 함 (deadline_time 동적)
+- `09_sched_start_noti.sql`은 당일만 유효 (start_date = CURRENT_DATE)
