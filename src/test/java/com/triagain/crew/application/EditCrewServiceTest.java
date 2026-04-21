@@ -165,7 +165,7 @@ class EditCrewServiceTest {
         return Crew.of("CREW-1", leaderId, "테스트 크루", "목표", "인증 내용",
                 VerificationType.TEXT, 10, 1, CrewStatus.RECRUITING,
                 LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true,
-                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null, null, List.of(leader));
+                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null, null, 0L, List.of(leader));
     }
 
     private Crew recruitingCrewWithLeaderAndMember(String leaderId, String memberId) {
@@ -174,6 +174,6 @@ class EditCrewServiceTest {
         return Crew.of("CREW-1", leaderId, "테스트 크루", "목표", "인증 내용",
                 VerificationType.TEXT, 10, 2, CrewStatus.RECRUITING,
                 LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true,
-                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null, null, List.of(leader, member));
+                "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null, null, 0L, List.of(leader, member));
     }
 }

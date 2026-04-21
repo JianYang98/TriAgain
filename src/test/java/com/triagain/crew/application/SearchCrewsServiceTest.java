@@ -156,6 +156,6 @@ class SearchCrewsServiceTest {
                 "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.RECRUITING,
                 LocalDate.now().plusDays(1), LocalDate.now().plusDays(30), true,
                 "ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59),
-                category, CrewVisibility.PUBLIC, Collections.emptyList());
+                category, CrewVisibility.PUBLIC, 0L, Collections.emptyList());
     }
 }
