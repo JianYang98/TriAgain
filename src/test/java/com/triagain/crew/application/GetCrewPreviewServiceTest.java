@@ -151,7 +151,7 @@ class GetCrewPreviewServiceTest {
                 "인증 내용", VerificationType.TEXT, 10, 1,
                 CrewStatus.RECRUITING, startDate, endDate,
                 true, "ABC123", LocalDateTime.now(),
-                LocalTime.of(23, 59, 59), null, CrewVisibility.PUBLIC, List.of(leader)
+                LocalTime.of(23, 59, 59), null, CrewVisibility.PUBLIC, 0L, List.of(leader)
         );
     }
 
@@ -162,7 +162,7 @@ class GetCrewPreviewServiceTest {
                 "인증 내용", VerificationType.TEXT, 10, 1,
                 CrewStatus.RECRUITING, startDate, endDate,
                 true, "DEF456", LocalDateTime.now(),
-                LocalTime.of(23, 59, 59), null, CrewVisibility.PRIVATE, List.of(leader)
+                LocalTime.of(23, 59, 59), null, CrewVisibility.PRIVATE, 0L, List.of(leader)
         );
     }
 
@@ -174,7 +174,7 @@ class GetCrewPreviewServiceTest {
                 "인증 내용", VerificationType.TEXT, 2, 2,
                 CrewStatus.RECRUITING, startDate, endDate,
                 true, "GHI789", LocalDateTime.now(),
-                LocalTime.of(23, 59, 59), null, CrewVisibility.PUBLIC, List.of(leader, member)
+                LocalTime.of(23, 59, 59), null, CrewVisibility.PUBLIC, 0L, List.of(leader, member)
         );
     }
 }

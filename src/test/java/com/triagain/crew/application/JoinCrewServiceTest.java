@@ -1,5 +1,29 @@
 package com.triagain.crew.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
+
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
 import com.triagain.crew.domain.model.Crew;
@@ -11,177 +35,307 @@ import com.triagain.crew.domain.vo.VerificationType;
 import com.triagain.crew.port.in.JoinCrewUseCase.JoinCrewCommand;
 import com.triagain.crew.port.in.JoinCrewUseCase.JoinCrewResult;
 import com.triagain.crew.port.out.CrewRepositoryPort;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
 class JoinCrewServiceTest {
 
-    @Mock
-    private CrewRepositoryPort crewRepositoryPort;
+	@Mock
+	private CrewRepositoryPort crewRepositoryPort;
 
-    @InjectMocks
-    private JoinCrewService joinCrewService;
+	@Mock
+	private CrewLockProperties lockProperties;
 
-    @Test
-    @DisplayName("PUBLIC 크루에 정상 가입하면 MEMBER 역할로 등록된다")
-    void joinPublicCrew_success() {
-        // Given
-        Crew crew = publicRecruitingCrew(LocalDate.now().plusDays(7), LocalDate.now().plusDays(30));
-        given(crewRepositoryPort.findByIdWithLock("CREW-001")).willReturn(Optional.of(crew));
-        given(crewRepositoryPort.save(any())).willReturn(crew);
-        given(crewRepositoryPort.saveMember(any())).willReturn(null);
+	@Mock
+	private TransactionTemplate txTemplate;
 
-        JoinCrewCommand command = new JoinCrewCommand("user-1", "CREW-001");
+	@InjectMocks
+	private JoinCrewService joinCrewService;
 
-        // When
-        JoinCrewResult result = joinCrewService.joinCrew(command);
+	@Nested
+	@DisplayName("비관적 락 경로 (PESSIMISTIC)")
+	class PessimisticLock {
 
-        // Then
-        assertThat(result.role()).isEqualTo(CrewRole.MEMBER);
-        assertThat(result.userId()).isEqualTo("user-1");
-    }
+		@BeforeEach
+		void setUp() {
+			given(lockProperties.isPessimistic()).willReturn(true);
+			given(txTemplate.execute(any())).willAnswer(invocation -> {
+				TransactionCallback<?> cb = invocation.getArgument(0);
+				return cb.doInTransaction(null);
+			});
+		}
 
-    @Test
-    @DisplayName("PRIVATE 크루에 직접 가입하면 CREW_NOT_PUBLIC 예외가 발생한다")
-    void joinPrivateCrew_throwsNotPublic() {
-        // Given
-        Crew crew = privateRecruitingCrew(LocalDate.now().plusDays(7), LocalDate.now().plusDays(30));
-        given(crewRepositoryPort.findByIdWithLock("CREW-001")).willReturn(Optional.of(crew));
+		@Test
+		@DisplayName("PUBLIC 크루에 정상 가입하면 MEMBER 역할로 등록된다")
+		void joinPublicCrew_success() {
+			// Given
+			Crew crew = publicRecruitingCrew(
+				LocalDate.now().plusDays(7),
+				LocalDate.now().plusDays(30));
+			given(crewRepositoryPort.findByIdWithLock("CREW-001"))
+				.willReturn(Optional.of(crew));
+			given(crewRepositoryPort.save(any())).willReturn(crew);
+			given(crewRepositoryPort.saveMember(any()))
+				.willReturn(null);
 
-        JoinCrewCommand command = new JoinCrewCommand("user-1", "CREW-001");
+			JoinCrewCommand command =
+				new JoinCrewCommand("user-1", "CREW-001");
 
-        // When & Then
-        assertThatThrownBy(() -> joinCrewService.joinCrew(command))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.CREW_NOT_PUBLIC);
-    }
+			// When
+			JoinCrewResult result = joinCrewService.joinCrew(command);
 
-    @Test
-    @DisplayName("정원이 가득 찬 PUBLIC 크루에 가입하면 CREW_FULL 예외가 발생한다")
-    void joinFullCrew_throwsFull() {
-        // Given
-        Crew crew = publicCrewWithMembers(CrewStatus.RECRUITING, 2, 2,
-                LocalDate.now().plusDays(7), LocalDate.now().plusDays(30));
-        given(crewRepositoryPort.findByIdWithLock("CREW-001")).willReturn(Optional.of(crew));
+			// Then
+			assertThat(result.role()).isEqualTo(CrewRole.MEMBER);
+			assertThat(result.userId()).isEqualTo("user-1");
+		}
 
-        JoinCrewCommand command = new JoinCrewCommand("user-1", "CREW-001");
+		@Test
+		@DisplayName("PRIVATE 크루에 직접 가입하면 CREW_NOT_PUBLIC 예외")
+		void joinPrivateCrew_throwsNotPublic() {
+			// Given
+			Crew crew = privateRecruitingCrew(
+				LocalDate.now().plusDays(7),
+				LocalDate.now().plusDays(30));
+			given(crewRepositoryPort.findByIdWithLock("CREW-001"))
+				.willReturn(Optional.of(crew));
 
-        // When & Then
-        assertThatThrownBy(() -> joinCrewService.joinCrew(command))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.CREW_FULL);
-    }
+			JoinCrewCommand command =
+				new JoinCrewCommand("user-1", "CREW-001");
 
-    @Test
-    @DisplayName("이미 참여한 유저가 다시 가입하면 CREW_ALREADY_JOINED 예외가 발생한다")
-    void joinAlreadyJoined_throwsAlreadyJoined() {
-        // Given
-        CrewMember leader = CrewMember.of("CRMB-1", "leader", "CREW-001", CrewRole.LEADER, LocalDateTime.now());
-        CrewMember existing = CrewMember.of("CRMB-2", "user-1", "CREW-001", CrewRole.MEMBER, LocalDateTime.now());
-        Crew crew = Crew.of("CREW-001", "leader", "테스트 크루", "목표",
-                "인증 내용", VerificationType.TEXT, 10, 2,
-                CrewStatus.RECRUITING, LocalDate.now().plusDays(1), LocalDate.now().plusDays(30),
-                true, "ABC123", LocalDateTime.now(),
-                LocalTime.of(23, 59, 59), null, CrewVisibility.PUBLIC, List.of(leader, existing));
-        given(crewRepositoryPort.findByIdWithLock("CREW-001")).willReturn(Optional.of(crew));
+			// When & Then
+			assertThatThrownBy(() ->
+				joinCrewService.joinCrew(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e ->
+					((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.CREW_NOT_PUBLIC);
+		}
 
-        JoinCrewCommand command = new JoinCrewCommand("user-1", "CREW-001");
+		@Test
+		@DisplayName("정원 초과 시 CREW_FULL 예외가 발생한다")
+		void joinFullCrew_throwsFull() {
+			// Given
+			Crew crew = publicCrewWithMembers(
+				CrewStatus.RECRUITING, 2, 2,
+				LocalDate.now().plusDays(7),
+				LocalDate.now().plusDays(30));
+			given(crewRepositoryPort.findByIdWithLock("CREW-001"))
+				.willReturn(Optional.of(crew));
 
-        // When & Then
-        assertThatThrownBy(() -> joinCrewService.joinCrew(command))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.CREW_ALREADY_JOINED);
-    }
+			JoinCrewCommand command =
+				new JoinCrewCommand("user-1", "CREW-001");
 
-    @Test
-    @DisplayName("참여 마감일 초과 시 CREW_JOIN_DEADLINE_PASSED 예외 발생")
-    void joinCrew_deadlinePassed_throwsException() {
-        // Given — 크루 종료일이 내일이면 endDate - 3일 = 이틀 전 → 마감 초과
-        LocalDate endDate = LocalDate.now().plusDays(1);
-        LocalDate startDate = endDate.minusDays(7);
-        Crew crew = publicRecruitingCrew(startDate, endDate);
+			// When & Then
+			assertThatThrownBy(() ->
+				joinCrewService.joinCrew(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e ->
+					((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.CREW_FULL);
+		}
 
-        given(crewRepositoryPort.findByIdWithLock("CREW-001")).willReturn(Optional.of(crew));
+		@Test
+		@DisplayName("이미 참여한 유저가 다시 가입하면 CREW_ALREADY_JOINED")
+		void joinAlreadyJoined_throws() {
+			// Given
+			CrewMember leader = CrewMember.of("CRMB-1", "leader",
+				"CREW-001", CrewRole.LEADER, LocalDateTime.now());
+			CrewMember existing = CrewMember.of("CRMB-2", "user-1",
+				"CREW-001", CrewRole.MEMBER, LocalDateTime.now());
+			Crew crew = Crew.of("CREW-001", "leader", "테스트", "목표",
+				"인증", VerificationType.TEXT, 10, 2,
+				CrewStatus.RECRUITING,
+				LocalDate.now().plusDays(1),
+				LocalDate.now().plusDays(30), true, "ABC123",
+				LocalDateTime.now(), LocalTime.of(23, 59, 59),
+				null, CrewVisibility.PUBLIC, 0L,
+				List.of(leader, existing));
+			given(crewRepositoryPort.findByIdWithLock("CREW-001"))
+				.willReturn(Optional.of(crew));
 
-        JoinCrewCommand command = new JoinCrewCommand("user-1", "CREW-001");
+			JoinCrewCommand command =
+				new JoinCrewCommand("user-1", "CREW-001");
 
-        // When & Then
-        assertThatThrownBy(() -> joinCrewService.joinCrew(command))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.CREW_JOIN_DEADLINE_PASSED);
-    }
+			// When & Then
+			assertThatThrownBy(() ->
+				joinCrewService.joinCrew(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e ->
+					((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.CREW_ALREADY_JOINED);
+		}
 
-    @Test
-    @DisplayName("참여 마감일 경계값 — endDate - 3일 당일이면 가입 가능")
-    void joinCrew_deadlineBoundary_succeeds() {
-        // Given — endDate - 3일 = 오늘 → isAfter가 false이므로 통과
-        LocalDate endDate = LocalDate.now().plusDays(3);
-        LocalDate startDate = endDate.minusDays(7);
-        Crew crew = publicRecruitingCrew(startDate, endDate);
+		@Test
+		@DisplayName("참여 마감일 초과 시 CREW_JOIN_DEADLINE_PASSED")
+		void joinCrew_deadlinePassed() {
+			// Given — endDate가 내일 → endDate-3 = 이틀 전 → 마감 초과
+			LocalDate endDate = LocalDate.now().plusDays(1);
+			LocalDate startDate = endDate.minusDays(7);
+			Crew crew = publicRecruitingCrew(startDate, endDate);
 
-        given(crewRepositoryPort.findByIdWithLock("CREW-001")).willReturn(Optional.of(crew));
-        given(crewRepositoryPort.save(crew)).willReturn(crew);
-        given(crewRepositoryPort.saveMember(any())).willReturn(null);
+			given(crewRepositoryPort.findByIdWithLock("CREW-001"))
+				.willReturn(Optional.of(crew));
 
-        JoinCrewCommand command = new JoinCrewCommand("user-1", "CREW-001");
+			JoinCrewCommand command =
+				new JoinCrewCommand("user-1", "CREW-001");
 
-        // When & Then — CREW_JOIN_DEADLINE_PASSED 예외가 발생하지 않아야 함
-        assertThatCode(() -> joinCrewService.joinCrew(command))
-                .doesNotThrowAnyException();
-    }
+			// When & Then
+			assertThatThrownBy(() ->
+				joinCrewService.joinCrew(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e ->
+					((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.CREW_JOIN_DEADLINE_PASSED);
+		}
 
-    // --- 헬퍼 메서드 ---
+		@Test
+		@DisplayName("마감일 경계값 — endDate-3일 당일이면 가입 가능")
+		void joinCrew_deadlineBoundary_succeeds() {
+			// Given — endDate-3 = 오늘 → isAfter false → 통과
+			LocalDate endDate = LocalDate.now().plusDays(3);
+			LocalDate startDate = endDate.minusDays(7);
+			Crew crew = publicRecruitingCrew(startDate, endDate);
 
-    private static Crew publicRecruitingCrew(LocalDate startDate, LocalDate endDate) {
-        return Crew.of(
-                "CREW-001", "creator-1", "테스트 크루", "목표",
-                "인증 내용", VerificationType.TEXT, 10, 1,
-                CrewStatus.RECRUITING, startDate, endDate,
-                true, "ABC123", LocalDateTime.now(),
-                LocalTime.of(23, 59, 59), null, CrewVisibility.PUBLIC, Collections.emptyList()
-        );
-    }
+			given(crewRepositoryPort.findByIdWithLock("CREW-001"))
+				.willReturn(Optional.of(crew));
+			given(crewRepositoryPort.save(crew)).willReturn(crew);
+			given(crewRepositoryPort.saveMember(any()))
+				.willReturn(null);
 
-    private static Crew privateRecruitingCrew(LocalDate startDate, LocalDate endDate) {
-        return Crew.of(
-                "CREW-001", "creator-1", "테스트 크루", "목표",
-                "인증 내용", VerificationType.TEXT, 10, 1,
-                CrewStatus.RECRUITING, startDate, endDate,
-                true, "ABC123", LocalDateTime.now(),
-                LocalTime.of(23, 59, 59), null, CrewVisibility.PRIVATE, Collections.emptyList()
-        );
-    }
+			JoinCrewCommand command =
+				new JoinCrewCommand("user-1", "CREW-001");
 
-    private static Crew publicCrewWithMembers(CrewStatus status, int maxMembers, int currentMembers,
-                                               LocalDate startDate, LocalDate endDate) {
-        return Crew.of(
-                "CREW-001", "creator-1", "테스트 크루", "목표",
-                "인증 내용", VerificationType.TEXT, maxMembers, currentMembers,
-                status, startDate, endDate,
-                true, "ABC123", LocalDateTime.now(),
-                LocalTime.of(23, 59, 59), null, CrewVisibility.PUBLIC, Collections.emptyList()
-        );
-    }
+			// When & Then
+			assertThatCode(() ->
+				joinCrewService.joinCrew(command))
+				.doesNotThrowAnyException();
+		}
+	}
+
+	@Nested
+	@DisplayName("낙관적 락 경로 (OPTIMISTIC)")
+	class OptimisticLock {
+
+		@BeforeEach
+		void setUp() {
+			given(lockProperties.isPessimistic()).willReturn(false);
+			given(lockProperties.getMaxRetry()).willReturn(3);
+			given(txTemplate.execute(any())).willAnswer(invocation -> {
+				TransactionCallback<?> cb = invocation.getArgument(0);
+				return cb.doInTransaction(null);
+			});
+		}
+
+		@Test
+		@DisplayName("version 일치 시 첫 시도에 가입 성공한다")
+		void optimisticJoin_firstAttemptSuccess() {
+			// Given
+			Crew crew = publicRecruitingCrew(
+				LocalDate.now().plusDays(7),
+				LocalDate.now().plusDays(30));
+			given(crewRepositoryPort.findById("CREW-001"))
+				.willReturn(Optional.of(crew));
+			given(crewRepositoryPort
+				.updateCurrentMembersWithVersion(
+					"CREW-001", 2, 0L))
+				.willReturn(1);
+			given(crewRepositoryPort.saveMember(any()))
+				.willReturn(null);
+
+			JoinCrewCommand command =
+				new JoinCrewCommand("user-1", "CREW-001");
+
+			// When
+			JoinCrewResult result = joinCrewService.joinCrew(command);
+
+			// Then
+			assertThat(result.role()).isEqualTo(CrewRole.MEMBER);
+			assertThat(result.userId()).isEqualTo("user-1");
+			assertThat(result.currentMembers()).isEqualTo(2);
+		}
+
+		@Test
+		@DisplayName("version 충돌 후 재시도에서 성공한다")
+		void optimisticJoin_retrySuccess() {
+			// Given — 매 시도마다 fresh crew 반환 (addMember 부작용 회피)
+			given(crewRepositoryPort.findById("CREW-001"))
+				.willAnswer(inv -> Optional.of(publicRecruitingCrew(
+					LocalDate.now().plusDays(7),
+					LocalDate.now().plusDays(30))));
+			given(crewRepositoryPort
+				.updateCurrentMembersWithVersion(
+					"CREW-001", 2, 0L))
+				.willReturn(0)
+				.willReturn(1);
+			given(crewRepositoryPort.saveMember(any()))
+				.willReturn(null);
+
+			JoinCrewCommand command =
+				new JoinCrewCommand("user-1", "CREW-001");
+
+			// When
+			JoinCrewResult result = joinCrewService.joinCrew(command);
+
+			// Then
+			assertThat(result).isNotNull();
+			assertThat(result.userId()).isEqualTo("user-1");
+		}
+
+		@Test
+		@DisplayName("maxRetry 초과 시 CREW_JOIN_CONFLICT 예외 발생")
+		void optimisticJoin_maxRetryExceeded_throwsConflict() {
+			// Given — 매 시도마다 fresh crew, 3회 모두 version 충돌
+			given(crewRepositoryPort.findById("CREW-001"))
+				.willAnswer(inv -> Optional.of(publicRecruitingCrew(
+					LocalDate.now().plusDays(7),
+					LocalDate.now().plusDays(30))));
+			given(crewRepositoryPort
+				.updateCurrentMembersWithVersion(
+					"CREW-001", 2, 0L))
+				.willReturn(0);
+
+			JoinCrewCommand command =
+				new JoinCrewCommand("user-1", "CREW-001");
+
+			// When & Then
+			assertThatThrownBy(() ->
+				joinCrewService.joinCrew(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e ->
+					((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.CREW_JOIN_CONFLICT);
+		}
+	}
+
+	// --- 헬퍼 메서드 ---
+
+	private static Crew publicRecruitingCrew(
+			LocalDate startDate, LocalDate endDate) {
+		return Crew.of("CREW-001", "creator-1", "테스트 크루", "목표",
+			"인증 내용", VerificationType.TEXT, 10, 1,
+			CrewStatus.RECRUITING, startDate, endDate,
+			true, "ABC123", LocalDateTime.now(),
+			LocalTime.of(23, 59, 59), null,
+			CrewVisibility.PUBLIC, 0L, Collections.emptyList());
+	}
+
+	private static Crew privateRecruitingCrew(
+			LocalDate startDate, LocalDate endDate) {
+		return Crew.of("CREW-001", "creator-1", "테스트 크루", "목표",
+			"인증 내용", VerificationType.TEXT, 10, 1,
+			CrewStatus.RECRUITING, startDate, endDate,
+			true, "ABC123", LocalDateTime.now(),
+			LocalTime.of(23, 59, 59), null,
+			CrewVisibility.PRIVATE, 0L, Collections.emptyList());
+	}
+
+	private static Crew publicCrewWithMembers(CrewStatus status,
+			int maxMembers, int currentMembers,
+			LocalDate startDate, LocalDate endDate) {
+		return Crew.of("CREW-001", "creator-1", "테스트 크루", "목표",
+			"인증 내용", VerificationType.TEXT,
+			maxMembers, currentMembers, status, startDate,
+			endDate, true, "ABC123", LocalDateTime.now(),
+			LocalTime.of(23, 59, 59), null,
+			CrewVisibility.PUBLIC, 0L, Collections.emptyList());
+	}
 }

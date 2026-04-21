@@ -106,12 +106,12 @@ class ActivateRecruitingCrewsSchedulerTest {
         Crew activeCrew = Crew.of("crew-1", "creator-1", "테스트 크루", "목표",
                 "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
                 LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), false, "ABC123",
-                LocalDateTime.now(), DEADLINE_TIME, null, null, Collections.emptyList());
+                LocalDateTime.now(), DEADLINE_TIME, null, null, 0L, Collections.emptyList());
         // rehydrate해도 DB 상태가 ACTIVE이므로 여전히 실패
         Crew freshActiveCrew = Crew.of("crew-1", "creator-1", "테스트 크루", "목표",
                 "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
                 LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), false, "ABC123",
-                LocalDateTime.now(), DEADLINE_TIME, null, null, Collections.emptyList());
+                LocalDateTime.now(), DEADLINE_TIME, null, null, 0L, Collections.emptyList());
         given(crewRepositoryPort.findRecruitingCrewsStartedOnOrBefore(any(LocalDate.class)))
                 .willReturn(List.of(activeCrew));
         given(crewRepositoryPort.findById("crew-1")).willReturn(Optional.of(freshActiveCrew));
@@ -131,11 +131,11 @@ class ActivateRecruitingCrewsSchedulerTest {
         Crew activeCrew = Crew.of("crew-1", "creator-1", "테스트 크루", "목표",
                 "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
                 LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), false, "ABC123",
-                LocalDateTime.now(), DEADLINE_TIME, null, null, Collections.emptyList());
+                LocalDateTime.now(), DEADLINE_TIME, null, null, 0L, Collections.emptyList());
         Crew freshActiveCrew = Crew.of("crew-1", "creator-1", "테스트 크루", "목표",
                 "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
                 LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), false, "ABC123",
-                LocalDateTime.now(), DEADLINE_TIME, null, null, Collections.emptyList());
+                LocalDateTime.now(), DEADLINE_TIME, null, null, 0L, Collections.emptyList());
         Crew recruitingCrew2 = recruitingCrew("crew-2", LocalDate.of(2026, 3, 2));
         Crew freshRecruitingCrew2 = recruitingCrew("crew-2", LocalDate.of(2026, 3, 2));
 
@@ -160,6 +160,6 @@ class ActivateRecruitingCrewsSchedulerTest {
         return Crew.of(id, "creator-1", "테스트 크루", "목표",
                 "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.RECRUITING,
                 startDate, startDate.plusDays(30), false, "ABC123",
-                LocalDateTime.now(), DEADLINE_TIME, null, null, Collections.emptyList());
+                LocalDateTime.now(), DEADLINE_TIME, null, null, 0L, Collections.emptyList());
     }
 }

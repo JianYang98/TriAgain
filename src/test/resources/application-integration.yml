@@ -2,3 +2,7 @@
 spring:
   jpa:
     show-sql: false
+
+triagain:
+  crew:
+    lock-strategy: PESSIMISTIC

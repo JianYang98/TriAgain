@@ -219,7 +219,7 @@ class CrewTest {
                     "인증 내용", VerificationType.TEXT, 5, 1,
                     CrewStatus.RECRUITING, TOMORROW, FAR_FUTURE, false,
                     "ABC123", LocalDateTime.now(), Crew.DEFAULT_DEADLINE_TIME,
-                    CrewCategory.STUDY, CrewVisibility.PUBLIC,
+                    CrewCategory.STUDY, CrewVisibility.PUBLIC, 0L,
                     List.of(CrewMember.of("CRMB-1", "leader", "CREW-1",
                             com.triagain.crew.domain.vo.CrewRole.LEADER, LocalDateTime.now())));
 
@@ -241,7 +241,7 @@ class CrewTest {
                     "인증", VerificationType.TEXT, 5, 1,
                     CrewStatus.RECRUITING, TOMORROW, FAR_FUTURE, false,
                     "ABC123", LocalDateTime.now(), Crew.DEFAULT_DEADLINE_TIME,
-                    null, CrewVisibility.PUBLIC, List.of());
+                    null, CrewVisibility.PUBLIC, 0L, List.of());
 
             assertThat(crew.isPublic()).isTrue();
         }
@@ -253,7 +253,7 @@ class CrewTest {
                     "인증", VerificationType.TEXT, 5, 1,
                     CrewStatus.RECRUITING, TOMORROW, FAR_FUTURE, false,
                     "ABC123", LocalDateTime.now(), Crew.DEFAULT_DEADLINE_TIME,
-                    null, CrewVisibility.PRIVATE, List.of());
+                    null, CrewVisibility.PRIVATE, 0L, List.of());
 
             assertThat(crew.isPublic()).isFalse();
         }
@@ -265,7 +265,7 @@ class CrewTest {
                     "인증", VerificationType.TEXT, 5, 1,
                     CrewStatus.RECRUITING, TOMORROW, FAR_FUTURE, false,
                     "ABC123", LocalDateTime.now(), Crew.DEFAULT_DEADLINE_TIME,
-                    null, null, List.of());
+                    null, null, 0L, List.of());
 
             assertThat(crew.isPublic()).isFalse();
         }
@@ -768,7 +768,7 @@ class CrewTest {
         return Crew.of("CREW-1", "leader", "테스트 크루", "목표",
                 "인증 내용", VerificationType.TEXT, maxMembers, currentMembers,
                 status, TOMORROW, FAR_FUTURE, allowLateJoin,
-                "ABC123", LocalDateTime.now(), Crew.DEFAULT_DEADLINE_TIME, null, null, members);
+                "ABC123", LocalDateTime.now(), Crew.DEFAULT_DEADLINE_TIME, null, null, 0L, members);
     }
 
     private Crew crewWithEndDate(LocalDate endDate) {
@@ -779,6 +779,6 @@ class CrewTest {
         return Crew.of("CREW-1", "leader", "테스트 크루", "목표",
                 "인증 내용", VerificationType.TEXT, 5, 1,
                 CrewStatus.RECRUITING, TOMORROW, endDate, false,
-                "ABC123", LocalDateTime.now(), Crew.DEFAULT_DEADLINE_TIME, null, null, members);
+                "ABC123", LocalDateTime.now(), Crew.DEFAULT_DEADLINE_TIME, null, null, 0L, members);
     }
 }
