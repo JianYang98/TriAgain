@@ -66,3 +66,5 @@
 - [ ] CORS 설정 (현재 Spring 레벨 미구현 — 클라이언트 도메인 허용 필요)
 - [ ] SSL/HTTPS 설정 (ALB 또는 EC2 레벨)
 - [ ] Health check 엔드포인트(`/health`) 동작 확인
+- [ ] `server.forward-headers-strategy: framework` 적용 확인 (OG 절대 URL을 https로 생성하려면 ALB/nginx가 `X-Forwarded-Proto`/`X-Forwarded-Host`를 전달해야 함)
+- [ ] 초대 OG 카드 반영: 배포 후 카카오 디벨로퍼스 캐시 초기화 도구(`https://developers.kakao.com/tool/clear/og`)에 초대 URL 입력 → 초기화 후 카톡에서 다크 카드 확인 (이미지 `?v=2`만으론 재스크랩 안 됨 — 카카오 캐시 키는 페이지 URL 기준)
