@@ -10,6 +10,10 @@ spring:
       ddl-auto: validate
     show-sql: false
 
+server:
+  # ALB/nginx 뒤 TLS 종료 시 X-Forwarded-Proto/Host를 신뢰해 OG 절대 URL을 https로 정확히 재구성
+  forward-headers-strategy: framework
+
 jwt:
   secret: ${JWT_SECRET}
 
