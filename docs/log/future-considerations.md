@@ -6,6 +6,12 @@
 
 ---
 
+### [2026-06-08] 배포/CI 안정성 — Docker 빌드가 매 빌드마다 gradle 배포판을 라이브 다운로드
+
+- 현재 상태: `Dockerfile` builder 스테이지가 `RUN ./gradlew bootJar`로 빌드하는데, gradle wrapper가 매 빌드마다 `services.gradle.org`에서 `gradle-8.12-bin.zip`을 다운로드한다(타임아웃 10초, 레이어 캐시 없음). CI의 E2E job도 동일하게 wrapper로 gradle을 받는다.
+- 필요 시점: gradle CDN 장애로 배포/CI가 재차 실패하거나, 무인 배포 신뢰성이 중요해질 때 (Phase 2 전 권장)
+- 이유: 2026-06-08 invite-landing 운영 배포(#70) 시 `services.gradle.org` 일시 장애로 deploy-backend가 2회 연속 실패(SocketTimeout 10초, `org.gradle.wrapper.Install.forceFetch`)했고, 같은 날 E2E도 504로 1회 실패. CDN 회복 후 3차 재실행으로 배포 성공. **코드와 무관한 외부 인프라 의존성이 배포 성공률을 좌우**한다. 개선 옵션: (1) gradle 배포판을 Docker 레이어/`--mount=type=cache`로 캐시, (2) `gradle:8.12-jdk17` 베이스 이미지로 wrapper 다운로드 자체 제거, (3) `gradle-wrapper.properties`의 `networkTimeout`을 10s→60s로 완화, (4) 미러 `distributionUrl` 사용. Phase 1에선 재실행으로 우회 가능하나 근본 제거 권장.
+
 ### [2026-04-09] 스케줄러 윈도우 + 보정 이중 구조 (부하 분산)
 
 - 현재 상태: `FailExpiredChallengesScheduler` / `ExpireUploadSessionScheduler` 모두 5분마다 전량 스캔으로 단순화 (Phase 1, 500명 규모 기준 안전). 별도 startup compensation runner도 동일 스케줄러 메서드를 호출.
