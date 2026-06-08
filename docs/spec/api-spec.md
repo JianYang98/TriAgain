@@ -1836,6 +1836,41 @@ Authorization: Bearer <token>
 
 ---
 
+### GET /invite/{inviteCode} (초대 링크 랜딩 페이지)
+
+초대코드를 포함한 HTML 랜딩 페이지를 반환한다. 인증 불필요.
+
+**요청 (Request)**
+```
+GET /invite/ABC123 HTTP/1.1
+Host: triagain.kr
+Accept: text/html
+```
+
+**경로 파라미터:**
+- `inviteCode`: 6자리 초대코드 (URL에서 추출, DB 검증 없음)
+
+**성공 응답 (200 OK)**
+```
+Content-Type: text/html;charset=UTF-8
+
+[HTML 랜딩 페이지 — Thymeleaf 렌더링]
+```
+
+**보안:**
+- Spring Security `permitAll()` 적용: `/invite/**`, `/images/**`, `/css/**`
+- 기존 API 인증 흐름에 영향 없음
+
+**정적 리소스:**
+- `/images/logo.png` — TriAgain 로고 (frontend에서 복사)
+
+**참고:**
+- DB 조회 없음 — URL의 inviteCode를 그대로 Thymeleaf Model에 담아 템플릿에 전달
+- 잘못된 코드 별도 검증 없음 — 앱에서 입력 시 검증됨
+- Phase 2: 딥링크(App Links / Universal Links) 추가 예정
+
+---
+
 ## TODO (구현 시 추가 예정)
 
 ### Moderation Context
