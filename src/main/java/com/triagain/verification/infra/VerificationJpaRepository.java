@@ -31,4 +31,12 @@ public interface VerificationJpaRepository extends JpaRepository<VerificationJpa
             @Param("userId") String userId,
             @Param("crewIds") List<String> crewIds,
             @Param("targetDate") LocalDate targetDate);
+
+    /** 유저·크루 묶음별 APPROVED 인증 일수 배치 조회 — crewId→일수 Map 반환 */
+    @Query("SELECT v.crewId, COUNT(v) FROM VerificationJpaEntity v "
+            + "WHERE v.userId = :userId AND v.crewId IN :crewIds AND v.status = 'APPROVED' "
+            + "GROUP BY v.crewId")
+    List<Object[]> countApprovedDaysGroupByCrewId(
+            @Param("userId") String userId,
+            @Param("crewIds") List<String> crewIds);
 }
