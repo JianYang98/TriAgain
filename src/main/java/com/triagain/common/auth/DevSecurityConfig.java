@@ -33,7 +33,7 @@ public class DevSecurityConfig {
                         .requestMatchers("/internal/**").permitAll()
                         .requestMatchers("/upload-sessions/*/events").permitAll()
                         .requestMatchers("/crews/search").permitAll()
-                        .requestMatchers("/invite/**", "/images/**", "/css/**").permitAll()
+                        .requestMatchers("/invite/**", "/images/**", "/css/**", "/feedback").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

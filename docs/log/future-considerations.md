@@ -6,6 +6,12 @@
 
 ---
 
+### [2026-06-11] 문의/건의는 `/feedback` → 외부 구글폼 302로 수집 — 인앱 피드백 도메인 미도입
+
+- 현재 상태: `GET /feedback`(공개, permitAll 단일 경로)이 `application.yml`의 `triagain.feedback-form-url`로 302 리다이렉트. 앱은 고정 URL(`triagain.kr/feedback`)만 가리키고, 폼 교체는 설정값 변경 + 재배포로 끝(앱 릴리스 불필요). 응답은 구글 시트에서 수동 확인.
+- 필요 시점: 피드백 유입량 증가 시
+- 이유: 인앱 피드백 도메인(테이블·입력 폼·이메일 인프라)은 수십 명 규모 출시 앱에 오버엔지니어링. 유입 늘면 인앱 도메인 도입 재검토 (중복 설계 방지용 기록 — sdd/feedback-link)
+
 ### [2026-06-10] crews 날짜 역전 방지 — DB CHECK 제약 추가 보류 (데이터 정리 후 별도)
 
 - 현재 상태: `home-crew-tabs` SDD에서 "사부작"(03.18~03.02, 종료일<시작일) 같은 역전 데이터를 일회성 정리하기로 함. 재발 방지용 `CHECK (end_date > start_date)`(crews) Flyway 마이그레이션은 이번 라운드에서 **추가하지 않음**(option A로 데이터 작업을 /implement와 분리).
