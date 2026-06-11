@@ -11,6 +11,7 @@
 - 현재 상태: `CrewJpaAdapter.deleteCrewWithAssociations`(크루 삭제 경로)와 `UserCrewMembershipAdapter.deleteCrewWithAllData`(회원탈퇴 경로)에 leaf→root 삭제 SQL이 중복. FK 구조 변경 시 두 곳을 함께 수정해야 한다.
 - 필요 시점: FK 구조 변경, 또는 삭제 경로 추가 시
 - 이유: 이번 범위에서 공유 추출을 하려면 withdrawal 어댑터(`UserCrewMembershipAdapter`)까지 수정해야 해 범위를 초과. 복제를 허용하되 기록으로 남긴다.
+- 추가 미처리: FK-safe 크루 삭제가 `dead_letters`(target_id=crewId, CREW_ACTIVATE/CREW_COMPLETE 타입)는 정리하지 않음 — `deleteCrewWithAssociations`/`deleteCrewWithAllData` 공유 추출 시 함께 처리 검토(자동 재시도 스케줄러 없어 기능 영향은 없음).
 
 ### [2026-06-11] permitAll 공개 경로 목록이 SecurityConfig/DevSecurityConfig에 중복 — 공유 상수 추출 후보
 
