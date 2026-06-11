@@ -60,11 +60,14 @@
 | 항목 | 내용 |
 |------|------|
 | 권한 | LEADER만 가능 |
-| 상태 조건 | 크루 상태 = RECRUITING |
+| 상태 조건 | RECRUITING **또는** ACTIVE |
+| ACTIVE 추가 조건 | 인증 시작 전(`challenges` 테이블에 `crew_id` 레코드 없음)일 때만 삭제 가능 |
 | 멤버 조건 | crew_member 수 = 1 (LEADER 본인만 존재) |
-| 삭제 방식 | hard delete — Crew 엔티티 + crew_member(리더 본인) 레코드 DB에서 완전 삭제 |
-| 크루원 존재 시 | 삭제 불가 → 409 Conflict |
-| cascade 확인 | 삭제 시 관련 데이터 FK 관계 확인 필요 |
+| 크루원 2명 이상 | 삭제 불가 → 409 Conflict (`CR019`) |
+| 인증 시작 후 / COMPLETED | 삭제 불가 → 400 Bad Request (`CR026`) |
+| 검증 순서 | 상태 게이트(`CR026`)가 멤버 수 체크(`CR019`)보다 먼저 |
+| 삭제 방식 | hard delete (FK-safe) — leaf→root 순서로 연관 데이터 완전 삭제 |
+| 인증 판정 기준 | `challenges` 테이블에 `crew_id` 레코드가 1건이라도 존재하면 "시작함" (상태 무관: IN_PROGRESS/SUCCESS/FAILED/ENDED 모두 포함) |
 
 ### 1.6 크루 탈퇴
 

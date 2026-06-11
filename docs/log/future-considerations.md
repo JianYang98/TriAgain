@@ -6,6 +6,12 @@
 
 ---
 
+### [2026-06-12] FK-safe 크루 삭제 SQL이 CrewJpaAdapter / UserCrewMembershipAdapter 2곳 중복 → 공유 추출 필요
+
+- 현재 상태: `CrewJpaAdapter.deleteCrewWithAssociations`(크루 삭제 경로)와 `UserCrewMembershipAdapter.deleteCrewWithAllData`(회원탈퇴 경로)에 leaf→root 삭제 SQL이 중복. FK 구조 변경 시 두 곳을 함께 수정해야 한다.
+- 필요 시점: FK 구조 변경, 또는 삭제 경로 추가 시
+- 이유: 이번 범위에서 공유 추출을 하려면 withdrawal 어댑터(`UserCrewMembershipAdapter`)까지 수정해야 해 범위를 초과. 복제를 허용하되 기록으로 남긴다.
+
 ### [2026-06-11] permitAll 공개 경로 목록이 SecurityConfig/DevSecurityConfig에 중복 — 공유 상수 추출 후보
 
 - 현재 상태: 공개 경로 matcher 8줄이 `SecurityConfig`(prod)와 `DevSecurityConfig`(!prod)에 동일하게 중복. 공개 경로 추가 때마다 두 파일을 짝으로 수정해야 하며, 한쪽 누락 시 해당 프로필에서만 401이 나는 비대칭 버그가 됨 (feedback-link PR AI 셀프리뷰에서 지적). 추가로 permitAll 동작 자체를 검증하는 자동 테스트가 없어 한쪽 누락을 CI가 못 잡음 (현재는 수동 curl로 검증).

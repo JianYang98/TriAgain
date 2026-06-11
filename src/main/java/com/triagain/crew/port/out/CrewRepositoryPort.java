@@ -43,6 +43,9 @@ public interface CrewRepositoryPort {
     /** 크루 삭제 — 멤버 포함 hard delete */
     void deleteById(String crewId);
 
+    /** 크루 + 연관 데이터 FK-safe hard delete — leaf→root 순서로 완전 삭제 */
+    void deleteCrewWithAssociations(String crewId);
+
     /** 특정 크루의 특정 멤버 삭제 — 크루 탈퇴 시 사용 */
     void deleteMemberByCrewIdAndUserId(String crewId, String userId);
 

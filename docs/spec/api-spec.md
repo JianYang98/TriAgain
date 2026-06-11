@@ -1472,7 +1472,15 @@ Content-Type: application/json
 
 ### DELETE /crews/{crewId} (크루 삭제)
 
-크루장이 RECRUITING 상태이고 본인만 남아있는 크루를 삭제한다. hard delete (DB에서 완전 삭제).
+크루장이 혼자이고 인증을 시작하지 않은 크루를 삭제한다. hard delete (DB에서 완전 삭제, FK-safe).
+
+**처리 정책**
+- RECRUITING + 혼자(멤버 1명) → 삭제 가능 (기존)
+- ACTIVE + 혼자 + 인증 전(`challenges`에 `crew_id` 레코드 없음) → 삭제 가능 (신규)
+- ACTIVE + 인증 시작(`challenges`에 `crew_id` 레코드 존재) → 거부 (`CR026`)
+- COMPLETED → 거부 (`CR026`)
+- 멤버 2명 이상 → 거부 (`CR019`)
+- **검증 순서**: 상태 게이트(`CR026`)가 멤버 수 체크(`CR019`)보다 먼저
 
 **요청 (Request)**
 ```
@@ -1487,7 +1495,7 @@ Authorization: Bearer <token>
 **에러 응답**
 | HTTP | 코드 | 메시지 | 설명 |
 |------|------|--------|------|
-| 400 | CR003 | 모집 중인 크루가 아닙니다. | RECRUITING 상태가 아님 |
+| 400 | CR026 | 인증을 시작한 크루는 삭제할 수 없습니다. | ACTIVE+인증시작 / COMPLETED 등 삭제 불가 상태 |
 | 403 | CR009 | 크루장만 삭제할 수 있습니다. | LEADER가 아님 |
 | 404 | CR001 | 크루를 찾을 수 없습니다. | 존재하지 않는 crewId |
 | 404 | CR021 | 해당 크루의 멤버가 아닙니다. | 크루 미참여 |

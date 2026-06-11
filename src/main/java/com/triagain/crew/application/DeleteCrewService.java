@@ -5,6 +5,7 @@ import com.triagain.common.exception.ErrorCode;
 import com.triagain.crew.domain.model.Crew;
 import com.triagain.crew.domain.model.CrewMember;
 import com.triagain.crew.port.in.DeleteCrewUseCase;
+import com.triagain.crew.port.out.ChallengeRepositoryPort;
 import com.triagain.crew.port.out.CrewRepositoryPort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,8 +17,9 @@ import lombok.RequiredArgsConstructor;
 public class DeleteCrewService implements DeleteCrewUseCase {
 
 	private final CrewRepositoryPort crewRepositoryPort;
+	private final ChallengeRepositoryPort challengeRepositoryPort;
 
-	/** 크루 삭제 — RECRUITING + LEADER + 멤버 1명(본인만)일 때 hard delete */
+	/** 크루 삭제 — RECRUITING 또는 ACTIVE(인증 전) + LEADER + 멤버 1명일 때 FK-safe hard delete */
 	@Override
 	@Transactional
 	public void deleteCrew(String crewId, String userId) {
@@ -30,8 +32,9 @@ public class DeleteCrewService implements DeleteCrewUseCase {
 			throw new BusinessException(ErrorCode.CREW_ACCESS_DENIED);
 		}
 
-		crew.validateDeletable();
+		boolean started = challengeRepositoryPort.existsByCrewId(crewId);
+		crew.validateDeletable(started);
 
-		crewRepositoryPort.deleteById(crewId);
+		crewRepositoryPort.deleteCrewWithAssociations(crewId);
 	}
 }
