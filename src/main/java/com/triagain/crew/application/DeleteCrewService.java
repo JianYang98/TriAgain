@@ -4,6 +4,7 @@ import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
 import com.triagain.crew.domain.model.Crew;
 import com.triagain.crew.domain.model.CrewMember;
+import com.triagain.crew.domain.vo.CrewStatus;
 import com.triagain.crew.port.in.DeleteCrewUseCase;
 import com.triagain.crew.port.out.ChallengeRepositoryPort;
 import com.triagain.crew.port.out.CrewRepositoryPort;
@@ -32,7 +33,9 @@ public class DeleteCrewService implements DeleteCrewUseCase {
 			throw new BusinessException(ErrorCode.CREW_ACCESS_DENIED);
 		}
 
-		boolean started = challengeRepositoryPort.existsByCrewId(crewId);
+		// RECRUITING은 challenges 유무와 무관하게 삭제 가능 — ACTIVE일 때만 DB 조회
+		boolean started = crew.getStatus() == CrewStatus.ACTIVE
+				&& challengeRepositoryPort.existsByCrewId(crewId);
 		crew.validateDeletable(started);
 
 		crewRepositoryPort.deleteCrewWithAssociations(crewId);

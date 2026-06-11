@@ -43,12 +43,10 @@ class DeleteCrewServiceTest {
 	@Test
 	@DisplayName("LEADER가 RECRUITING + 혼자인 크루를 삭제하면 성공한다")
 	void recruiting_alone_success() {
-		// Given
+		// Given — RECRUITING 상태는 existsByCrewId를 호출하지 않음
 		Crew crew = recruitingCrewWithLeader("leader-1");
 		given(crewRepositoryPort.findByIdWithLock("CREW-1"))
 			.willReturn(Optional.of(crew));
-		given(challengeRepositoryPort.existsByCrewId("CREW-1"))
-			.willReturn(false);
 
 		// When & Then
 		assertThatCode(() ->
@@ -113,12 +111,10 @@ class DeleteCrewServiceTest {
 	@Test
 	@DisplayName("COMPLETED 상태이면 CANNOT_DELETE_STARTED_CREW 예외가 발생한다")
 	void completed_throws() {
-		// Given
+		// Given — COMPLETED는 ACTIVE가 아니므로 existsByCrewId를 호출하지 않음
 		Crew crew = crewWithStatus("leader-1", CrewStatus.COMPLETED, 1);
 		given(crewRepositoryPort.findByIdWithLock("CREW-1"))
 			.willReturn(Optional.of(crew));
-		given(challengeRepositoryPort.existsByCrewId("CREW-1"))
-			.willReturn(false);
 
 		// When & Then
 		assertThatThrownBy(() ->
