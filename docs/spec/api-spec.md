@@ -1862,7 +1862,7 @@ Content-Type: text/html;charset=UTF-8
 ```
 
 **보안:**
-- Spring Security `permitAll()` 적용: `/invite/**`, `/images/**`, `/css/**`
+- Spring Security `permitAll()` 적용: `/invite/**`, `/images/**`, `/css/**`, `/feedback`
 - 기존 API 인증 흐름에 영향 없음
 
 **정적 리소스:**

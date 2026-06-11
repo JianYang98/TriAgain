@@ -6,6 +6,18 @@
 
 ---
 
+### [2026-06-11] permitAll 공개 경로 목록이 SecurityConfig/DevSecurityConfig에 중복 — 공유 상수 추출 후보
+
+- 현재 상태: 공개 경로 matcher 8줄이 `SecurityConfig`(prod)와 `DevSecurityConfig`(!prod)에 동일하게 중복. 공개 경로 추가 때마다 두 파일을 짝으로 수정해야 하며, 한쪽 누락 시 해당 프로필에서만 401이 나는 비대칭 버그가 됨 (feedback-link PR AI 셀프리뷰에서 지적). 추가로 permitAll 동작 자체를 검증하는 자동 테스트가 없어 한쪽 누락을 CI가 못 잡음 (현재는 수동 curl로 검증).
+- 필요 시점: 공개 경로가 다음에 또 추가될 때 (그 PR에서 함께 처리)
+- 이유: `PUBLIC_PATHS` 공유 상수 추출은 작은 리팩토링이지만, feedback-link PR은 지시서가 "기존 보안 설정 변경 금지 — 항목만 추가"라 범위 외였음. 추출 시 permitAll 검증 테스트(공개 경로 무토큰 200/302, 보호 경로 401) 추가도 함께 검토.
+
+### [2026-06-11] 문의/건의는 `/feedback` → 외부 구글폼 302로 수집 — 인앱 피드백 도메인 미도입
+
+- 현재 상태: `GET /feedback`(공개, permitAll 단일 경로)이 `application.yml`의 `triagain.feedback-form-url`로 302 리다이렉트. 앱은 고정 URL(`triagain.kr/feedback`)만 가리키고, 폼 교체는 설정값 변경 + 재배포로 끝(앱 릴리스 불필요). 응답은 구글 시트에서 수동 확인.
+- 필요 시점: 피드백 유입량 증가 시
+- 이유: 인앱 피드백 도메인(테이블·입력 폼·이메일 인프라)은 수십 명 규모 출시 앱에 오버엔지니어링. 유입 늘면 인앱 도메인 도입 재검토 (중복 설계 방지용 기록 — sdd/feedback-link)
+
 ### [2026-06-10] crews 날짜 역전 방지 — DB CHECK 제약 추가 보류 (데이터 정리 후 별도)
 
 - 현재 상태: `home-crew-tabs` SDD에서 "사부작"(03.18~03.02, 종료일<시작일) 같은 역전 데이터를 일회성 정리하기로 함. 재발 방지용 `CHECK (end_date > start_date)`(crews) Flyway 마이그레이션은 이번 라운드에서 **추가하지 않음**(option A로 데이터 작업을 /implement와 분리).
