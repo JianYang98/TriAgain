@@ -1311,7 +1311,9 @@ Authorization: Bearer <token>
       "createdAt": "2026-03-01T10:00:00",
       "category": "EXERCISE",
       "visibility": "PUBLIC",
-      "todayVerified": true
+      "todayVerified": false,
+      "successCount": 2,
+      "verifiedDayCount": 8
     }
   ],
   "error": null
@@ -1333,6 +1335,8 @@ Authorization: Bearer <token>
 - `category`: 크루 카테고리 (nullable — 기존 크루는 null)
 - `visibility`: 공개 설정 (`PUBLIC` / `PRIVATE`)
 - `todayVerified`: 오늘 인증 완료 여부 (boolean)
+- `successCount` (int): 요청자가 이 크루에서 달성한 작심삼일(연속 3일 인증 성공) 횟수. `COMPLETED` 크루만 실집계, `RECRUITING`/`ACTIVE`는 `0`(미집계) — ACTIVE 크루의 `0`을 "달성 0회"로 오해 금지(미집계 ≠ 0회 달성).
+- `verifiedDayCount` (int): 요청자가 이 크루에서 `APPROVED` 인증을 한 총 일수. `COMPLETED` 크루만 실집계, `RECRUITING`/`ACTIVE`는 `0`(미집계) — ACTIVE 크루의 `0`을 "달성 0회"로 오해 금지(미집계 ≠ 0회 달성).
 
 **에러 응답**
 | HTTP | 코드 | 메시지 | 설명 |
