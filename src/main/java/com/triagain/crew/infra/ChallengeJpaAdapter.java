@@ -89,4 +89,18 @@ public class ChallengeJpaAdapter implements ChallengeRepositoryPort {
         }
         return map;
     }
+
+    /** 유저·크루 묶음별 SUCCESS 챌린지 수 조회 — 홈 완료 탭 배치 집계에 사용 */
+    @Override
+    public Map<String, Integer> findSuccessCountsByUserIdAndCrewIds(String userId, List<String> crewIds) {
+        if (crewIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Object[]> results = challengeJpaRepository.countSuccessGroupByCrewId(userId, crewIds);
+        Map<String, Integer> map = new HashMap<>();
+        for (Object[] row : results) {
+            map.put((String) row[0], ((Long) row[1]).intValue());
+        }
+        return map;
+    }
 }

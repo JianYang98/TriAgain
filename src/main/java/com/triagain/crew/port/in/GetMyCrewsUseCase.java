@@ -28,7 +28,9 @@ public interface GetMyCrewsUseCase {
             LocalDateTime createdAt,
             CrewCategory category,
             CrewVisibility visibility,
-            boolean todayVerified
+            boolean todayVerified,
+            int successCount,      // 요청자의 작심삼일(SUCCESS 챌린지) 횟수 — COMPLETED만 실집계, 그 외 0
+            int verifiedDayCount   // 요청자의 APPROVED 인증 일수 — COMPLETED만 실집계, 그 외 0
     ) {
     }
 }
