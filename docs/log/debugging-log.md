@@ -163,3 +163,15 @@
 - 내 판단: 플랜모드로 현재 상태 파악 → 검증 + TODO 문서화로 마무리 (코드가 이미 구현된 상태라 수정보다 확인이 우선이라서)
 - AI 역할: 코드 확인으로 3건 구현 완료 검증, 테스트 실행, TODO 문서 생성
 - 배운 점: PR 리뷰 피드백은 코드 확인 → 테스트 검증 → TODO 문서화까지 한 사이클로 처리하면 누락 없음
+
+---
+
+### [2026-06-12] crew-solo-delete — hard delete·동시성·자동완료 설계 판단
+
+- 상황: 솔로 크루(currentMembers==1) + 인증 전 삭제 기능 구현 중, hard delete vs soft delete, late-join 동시성 안전성, 자동완료 스케줄러와의 역할 중복 세 가지 설계 선택이 필요했음
+- 내 판단:
+  1. **hard delete 유지** — 코드베이스 삭제 컨벤션은 User만 soft delete(`deleted_at`, V15 마이그레이션 — 앱스토어 계정삭제 규정 + `reactivate` 재활성화 + JWT 토큰버전 무효화), 나머지(RECRUITING 크루 삭제·회원탈퇴 솔로크루·LeaveCrew 마지막 멤버, Challenge·Verification·CrewMember·Notification·Reaction)는 전부 hard delete. 솔로-삭제 게이트가 "솔로(currentMembers==1) + 인증 전(crew_id 기준 challenges 0건)"을 보장하므로 보존 가치가 없음. Crew에 soft delete 도입 시 모든 크루 쿼리에 `deleted_at IS NULL` 필터가 필요해 블래스트가 지나치게 커 오버엔지니어링. sweep(9-테이블 네이티브 정리)의 무게는 hard delete 선택이 아니라 DB에 FK 제약(캐스케이드)이 없어서임 — FK 제약 추가가 근본 단순화이며 별도 과제로 future-considerations에 기록
+  2. **late-join ↔ 삭제 동시성 안전** — `DeleteCrewService`와 `JoinCrewService`/`JoinCrewByInviteCodeService` 모두 `findByIdWithLock`(`SELECT … FOR UPDATE`, PESSIMISTIC)으로 같은 crew 행의 비관적 쓰기 락을 경쟁 → DB 수준 직렬화. 가입이 먼저면 currentMembers=2 → 삭제가 `validateDeletable`에서 CR019(크루원 존재)로 거부. 삭제가 먼저면 가입이 행을 못 찾아 CREW_NOT_FOUND. "새 멤버를 깔고 삭제"·고아행이 구조적으로 불가능
+  3. **자동완료 스케줄러로 대체 불가** — `CompleteExpiredCrewsScheduler`(매일 00:05)가 빈 ACTIVE 크루를 end_date 도달 시 COMPLETED로 전환하지만, 크루 기간이 7~30일 가변이라 최대 30일을 기다려야 함. 또한 COMPLETED 크루는 CR026으로 영구 삭제 불가. 실수로 만든 빈 크루의 즉시 삭제 탈출구로서 솔로-삭제가 필요
+- AI 역할: 코드베이스 삭제 컨벤션 전수 조사(hard/soft delete 분포), 비관적 락 경쟁 시나리오 2가지 시뮬레이션, 자동완료 스케줄러 흐름 분석
+- 배운 점: 삭제 전략은 "전체 컨벤션 일관성 + 실제 쿼리 블래스트"로 판단해야 한다. sweep 복잡도를 soft delete 탓으로 오해하기 쉽지만 실제 원인은 FK 제약 부재였고, 두 문제를 분리해서 봐야 올바른 결론에 이른다
