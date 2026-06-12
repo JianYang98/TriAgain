@@ -6,6 +6,7 @@ import com.triagain.crew.domain.vo.CrewCategory;
 import com.triagain.crew.domain.vo.CrewStatus;
 import com.triagain.crew.domain.vo.CrewVisibility;
 import com.triagain.crew.port.out.CrewRepositoryPort;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Slice;
@@ -21,6 +22,7 @@ public class CrewJpaAdapter implements CrewRepositoryPort {
 
     private final CrewJpaRepository crewJpaRepository;
     private final CrewMemberJpaRepository crewMemberJpaRepository;
+    private final EntityManager entityManager;
 
     /** 크루 저장 — 생성·수정 시 사용 */
     @Override
@@ -127,6 +129,48 @@ public class CrewJpaAdapter implements CrewRepositoryPort {
     @Override
     public void deleteMemberByCrewIdAndUserId(String crewId, String userId) {
         crewMemberJpaRepository.deleteByCrewIdAndUserId(crewId, userId);
+    }
+
+    /** 크루 + 연관 데이터 FK-safe hard delete — leaf→root 순서로 완전 삭제 */
+    @Override
+    public void deleteCrewWithAssociations(String crewId) {
+        deleteVerificationRelated(crewId);
+        deleteCrewRelated(crewId);
+    }
+
+    /** 인증 관련 연관 데이터 삭제 — reviews→reports→reactions→upload_session→verifications→challenges */
+    private void deleteVerificationRelated(String crewId) {
+        entityManager.createNativeQuery(
+                "DELETE FROM reviews WHERE report_id IN"
+                + " (SELECT id FROM reports WHERE verification_id IN"
+                + " (SELECT id FROM verifications WHERE crew_id = :crewId))")
+                .setParameter("crewId", crewId).executeUpdate();
+        entityManager.createNativeQuery(
+                "DELETE FROM reports WHERE verification_id IN"
+                + " (SELECT id FROM verifications WHERE crew_id = :crewId)")
+                .setParameter("crewId", crewId).executeUpdate();
+        entityManager.createNativeQuery(
+                "DELETE FROM reactions WHERE verification_id IN"
+                + " (SELECT id FROM verifications WHERE crew_id = :crewId)")
+                .setParameter("crewId", crewId).executeUpdate();
+        entityManager.createNativeQuery(
+                "UPDATE upload_session SET crew_id = NULL WHERE crew_id = :crewId")
+                .setParameter("crewId", crewId).executeUpdate();
+        entityManager.createNativeQuery(
+                "DELETE FROM verifications WHERE crew_id = :crewId")
+                .setParameter("crewId", crewId).executeUpdate();
+        entityManager.createNativeQuery(
+                "DELETE FROM challenges WHERE crew_id = :crewId")
+                .setParameter("crewId", crewId).executeUpdate();
+    }
+
+    /** 크루 관련 데이터 삭제 — notifications→crew_members→crews */
+    private void deleteCrewRelated(String crewId) {
+        entityManager.createNativeQuery(
+                "DELETE FROM notifications WHERE target_type = 'CREW' AND target_id = :crewId")
+                .setParameter("crewId", crewId).executeUpdate();
+        crewMemberJpaRepository.deleteByCrewId(crewId);
+        crewJpaRepository.deleteById(crewId);
     }
 
     /** LIKE 패턴용 와일드카드 이스케이프 — %, _, \ 문자가 리터럴로 검색되도록 처리 */

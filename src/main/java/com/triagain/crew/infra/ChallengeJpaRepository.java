@@ -58,6 +58,9 @@ public interface ChallengeJpaRepository extends JpaRepository<ChallengeJpaEntity
     /** 유저·크루의 챌린지 존재 여부 확인 — ACTIVE 크루 탈퇴 시 챌린지 시작 여부 판단 */
     boolean existsByUserIdAndCrewId(String userId, String crewId);
 
+    /** 크루의 챌린지 존재 여부 확인 — 크루 삭제 시 인증 시작 여부 판단 (crew_id 기준) */
+    boolean existsByCrewId(String crewId);
+
     /** 유저·크루 묶음별 SUCCESS 챌린지 수 집계 — crewId→count Map 반환 */
     @Query("SELECT c.crewId, COUNT(c) FROM ChallengeJpaEntity c "
             + "WHERE c.userId = :userId AND c.crewId IN :crewIds AND c.status = 'SUCCESS' "
