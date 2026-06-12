@@ -71,6 +71,6 @@ class SendTestFcmServiceTest {
 		// Then
 		assertThat(result.sent()).isFalse();
 		assertThat(result.status()).isEqualTo("ERROR");
-		assertThat(result.detail()).isNotBlank();
+		assertThat(result.detail()).isEqualTo("FCM_SEND_FAILED");
 	}
 }
