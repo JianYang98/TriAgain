@@ -68,3 +68,15 @@
 - [ ] Health check 엔드포인트(`/health`) 동작 확인
 - [ ] `server.forward-headers-strategy: framework` 적용 확인 (OG 절대 URL을 https로 생성하려면 ALB/nginx가 `X-Forwarded-Proto`/`X-Forwarded-Host`를 전달해야 함)
 - [ ] 초대 OG 카드 반영: 배포 후 카카오 디벨로퍼스 캐시 초기화 도구(`https://developers.kakao.com/tool/clear/og`)에 초대 URL 입력 → 초기화 후 카톡에서 다크 카드 확인 (이미지 `?v=2`만으론 재스크랩 안 됨 — 카카오 캐시 키는 페이지 URL 기준)
+
+---
+
+## 크루 첫 인증 알림(CREW_FIRST_VERIFICATION) — prod 활성화 전
+
+> 기능/스키마/문서는 PR #82에서 통과. 아래 항목 완료 후 `CREW_FIRST_VERIFICATION_ENABLED=true` 전환.
+
+- [x] AsyncConfig 미처리 예외 핸들러 동작 확인 — `AsyncConfigurer.getAsyncUncaughtExceptionHandler()` 구현 완료 (PR #82 추가 커밋)
+- [x] T6 실 commit/rollback 검증 (Route A) — `TestTransaction.flagForCommit()` + `CountDownLatch` 재작성, 3회 반복 그린 확인 (PR #82 추가 커밋)
+- [ ] **T2 `findCrewFirstVerificationTargets` 네이티브 SQL 실DB 검증** — 현재 Mockito 단위테스트라 SQL 미검증. 활성화 전 TestContainers로 ACTIVE 필터 + excludeUserId 결과 실측 필요 (lessons-learned "네이티브 SQL 실DB 검증" 정합)
+- [x] 타임존 KST 확정 — Dockerfile + ClockConfig 앵커링 이미 충족
+- [ ] 알림 on/off UI 출시 → `CREW_FIRST_VERIFICATION_ENABLED=true` 환경변수 주입
