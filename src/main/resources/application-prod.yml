@@ -35,7 +35,7 @@ firebase:
 
 notification:
   crew-first-verification:
-    enabled: ${CREW_FIRST_VERIFICATION_ENABLED:false}
+    enabled: ${CREW_FIRST_VERIFICATION_ENABLED:true}
 
 logging:
   level:
