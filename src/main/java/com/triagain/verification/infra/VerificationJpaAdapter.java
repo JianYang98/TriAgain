@@ -62,4 +62,9 @@ public class VerificationJpaAdapter implements VerificationRepositoryPort {
         }
         return map;
     }
+
+    @Override
+    public long countByCrewIdAndTargetDate(String crewId, LocalDate targetDate) {
+        return verificationJpaRepository.countByCrewIdAndTargetDate(crewId, targetDate);
+    }
 }

@@ -1,5 +1,6 @@
 package com.triagain.support.infra;
 
+import com.triagain.support.domain.vo.NotificationType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -39,4 +40,15 @@ public interface NotificationJpaRepository extends JpaRepository<NotificationJpa
     @Query("UPDATE NotificationJpaEntity n SET n.isRead = true "
             + "WHERE n.userId = :userId AND n.isRead = false")
     void markAllAsReadByUserId(@Param("userId") String userId);
+
+    /** 같은 크루·같은 날 첫인증 알림 존재 여부 — created_at 일자 범위 검사로 멱등 가드 */
+    @Query("""
+            SELECT COUNT(n) > 0 FROM NotificationJpaEntity n
+            WHERE n.type = :type AND n.targetId = :crewId
+              AND n.createdAt >= :dayStart AND n.createdAt < :dayEnd
+            """)
+    boolean existsByTypeAndTargetIdInDay(@Param("type") NotificationType type,
+                                         @Param("crewId") String crewId,
+                                         @Param("dayStart") LocalDateTime dayStart,
+                                         @Param("dayEnd") LocalDateTime dayEnd);
 }

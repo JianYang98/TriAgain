@@ -2,6 +2,7 @@ package com.triagain.support.port.out;
 
 import com.triagain.support.domain.model.Notification;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -28,4 +29,7 @@ public interface NotificationRepositoryPort {
 
     /** 사용자의 안 읽은 알림 전체 읽음 처리 */
     void markAllAsReadByUserId(String userId);
+
+    /** 같은 크루·같은 날 첫인증 알림 존재 여부 — fan-out 멱등 가드 */
+    boolean existsCrewFirstVerificationOnDate(String crewId, LocalDate targetDate);
 }

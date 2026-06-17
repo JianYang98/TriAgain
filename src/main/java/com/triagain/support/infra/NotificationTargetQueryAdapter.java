@@ -90,4 +90,38 @@ public class NotificationTargetQueryAdapter implements NotificationTargetQueryPo
                 ))
                 .toList();
     }
+
+    /** 첫 인증 모닝콜 수신자 조회 — ACTIVE 크루의 crew_members 전원 − 첫인증자 */
+    @Override
+    @SuppressWarnings("unchecked")
+    public List<CrewFirstVerificationTarget> findCrewFirstVerificationTargets(String crewId, String excludeUserId) {
+        String sql = """
+                SELECT cm.user_id,
+                       u.fcm_token,
+                       c.id   AS crew_id,
+                       c.name AS crew_name
+                FROM crews c
+                JOIN crew_members cm
+                   ON cm.crew_id = c.id
+                JOIN users u
+                   ON u.id = cm.user_id
+                WHERE c.id = :crewId
+                  AND c.status = 'ACTIVE'
+                  AND cm.user_id <> :excludeUserId
+                """;
+
+        List<Object[]> rows = entityManager.createNativeQuery(sql)
+                .setParameter("crewId", crewId)
+                .setParameter("excludeUserId", excludeUserId)
+                .getResultList();
+
+        return rows.stream()
+                .map(row -> new CrewFirstVerificationTarget(
+                        (String) row[0],
+                        (String) row[1],
+                        (String) row[2],
+                        (String) row[3]
+                ))
+                .toList();
+    }
 }

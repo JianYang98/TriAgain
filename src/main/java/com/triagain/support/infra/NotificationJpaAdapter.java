@@ -1,6 +1,7 @@
 package com.triagain.support.infra;
 
 import com.triagain.support.domain.model.Notification;
+import com.triagain.support.domain.vo.NotificationType;
 import com.triagain.support.port.out.NotificationRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -8,6 +9,7 @@ import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -59,5 +61,12 @@ public class NotificationJpaAdapter implements NotificationRepositoryPort {
     @Override
     public void markAllAsReadByUserId(String userId) {
         notificationJpaRepository.markAllAsReadByUserId(userId);
+    }
+
+    @Override
+    public boolean existsCrewFirstVerificationOnDate(String crewId, LocalDate targetDate) {
+        return notificationJpaRepository.existsByTypeAndTargetIdInDay(
+                NotificationType.CREW_FIRST_VERIFICATION, crewId,
+                targetDate.atStartOfDay(), targetDate.plusDays(1).atStartOfDay());
     }
 }

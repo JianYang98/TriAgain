@@ -11,6 +11,7 @@ import com.triagain.verification.port.out.ChallengePort.ChallengeInfo;
 import com.triagain.verification.port.out.CrewPort;
 import com.triagain.common.port.out.StoragePort;
 import com.triagain.verification.application.event.ChallengeSuccessEvent;
+import com.triagain.verification.application.event.CrewFirstVerificationEvent;
 import com.triagain.verification.port.out.UploadSessionRepositoryPort;
 import com.triagain.verification.port.out.VerificationRepositoryPort;
 import lombok.RequiredArgsConstructor;
@@ -86,6 +87,12 @@ public class CreateVerificationService implements CreateVerificationUseCase {
         }
 
         Verification saved = verificationRepositoryPort.save(verification);
+
+        // [신규] 첫 인증 판정 — 오늘 이 크루 첫 인증이면 모닝콜 이벤트 발행 (count==1 = 방금 저장 포함 1건)
+        if (verificationRepositoryPort.countByCrewIdAndTargetDate(challenge.crewId(), targetDate) == 1) {
+            eventPublisher.publishEvent(
+                    new CrewFirstVerificationEvent(command.userId(), challenge.crewId(), targetDate));
+        }
 
         boolean challengeSuccess = challengePort.recordCompletion(challenge.id());
         if (challengeSuccess) {
