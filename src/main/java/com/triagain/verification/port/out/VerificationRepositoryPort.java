@@ -25,4 +25,7 @@ public interface VerificationRepositoryPort {
 
     /** 유저·크루 묶음별 APPROVED 인증 일수 배치 조회 — 홈 완료 탭 verifiedDayCount 집계에 사용 */
     Map<String, Integer> findApprovedDayCountsByCrewIds(String userId, List<String> crewIds);
+
+    /** 오늘 해당 크루 인증 건수 — 첫 인증(count==1) 판정용 */
+    long countByCrewIdAndTargetDate(String crewId, LocalDate targetDate);
 }

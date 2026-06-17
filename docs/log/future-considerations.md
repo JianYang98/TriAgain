@@ -6,6 +6,18 @@
 
 ---
 
+### [2026-06-17] 크루 첫 인증 알림 fan-out: 배치 발송 + Dead Letter 큐 도입
+
+- 현재 상태: `VerificationNotificationAdapter.sendCrewFirstVerificationNotification`이 수신자 목록을 루프로 순회하며 수신자별 try/catch로 격리 발송. 발송 실패 건은 로그만 남기고 재시도 없음.
+- 필요 시점: 크루 규모가 커지거나 FCM 일시 장애 시 재시도 필요성이 생기는 시점
+- 이유: Phase 1(2~10명 소규모 크루, TPS 50)에서는 동기 루프 + 실패 로그로 충분. Phase 2 이상에서는 (1) FCM Batch API로 1회 호출 전환하여 N회 왕복 제거, (2) 실패 건을 `dead_letters` 테이블에 적재 후 `DeadLetterProcessor`로 재시도, (3) `notificationExecutor` 풀 크기를 트래픽 기반으로 재조정하는 방향으로 개선한다.
+
+### [2026-06-17] 크루 첫 인증 알림 멱등 가드: DB 쿼리 → 인메모리 캐시 전환 검토
+
+- 현재 상태: `existsCrewFirstVerificationOnDate`가 매 fan-out 진입마다 `notifications` 테이블 JPQL 쿼리를 실행. Phase 1 규모(소규모 크루, 낮은 TPS)에서는 문제 없음.
+- 필요 시점: 크루 수가 수천 개를 넘어 스케줄러/동시 첫인증 요청이 DB에 집중되는 시점
+- 이유: 동일 `(crewId, targetDate)` 쌍에 대해 첫 인증 직후 수 초 이내 중복 이벤트가 들어올 수 있고, 이 시간 내 동시 쿼리가 모두 `false`를 반환해 복수 fan-out이 트리거될 수 있다. 근본 해결은 Redis SET NX + TTL(당일 23:59 만료)로 원자적 중복 방지를 적용하는 것. Option 2(DB 쿼리 가드)의 한계임을 인지하고 캐시 도입 시 이 항목을 재검토한다.
+
 ### [2026-06-12] FK-safe 크루 삭제 SQL이 CrewJpaAdapter / UserCrewMembershipAdapter 2곳 중복 → 공유 추출 필요
 
 - 현재 상태: `CrewJpaAdapter.deleteCrewWithAssociations`(크루 삭제 경로)와 `UserCrewMembershipAdapter.deleteCrewWithAllData`(회원탈퇴 경로)에 leaf→root 삭제 SQL이 중복. FK 구조 변경 시 두 곳을 함께 수정해야 한다.

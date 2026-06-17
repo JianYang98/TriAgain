@@ -39,4 +39,7 @@ public interface VerificationJpaRepository extends JpaRepository<VerificationJpa
     List<Object[]> countApprovedDaysGroupByCrewId(
             @Param("userId") String userId,
             @Param("crewIds") List<String> crewIds);
+
+    /** 오늘 해당 크루 인증 건수 — 첫 인증(count==1) 판정용 */
+    long countByCrewIdAndTargetDate(String crewId, LocalDate targetDate);
 }

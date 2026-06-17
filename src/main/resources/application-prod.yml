@@ -33,6 +33,10 @@ firebase:
   enabled: ${FIREBASE_ENABLED:false}
   service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH:/opt/triagain/config/triagain-firebase-service-account.json}
 
+notification:
+  crew-first-verification:
+    enabled: ${CREW_FIRST_VERIFICATION_ENABLED:false}
+
 logging:
   level:
     root: WARN
