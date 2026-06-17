@@ -10,5 +10,6 @@ public enum NotificationType {
     REVIEW_COMPLETED,
     UPLOAD_COMPLETED,
     REMINDER,
-    CREW_STARTED
+    CREW_STARTED,
+    CREW_FIRST_VERIFICATION
 }

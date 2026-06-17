@@ -11,6 +11,7 @@ import com.triagain.verification.port.out.ChallengePort.ChallengeInfo;
 import com.triagain.verification.port.out.CrewPort;
 import com.triagain.common.port.out.StoragePort;
 import com.triagain.verification.application.event.ChallengeSuccessEvent;
+import com.triagain.verification.application.event.CrewFirstVerificationEvent;
 import com.triagain.verification.port.out.UploadSessionRepositoryPort;
 import com.triagain.verification.port.out.VerificationRepositoryPort;
 import lombok.RequiredArgsConstructor;
@@ -86,6 +87,15 @@ public class CreateVerificationService implements CreateVerificationUseCase {
         }
 
         Verification saved = verificationRepositoryPort.save(verification);
+
+        // [신규] 첫 인증 판정 — save() 직후 count: 방금 저장된 row 포함 1건이면 오늘 첫 인증.
+        // 주의: count()는 반드시 save() 이후에 와야 한다 (순서 변경 금지).
+        // 동시 첫인증(race) 시 양쪽 tx 모두 count==1 → 2회 이벤트 발행 가능 (best-effort).
+        // → 리스너 내 existsCrewFirstVerificationOnDate 멱등 가드가 최종 방어선.
+        if (verificationRepositoryPort.countByCrewIdAndTargetDate(challenge.crewId(), targetDate) == 1) {
+            eventPublisher.publishEvent(
+                    new CrewFirstVerificationEvent(command.userId(), challenge.crewId(), targetDate));
+        }
 
         boolean challengeSuccess = challengePort.recordCompletion(challenge.id());
         if (challengeSuccess) {

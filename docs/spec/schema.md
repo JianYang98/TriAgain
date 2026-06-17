@@ -305,6 +305,7 @@ erDiagram
 | UPLOAD_COMPLETED | 이미지 업로드 완료 |
 | REMINDER | 인증 리마인더 (스케줄러) |
 | CREW_STARTED | 크루 시작 알림 |
+| CREW_FIRST_VERIFICATION | 크루 첫 인증 알림 |
 
 ### notifications.target_type
 | 값 | 의미 |
