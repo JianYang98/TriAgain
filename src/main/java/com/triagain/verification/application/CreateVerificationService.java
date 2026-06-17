@@ -88,7 +88,10 @@ public class CreateVerificationService implements CreateVerificationUseCase {
 
         Verification saved = verificationRepositoryPort.save(verification);
 
-        // [신규] 첫 인증 판정 — 오늘 이 크루 첫 인증이면 모닝콜 이벤트 발행 (count==1 = 방금 저장 포함 1건)
+        // [신규] 첫 인증 판정 — save() 직후 count: 방금 저장된 row 포함 1건이면 오늘 첫 인증.
+        // 주의: count()는 반드시 save() 이후에 와야 한다 (순서 변경 금지).
+        // 동시 첫인증(race) 시 양쪽 tx 모두 count==1 → 2회 이벤트 발행 가능 (best-effort).
+        // → 리스너 내 existsCrewFirstVerificationOnDate 멱등 가드가 최종 방어선.
         if (verificationRepositoryPort.countByCrewIdAndTargetDate(challenge.crewId(), targetDate) == 1) {
             eventPublisher.publishEvent(
                     new CrewFirstVerificationEvent(command.userId(), challenge.crewId(), targetDate));

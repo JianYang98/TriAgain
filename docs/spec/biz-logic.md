@@ -128,11 +128,12 @@
 | FCM 토큰 관리 | PATCH /users/me/fcm-token으로 등록/갱신, nullable |
 | 인앱 알림 | 목록 조회 (페이지네이션), 안 읽은 수, 읽음 처리 |
 | 장애 격리 | TransactionTemplate 개별 트랜잭션 — 한 건 실패해도 나머지 계속 발송 |
-| 알림 타입 | CREW_STARTED, REMINDER, CHALLENGE_SUCCESS, CHALLENGE_FAILED (추후 VERIFICATION_APPROVED 등 확장) |
-| 메시지 템플릿 | 랜덤 메시지 선택, {crewName} 플레이스홀더 치환 |
+| 알림 타입 | CREW_STARTED, REMINDER, CHALLENGE_SUCCESS, CHALLENGE_FAILED, CREW_FIRST_VERIFICATION (추후 VERIFICATION_APPROVED 등 확장) |
+| 메시지 템플릿 | 랜덤 메시지 선택, {crewName}/{nickname} 플레이스홀더 치환 |
 | 발송 방식 | 인앱 알림 저장 → FCM 푸시 (best-effort, 실패해도 인앱은 유지) |
 | 챌린지 성공 알림 | SUCCESS 시 인앱 알림 + FCM 발송 (인증 완료 시점) |
 | 챌린지 실패 알림 | FAILED 시 인앱 알림 + FCM 발송 (스케줄러에서 실패 처리 시점) |
+| 크루 첫 인증 모닝콜 | 오늘 크루 첫 인증 시점에 트리거. 첫인증자 제외 ACTIVE 멤버 전원에게 인앱+FCM(best-effort). 08:00~22:00(quiet hours) 밖이면 skip. 같은 크루·같은 날 중복 fan-out은 existsCrewFirstVerificationOnDate 멱등 가드로 차단. prod 기본 OFF(notification.crew-first-verification.enabled=false). 동시 첫인증 race 시 2회 이벤트 발행 가능(best-effort) → 리스너 멱등 가드가 최종 방어선. |
 | 알림 전체 삭제 | 본인 알림 전체 Hard Delete, 0건이어도 200 OK (멱등) |
 | 알림 전체 읽음 | 본인의 is_read=false 알림 일괄 true 갱신, 0건이어도 200 OK (멱등) |
 | 읽음 필터 조회 | 기존 목록 API에 isRead 파라미터 추가 — null: 전체, false: 안 읽은 것만, true: 읽은 것만 |
