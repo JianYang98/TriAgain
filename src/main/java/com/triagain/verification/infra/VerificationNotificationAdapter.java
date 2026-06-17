@@ -30,8 +30,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class VerificationNotificationAdapter implements VerificationNotificationPort {
 
-    private static final LocalTime QUIET_START = LocalTime.of(8, 0);
-    private static final LocalTime QUIET_END = LocalTime.of(22, 0);
+    private static final LocalTime NOTIFY_START = LocalTime.of(8, 0);
+    private static final LocalTime NOTIFY_END = LocalTime.of(22, 0);
 
     private final CrewMembershipQueryUseCase crewMembershipQueryUseCase;
     private final NotificationRepositoryPort notificationRepositoryPort;
@@ -78,7 +78,7 @@ public class VerificationNotificationAdapter implements VerificationNotification
     @Override
     public void sendCrewFirstVerificationNotification(String firstUserId, String crewId, LocalDate targetDate) {
         LocalTime now = LocalTime.now(clock);
-        if (now.isBefore(QUIET_START) || !now.isBefore(QUIET_END)) {
+        if (now.isBefore(NOTIFY_START) || !now.isBefore(NOTIFY_END)) {
             return;
         }
 
@@ -110,7 +110,7 @@ public class VerificationNotificationAdapter implements VerificationNotification
                     sendFcm(t, msg, crewId);
                 }
             } catch (Exception e) {
-                log.error("첫인증 알림 저장 실패 [userId={}, crewId={}]: {}",
+                log.error("첫인증 알림 처리 실패 [userId={}, crewId={}]: {}",
                         t.userId(), crewId, e.getMessage());
             }
         }
