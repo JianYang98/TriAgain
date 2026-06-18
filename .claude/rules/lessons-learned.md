@@ -83,6 +83,22 @@ paths: "src/**/*.java"
 - 왜?: Provider에서 가져온 데이터를 로컬 변수에 복사해서 가공하려 함. 두 곳의 데이터가 달라질 수 있다는 점을 고려 안 한 것.
 - 규칙: 같은 데이터를 로컬 변수와 Provider 양쪽에서 관리하지 않기. 하나만 선택
 
+### 어노테이션 사이에 주석 넣지 마라
+- 출처: crew-join-conditional-update /simplify (2026-06-18)
+- 사례: `@Test`와 `@DisplayName` 사이에 `// ⚠️ U3:` 경고 주석을 삽입
+- 왜?: "경고를 눈에 잘 띄게 하려고" 어노테이션 사이에 끼워 넣음. Java 컨벤션상 어노테이션 블록은 붙여서 쓰고 주석은 그 위나 메서드 바디 안에 위치해야 함.
+- 규칙: 주석은 어노테이션 블록 위(`@Test` 앞)나 메서드 바디 내부 첫 줄에 넣는다. 어노테이션 사이에 주석 삽입 금지.
+
+---
+
+## 도메인 술어
+
+### 도메인 술어의 transitive 의존 확인 — '일부만 제외'는 헬퍼 내부까지 본다
+- 출처: crew-join-conditional-update 코드리뷰 (2026-06-18)
+- 사례: `addMemberSkipCapacityCheck`가 '정원만 제외'하려 했으나 `canNotJoin()`→`canJoin()` 내부의 `isFull()`로 정원 검증이 도로 들어감. 스냅샷이 꽉 찬 크루의 가입이 DB predicate 전에 `CREW_NOT_RECRUITING`(CR003/400)으로 잘려, 같은 정원 초과가 타이밍에 따라 409/400으로 달라지는 에러 계약 위반 발생.
+- 왜?: 기존 헬퍼(`canNotJoin`)를 그대로 재사용하면서 그 내부가 빼려는 검증(`isFull`)을 품고 있는지 확인 안 함. `canNotJoin = !canJoin`, `canJoin` 첫 줄이 `if (isFull()) return false` — 이 체인을 끝까지 따라가지 않은 것.
+- 규칙: 기존 도메인 술어를 재사용해 "특정 검증만 빼려" 할 땐, 그 술어가 transitive하게 빼려는 검증을 포함하는지 정의를 따라가 확인. 필요하면 검증 단위로 술어를 분해(예: `isJoinableStatus()` — 정원과 무관한 상태만 판정).
+
 ---
 
 ## 추가 방법

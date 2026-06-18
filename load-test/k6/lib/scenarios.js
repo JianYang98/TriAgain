@@ -8,6 +8,7 @@ import {
 import {
 	scenarioADuration, scenarioBDuration, scenarioDDuration,
 	verifyCreated, verifyDuplicate, joinSuccess, joinFull,
+	dupJoinSuccess, dupJoinAlreadyJoined, scenarioEDuration,
 } from './metrics.js';
 
 // ============================================================
@@ -82,5 +83,38 @@ export function crewRush() {
 
 	check(res, {
 		'D: join or full': (r) => r.status === 201 || r.status === 409,
+	});
+}
+
+// ============================================================
+// Scenario E: duplicate join (전략 C 중복 가입 동시성 검증)
+//
+// 같은 토큰(VU 1)이 N발 동시 가입 시도.
+// 기대: 멤버십 1건 + 나머지 409 CREW_ALREADY_JOINED.
+// 사전 준비: DUP_CREW_ID 크루 + 단일 토큰(DUP_TOKEN) 준비 필요.
+//
+// k6 run --env BASE_URL=... --env DUP_CREW_ID=... --env DUP_TOKEN=... dup-join.js
+// ============================================================
+export function dupJoin() {
+	const crewId = __ENV.DUP_CREW_ID;
+	const token = __ENV.DUP_TOKEN;
+	const params = {
+		headers: {
+			'Authorization': `Bearer ${token}`,
+			'Content-Type': 'application/json',
+		},
+	};
+
+	const res = http.post(`${BASE_URL}/crews/${crewId}/join`, null, params);
+	scenarioEDuration.add(res.timings.duration);
+
+	if (res.status === 201) {
+		dupJoinSuccess.add(1);
+	} else if (res.status === 409) {
+		dupJoinAlreadyJoined.add(1);
+	}
+
+	check(res, {
+		'E: first join or already-joined': (r) => r.status === 201 || r.status === 409,
 	});
 }

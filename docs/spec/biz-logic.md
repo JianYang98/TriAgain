@@ -32,7 +32,7 @@
 | 중간 가입 허용일 때 | 크루 시작 후에도 참여 가능 → 첫 인증 시 챌린지 자동 생성 |
 | 중간 가입 불가일 때 | 크루 시작 전까지만 참여 가능 |
 | 역할 | MEMBER로 자동 배정 |
-| 중복 참여 | 동일 크루 중복 참여 불가 |
+| 중복 참여 | 동일 크루 중복 참여 불가 (CONDITIONAL 전략 시 DB 유니크 제약이 동시성 안전망) |
 | 공통 검증 | 정원, 상태, 마감, 중복 검증은 Crew 도메인 모델에 위임 (가입 경로와 무관하게 동일) |
 
 ### 1.3 크루 조회
@@ -361,12 +361,13 @@
 ### 4.1 크루 정원 초과 참여
 
 - **영향:** 공정성 붕괴
-- **대응:** yml 설정으로 비관적/낙관적 락 전환 가능 (`triagain.crew.lock-strategy`, 기본값 `PESSIMISTIC`)
+- **대응:** yml 설정으로 비관적/낙관적/조건부 락 전환 가능 (`triagain.crew.lock-strategy`, 기본값 `PESSIMISTIC`)
   - **PESSIMISTIC** (Phase 1 기본): `SELECT FOR UPDATE`로 직렬화, 안정성 우선
   - **OPTIMISTIC** (트래픽 증가 시 전환): crews 테이블 `version` 컬럼으로 동시 수정 감지
   - UPDATE 시 `WHERE version = ?` 조건 — 버전 불일치 시 재시도 (최대 `triagain.crew.max-retry`, 기본 3회)
   - 재시도 전부 실패 시 `CREW_JOIN_CONFLICT(409, CR023)` 응답
   - 전환: `--triagain.crew.lock-strategy=OPTIMISTIC` (재빌드 불필요)
+  - **CONDITIONAL** (feat/load-test 벤치마크): 조건부 원자적 UPDATE — 정원은 `current_members < max_members` predicate로 단일 statement 보호(재시도·version 불사용), 중복 가입은 `(crew_id, user_id)` 유니크 제약으로 방어. Postgres EvalPlanQual 재검사로 정원 초과 0건 보장.
   - 삭제(`DeleteCrewService`)와 탈퇴(`LeaveCrewService`)는 빈도가 극히 낮아 항상 비관적 락 고정
 
 ### 4.2 마감 직전 동시 인증 폭주

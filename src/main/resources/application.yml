@@ -58,7 +58,7 @@ crew:
 
 triagain:
   crew:
-    lock-strategy: PESSIMISTIC  # PESSIMISTIC | OPTIMISTIC (전환: --triagain.crew.lock-strategy=OPTIMISTIC)
+    lock-strategy: PESSIMISTIC  # PESSIMISTIC | OPTIMISTIC | CONDITIONAL (전환: --triagain.crew.lock-strategy=CONDITIONAL)
     max-retry: 3  # 낙관적 락 version 충돌 시 재시도 횟수
 mybatis:
   mapper-locations: classpath:mybatis/mapper/**/*.xml

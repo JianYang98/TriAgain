@@ -14,3 +14,8 @@ export const verifyDuplicate = new Counter('verify_duplicate'); // 409
 // --- Scenario D: join success vs capacity full ---
 export const joinSuccess = new Counter('join_success');  // 201
 export const joinFull = new Counter('join_full');        // 409
+
+// --- Scenario E: duplicate join (전략 C 중복 가입 동시성 검증) ---
+export const dupJoinSuccess = new Counter('dup_join_success');       // 201 첫 가입
+export const dupJoinAlreadyJoined = new Counter('dup_join_already'); // 409 중복 거부
+export const scenarioEDuration = new Trend('scenario_e_duration', true);

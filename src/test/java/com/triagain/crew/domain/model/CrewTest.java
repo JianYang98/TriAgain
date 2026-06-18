@@ -56,12 +56,13 @@ class CrewTest {
         }
 
         @Test
-        @DisplayName("maxMembers가 10이면 최대 정원으로 생성된다")
+        // [feat/load-test 브랜치 한정] prod 제품 규칙(2~10명)은 무변경. 100명 정원경합 벤치마크 목적.
+        @DisplayName("maxMembers가 100이면 최대 정원(load-test 한정)으로 생성된다")
         void maxMembers() {
             Crew crew = Crew.create("user1", "대규모 크루", "목표",
-                    "인증 내용", VerificationType.TEXT, 10, TOMORROW, NEXT_WEEK, false, null, CrewCategory.EXERCISE, null);
+                    "인증 내용", VerificationType.TEXT, 100, TOMORROW, NEXT_WEEK, false, null, CrewCategory.EXERCISE, null);
 
-            assertThat(crew.getMaxMembers()).isEqualTo(10);
+            assertThat(crew.getMaxMembers()).isEqualTo(100);
         }
 
         @Test
@@ -75,10 +76,11 @@ class CrewTest {
         }
 
         @Test
-        @DisplayName("maxMembers가 11이면 예외가 발생한다")
+        // [feat/load-test 브랜치 한정] 상한이 100으로 완화됨 — 거부 경계를 101로 조정
+        @DisplayName("maxMembers가 101이면 예외가 발생한다 (load-test 한정 상한 100 초과)")
         void maxMembersExceedsLimit() {
             assertThatThrownBy(() -> Crew.create("user1", "크루", "목표",
-                    "인증 내용", VerificationType.TEXT, 11, TOMORROW, NEXT_WEEK, false, null, CrewCategory.EXERCISE, null))
+                    "인증 내용", VerificationType.TEXT, 101, TOMORROW, NEXT_WEEK, false, null, CrewCategory.EXERCISE, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.INVALID_MAX_MEMBERS);
@@ -367,6 +369,39 @@ class CrewTest {
             // Then
             assertThat(member.getUserId()).isEqualTo("user2");
             assertThat(crew.getCurrentMembers()).isEqualTo(2);
+        }
+    }
+
+    @Nested
+    @DisplayName("addMemberSkipCapacityCheck — 조건부 전략 멤버 추가")
+    class AddMemberSkipCapacityCheck {
+
+        @Test
+        @DisplayName("정원이 꽉 찬 RECRUITING 크루에 addMemberSkipCapacityCheck하면 예외 없이 성공한다")
+        void fullRecruitingCrew_skipCapacityCheck_succeeds() {
+            // given — 정원 3, 이미 3명(꽉 참)인 RECRUITING 크루
+            Crew crew = recruitingCrew(3, 3);
+
+            // when — 정원 초과 상태에서 addMemberSkipCapacityCheck 호출
+            CrewMember member = crew.addMemberSkipCapacityCheck("newUser");
+
+            // then — 예외 없이 성공, currentMembers가 max(3)를 초과(4)해도 OK
+            assertThat(member.getUserId()).isEqualTo("newUser");
+            assertThat(crew.getCurrentMembers()).isEqualTo(4);
+            assertThat(crew.getMembers()).hasSize(4);
+        }
+
+        @Test
+        @DisplayName("COMPLETED 크루에 addMemberSkipCapacityCheck하면 CREW_NOT_RECRUITING 예외가 발생한다")
+        void completedCrew_skipCapacityCheck_throwsNotRecruiting() {
+            // given — 정원 여유 있는 COMPLETED 크루
+            Crew crew = crewWithStatus(CrewStatus.COMPLETED, 5, 1, false);
+
+            // when & then — 상태 거부는 여전히 동작
+            assertThatThrownBy(() -> crew.addMemberSkipCapacityCheck("user2"))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.CREW_NOT_RECRUITING);
         }
     }
 
