@@ -68,6 +68,7 @@ erDiagram
         enum role
         timestamp joined_at
     }
+    %% (crew_id, user_id) UNIQUE 제약 — V22 (uq_crew_members_crew_id_user_id, 동시 중복가입 안전망)
     
     challenges {
         string id PK
@@ -205,6 +206,11 @@ erDiagram
 | TEXT | 텍스트 인증 (텍스트 필수) |
 | PHOTO | 사진 인증 (사진 필수 + 텍스트 선택) |
 
+### crew_members 제약
+| 제약 | 컬럼 | 설명 |
+|------|------|------|
+| UNIQUE | (crew_id, user_id) | 동일 유저가 같은 크루에 2번 이상 가입 불가 — V22(uq_crew_members_crew_id_user_id) |
+
 ### crew_members.role
 | 값 | 의미 |
 |----|------|
@@ -336,6 +342,10 @@ WHERE status = 'IN_PROGRESS';
 -- 신고 중복 방지
 CREATE UNIQUE INDEX idx_report_unique
 ON report(verification_id, reporter_id);
+-- 크루 중복 가입 방지 (유저·크루당 멤버십 1개만 허용)
+-- Flyway V22에서 추가
+CREATE UNIQUE INDEX uq_crew_members_crew_id_user_id
+ON crew_members(crew_id, user_id);
 ```
 
 ### 크루 검색 인덱스
