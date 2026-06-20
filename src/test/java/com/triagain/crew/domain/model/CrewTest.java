@@ -371,6 +371,39 @@ class CrewTest {
     }
 
     @Nested
+    @DisplayName("addMemberSkipCapacityCheck — 조건부 전략 멤버 추가")
+    class AddMemberSkipCapacityCheck {
+
+        @Test
+        @DisplayName("정원이 꽉 찬 RECRUITING 크루에 addMemberSkipCapacityCheck하면 예외 없이 성공한다")
+        void fullRecruitingCrew_skipCapacityCheck_succeeds() {
+            // given — 정원 3, 이미 3명(꽉 참)인 RECRUITING 크루
+            Crew crew = recruitingCrew(3, 3);
+
+            // when — 정원 초과 상태에서 addMemberSkipCapacityCheck 호출
+            CrewMember member = crew.addMemberSkipCapacityCheck("newUser");
+
+            // then — 예외 없이 성공, currentMembers가 max(3)를 초과(4)해도 OK
+            assertThat(member.getUserId()).isEqualTo("newUser");
+            assertThat(crew.getCurrentMembers()).isEqualTo(4);
+            assertThat(crew.getMembers()).hasSize(4);
+        }
+
+        @Test
+        @DisplayName("COMPLETED 크루에 addMemberSkipCapacityCheck하면 CREW_NOT_RECRUITING 예외가 발생한다")
+        void completedCrew_skipCapacityCheck_throwsNotRecruiting() {
+            // given — 정원 여유 있는 COMPLETED 크루
+            Crew crew = crewWithStatus(CrewStatus.COMPLETED, 5, 1, false);
+
+            // when & then — 상태 거부는 여전히 동작
+            assertThatThrownBy(() -> crew.addMemberSkipCapacityCheck("user2"))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.CREW_NOT_RECRUITING);
+        }
+    }
+
+    @Nested
     @DisplayName("canJoin — 참여 가능 여부")
     class CanJoin {
 

@@ -42,6 +42,20 @@ public class CrewJpaAdapter implements CrewRepositoryPort {
         return entity.toDomain();
     }
 
+    /** 조건부 원자적 멤버 수 증가 — current_members < max_members일 때만 +1 */
+    @Override
+    public int incrementMembersIfNotFull(String id) {
+        return crewJpaRepository.incrementMembersIfNotFull(id);
+    }
+
+    /** 멤버 저장 + 즉시 flush — 조건부 전략의 유니크 위반을 이 시점에 DataIntegrityViolationException으로 발생 */
+    @Override
+    public CrewMember saveMemberAndFlush(CrewMember member) {
+        CrewMemberJpaEntity entity = CrewMemberJpaEntity.fromDomain(member);
+        crewMemberJpaRepository.saveAndFlush(entity);
+        return entity.toDomain();
+    }
+
     /** ID로 크루 조회 — 크루 상세·수정 시 사용 */
     @Override
     public Optional<Crew> findById(String id) {
