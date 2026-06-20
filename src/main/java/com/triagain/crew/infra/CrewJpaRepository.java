@@ -41,6 +41,12 @@ public interface CrewJpaRepository extends JpaRepository<CrewJpaEntity, String> 
             @Param("currentMembers") int currentMembers,
             @Param("version") Long version);
 
+    /** 조건부 원자적 멤버 수 증가 — current_members < max_members 조건부 +1 (전략 C 전용) */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "UPDATE crews SET current_members = current_members + 1 "
+            + "WHERE id = :id AND current_members < max_members", nativeQuery = true)
+    int incrementMembersIfNotFull(@Param("id") String id);
+
     /** 공개 크루 검색 — 키워드/카테고리 필터 + 상태 조건 */
     @Query("SELECT c FROM CrewJpaEntity c WHERE c.visibility = :visibility " +
             "AND (c.status = 'RECRUITING' OR (c.status = 'ACTIVE' AND c.allowLateJoin = true AND c.endDate >= :minEndDate)) " +

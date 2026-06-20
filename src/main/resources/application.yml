@@ -44,7 +44,7 @@ crew:
 triagain:
   feedback-form-url: "https://docs.google.com/forms/d/e/1FAIpQLScmW9TSnMkZhA5r9qYdeSkbRYMU863Ms02pVNhFqOIUEMMVrg/viewform"
   crew:
-    lock-strategy: PESSIMISTIC  # PESSIMISTIC | OPTIMISTIC (전환: --triagain.crew.lock-strategy=OPTIMISTIC)
+    lock-strategy: CONDITIONAL  # PESSIMISTIC | OPTIMISTIC | CONDITIONAL (전환: --triagain.crew.lock-strategy=PESSIMISTIC)
     max-retry: 3  # 낙관적 락 version 충돌 시 재시도 횟수
 
 mybatis:

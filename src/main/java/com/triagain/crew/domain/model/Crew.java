@@ -126,6 +126,26 @@ public class Crew {
                 deadlineTime, category, visibility, version, members);
     }
 
+    /**
+     * 조건부 UPDATE 전략용 멤버 추가 — 정원 검증은 DB predicate에 위임, 상태/마감/중복만 앱에서 검증.
+     * 추후 검증 규칙(상태/마감 등) 변경 시 addMember와 이 메서드 둘 다 동기화 필요.
+     */
+    public CrewMember addMemberSkipCapacityCheck(String userId) {
+        if (!isJoinableStatus()) {           // [수정] canNotJoin()은 isFull을 포함 → 정원-독립 상태 술어
+            throw new BusinessException(ErrorCode.CREW_NOT_RECRUITING);
+        }
+        if (isJoinDeadlinePassed()) {
+            throw new BusinessException(ErrorCode.CREW_JOIN_DEADLINE_PASSED);
+        }
+        if (isAlreadyMember(userId)) {
+            throw new BusinessException(ErrorCode.CREW_ALREADY_JOINED);
+        }
+        CrewMember member = CrewMember.createMember(userId, this.id);
+        this.members.add(member);
+        this.currentMembers++;
+        return member;
+    }
+
     /** 멤버 추가 — 정원·상태·마감일 검증 후 멤버 등록 */
     public CrewMember addMember(String userId) {
         if (isFull()) {
@@ -204,16 +224,25 @@ public class Crew {
         return this.currentMembers >= this.maxMembers;
     }
 
-     /** 참여 가능 상태 확인 — 모집 중이고 정원 미달인지 판단 */
+    /** 참여 가능 상태 확인 — 모집 중이고 정원 미달인지 판단 */
     public boolean canJoin() {
-        if (isFull()) return false;
-        if (status == CrewStatus.RECRUITING) return true;
-        return status == CrewStatus.ACTIVE && allowLateJoin;
+        return !isFull() && isJoinableStatus();
     }
 
     /** 참여 상태 확인 - 불가 **/
     public boolean canNotJoin() {
         return !canJoin();
+    }
+
+    /**
+     * 가입 가능 상태 여부 — 정원과 무관하게 모집 상태만 판정.
+     * 조건부 전략: 정원은 DB가 판정하므로 isFull을 제외한 상태 검증에 사용.
+     */
+    private boolean isJoinableStatus() {
+        if (status == CrewStatus.RECRUITING) {
+            return true;
+        }
+        return status == CrewStatus.ACTIVE && allowLateJoin;
     }
 
     /** 참여 마감 여부 확인 — 시작일 이후 늦은 참여 차단에 사용 */

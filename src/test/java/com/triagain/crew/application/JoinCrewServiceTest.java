@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -35,6 +37,7 @@ import com.triagain.crew.domain.vo.VerificationType;
 import com.triagain.crew.port.in.JoinCrewUseCase.JoinCrewCommand;
 import com.triagain.crew.port.in.JoinCrewUseCase.JoinCrewResult;
 import com.triagain.crew.port.out.CrewRepositoryPort;
+import org.springframework.dao.DataIntegrityViolationException;
 
 @ExtendWith(MockitoExtension.class)
 class JoinCrewServiceTest {
@@ -303,6 +306,142 @@ class JoinCrewServiceTest {
 				.extracting(e ->
 					((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.CREW_JOIN_CONFLICT);
+		}
+	}
+
+	@Nested
+	@DisplayName("조건부 원자적 UPDATE 경로 (CONDITIONAL)")
+	class ConditionalLock {
+
+		@BeforeEach
+		void setUp() {
+			given(lockProperties.isPessimistic()).willReturn(false);
+			given(lockProperties.isConditional()).willReturn(true);
+			given(txTemplate.execute(any())).willAnswer(invocation -> {
+				TransactionCallback<?> cb = invocation.getArgument(0);
+				return cb.doInTransaction(null);
+			});
+		}
+
+		@Test
+		@DisplayName("incrementMembersIfNotFull이 1을 반환하면 가입에 성공한다")
+		void conditionalJoin_success() {
+			// Given
+			Crew crew = publicRecruitingCrew(
+				LocalDate.now().plusDays(7),
+				LocalDate.now().plusDays(30));
+			given(crewRepositoryPort.findById("CREW-001"))
+				.willReturn(Optional.of(crew));
+			given(crewRepositoryPort.incrementMembersIfNotFull("CREW-001"))
+				.willReturn(1);
+			given(crewRepositoryPort.saveMemberAndFlush(any()))
+				.willReturn(null);
+
+			JoinCrewCommand command =
+				new JoinCrewCommand("user-1", "CREW-001");
+
+			// When
+			JoinCrewResult result = joinCrewService.joinCrew(command);
+
+			// Then
+			assertThat(result.role()).isEqualTo(CrewRole.MEMBER);
+			assertThat(result.userId()).isEqualTo("user-1");
+		}
+
+		@Test
+		@DisplayName("incrementMembersIfNotFull이 0을 반환하면 CREW_FULL 예외가 발생한다")
+		void conditionalJoin_full() {
+			// Given
+			Crew crew = publicRecruitingCrew(
+				LocalDate.now().plusDays(7),
+				LocalDate.now().plusDays(30));
+			given(crewRepositoryPort.findById("CREW-001"))
+				.willReturn(Optional.of(crew));
+			given(crewRepositoryPort.incrementMembersIfNotFull("CREW-001"))
+				.willReturn(0);
+
+			JoinCrewCommand command =
+				new JoinCrewCommand("user-1", "CREW-001");
+
+			// When & Then
+			assertThatThrownBy(() ->
+				joinCrewService.joinCrew(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e ->
+					((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.CREW_FULL);
+		}
+
+		@Test
+		@DisplayName("saveMemberAndFlush가 DataIntegrityViolationException을 던지면 CREW_ALREADY_JOINED")
+		void conditionalJoin_duplicateConcurrent() {
+			// ⚠️ U3: mock으로 DataIntegrityViolationException을 throw시키므로
+			// flush 누락 버그(plain save)는 여기서는 못 잡음 — 실DB T2(JoinCrewConcurrencyTest)가 필수
+			// Given
+			Crew crew = publicRecruitingCrew(
+				LocalDate.now().plusDays(7),
+				LocalDate.now().plusDays(30));
+			given(crewRepositoryPort.findById("CREW-001"))
+				.willReturn(Optional.of(crew));
+			given(crewRepositoryPort.incrementMembersIfNotFull("CREW-001"))
+				.willReturn(1);
+			given(crewRepositoryPort.saveMemberAndFlush(any()))
+				.willThrow(new DataIntegrityViolationException("uq_crew_members_crew_id_user_id"));
+
+			JoinCrewCommand command =
+				new JoinCrewCommand("user-1", "CREW-001");
+
+			// When & Then
+			assertThatThrownBy(() ->
+				joinCrewService.joinCrew(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e ->
+					((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.CREW_ALREADY_JOINED);
+		}
+
+		@Test
+		@DisplayName("PRIVATE 크루에 직접 가입하면 CREW_NOT_PUBLIC 예외")
+		void conditionalJoin_privateCrew() {
+			// Given
+			Crew crew = privateRecruitingCrew(
+				LocalDate.now().plusDays(7),
+				LocalDate.now().plusDays(30));
+			given(crewRepositoryPort.findById("CREW-001"))
+				.willReturn(Optional.of(crew));
+
+			JoinCrewCommand command =
+				new JoinCrewCommand("user-1", "CREW-001");
+
+			// When & Then
+			assertThatThrownBy(() ->
+				joinCrewService.joinCrew(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e ->
+					((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.CREW_NOT_PUBLIC);
+		}
+
+		@Test
+		@DisplayName("참여 마감일 초과 시 CREW_JOIN_DEADLINE_PASSED")
+		void conditionalJoin_deadlinePassed() {
+			// Given — endDate가 내일 → endDate-3 = 이틀 전 → 마감 초과
+			LocalDate endDate = LocalDate.now().plusDays(1);
+			LocalDate startDate = endDate.minusDays(7);
+			Crew crew = publicRecruitingCrew(startDate, endDate);
+			given(crewRepositoryPort.findById("CREW-001"))
+				.willReturn(Optional.of(crew));
+
+			JoinCrewCommand command =
+				new JoinCrewCommand("user-1", "CREW-001");
+
+			// When & Then
+			assertThatThrownBy(() ->
+				joinCrewService.joinCrew(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e ->
+					((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.CREW_JOIN_DEADLINE_PASSED);
 		}
 	}
 
