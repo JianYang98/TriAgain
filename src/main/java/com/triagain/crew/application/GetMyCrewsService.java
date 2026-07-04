@@ -75,7 +75,8 @@ public class GetMyCrewsService implements GetMyCrewsUseCase {
                 crew.getVisibility(),
                 verifiedCrewIds.contains(crew.getId()),
                 successCounts.getOrDefault(crew.getId(), 0),
-                verifiedDayCounts.getOrDefault(crew.getId(), 0)
+                verifiedDayCounts.getOrDefault(crew.getId(), 0),
+                crew.getInviteCode()
         );
     }
 }
