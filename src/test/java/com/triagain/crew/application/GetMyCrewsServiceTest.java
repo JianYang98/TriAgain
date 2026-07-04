@@ -288,6 +288,30 @@ class GetMyCrewsServiceTest {
     }
 
     // ─────────────────────────────────────────────────────────────
+    // inviteCode 매핑 테스트
+    // ─────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("크루 목록 결과에 초대코드가 매핑된다")
+    void getMyCrews_mapsInviteCode() {
+        // Given — 기존 activeCrew 헬퍼 재사용 (inviteCode = "ABC123")
+        given(crewRepositoryPort.findAllByUserId(USER_ID))
+                .willReturn(List.of(activeCrew("crew-1", "운동 크루")));
+        given(verificationQueryPort.findVerifiedCrewIds(eq(USER_ID), eq(List.of("crew-1")), any(LocalDate.class)))
+                .willReturn(Set.of());
+        given(verificationQueryPort.findApprovedDayCountsByCrewIds(eq(USER_ID), eq(Collections.emptyList())))
+                .willReturn(Map.of());
+        given(challengeRepositoryPort.findSuccessCountsByUserIdAndCrewIds(eq(USER_ID), eq(Collections.emptyList())))
+                .willReturn(Map.of());
+
+        // When
+        List<CrewSummaryResult> results = getMyCrewsService.getMyCrews(USER_ID);
+
+        // Then
+        assertThat(results.get(0).inviteCode()).isEqualTo("ABC123");
+    }
+
+    // ─────────────────────────────────────────────────────────────
     // 테스트 헬퍼
     // ─────────────────────────────────────────────────────────────
 
