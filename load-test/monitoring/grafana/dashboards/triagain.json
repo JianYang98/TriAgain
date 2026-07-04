@@ -215,6 +215,27 @@
           "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }
         }
       ]
+    },
+    {
+      "title": "Tomcat Threads (HTTP workers)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0 }, "overrides": [] },
+      "targets": [
+        { "expr": "tomcat_threads_busy_threads{application=\"triagain\"}",       "legendFormat": "Busy (처리중)",   "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" } },
+        { "expr": "tomcat_threads_current_threads{application=\"triagain\"}",     "legendFormat": "Current (생성됨)", "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" } },
+        { "expr": "tomcat_threads_config_max_threads{application=\"triagain\"}",  "legendFormat": "Max (한계=200)",   "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" } }
+      ]
+    },
+    {
+      "title": "HikariCP Acquire Wait (커넥션 획득 대기)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
+      "fieldConfig": { "defaults": { "unit": "s", "min": 0 }, "overrides": [] },
+      "targets": [
+        { "expr": "hikaricp_connections_acquire_seconds_max{application=\"triagain\"}", "legendFormat": "acquire max (워터마크)", "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" } },
+        { "expr": "rate(hikaricp_connections_acquire_seconds_sum{application=\"triagain\"}[1m]) / rate(hikaricp_connections_acquire_seconds_count{application=\"triagain\"}[1m])", "legendFormat": "acquire avg (1m)", "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" } }
+      ]
     }
   ],
   "refresh": "5s",

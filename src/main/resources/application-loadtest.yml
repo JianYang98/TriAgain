@@ -17,3 +17,21 @@ internal:
 # FCM: firebase.enabled 미설정 → NoOpNotificationSendAdapter 자동 활성화
 # (FcmAdapter는 firebase.enabled=true일 때만 로드됨)
 # 실제 FCM 발송 없이 즉시 true 반환 → 비용 0, 발송 로직 검증에 집중
+
+# ── 부하테스트 관측용 (prod 무영향, loadtest 프로파일 한정) ──
+
+# tomcat 워커 스레드풀(tomcat_threads_*) 노출.
+# MBeanRegistry가 켜져야 Micrometer가 JMX에서 스레드풀 지표를 읽는다.
+server:
+  tomcat:
+    mbeanregistry:
+      enabled: true
+
+# HTTP 요청 지연 분포(히스토그램) 노출.
+# 이게 켜져야 http_server_requests_seconds_bucket이 실리고
+# Grafana에서 histogram_quantile(0.95, ...)로 p95/p99가 계산된다.
+management:
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
