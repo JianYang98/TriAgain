@@ -30,7 +30,8 @@ public interface GetMyCrewsUseCase {
             CrewVisibility visibility,
             boolean todayVerified,
             int successCount,      // 요청자의 작심삼일(SUCCESS 챌린지) 횟수 — COMPLETED만 실집계, 그 외 0
-            int verifiedDayCount   // 요청자의 APPROVED 인증 일수 — COMPLETED만 실집계, 그 외 0
+            int verifiedDayCount,  // 요청자의 APPROVED 인증 일수 — COMPLETED만 실집계, 그 외 0
+            String inviteCode      // 크루 초대코드 — 본인이 멤버인 크루 목록이므로 노출 안전
     ) {
     }
 }

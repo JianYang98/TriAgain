@@ -1313,7 +1313,8 @@ Authorization: Bearer <token>
       "visibility": "PUBLIC",
       "todayVerified": false,
       "successCount": 2,
-      "verifiedDayCount": 8
+      "verifiedDayCount": 8,
+      "inviteCode": "A1B2C3"
     }
   ],
   "error": null
@@ -1337,6 +1338,7 @@ Authorization: Bearer <token>
 - `todayVerified`: 오늘 인증 완료 여부 (boolean)
 - `successCount` (int): 요청자가 이 크루에서 달성한 작심삼일(연속 3일 인증 성공) 횟수. `COMPLETED` 크루만 실집계, `RECRUITING`/`ACTIVE`는 `0`(미집계) — ACTIVE 크루의 `0`을 "달성 0회"로 오해 금지(미집계 ≠ 0회 달성).
 - `verifiedDayCount` (int): 요청자가 이 크루에서 `APPROVED` 인증을 한 총 일수. `COMPLETED` 크루만 실집계, `RECRUITING`/`ACTIVE`는 `0`(미집계) — ACTIVE 크루의 `0`을 "달성 0회"로 오해 금지(미집계 ≠ 0회 달성).
+- `inviteCode`: 크루 초대코드 (6자리 — 본인이 멤버인 크루 목록이므로 노출 안전)
 
 **에러 응답**
 | HTTP | 코드 | 메시지 | 설명 |
