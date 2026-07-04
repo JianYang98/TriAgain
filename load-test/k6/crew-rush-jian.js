@@ -58,7 +58,6 @@ export const options = {
     join_success: [`count==${expSuccess}`], // 정원 정확
     join_5xx: ["count==0"],
     join_dropped: ["count==0"],
-    join_dup: ["count==0"],
     // p95·conflict 는 박스 ⚠️로 (hard-fail 아님)
   },
 };

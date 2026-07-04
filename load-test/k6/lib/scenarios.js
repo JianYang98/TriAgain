@@ -8,6 +8,7 @@ import {
 import {
 	scenarioADuration, scenarioBDuration, scenarioDDuration,
 	verifyCreated, verifyDuplicate, joinSuccess, joinFull,
+	joinConflict, joinDup, joinError5xx, joinDropped,
 	dupJoinSuccess, dupJoinAlreadyJoined, scenarioEDuration,
 } from './metrics.js';
 
@@ -68,6 +69,13 @@ export function writeScenario() {
 // 50 VUs simultaneously try to join a crew with max_members=10.
 // Iterates over rush crews so multiple rounds are tested.
 // ============================================================
+
+// 응답 바디 error.code 안전 추출 (status 0/빈 바디/파싱 실패 시 null)
+function errorCode(res) {
+	try { const b = res.json(); return b && b.error ? b.error.code : null; }
+	catch (_) { return null; }
+}
+
 export function crewRush() {
 	const params = authHeaders(__VU);
 	const rushCrewId = `loadtest-rush-crew-${(__ITER % RUSH_CREW_COUNT) + 1}`;
@@ -78,12 +86,17 @@ export function crewRush() {
 	if (res.status === 201) {
 		joinSuccess.add(1);
 	} else if (res.status === 409) {
-		joinFull.add(1);
+		const code = errorCode(res);
+		if (code === 'CR004')      joinDup.add(1);
+		else if (code === 'CR023') joinConflict.add(1);
+		else                       joinFull.add(1);
+	} else if (res.status >= 500) {
+		joinError5xx.add(1);
+	} else if (res.status === 0) {
+		joinDropped.add(1);
 	}
 
-	check(res, {
-		'D: join or full': (r) => r.status === 201 || r.status === 409,
-	});
+	check(res, { 'D: join or full': (r) => r.status === 201 || r.status === 409 });
 }
 
 // ============================================================

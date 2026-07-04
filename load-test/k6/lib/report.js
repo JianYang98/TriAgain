@@ -14,10 +14,11 @@ export function handleSummary(data) {
 	// 스크립트명에서 파일명 추출 (예: load-write-heavy.js → load-write-heavy)
 	const scriptName = __ENV.K6_SCRIPT_NAME || 'k6-report';
 	const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-	const htmlFile = `results/raw/${scriptName}_${timestamp}.html`;
-
+	const tag = __ENV.RUN_TAG || '';
+	const base = `results/raw/${scriptName}${tag ? '_' + tag : ''}_${timestamp}`;
 	return {
-		[htmlFile]: htmlReport(data),
+		[`${base}.html`]:         htmlReport(data),
+		[`${base}.summary.json`]: JSON.stringify(data, null, 2),
 		stdout: textSummary(data, { indent: '  ', enableColors: true }),
 	};
 }

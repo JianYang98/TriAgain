@@ -13,7 +13,13 @@ export const verifyDuplicate = new Counter('verify_duplicate'); // 409
 
 // --- Scenario D: join success vs capacity full ---
 export const joinSuccess = new Counter('join_success');  // 201
-export const joinFull = new Counter('join_full');        // 409
+export const joinFull = new Counter('join_full');        // 409 CR002 정원초과
+
+// --- Scenario D 상세 분해 (전략 A/B/C 비교) ---
+export const joinConflict = new Counter('join_conflict'); // 409 CR023 (낙관락 재시도 소진)
+export const joinDup      = new Counter('join_dup');      // 409 CR004 (중복 가입)
+export const joinError5xx = new Counter('join_5xx');      // 5xx (서버 에러)
+export const joinDropped  = new Counter('join_dropped');  // status 0 (연결 실패/리셋)
 
 // --- Scenario E: duplicate join (전략 C 중복 가입 동시성 검증) ---
 export const dupJoinSuccess = new Counter('dup_join_success');       // 201 첫 가입
