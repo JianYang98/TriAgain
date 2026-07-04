@@ -40,8 +40,12 @@ psql -h <HOST> -U <USER> -d <DB> -c "SET app.scale='$SCALE';" -f 06_notification
 # 초기 1회 (러시 크루 생성)
 psql ... -f 07_rush_crews.sql
 
-# crew-rush.js 실행 사이마다 (참여한 멤버/챌린지 롤백)
+# crew-rush.js 실행 사이마다 (참여한 멤버/챌린지 롤백 + 가입 상태 복구)
 psql ... -f 07_rush_reset.sql
+
+# 크루를 통째로 재빌드할 때만 (파괴적) → teardown 후 다시 생성
+psql ... -f 07_rush_teardown.sql
+psql ... -f 07_rush_crews.sql
 ```
 
 ### API 테스트 반복용 (08)
@@ -64,7 +68,8 @@ psql ... -f 08_reset_api_verifications.sql
 | `05_challenges_scheduler.sql` | 스케줄러 테스트용 (어제 마감, 미인증 → FailExpiredChallengesScheduler 대상) | 초기 1회 |
 | `06_notifications.sql` | 알림 조회 테스트용 (유저당 10개) | 초기 1회 |
 | `07_rush_crews.sql` | 러시 테스트 전용 크루 (max_members=10) | 러시 테스트 초기 1회 |
-| `07_rush_reset.sql` | 러시 크루 멤버/챌린지 롤백 | `crew-rush.js` 실행 사이마다 |
+| `07_rush_reset.sql` | 러시 크루 멤버/챌린지 롤백 + 상태(ACTIVE/late_join) 복구 (비파괴) | `crew-rush.js` 실행 사이마다 |
+| `07_rush_teardown.sql` | 러시 크루 행까지 통째 삭제 (파괴적) → 이후 `07_rush_crews.sql` 재생성 | 크루 재빌드 필요 시만 |
 | `08_reset_api_verifications.sql` | 오늘자 인증 삭제 + API 챌린지 초기화 | k6 write 시나리오 실행 사이마다 |
 | `09_sched_activate.sql` | ActivateRecruitingCrews 대상 (RECRUITING 크루) | 스케줄러 측정 전 |
 | `09_sched_complete.sql` | CompleteExpiredCrews 대상 (만료 ACTIVE 크루 + IN_PROGRESS 챌린지) | 스케줄러 측정 전 |
