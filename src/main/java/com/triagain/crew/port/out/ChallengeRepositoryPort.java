@@ -44,4 +44,7 @@ public interface ChallengeRepositoryPort {
 
     /** 유저·크루 묶음별 SUCCESS 챌린지 수 조회 — 홈 완료 탭 작심삼일 횟수 배치 집계에 사용 */
     Map<String, Integer> findSuccessCountsByUserIdAndCrewIds(String userId, List<String> crewIds);
+
+    /** 유저·크루 묶음별 특정 상태 챌린지 조회 — 홈 목록 챌린지 진행도 배치 조회에 사용 */
+    List<Challenge> findAllByUserIdAndCrewIdInAndStatus(String userId, List<String> crewIds, ChallengeStatus status);
 }
