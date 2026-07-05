@@ -1314,7 +1314,12 @@ Authorization: Bearer <token>
       "todayVerified": false,
       "successCount": 2,
       "verifiedDayCount": 8,
-      "inviteCode": "A1B2C3"
+      "inviteCode": "A1B2C3",
+      "challengeProgress": {
+        "challengeStatus": "IN_PROGRESS",
+        "completedDays": 1,
+        "targetDays": 3
+      }
     }
   ],
   "error": null
@@ -1339,6 +1344,10 @@ Authorization: Bearer <token>
 - `successCount` (int): 요청자가 이 크루에서 달성한 작심삼일(연속 3일 인증 성공) 횟수. `COMPLETED` 크루만 실집계, `RECRUITING`/`ACTIVE`는 `0`(미집계) — ACTIVE 크루의 `0`을 "달성 0회"로 오해 금지(미집계 ≠ 0회 달성).
 - `verifiedDayCount` (int): 요청자가 이 크루에서 `APPROVED` 인증을 한 총 일수. `COMPLETED` 크루만 실집계, `RECRUITING`/`ACTIVE`는 `0`(미집계) — ACTIVE 크루의 `0`을 "달성 0회"로 오해 금지(미집계 ≠ 0회 달성).
 - `inviteCode`: 크루 초대코드 (6자리 — 본인이 멤버인 크루 목록이므로 노출 안전)
+- `challengeProgress` (nullable): 요청자의 현재 진행 중인 챌린지 진행도. 활성(IN_PROGRESS) 챌린지 없으면 `null`.
+  - `challengeStatus`: 챌린지 상태 (`IN_PROGRESS`)
+  - `completedDays`: 완료한 인증 일수 (0 ~ targetDays-1 — 목표 도달 시 챌린지가 SUCCESS로 전환되어 목록엔 미노출)
+  - `targetDays`: 목표 일수 (현재 항상 3)
 
 **에러 응답**
 | HTTP | 코드 | 메시지 | 설명 |

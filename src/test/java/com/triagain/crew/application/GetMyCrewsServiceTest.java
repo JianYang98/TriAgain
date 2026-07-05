@@ -1,6 +1,8 @@
 package com.triagain.crew.application;
 
+import com.triagain.crew.domain.model.Challenge;
 import com.triagain.crew.domain.model.Crew;
+import com.triagain.crew.domain.vo.ChallengeStatus;
 import com.triagain.crew.domain.vo.CrewCategory;
 import com.triagain.crew.domain.vo.CrewStatus;
 import com.triagain.crew.domain.vo.CrewVisibility;
@@ -309,6 +311,125 @@ class GetMyCrewsServiceTest {
 
         // Then
         assertThat(results.get(0).inviteCode()).isEqualTo("ABC123");
+    }
+
+    // === challengeProgress (홈 목록 진행도) 테스트 ===
+
+    @Test
+    @DisplayName("ACTIVE 크루에 진행 중 챌린지가 있으면 challengeProgress에 진행도가 담긴다")
+    void getMyCrews_activeCrewWithInProgressChallenge_progressMapped() {
+        // Given
+        Crew activeCrew = activeCrew("crew-1", "운동 크루");
+        Challenge challenge = inProgressChallenge("crew-1", 1);
+
+        given(crewRepositoryPort.findAllByUserId(USER_ID))
+                .willReturn(List.of(activeCrew));
+        given(verificationQueryPort.findVerifiedCrewIds(
+                eq(USER_ID), eq(List.of("crew-1")), any(LocalDate.class)))
+                .willReturn(Set.of());
+        given(challengeRepositoryPort.findAllByUserIdAndCrewIdInAndStatus(
+                eq(USER_ID), eq(List.of("crew-1")), eq(ChallengeStatus.IN_PROGRESS)))
+                .willReturn(List.of(challenge));
+        given(verificationQueryPort.findApprovedDayCountsByCrewIds(eq(USER_ID), eq(Collections.emptyList())))
+                .willReturn(Map.of());
+        given(challengeRepositoryPort.findSuccessCountsByUserIdAndCrewIds(eq(USER_ID), eq(Collections.emptyList())))
+                .willReturn(Map.of());
+
+        // When
+        List<CrewSummaryResult> results = getMyCrewsService.getMyCrews(USER_ID);
+
+        // Then
+        CrewSummaryResult.ChallengeProgress progress = results.get(0).challengeProgress();
+        assertThat(progress).isNotNull();
+        assertThat(progress.challengeStatus()).isEqualTo("IN_PROGRESS");
+        assertThat(progress.completedDays()).isEqualTo(1);
+        assertThat(progress.targetDays()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("ACTIVE 크루인데 진행 중 챌린지가 없으면 challengeProgress는 null이다")
+    void getMyCrews_activeCrewWithoutChallenge_progressNull() {
+        // Given
+        Crew activeCrew = activeCrew("crew-1", "운동 크루");
+
+        given(crewRepositoryPort.findAllByUserId(USER_ID))
+                .willReturn(List.of(activeCrew));
+        given(verificationQueryPort.findVerifiedCrewIds(
+                eq(USER_ID), eq(List.of("crew-1")), any(LocalDate.class)))
+                .willReturn(Set.of());
+        given(challengeRepositoryPort.findAllByUserIdAndCrewIdInAndStatus(
+                eq(USER_ID), eq(List.of("crew-1")), eq(ChallengeStatus.IN_PROGRESS)))
+                .willReturn(List.of());
+        given(verificationQueryPort.findApprovedDayCountsByCrewIds(eq(USER_ID), eq(Collections.emptyList())))
+                .willReturn(Map.of());
+        given(challengeRepositoryPort.findSuccessCountsByUserIdAndCrewIds(eq(USER_ID), eq(Collections.emptyList())))
+                .willReturn(Map.of());
+
+        // When
+        List<CrewSummaryResult> results = getMyCrewsService.getMyCrews(USER_ID);
+
+        // Then
+        assertThat(results.get(0).challengeProgress()).isNull();
+    }
+
+    @Test
+    @DisplayName("RECRUITING 크루는 challengeProgress가 null이다(챌린지 배치 대상 제외)")
+    void getMyCrews_recruitingCrew_progressNull() {
+        // Given
+        Crew recruitingCrew = recruitingCrew("crew-r", "모집 중 크루");
+
+        given(crewRepositoryPort.findAllByUserId(USER_ID))
+                .willReturn(List.of(recruitingCrew));
+        given(verificationQueryPort.findVerifiedCrewIds(
+                eq(USER_ID), eq(Collections.emptyList()), any(LocalDate.class)))
+                .willReturn(Set.of());
+        given(challengeRepositoryPort.findAllByUserIdAndCrewIdInAndStatus(
+                eq(USER_ID), eq(Collections.emptyList()), eq(ChallengeStatus.IN_PROGRESS)))
+                .willReturn(List.of());
+        given(verificationQueryPort.findApprovedDayCountsByCrewIds(eq(USER_ID), eq(Collections.emptyList())))
+                .willReturn(Map.of());
+        given(challengeRepositoryPort.findSuccessCountsByUserIdAndCrewIds(eq(USER_ID), eq(Collections.emptyList())))
+                .willReturn(Map.of());
+
+        // When
+        List<CrewSummaryResult> results = getMyCrewsService.getMyCrews(USER_ID);
+
+        // Then
+        assertThat(results.get(0).challengeProgress()).isNull();
+    }
+
+    @Test
+    @DisplayName("ACTIVE 크루 여러 개여도 챌린지 진행도 배치 쿼리는 정확히 1회 호출된다(N+1 아님)")
+    void getMyCrews_multipleActiveCrews_challengeBatchQueryCalledOnce() {
+        // Given
+        Crew a1 = activeCrew("crew-a1", "운동1");
+        Crew a2 = activeCrew("crew-a2", "운동2");
+
+        given(crewRepositoryPort.findAllByUserId(USER_ID))
+                .willReturn(List.of(a1, a2));
+        given(verificationQueryPort.findVerifiedCrewIds(
+                eq(USER_ID), eq(List.of("crew-a1", "crew-a2")), any(LocalDate.class)))
+                .willReturn(Set.of());
+        given(challengeRepositoryPort.findAllByUserIdAndCrewIdInAndStatus(
+                eq(USER_ID), eq(List.of("crew-a1", "crew-a2")), eq(ChallengeStatus.IN_PROGRESS)))
+                .willReturn(List.of(inProgressChallenge("crew-a1", 2)));
+        given(verificationQueryPort.findApprovedDayCountsByCrewIds(eq(USER_ID), eq(Collections.emptyList())))
+                .willReturn(Map.of());
+        given(challengeRepositoryPort.findSuccessCountsByUserIdAndCrewIds(eq(USER_ID), eq(Collections.emptyList())))
+                .willReturn(Map.of());
+
+        // When
+        getMyCrewsService.getMyCrews(USER_ID);
+
+        // Then
+        verify(challengeRepositoryPort, times(1))
+                .findAllByUserIdAndCrewIdInAndStatus(any(), any(), any());
+    }
+
+    private static Challenge inProgressChallenge(String crewId, int completedDays) {
+        return Challenge.of("chal-" + crewId, USER_ID, crewId, 1, 3, completedDays,
+                ChallengeStatus.IN_PROGRESS, LocalDate.now().minusDays(completedDays),
+                LocalDateTime.now().plusHours(5), LocalDateTime.now());
     }
 
     // ─────────────────────────────────────────────────────────────
