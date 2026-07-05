@@ -68,4 +68,8 @@ public interface ChallengeJpaRepository extends JpaRepository<ChallengeJpaEntity
     List<Object[]> countSuccessGroupByCrewId(
             @Param("userId") String userId,
             @Param("crewIds") List<String> crewIds);
+
+    /** 유저·크루 묶음별 특정 상태 챌린지 목록 조회 — 홈 목록 챌린지 진행도 배치 조회 */
+    List<ChallengeJpaEntity> findAllByUserIdAndCrewIdInAndStatus(
+            String userId, List<String> crewIds, ChallengeStatus status);
 }

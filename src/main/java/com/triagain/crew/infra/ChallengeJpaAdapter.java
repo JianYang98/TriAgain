@@ -109,4 +109,16 @@ public class ChallengeJpaAdapter implements ChallengeRepositoryPort {
         }
         return map;
     }
+
+    /** 유저·크루 묶음별 특정 상태 챌린지 조회 — 홈 목록 챌린지 진행도 배치 조회에 사용 */
+    @Override
+    public List<Challenge> findAllByUserIdAndCrewIdInAndStatus(
+            String userId, List<String> crewIds, ChallengeStatus status) {
+        if (crewIds.isEmpty()) {
+            return List.of();
+        }
+        return challengeJpaRepository.findAllByUserIdAndCrewIdInAndStatus(userId, crewIds, status).stream()
+                .map(ChallengeJpaEntity::toDomain)
+                .toList();
+    }
 }
