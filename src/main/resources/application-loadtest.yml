@@ -35,14 +35,3 @@ management:
     distribution:
       percentiles-histogram:
         http.server.requests: true
-
-# ── 로그 신호/잡음 (prod 무영향, loadtest 프로파일 한정) ──
-
-# 러시 부하 시 CREW_FULL(CR002) 등 비즈니스 4xx는 "정원초과 거절"이라는
-# 정상 기대 결과인데, GlobalExceptionHandler가 전부 WARN으로 찍어
-# vu700 한 스윕에 CR002 WARN이 수백~1,700줄 쌓여 진짜 신호(5xx·이상)가 묻힌다.
-# 핸들러를 ERROR로 올려 4xx 잡음을 죽이고, 미처리 5xx(log.error)만 남긴다.
-# ⚠️ CR002 카운트·유령 409는 Prometheus(http_server_requests status=409·IOException 시리즈)로 여전히 관측 가능.
-logging:
-  level:
-    com.triagain.common.exception.GlobalExceptionHandler: ERROR
