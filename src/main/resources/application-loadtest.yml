@@ -35,3 +35,6 @@ management:
     distribution:
       percentiles-histogram:
         http.server.requests: true
+        # HikariCP acquire 대기 분포(hikaricp_connections_acquire_seconds_bucket) 노출.
+        # count/sum으로는 avg까지만 계산 가능하고, p50/p95는 버킷이 있어야 나온다.
+        hikaricp.connections.acquire: true

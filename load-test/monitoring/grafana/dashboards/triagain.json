@@ -236,6 +236,16 @@
         { "expr": "hikaricp_connections_acquire_seconds_max{application=\"triagain\"}", "legendFormat": "acquire max (워터마크)", "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" } },
         { "expr": "rate(hikaricp_connections_acquire_seconds_sum{application=\"triagain\"}[1m]) / rate(hikaricp_connections_acquire_seconds_count{application=\"triagain\"}[1m])", "legendFormat": "acquire avg (1m)", "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" } }
       ]
+    },
+    {
+      "title": "HikariCP Acquire p50 / p95 (분포 — loadtest 히스토그램 필요)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 40 },
+      "fieldConfig": { "defaults": { "unit": "s", "min": 0 }, "overrides": [] },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum(rate(hikaricp_connections_acquire_seconds_bucket{application=\"triagain\"}[1m])) by (le))", "legendFormat": "p50", "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" } },
+        { "expr": "histogram_quantile(0.95, sum(rate(hikaricp_connections_acquire_seconds_bucket{application=\"triagain\"}[1m])) by (le))", "legendFormat": "p95", "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" } }
+      ]
     }
   ],
   "refresh": "5s",
