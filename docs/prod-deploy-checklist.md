@@ -64,5 +64,8 @@
 - [ ] Lambda → API 서버 `/internal/upload-sessions/{id}/complete` 연결 확인
 - [ ] S3 버킷 생성 + CORS 정책 설정 (Flutter 클라이언트 → S3 직접 업로드용)
 - [ ] CORS 설정 (현재 Spring 레벨 미구현 — 클라이언트 도메인 허용 필요)
-- [ ] SSL/HTTPS 설정 (ALB 또는 EC2 레벨)
+- [x] SSL/HTTPS 설정 — EC2 호스트 nginx가 443 종료 후 앱 컨테이너(:8080)로 프록시 (레포 밖 수동 구성)
+  - 인증서: Let's Encrypt certbot (authenticator/installer=nginx), `/etc/letsencrypt/live/api.triagain.kr/`, `/etc/letsencrypt/live/triagain.kr/`
+  - 자동 갱신: `certbot-renew.timer` — 2026-07-08 enable (그전까지 disabled여서 07-08 만료 장애 발생, debugging-log 참조). 갱신 시 nginx 리로드 자동
+  - ⚠️ 갱신 확인: 만료 30일 전 자동 갱신 — `sudo certbot certificates`로 주기 점검
 - [ ] Health check 엔드포인트(`/health`) 동작 확인
