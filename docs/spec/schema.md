@@ -25,6 +25,11 @@ erDiagram
     verifications ||--o{ reactions : "반응"
     users ||--o{ reactions : "남김"
 
+    users ||--o{ habits : "등록"
+    habits ||--o{ habit_cycles : "생성"
+    habit_cycles ||--o{ habit_verifications : "포함"
+    habit_verifications |o--o| upload_session : "0..1"
+
     users {
         string id PK "소셜 고유 ID — VARCHAR(64)"
         string provider "KAKAO | APPLE"
@@ -143,6 +148,7 @@ erDiagram
         bigint id PK
         varchar(64) user_id FK
         varchar(36) crew_id FK "nullable — 크루 연결 (cross-crew 검증용)"
+        varchar(36) habit_id FK "nullable — 습관 연결 (솔로 세션의 발급 컨텍스트 바인딩, crew_id와 XOR, V23)"
         varchar image_key
         varchar content_type
         varchar status "PENDING / COMPLETED / EXPIRED"
@@ -152,7 +158,7 @@ erDiagram
 
     dead_letters {
         varchar(36) id PK
-        varchar(30) task_type "CHALLENGE_FAIL / CREW_ACTIVATE / CREW_COMPLETE / SESSION_EXPIRE / CREW_START_NOTIFICATION / REMINDER / CHALLENGE_NOTIFICATION"
+        varchar(30) task_type "CHALLENGE_FAIL / CREW_ACTIVATE / CREW_COMPLETE / SESSION_EXPIRE / CREW_START_NOTIFICATION / REMINDER / CHALLENGE_NOTIFICATION / HABIT_CYCLE_FAIL"
         varchar(36) target_id "실패 대상 엔티티 ID"
         text error_message "nullable"
         varchar(20) status "PENDING / RESOLVED / ABANDONED"
@@ -161,6 +167,43 @@ erDiagram
         timestamp next_retry_at "nullable"
         timestamp created_at
         timestamp updated_at
+    }
+
+    habits {
+        varchar(36) id PK
+        varchar(64) user_id FK
+        varchar(50) name
+        enum verification_type "TEXT / PHOTO"
+        time deadline_time "DEFAULT 23:59:59"
+        enum status "ACTIVE / PAUSED / ENDED"
+        timestamp created_at
+        timestamp ended_at "nullable — status=ENDED일 때 set, 지난기록 정렬 축"
+    }
+
+    habit_cycles {
+        varchar(36) id PK
+        varchar(36) habit_id FK
+        varchar(64) user_id FK
+        int cycle_number
+        int target_days "DEFAULT 3"
+        int completed_days
+        enum status "IN_PROGRESS / SUCCESS / FAILED"
+        date start_date
+        timestamp deadline "startDate+3일 — 캡 없음(크루 endDate 캡과 차이)"
+        timestamp created_at
+    }
+
+    habit_verifications {
+        varchar(36) id PK
+        varchar(36) habit_cycle_id FK
+        varchar(36) habit_id FK
+        varchar(64) user_id FK
+        bigint upload_session_id FK "nullable, 사진 인증 시에만"
+        varchar image_url "nullable"
+        varchar(500) text_content "nullable, 최대 500자"
+        date target_date
+        int attempt_number
+        timestamp created_at
     }
 ```
 
@@ -175,6 +218,10 @@ erDiagram
 | verifications ↔ upload_session | 사진 인증 시에만 0..1 관계 (nullable FK) |
 | verifications ↔ reports | 인증에 대한 신고 |
 | reports ↔ reviews | 신고에 대한 검토 |
+| users ↔ habits | 유저가 여러 습관(솔로 모드) 등록 가능 (V23) |
+| habits ↔ habit_cycles | 습관당 여러 작심 사이클(3일 단위) — `Challenge` 경량 복제, 기간 캡 없음 |
+| habit_cycles ↔ habit_verifications | 사이클당 여러 인증 기록 |
+| habit_verifications ↔ upload_session | 사진 인증 시에만 0..1 관계 (`upload_session.habit_id`로 발급 컨텍스트 바인딩, crew_id와 XOR) |
 
 ## 3. 상태(Enum) 정의
 
@@ -297,6 +344,27 @@ erDiagram
 | CREW_START_NOTIFICATION | 크루 시작 알림 |
 | REMINDER | 미인증 리마인더 알림 |
 | CHALLENGE_NOTIFICATION | 챌린지 성공/실패 알림 |
+| HABIT_CYCLE_FAIL | 습관(솔로) 작심 사이클 실패 처리 (V23) |
+
+### habits.status
+| 값 | 의미 |
+|----|------|
+| ACTIVE | 진행 가능 |
+| PAUSED | 일시 중지 (재개 가능, IN_PROGRESS 사이클 없을 때만 진입) |
+| ENDED | 종료 (터미널, 지난기록으로 이동. 기존 소프트삭제 deleted_at 대체) |
+
+### habits.verification_type
+| 값 | 의미 |
+|----|------|
+| TEXT | 텍스트 인증 |
+| PHOTO | 사진 인증 |
+
+### habit_cycles.status
+| 값 | 의미 |
+|----|------|
+| IN_PROGRESS | 진행 중 |
+| SUCCESS | 3일 연속 성공 (터미널) |
+| FAILED | 마감+유예 초과 미인증 (터미널, 재시작 가능) |
 
 ### notifications.type
 | 값 | 의미 |
@@ -347,6 +415,28 @@ ON report(verification_id, reporter_id);
 -- Flyway V22에서 추가 (전략 C 조건부 UPDATE의 동시성 안전망)
 CREATE UNIQUE INDEX uq_crew_members_crew_id_user_id
 ON crew_members(crew_id, user_id);
+
+-- 습관당 IN_PROGRESS 사이클 1개 (더블탭 방어) — uk_challenges_user_crew_in_progress 대응
+-- Flyway V23에서 추가
+CREATE UNIQUE INDEX uk_habit_cycles_in_progress
+ON habit_cycles(habit_id)
+WHERE status = 'IN_PROGRESS';
+
+-- 습관별 하루 1인증 (습관은 단일 소유자라 habit_id 축으로 충분)
+-- Flyway V23에서 추가
+CREATE UNIQUE INDEX uk_habit_verifications_habit_date
+ON habit_verifications(habit_id, target_date);
+
+-- 세션 1회 사용 강제 (NULL은 UNIQUE 중복 허용 — TEXT 인증 다수 무해)
+-- Flyway V23에서 추가
+CREATE UNIQUE INDEX uk_habit_verifications_upload_session
+ON habit_verifications(upload_session_id);
+
+-- 홈 목록 조회 (종료 안 된 습관만)
+-- Flyway V23에서 추가
+CREATE INDEX idx_habits_user
+ON habits(user_id)
+WHERE status <> 'ENDED';
 ```
 
 ### 크루 검색 인덱스
