@@ -86,5 +86,20 @@ load-test/tokens.csv
 load-test/results/raw/
 load-test/results/screenshots/
 
+# 부하테스트 raw 산출물 — 분석 md만 커밋 (db76e2d 컨벤션). results/ 스코프 한정 (grafana json 등 보호)
+load-test/results/**/*.pcap
+load-test/results/**/*.log
+load-test/results/**/*.json
+load-test/results/**/*.png
+load-test/results/**/*.csv
+load-test/results/**/*.html
+load-test/results/**/*.txt
+load-test/results/**/*.pid
+load-test/results/**/*.py
+load-test/results/**/prometheus/
+load-test/results/**/prometheus-*/
+load-test/_backups/
+**/.DS_Store
+
 # Handoff (개인 인수인계 문서 — 로컬 전용)
 .claude/handoff.md

@@ -1,139 +1,183 @@
 # 11. 전략 A/B/C 비교 — 조건부 원자적 UPDATE (CONDITIONAL)
 
-> **상태**: TBD — 결과 셀은 모두 «TBD — 사용자가 실측»  
-> **목적**: feat/load-test 브랜치에서 CONDITIONAL 전략의 성능·정합성을 A/B 대비 실측으로 검증
+> **상태**: ✅ 측정 완료 (2026-06-19) — 21 측정(A/B/C × 정원10·정원100) 실측 반영
+> **목적**: feat/load-test 브랜치에서 CONDITIONAL 전략(C)의 성능·정합성을 비관락(A)·낙관락(B) 대비 실측 검증
+> **데이터 출처**: `results/raw/k6-report_*.summary.json` (아래 §참조 데이터 파일)
+> **라벨 규칙**: 〔측정〕 k6 카운터/트렌드 직접값 · 〔파생〕 status 0 등 간접 카운터·합산 · 〔추정〕 근본원인 귀속·미수집 항목
 
 ---
 
-## 측정 환경
-
-환경은 `00_environment.md`의 07/09 측정 환경과 동일하게 고정할 것.  
-환경이 다른 숫자는 같은 비교표에 섞지 말 것(섞으면 비교 무효).
+## 0. 측정 환경
 
 | 항목 | 값 |
 |------|-----|
-| 서버 | «TBD — 사용자가 실측» |
-| DB | «TBD» |
-| JVM | «TBD» |
-| k6 실행 위치 | «TBD» |
+| 서버 | EC2 `15.164.69.243` (t3.micro 추정 — 07/09 측정과 동일 전제) |
+| DB | RDS `triagain-db...ap-northeast-2:5432/triagain` (PostgreSQL 16) |
+| JVM 타임존 | prod=KST (Dockerfile) — 본 테스트 무관 |
+| 전략 전환 | `--triagain.crew.lock-strategy=PESSIMISTIC|OPTIMISTIC|CONDITIONAL` |
+| 크루 | 단일 크루 `loadtest-rush-crew-1` 집중 경합 (per-vu-iterations, iters=1) |
+| k6 | v1.6.1, 로컬(darwin/arm64) → EC2 |
+
+> ⚠️ 서버 스펙(t3.micro)·인스턴스 동일성은 07/09 측정과 같다는 **전제**다(미재확인). 다른 스펙이면 절대 수치 비교는 무효, 전략 간 상대 비교는 유효.
+
+---
+
+## 측정 신뢰성 — 채택 런 / 폐기 런
+
+재실행이 있었던 태그는 **정합성 충족 런(succ==정원, dup==0, 정원 일치)**을 채택했다.
+
+| 폐기 런 | 증상 | 사유 | 채택 대체 |
+|---------|------|------|----------|
+| `B_max10_vu300 @03-30-26` | succ=**0** | reset 미적용(크루 선만석) | `@03-35-17` (succ10) |
+| `C_max10_vu300 @03-03-44` | succ=**0**, dup=9 | reset 미적용 + 토큰 오염(CR004) | `@03-06-20` (succ10) |
+| `C_max100_vu200 @03-12-28` | succ=**10** (max100인데) | 크루 정원이 아직 10 | `@03-18-43` (succ100) |
+| `A_max10_vu300 @05-34-49` | drop46 | 동일조건 클린런 존재 | `@05-35-17` (drop0) |
+| `A_max100_vu200 @05-44-24` | drop10 | 동일조건 클린런 존재 | `@05-43-37` (succ100/full100/drop0) |
+
+> `join_dropped`(status 0)는 재실행 간 편차가 큰 **연결계층 지표**다(같은 조건에서 0↔46, 0↔10). 전략 판별 1차 지표로 쓰지 않고, p95/정합성/conflict를 1차로 본다.
 
 ---
 
 ## 1. 정원 경합 (crew-rush) — 정원 10명, VU 50/100/200/300
 
-### 측정 절차
+`join_success`·`join_full`·`join_conflict`·`p95`는 〔측정〕, `drop`은 〔파생〕.
 
-```bash
-# 1. CONDITIONAL 전략으로 서버 재기동
-java -jar app.jar --triagain.crew.lock-strategy=CONDITIONAL
+| VU | 전략 | succ | full(CR002) | conflict(CR023) | drop | avg(ms) | **p95(ms)** | max(ms) |
+|----|------|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| 50  | A | 10 | 40 | 0 | 0 | 782 | 924 | 931 |
+| 50  | B | 10 | 20 | **20** | 0 | 970 | 1141 | 1147 |
+| 50  | **C** | 10 | 40 | 0 | 0 | **566** | **605** | 622 |
+| 100 | A | 10 | 90 | 0 | 0 | 604 | 863 | 913 |
+| 100 | B | 10 | 72 | **18** | 0 | 856 | 1055 | 1062 |
+| 100 | **C** | 10 | 90 | 0 | 0 | **358** | **550** | 557 |
+| 200 | A | 10 | 190 | 0 | 0 | 917 | 1367 | 1447 |
+| 200 | B | 10 | 149 | **14** | 27 | 911 | 1459 | 1462 |
+| 200 | **C** | 10 | 190 | 0 | 0 | **510** | **842** | 886 |
+| 300 | A | 10 | 290 | 0 | 0 | 959 | 1545 | 2485 |
+| 300 | B | 10 | 209 | **16** | 65 | 702 | 1268 | 1325 |
+| 300 | **C** | 10 | 211 | 0 | 79 | **380** | **743** | 1131 |
 
-# 2. 데이터 초기화 (기존 rush reset SQL 재사용)
-psql ... -f load-test/sql/07_rush_reset.sql
-
-# 3. VU별 실행
-k6 run --env BASE_URL=http://<SERVER> --env TARGET_VUS=50  load-test/k6/crew-rush.js
-k6 run --env BASE_URL=http://<SERVER> --env TARGET_VUS=100 load-test/k6/crew-rush.js
-k6 run --env BASE_URL=http://<SERVER> --env TARGET_VUS=200 load-test/k6/crew-rush.js
-k6 run --env BASE_URL=http://<SERVER> --env TARGET_VUS=300 load-test/k6/crew-rush.js
-```
-
-### 결과 (정원 10명)
-
-| VU | 전략 | join_success | join_full | p95 (ms) | conn_reset | 비고 |
-|----|------|:---:|:---:|:---:|:---:|------|
-| 50 | A (PESSIMISTIC) | 10 | 40 | «07 측정값» | «07 측정값» | 07_crew-rush.md 참조 |
-| 50 | B (OPTIMISTIC) | 10 | 40 | «09 측정값» | 0 | 09_optimistic-lock-comparison.md 참조 |
-| 50 | **C (CONDITIONAL)** | «TBD» | «TBD» | «TBD» | «TBD» | |
-| 100 | A | 10 | 90 | «07» | «07» | |
-| 100 | B | 10 | 90 | «09» | 0 | |
-| 100 | **C** | «TBD» | «TBD» | «TBD» | «TBD» | |
-| 200 | A | 10 | 190 | «07» | «07 conn_reset 발생» | |
-| 200 | B | 10 | 190 | «09» | 0 | |
-| 200 | **C** | «TBD» | «TBD» | «TBD» | «TBD» | |
-| 300 | A | 10 | 290 | «07» | «07 심화» | |
-| 300 | B | 10 | 290 | «09» | 0 | |
-| 300 | **C** | «TBD» | «TBD» | «TBD» | «TBD» | |
+**정원10 요약**: 세 전략 모두 `succ==10` 정합성 충족. **C가 p95·avg 전 구간 최저**(p95 평균 A 1175 / B 1230 / **C 685** ms). B만 CR023 재시도소진(14~20건)·drop(vu≥200) 발생.
 
 ---
 
 ## 2. 100명 정원경합 (100-way race) — 정원 100명, VU 200/400/800
 
-> C 채택 명분 실증 구간 — 단일 행 100-way 경합에서 A(락 대기 폭증)/B(CAS 재시도 폭증) 대비 격차 최대 예상.  
-> 정원 상한 가드(validateMaxMembers 100)가 feat/load-test 브랜치에 반영되어 있어야 함.
+> C 채택 명분 실증 구간 — 단일 행 100-way 경합.
 
-### 측정 절차
+| VU | 전략 | succ | full(CR002) | conflict(CR023) | drop | avg(ms) | **p95(ms)** | max(ms) |
+|----|------|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| 200 | A | 100 | 100 | 0 | 0 | 1131 | 1687 | 1747 |
+| 200 | B | **64** | 0 | **136** | 0 | 1259 | 2527 | 2754 |
+| 200 | **C** | 100 | 95 | 0 | 5 | **646** | **1105** | 1129 |
+| 400 | A | 100 | 221 | 0 | 79 | 921 | 1761 | 1842 |
+| 400 | B | 100 | 82 | **218** | 0 | 1459 | 2359 | 2411 |
+| 400 | **C** | 100 | 202 | 0 | 98 | **613** | **1231** | 1342 |
+| 800 | A | 100 | 598 | 0 | 102 | 1760 | 2989 | 3164 |
+| 800 | B | **99** | 253 | **221** | 227 | 1639 | 2932 | **7542** |
+| 800 | **C** | 100 | 601 | 0 | 99 | **1191** | **2027** | 2393 |
 
-```bash
-# 데이터 초기화 (maxMembers=100 크루 준비)
-psql ... -f load-test/sql/07_rush_reset.sql  # maxMembers 100으로 수정 후 실행
-
-# VU별 실행
-k6 run --env BASE_URL=http://<SERVER> --env TARGET_VUS=200 --env RUSH_CREW_COUNT=1 \
-  load-test/k6/crew-rush.js
-k6 run --env BASE_URL=http://<SERVER> --env TARGET_VUS=400 --env RUSH_CREW_COUNT=1 \
-  load-test/k6/crew-rush.js
-k6 run --env BASE_URL=http://<SERVER> --env TARGET_VUS=800 --env RUSH_CREW_COUNT=1 \
-  load-test/k6/crew-rush.js
-```
-
-### 결과 (정원 100명)
-
-| VU | 전략 | join_success | join_full | p95 (ms) | conn_reset | 비고 |
-|----|------|:---:|:---:|:---:|:---:|------|
-| 200 | A | «TBD» | «TBD» | «TBD» | «TBD» | |
-| 200 | B | «TBD» | «TBD» | «TBD» | «TBD» | |
-| 200 | **C** | «TBD» | «TBD» | «TBD» | «TBD» | |
-| 400 | A | «TBD» | «TBD» | «TBD» | «TBD» | |
-| 400 | B | «TBD» | «TBD» | «TBD» | «TBD» | |
-| 400 | **C** | «TBD» | «TBD» | «TBD» | «TBD» | |
-| 800 | A | «TBD» | «TBD» | «TBD» | «TBD» | |
-| 800 | B | «TBD» | «TBD» | «TBD» | «TBD» | |
-| 800 | **C** | «TBD» | «TBD» | «TBD» | «TBD» | |
+**정원100 핵심 발견**:
+- 🔴 **B(낙관락) 정합성 실패** — `VU200`에서 succ=**64/100** (full=0). CAS 재시도가 정원을 채우기 전에 소진되어 **크루가 정원 미달(64명)로 종료**. `VU800`도 succ=99(1명 미달). 정원 보장 자체가 깨진다.
+- ✅ A·C는 전 구간 `succ==100` 정합성 충족.
+- ⚡ **C가 p95 전 구간 최저**(평균 A 2145 / B 2606 / **C 1454** ms). A 대비 ~32%, B 대비 ~44% 낮음.
+- 🟡 **연결 drop은 전략 판별자가 아님** — 극단 VU(400/800)에서 A(79·102)·C(98·99) 유사, **C가 vu400서 오히려 약간 많음(98 vs 79)**. vu800서 A·C 모두 `http_req_connecting` p95 279·357ms로 동반 상승 = **accept-queue 포화 지문**〔측정 근거〕 → 락 도달 전 연결계층 한계(t3.micro), 전략 무관. 단 vu300/정원10은 재실행 편차 큼(drop A 0↔46 / C 79↔97)이라 단일값 과해석 금지. B는 vu800서 drop227·max 7.5s로 가장 불안정. **서버측 확인(§6): 진짜 천장은 HikariCP 풀(max 10) — 100-way race서 pending ~70 급증, CPU<60%·힙 정상.** 풀 크기가 A/B/C 공통 제약이라 drop이 전략 무관.
 
 ---
 
 ## 3. 중복 가입 동시성 (dup-join) — 전략 C 전용
 
-### 측정 절차
-
-```bash
-# 1. DUP_CREW_ID, DUP_TOKEN 준비 (사전 생성 필요)
-# 2. 실행
-k6 run \
-  --env BASE_URL=http://<SERVER> \
-  --env DUP_CREW_ID=<crewId> \
-  --env DUP_TOKEN=<accessToken> \
-  --env TARGET_VUS=20 \
-  load-test/k6/dup-join.js
-```
-
-### 결과
+> **상태: 미측정** — 이번 21회 배치는 `crew-rush.js`(정원경합)만 수행. `dup-join.js`(동일 토큰 N발) summary 산출물 없음.
 
 | VU | dup_join_success | dup_join_already | crew_members 행 수 | 비고 |
 |----|:---:|:---:|:---:|------|
-| 20 | «TBD» | «TBD» | «TBD» | 기대: success=1, already=19, 행 수=1 |
+| 20 | 미측정 | 미측정 | 미측정 | 기대: success=1, already=19, 행 수=1 |
+
+→ C 채택 전 **(crew_id, user_id) 유니크 제약 + addMemberSkipCapacityCheck**의 중복가입 방어를 dup-join으로 별도 실증 권장(추후).
 
 ---
 
-## 4. A/B/C 전략 특성 비교
+## 4. A/B/C 전략 특성 비교 (실측 반영)
 
 | 항목 | A (PESSIMISTIC) | B (OPTIMISTIC) | C (CONDITIONAL) |
 |------|:---:|:---:|:---:|
-| 락 구간 | SELECT→앱→UPDATE→COMMIT (김) | SELECT→앱→CAS UPDATE | UPDATE 한 방 |
-| 재시도 | 없음 | 최대 3회 | 없음 |
-| conn_reset (VU 200+) | «07 측정값» | 0 | «TBD» |
-| p95 at VU 200 | «07» | «09» | «TBD» |
-| 정합성 (정원 초과) | DB 직렬화 | EvalPlanQual 재검사 | EvalPlanQual 재검사 |
-| 중복 가입 보호 | addMember isAlreadyMember | 동일 | addMemberSkipCapacityCheck + 유니크 제약 |
-| version 컬럼 의존 | 없음 | 있음 | 없음 |
+| 락 구간 | SELECT FOR UPDATE→앱→UPDATE→COMMIT (김) | SELECT→앱→CAS UPDATE+재시도 | 조건부 UPDATE 한 방 |
+| 재시도 | 없음 | 최대 3회 (소진 시 CR023) | 없음 |
+| 정합성(succ==정원) | ✅ 전 구간 | 🔴 **vu200/max100 64명·vu800 99명 미달** | ✅ 전 구간 |
+| CR023 conflict | 0 | **14~221건** (경합↑일수록 폭증) | 0 |
+| p95 (낮을수록 우수) | 중간 | 최고(느림) | **최저** |
+| connection drop | 극단VU서 발생(79~102) | vu200+서 발생, vu800 drop227 | 극단VU서 A와 유사(79~99) |
+| 정합성 메커니즘 | DB 행 직렬화 | EvalPlanQual 재검사 + version | 조건부 UPDATE(WHERE current<max) |
+| 중복가입 보호 | addMember isAlreadyMember | 동일 | addMemberSkipCapacityCheck + 유니크 제약 |
+| version 컬럼 의존 | 없음 | **있음** | 없음 |
 
 ---
 
-## 5. 채택 판단 기준
+## 5. 결론 — 채택 판단
 
-- C의 conn_reset이 A보다 낮고 B와 동등하다면: **C 채택 검토**
-- C의 p95가 A/B 대비 유의미하게 낮다면: C 채택 시 p95 개선 명분 추가
-- 정합성 assert (join_success == maxMembers) 실패 시: EvalPlanQual 재검토 필요
+**C(CONDITIONAL) 채택 권장.** 근거:
 
-> ⚠️ 채택 결정 시 prod 적용 전 `dedup 선확인` 필수  
-> (SELECT crew_id, user_id, COUNT(*) FROM crew_members GROUP BY crew_id, user_id HAVING COUNT(*) > 1)
+1. **정합성**: A와 동급(전 구간 succ==정원). B는 고경합에서 정원 미달(64/100) — **정원 보장이 깨지는 치명적 결함**.
+2. **지연(p95)**: C가 전 구간 최저. 정원10 ~685ms / 정원100 ~1454ms 평균으로 A 대비 32~42%, B 대비 44% 낮음. (락 대기·재시도가 없는 단일 UPDATE 효과)
+3. **불필요 작업 제거**: B의 CR023 재시도소진(최대 221건/측정)을 C는 0으로 제거. version 컬럼 의존도 없음.
+
+**가설 검증 결과** (런북 Phase 6 가설 "C가 비관락 conn_reset·낙관락 p95/재시도를 모두 없애는가"):
+- ✅ 낙관락 재시도(CR023)·p95 열위 → **C가 제거/개선** (확인).
+- 🟡 비관락 connection drop → **완전 제거는 아님**. 극단 VU에서 C도 A와 유사한 drop 발생. 서버측(§6)으로 원인 확인: **인프라 천장 = HikariCP 풀(max 10) 포화**(pending~70, CPU/메모리 여유) — A/B/C 공통 제약이라 전략 무관. C의 우위는 "drop 제로"가 아니라 **정합성+최저지연+재시도제로**에 있음. drop 줄이려면 락 전략이 아니라 **풀 크기·accept-count·인스턴스 스케일**.
+
+> ⚠️ **prod 적용 전 필수** (전략 C·정원100은 `feat/load-test` 한정 — prod 배포 금지):
+> 1. (crew_id, user_id) **유니크 제약** 선적용 + dedup 선확인:
+>    `SELECT crew_id, user_id, COUNT(*) FROM crew_members GROUP BY crew_id, user_id HAVING COUNT(*) > 1;`
+> 2. dup-join 동시성 실증(§3) — 유니크 제약 방어 확인.
+
+---
+
+## 6. 서버측 지표 (Grafana/Prometheus) — 스크린샷 부분 확인
+
+> 출처: 측정 시간대 Grafana 대시보드 스크린샷 3장(전략별 1장, `results/screenshots/11_grafana_{A,B,C}_*.jpeg`).
+> ⚠️ **한계**: Prometheus 컨테이너가 데이터 볼륨 없이 떠 있어 측정 후 `stop-monitoring.sh`로 **시계열 이력 소실**. 라이브 `/actuator/prometheus`도 현재 401(인증). 따라서 **재질의·정밀 대조 불가, 아래는 스크린샷 판독값**. 세 장은 시간 창·y축 자동스케일이 달라 **A/B/C 직접 나란히 비교는 불가**(같은 절대 창 재캡처 필요했으나 이력 소실).
+
+| 패널 | A (KST 14:32–48) | B (KST 12:29–39) | C (KST 11:56–12:23) | 판독 |
+|------|---|---|---|------|
+| Error Rate (5xx) | No data | No data | No data | ✅ **5xx=0 서버측 확정**(join_5xx=0 corroborate) |
+| CPU Usage | ~바닥 | **~60%**(vu800) | ~40% | 🟢 CPU 미포화 — 자원병목 아님 |
+| JVM Heap / GC | 정상 톱니 | GC pause ~300ms(vu800) | GC pause ~150ms | 🟢 메모리 여유, GC는 B가 최대(재시도 가비지 추정) |
+| **HikariCP Pool** | 〔창차이로 불명확〕 | 〔창차이로 불명확〕 | **pending ~70 급증**(12:18–20, 100-way race) | 🔴 **풀 max 10 포화 — 진짜 천장** |
+| HTTP p95/p99 | No data | No data | No data | ⚠️ 서버측 지연 히스토그램 미노출 → p95는 k6값 정본 |
+
+**핵심 결론(서버측)**:
+1. **5xx 제로** 서버에서 확정 — 세 전략 모두 애플리케이션 에러 없음.
+2. **병목은 CPU/메모리/락이 아니라 DB 커넥션 풀(HikariCP max 10)**. C 패널에서 100-way race 시 pending이 ~70까지 치솟음 = 수백 요청이 10개뿐인 커넥션을 대기. 이게 `join_dropped`(연결계층 RST)의 상류 원인〔추정 사슬: 풀 고갈→워커 스레드 대기→accept 큐 넘침→RST→status 0〕. **풀 크기는 A/B/C 공통**이라 drop이 전략 무관했던 이유.
+3. **A/B 패널은 창·스케일이 달라 C의 pending~70과 직접 비교 불가** — "B·A는 풀 여유"라고 단정 금지(이력 소실로 재확인 불가).
+
+> 다음 부하테스트 시 개선점: ① Prometheus에 데이터 볼륨 마운트(이력 보존) ② HTTP 지연 히스토그램(`http.server.requests` percentiles) 노출 ③ 전략별 측정을 **동일 절대 시간창**으로 캡처.
+
+---
+
+## 7. 남은 검증 (👤 사용자 — DB 자격증명 필요)
+
+k6 측정값은 `join_success`(애플리케이션 응답)이 정원과 일치함을 보였으나, **DB 실제 행 수 기준 정원초과 0건**은 미확인. 각 측정 직후 또는 보존 데이터로 확인 권장:
+
+```sql
+-- 측정별 정원초과 검증 (정원초과 0건이어야 함)
+SELECT id, current_members, max_members,
+       (SELECT COUNT(*) FROM crew_members m WHERE m.crew_id = c.id) AS actual_rows
+FROM crews c WHERE id = 'loadtest-rush-crew-1';
+-- 기대: current_members == 정원 == actual_rows, actual_rows <= max_members
+```
+
+---
+
+## 참조 데이터 파일 (채택 런)
+
+- 정원10: `k6-report_{A,B,C}_max10_vu{50,100,200,300}_*.summary.json`
+  - A: `05-32-47`·`05-33-48`·`05-34-15`·`05-35-17`
+  - B: `03-29-35`·`03-29-50`·`03-30-08`·`03-35-17`
+  - C: `02-56-37`·`02-59-44`·`03-01-40`·`03-06-20`
+- 정원100: `k6-report_{A,B,C}_max100_vu{200,400,800}_*.summary.json`
+  - A: `05-43-37`·`05-48-33`·`05-44-47`
+  - B: `03-37-53`·`03-38-21`·`03-39-01`
+  - C: `03-18-43`·`03-21-59`·`03-23-18`
+- raw 이벤트 스트림: `results/raw/crew-rush_<TAG>.json` (21종)
+- 서버측 Grafana 스크린샷: `results/screenshots/11_grafana_{A,B,C}_*.jpeg` (전략별 1장, 시계열 이력 소실 후 유일 기록)
+- 스크립트: `k6/crew-rush.js`, `k6/lib/{scenarios,metrics,report}.js` (feat/load-test 8edef88)

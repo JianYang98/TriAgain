@@ -122,6 +122,8 @@
 | 07-06 A4(조건부) | **0** | +1,063 | +583 | +1,045 | **드롭=AttemptFails+EstabResets**: vu700 229=228+1 (등식 확장) | `0706/A4/0706_로그상태분석_..-A4.md` §2·§6 |
 | 07-07 C11(비관) | **0** (acceptQ 4중 침묵) | (DoCookies vu별 40/127/311/605) | vu별 40/126/410/290 | vu별 184/213/463/487 | **8/8 오차 0**: AttemptFails+EstabResets=드롭 (vu700 212+1=213) + tcpdump In RST 592=드롭 4/4·Out RST 선행 592/592 | `0707_로그상태분석_nstat-ss-C11.md` §2·§6, 종합보고서 §3 |
 
+- ⚠️ **단위 구분 (`TCPSynRetrans Δ` 열 읽을 때)**: 서버 `TcpExtTCPSynRetrans` = 재전송 **이벤트** 수(커넥션당 여러 번 기여·서버 SYN-ACK 유실 방향만 포착). 클라 `connecting>900ms/≥1s` = 재전송 겪은 **커넥션 하한**(커넥션당 1). 서버 ≥ 클라·배율 비상수(6차 2.37/1.21/1.33) → **개수 1:1 대조 금지**(발동 시점·추세만 공동 지지). 6차 raw 재현·양자화 증거 = `0703/0703_재전송지표검증_k6connecting-vs-SynRetrans-6차.md`
+
 ## 6. Saturation / Breaking Point (Day 1~7, 4월 — 락 무관 시나리오)
 
 로그: ⓚ+Grafana 서술(nstat·ss 없음). 환경: t3.micro(t2 표기는 IMDS로 정정)·RDS PG **17.6**(00_environment) vs **16**(06_write-heavy) — 원문 충돌.
