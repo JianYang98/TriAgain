@@ -11,7 +11,7 @@
 // ============================================================
 // ===== init 단계 (최상위) =====
 import http from "k6/http";
-import { check } from "k6";
+import { check, sleep } from "k6";
 import { Counter, Trend } from "k6/metrics";
 import { tokens } from "./lib/config.js"; // 토큰만 lib에서
 import { htmlReport } from "https://raw.githubusercontent.com/benc-uk/k6-reporter/2.4.0/dist/bundle.js";
@@ -43,6 +43,37 @@ const maxMembers = parseInt(__ENV.MAX_MEMBERS || "10");
 //const rushCrewId = parseInt(__ENV.RUSH_CREW_ID || "1");
 const expSuccess = Math.min(vus, maxMembers);
 const expFull = Math.max(0, vus - maxMembers);
+
+// [가드] RUN_TAG ↔ TARGET_VUS 불일치 시 즉시 중단.
+// TAG= 할당 줄이 셸에 안 들어가면 직전 태그로 raw가 덮어써지는 사고 방지(07-09 A5 vu50/vu200 오태그).
+// init 단계 throw는 --out json 파일을 열기 전이라 기존 raw 파일은 보존된다(실험 검증).
+if (__ENV.RUN_TAG && !__ENV.RUN_TAG.endsWith(`vu${vus}`)) {
+  throw new Error(
+    `RUN_TAG(${__ENV.RUN_TAG})가 vu${vus}로 끝나지 않음 — TAG 줄 누락 의심, 실행 중단`
+  );
+}
+
+// [신규] pre-GC 게이트 — VU 램프 전 서버 강제 GC로 힙 초기조건 균일화.
+// PRE_GC 토글: 기본 "on"(게이트 작동). PRE_GC=off 이면 GC 호출 없이 즉시 return
+//   → 무게이트 arm(게이트 효과 A/B 측정용). 게이트 ON일 때 실패는 throw로 런 자체 차단
+//   (미GC 런 구조적 차단 — RUN_TAG 가드와 같은 철학).
+const GC_GATE_ON = (__ENV.PRE_GC || "on").toLowerCase() !== "off";
+const GC_API_KEY = __ENV.GC_API_KEY || "loadtest-internal-key"; // application-loadtest.yml internal.api-key
+export function setup() {
+  if (!GC_GATE_ON) {
+    console.log("[pre-GC] SKIPPED (PRE_GC=off) — 무게이트 arm"); // off arm 증빙(GC 호출·http 요청 0건)
+    return;
+  }
+  const res = http.post(`${BASE_URL}/internal/gc`, null, {
+    headers: { "X-Internal-Api-Key": GC_API_KEY },
+    tags: { name: "pre-gc" }, // built-in http_req_* 오염 필터용
+  });
+  if (res.status !== 200) {
+    throw new Error(`pre-GC 실패 (status=${res.status} body=${res.body}) — 런 중단`);
+  }
+  console.log(`[pre-GC] ${res.body}`); // 회수량·소요시간이 k6 stdout에 증빙으로 남음
+  sleep(5); // GC 여진이 램프에 안 물리게 정착 대기
+}
 
 export const options = {
   scenarios: {
