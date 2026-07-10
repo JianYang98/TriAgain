@@ -576,3 +576,61 @@ BC별로 Runner를 분리하여 Bounded Context 경계를 유지한다.
 | 통계 대시보드 | 개인/크루 달성률 통계 |
 | 랭킹 시스템 | 크루 간 랭킹 |
 | 동시성 고도화 | 크루 가입 동시 1,000+ 시 Redis INCR 선착순 전환 |
+
+---
+
+## 8. 습관(솔로 모드) — 개인 3일 작심 사이클
+
+> 크루 없이 혼자 습관을 등록하고 3일짜리 '작심' 사이클을 반복하는 개인 모드(`habit` BC). 사이클 상태기계는 크루의 `Challenge`를 경량 복제한다. 상세 상태전이·엣지케이스는 `sdd/solo-habit/step1-biz-logic.md`가 정본이며, 이번 API 계약 단계(Step 2-1)에서는 요약만 additive로 반영한다. Domain/Application 구현 시(Step 2-2) 본 섹션을 상세 보강한다.
+
+### 8.1 습관(Habit)
+
+- 유저는 습관을 여러 개 동시에 등록할 수 있다(개수 상한 v1 미도입). 습관마다 독립된 3일 사이클을 가진다
+- 상태: `ACTIVE`(진행 가능) / `PAUSED`(일시 중지, 재개 가능) / `ENDED`(종료, 터미널)
+- 등록 시 인증 방식(`TEXT`/`PHOTO`, 크루와 동일 개념)을 선택하며 이후 변경 불가(v1)
+- 습관 등록은 사이클을 만들지 않는다 — 유저가 명시적으로 사이클 시작 버튼을 눌러야 함(크루의 lazy 자동생성과 다른 점)
+
+### 8.2 작심 사이클(HabitCycle)
+
+- 상태: `IN_PROGRESS` / `SUCCESS`(3일 달성, 터미널) / `FAILED`(마감 초과 미인증, 터미널)
+- 시작 시 `TODAY`(오늘) / `TOMORROW`(내일) 중 선택(기본 TODAY). `TODAY` 시작은 "오늘 마감 전" + "오늘 미인증" 두 가드를 모두 통과해야 하며, `TOMORROW`는 항상 허용
+- 3일 채우면 SUCCESS로 누적(별도 카운터 없이 SUCCESS 사이클 COUNT), 하루라도 빠뜨리면 스케줄러가 FAILED 처리 — 실패해도 유저가 다시 시작 버튼을 눌러 재도전
+- 시작일 도래 전(`TOMORROW`로 예약한 사이클)은 취소 가능. 시작일 도래 후엔 취소 불가
+
+### 8.3 멈춤(PAUSED)
+
+- IN_PROGRESS 사이클이 없을 때만 멈출 수 있다. 멈춘 습관은 재개 전까지 사이클 시작·인증이 모두 거부된다
+- 알림 없음·기록 보존·언제든 재개 가능 — 크루에는 없는 개인 모드 전용 탈출구
+
+### 8.4 종료(ENDED) — 삭제 대체
+
+- 습관을 접으면 삭제가 아니라 종료(마이페이지 지난기록에 누적 성공과 함께 보존)로 처리한다
+- 종료는 터미널 — 재개·재시작 불가. 다시 하려면 새 습관을 등록(성공 카운트 0부터)
+- 종료 시 IN_PROGRESS 사이클이 있으면 같은 트랜잭션에서 FAILED 처리한다("IN_PROGRESS = 살아있는 습관의 진행 중 사이클" 불변식 유지)
+
+### 8.5 인증(HabitVerification)
+
+- 크루 인증 체계를 답습하되 크루 의존(멤버십·crewId)을 소유자 검증으로 치환. 피드·신고·검토(moderation)는 없음(솔로는 사회적 기능 없음)
+- 인증 시 `targetDate == 사이클 시작일 + completedDays`(기대 슬롯) 강제 — 건너뛴 날짜의 인증이나 자정을 넘긴 유예 인증으로 "연속 3일"을 위장하는 것을 원천 차단
+- 하루 중복 인증 불가(유니크 제약), 시작일 도래 전 인증 불가, 마감(+유예 5분) 초과 인증 불가 — 크루와 동일한 `DeadlinePolicy` 재사용
+- 사진 인증은 기존 업로드 세션 인프라를 재사용하되, 세션이 해당 습관용으로 발급된 것인지 대조한다(다른 습관·크루용 세션의 교차 사용 차단)
+
+### 8.6 업로드 세션 공유 — `POST /upload-sessions` XOR
+
+- 업로드 세션은 `crewId` 또는 `habitId` 중 하나로 발급 컨텍스트가 구속된다(XOR) — 크루 인증용은 `crewId`, 솔로 인증용은 `habitId`
+- 기존 크루 호출부는 계속 `crewId`만 전송하며 거동이 바뀌지 않는다(하위 호환)
+- 세션 발급 시점에도 습관 소유권·활성 상태(ACTIVE)·인증 방식(PHOTO)·마감 전 여부를 검증한다 — 인증 생성 시점의 2차 방어와 별개로 발급 단계에서부터 게이트를 유지
+
+### 8.7 에러코드
+
+습관 고유 의미만 `HB001`~`HB009`을 신설했다. 의미가 동일한 기존 코드(마감 초과 V002, 중복 인증 V003, 콘텐츠 필수 V009/V010 등)는 재사용한다 — 상세는 `docs/spec/api-spec.md`의 Habit 섹션 참조.
+
+### 8.8 구현 상세 보강 (Step 2-2)
+
+> Domain/Application 구현 완료 반영. 상세 규칙·엣지케이스 정본은 `sdd/solo-habit/step1-biz-logic.md`.
+
+- **기대 슬롯 가드(D12)**: 인증 시 `targetDate == cycle.startDate + cycle.completedDays`를 강제한다. 자정 직후 건너뛴 날 인증이나 자정을 넘긴 유예(grace) 인증으로 "연속 3일"을 위장하는 경로를 원천 차단한다 — 위반 시 `VERIFICATION_DEADLINE_EXCEEDED`(V002)
+- **좀비 사이클 방지**: `TODAY` 시작은 마감 전(V002)뿐 아니라 오늘 미인증(`existsByHabitIdAndTargetDate`, V003)까지 통과해야 한다. 당일 완료 직후 `TODAY` 재시작이 방금 마친 인증과 슬롯 충돌·스케줄러 마스킹을 일으키는 것을 막는다 — `TOMORROW`만 허용
+- **비관적 락(D13)**: 습관 뮤테이션 서비스(시작·취소·멈춤·재개·종료·인증) 전부 진입 시 habit row를 `SELECT FOR UPDATE`로 선취득해 셀프 경합(예: 멈춤↔시작, 인증↔종료)을 직렬화한다. 스케줄러·부팅 보정 러너는 락 미참여 — 상태 가드(`IN_PROGRESS`만 대상)로 충분하고, 기본 마감(23:59:59)에서는 인증 통과 창과 스케줄러 스캔 창이 날짜 경계로 분리되어 실경합이 없다
+- **더블탭 처리**: 사이클 시작은 `uk_habit_cycles_in_progress` 위반 시 기존 IN_PROGRESS를 재조회해 200(created=false)으로 멱등 반환, 신규 생성은 201(created=true). 인증은 유니크 제약(`uk_habit_verifications_habit_date`) 위반을 서비스에서 catch해 `VERIFICATION_ALREADY_EXISTS`(V003)로 명시 매핑한다 — `GlobalExceptionHandler`의 constraint-name substring 매처에 의존하지 않는다
+- **만료 판정 시각(`:now`)**: 스케줄러의 만료 native query는 크루 원본의 `NOW()`(DB 세션 tz=UTC) 대신 앱의 `LocalDateTime.now(clock)`을 파라미터 바인딩한다 — prod JVM=KST 기준으로 자기일관 유지, crew가 상속한 "~9h 지연 의심"을 상속하지 않는다

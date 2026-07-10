@@ -33,6 +33,7 @@ public class UploadSessionController {
         CreateUploadSessionCommand command = new CreateUploadSessionCommand(
                 userId,
                 request.crewId(),
+                request.habitId(),
                 request.fileName(),
                 request.fileType(),
                 request.fileSize()
