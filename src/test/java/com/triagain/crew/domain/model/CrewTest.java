@@ -756,30 +756,66 @@ class CrewTest {
             Crew crew = recruitingCrew(5, 1);
 
             // When & Then — 예외 없이 통과
-            crew.validateDeletable();
+            crew.validateDeletable(false);
         }
 
         @Test
-        @DisplayName("ACTIVE 상태면 삭제 불가하다")
-        void activeCannotDelete() {
+        @DisplayName("ACTIVE + 혼자 + 인증 전이면 삭제 가능하다")
+        void activeAloneNoChallengeCanDelete() {
+            // Given
+            Crew crew = crewWithStatus(CrewStatus.ACTIVE, 5, 1, false);
+
+            // When & Then — 예외 없이 통과
+            crew.validateDeletable(false);
+        }
+
+        @Test
+        @DisplayName("ACTIVE + 인증 시작 상태면 CANNOT_DELETE_STARTED_CREW 예외가 발생한다")
+        void activeStartedCannotDelete() {
             // Given
             Crew crew = crewWithStatus(CrewStatus.ACTIVE, 5, 1, false);
 
             // When & Then
-            assertThatThrownBy(crew::validateDeletable)
+            assertThatThrownBy(() -> crew.validateDeletable(true))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
-                    .isEqualTo(ErrorCode.CREW_NOT_RECRUITING);
+                    .isEqualTo(ErrorCode.CANNOT_DELETE_STARTED_CREW);
         }
 
         @Test
-        @DisplayName("멤버가 2명 이상이면 삭제 불가하다")
+        @DisplayName("COMPLETED 상태면 CANNOT_DELETE_STARTED_CREW 예외가 발생한다")
+        void completedCannotDelete() {
+            // Given
+            Crew crew = crewWithStatus(CrewStatus.COMPLETED, 5, 1, false);
+
+            // When & Then
+            assertThatThrownBy(() -> crew.validateDeletable(false))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.CANNOT_DELETE_STARTED_CREW);
+        }
+
+        @Test
+        @DisplayName("ACTIVE + 멤버 2명 + 인증 전이면 CREW_HAS_MEMBERS 예외가 발생한다")
+        void activeTwoMembersNoChallengeThrows() {
+            // Given — 인증 전(hasStartedChallenge=false)이어야 상태 게이트 통과 후 멤버 체크 도달
+            Crew crew = crewWithStatus(CrewStatus.ACTIVE, 5, 2, false);
+
+            // When & Then
+            assertThatThrownBy(() -> crew.validateDeletable(false))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.CREW_HAS_MEMBERS);
+        }
+
+        @Test
+        @DisplayName("멤버가 2명 이상 + RECRUITING이면 삭제 불가하다")
         void hasMembers() {
             // Given
             Crew crew = recruitingCrew(5, 2);
 
             // When & Then
-            assertThatThrownBy(crew::validateDeletable)
+            assertThatThrownBy(() -> crew.validateDeletable(false))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.CREW_HAS_MEMBERS);

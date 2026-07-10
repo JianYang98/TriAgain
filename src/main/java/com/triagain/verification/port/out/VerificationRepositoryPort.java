@@ -4,6 +4,7 @@ import com.triagain.verification.domain.model.Verification;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -21,4 +22,10 @@ public interface VerificationRepositoryPort {
 
     /** 오늘 인증 완료한 크루 ID 배치 조회 — N+1 방지용 */
     Set<String> findVerifiedCrewIds(String userId, List<String> crewIds, LocalDate targetDate);
+
+    /** 유저·크루 묶음별 APPROVED 인증 일수 배치 조회 — 홈 완료 탭 verifiedDayCount 집계에 사용 */
+    Map<String, Integer> findApprovedDayCountsByCrewIds(String userId, List<String> crewIds);
+
+    /** 오늘 해당 크루 인증 건수 — 첫 인증(count==1) 판정용 */
+    long countByCrewIdAndTargetDate(String crewId, LocalDate targetDate);
 }

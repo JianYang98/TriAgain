@@ -20,6 +20,15 @@
 
 ---
 
+### [2026-06-13] FCM 키 스모크 테스트 엔드포인트 추가 (POST /internal/fcm-test)
+
+- 상황: 2026-06-12 Firebase 서비스계정 키 무효(401)로 FCM 전멸. 발송 4경로가 전부 cron/이벤트/비활성이라 다음 cron까지 장애 탐지 불가. 키 로테이션·배포 직후 즉시 검증할 단건 스모크 엔드포인트 필요
+- 내 판단: (1) 컨트롤러를 `@ConditionalOnProperty(firebase.enabled=true)`로 게이팅 — dev/test는 NoOp 어댑터가 항상 true 반환이라 게이팅 없으면 "거짓 성공", 그 환경에선 404로 오탐 차단. (2) `NotificationSendPort.send`의 3분기(true=성공 / false=토큰 영구무효 / BusinessException=발송실패 3회 재시도 후 throw)를 SUCCESS/TOKEN_INVALID/ERROR로 매핑. (3) SecurityConfig 무수정 — `/internal/**`는 InternalApiKeyFilter가 prefix로 자동 가드. (4) 전체발송 아닌 단건 fcmToken만 받아 위험 최소화(Tier 2 유지)
+- AI 역할: fable이 지시서를 실제 코드와 그라운딩 검증(포트 시그니처·게이팅·시큐리티·테스트 패턴 4건 교정), sonnet이 3계층+단위테스트 구현, checkstyle import 그룹 규칙(java/org/com.triagain/catch-all/naver, option=top) 위반 교정
+- 배운 점: NoOp 폴백이 있는 기능의 스모크 엔드포인트는 폴백 환경에서 비활성(404)으로 둬야 "성공" 신호가 진짜 성공을 의미한다
+
+---
+
 ### [2026-04-09] develop→main PR 리뷰 Critical 3건 일괄 수정 + BC 어댑터 클래스명 충돌
 
 - 상황: PR 리뷰에서 SEC-C1(Apple refresh_token 평문), DOM-C1(User→Crew BC 위반), DOM-C2(스케줄러 5분 윈도우 누락) 3건이 머지 차단으로 식별. C2 수정 중 어댑터를 `crew.infra.adapter.CrewMembershipAdapter`로 옮겼더니 기존 `verification.infra.CrewMembershipAdapter`(Verification → Crew 위임용 다른 어댑터)와 단순 클래스명 충돌 → Spring `ConflictingBeanDefinitionException`로 컨텍스트 로딩 실패
@@ -178,3 +187,28 @@
 - 내 판단: 플랜모드로 현재 상태 파악 → 검증 + TODO 문서화로 마무리 (코드가 이미 구현된 상태라 수정보다 확인이 우선이라서)
 - AI 역할: 코드 확인으로 3건 구현 완료 검증, 테스트 실행, TODO 문서 생성
 - 배운 점: PR 리뷰 피드백은 코드 확인 → 테스트 검증 → TODO 문서화까지 한 사이클로 처리하면 누락 없음
+
+---
+
+### [2026-06-12] crew-solo-delete — hard delete·동시성·자동완료 설계 판단
+
+- 상황: 솔로 크루(currentMembers==1) + 인증 전 삭제 기능 구현 중, hard delete vs soft delete, late-join 동시성 안전성, 자동완료 스케줄러와의 역할 중복 세 가지 설계 선택이 필요했음
+- 내 판단:
+  1. **hard delete 유지** — 코드베이스 삭제 컨벤션은 User만 soft delete(`deleted_at`, V15 마이그레이션 — 앱스토어 계정삭제 규정 + `reactivate` 재활성화 + JWT 토큰버전 무효화), 나머지(RECRUITING 크루 삭제·회원탈퇴 솔로크루·LeaveCrew 마지막 멤버, Challenge·Verification·CrewMember·Notification·Reaction)는 전부 hard delete. 솔로-삭제 게이트가 "솔로(currentMembers==1) + 인증 전(crew_id 기준 challenges 0건)"을 보장하므로 보존 가치가 없음. Crew에 soft delete 도입 시 모든 크루 쿼리에 `deleted_at IS NULL` 필터가 필요해 블래스트가 지나치게 커 오버엔지니어링. sweep(9-테이블 네이티브 정리)의 무게는 hard delete 선택이 아니라 DB에 FK 제약(캐스케이드)이 없어서임 — FK 제약 추가가 근본 단순화이며 별도 과제로 future-considerations에 기록
+  2. **late-join ↔ 삭제 동시성 안전** — `DeleteCrewService`와 `JoinCrewService`/`JoinCrewByInviteCodeService` 모두 `findByIdWithLock`(`SELECT … FOR UPDATE`, PESSIMISTIC)으로 같은 crew 행의 비관적 쓰기 락을 경쟁 → DB 수준 직렬화. 가입이 먼저면 currentMembers=2 → 삭제가 `validateDeletable`에서 CR019(크루원 존재)로 거부. 삭제가 먼저면 가입이 행을 못 찾아 CREW_NOT_FOUND. "새 멤버를 깔고 삭제"·고아행이 구조적으로 불가능
+  3. **자동완료 스케줄러로 대체 불가** — `CompleteExpiredCrewsScheduler`(매일 00:05)가 빈 ACTIVE 크루를 end_date 도달 시 COMPLETED로 전환하지만, 크루 기간이 7~30일 가변이라 최대 30일을 기다려야 함. 또한 COMPLETED 크루는 CR026으로 영구 삭제 불가. 실수로 만든 빈 크루의 즉시 삭제 탈출구로서 솔로-삭제가 필요
+- AI 역할: 코드베이스 삭제 컨벤션 전수 조사(hard/soft delete 분포), 비관적 락 경쟁 시나리오 2가지 시뮬레이션, 자동완료 스케줄러 흐름 분석
+- 배운 점: 삭제 전략은 "전체 컨벤션 일관성 + 실제 쿼리 블래스트"로 판단해야 한다. sweep 복잡도를 soft delete 탓으로 오해하기 쉽지만 실제 원인은 FK 제약 부재였고, 두 문제를 분리해서 봐야 올바른 결론에 이른다
+
+---
+
+### [2026-06-12] FCM 푸시 전면 실패 — 서비스계정 키 교체 후 Google OAuth 401
+
+- 상황: `CrewStartNotificationScheduler`(cron 09:00)가 실행됐으나 `FcmAdapter.java:57`에서 HTTP 401 UNAUTHENTICATED로 3회 재시도 후 전면 실패. EC2에 배포된 Firebase 서비스계정 키(`triagain-firebase-service-account.json`, 6/10 02:46 교체분)가 무효였고 Google이 OAuth 액세스 토큰 발급을 거부했음. 코드 회귀 아님 — `FirebaseConfig` 마지막 변경 03-21, `deploy.yml` 04-14, 2달간 무변경
+- 내 판단:
+  1. **탐지 공백 3겹이 원인** — (a) 배포 게이트(`deploy.yml:120`)가 키 파일 존재 여부만 확인, 유효성 미검증 → 죽은 키여도 `FIREBASE_ENABLED=true`로 부팅. (b) `GoogleCredentials.fromStream()`이 JSON 구조만 파싱, Google 통신은 첫 `send()` 호출 시까지 지연(lazy) → 부팅 성공 = 키 정상이라는 착각 유발. (c) 스케줄러 요약 로그가 DB 저장 카운트를 FCM 발송 결과처럼 출력 → "전체=2건, 실패=0건" 거짓 초록불, FCM 실패는 별도 WARN으로만 기록됨
+  2. **토큰 안전 확인** — 401은 `UNREGISTERED`/`INVALID_ARGUMENT`가 아니므로 `clearFcmToken` 미호출, 유저 FCM 토큰 보존됨. 키 복구 후 재등록 없이 발송 재개 가능
+  3. **복구** — Firebase 콘솔에서 동일 서비스계정(`firebase-adminsdk-fbsvc@triagain-85536`) 신규 키 발급 → 죽은 키 `.dead-20260612` 백업 후 scp 교체 → 재배포(18:22 클린 부팅 확인). 단, 부팅 시 `send()` 미실행이라 발송 인증은 아직 미검증
+  4. **후속 조치** — (a) FCM 스모크 테스트 엔드포인트 `/internal/fcm-test` 신설(Tier 2, BE 에이전트 지시 전달 완료). (b) 스케줄러 요약 로그를 FCM 발송 결과와 DB 저장 결과로 분리. (c) 배포 게이트 키 유효성 검증 보강 검토 중
+- AI 역할: 3겹 탐지 공백(배포 게이트·`GoogleCredentials` lazy 검증·요약 로그 설계) 분석, FCM 에러코드(`UNAUTHENTICATED` vs `UNREGISTERED`) 구분으로 토큰 안전 여부 판정
+- 배운 점: `GoogleCredentials.fromStream()`은 구조 파싱만 하고 Google과 실제 통신은 하지 않는다. 키 교체 후에는 반드시 온디맨드 `send()` 호출로 발송 인증까지 확인해야 한다. 스케줄러 요약 로그는 처리 대상 카운트와 외부 I/O 결과를 분리해서 집계해야 거짓 초록불을 막는다

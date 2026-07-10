@@ -1311,7 +1311,15 @@ Authorization: Bearer <token>
       "createdAt": "2026-03-01T10:00:00",
       "category": "EXERCISE",
       "visibility": "PUBLIC",
-      "todayVerified": true
+      "todayVerified": false,
+      "successCount": 2,
+      "verifiedDayCount": 8,
+      "inviteCode": "A1B2C3",
+      "challengeProgress": {
+        "challengeStatus": "IN_PROGRESS",
+        "completedDays": 1,
+        "targetDays": 3
+      }
     }
   ],
   "error": null
@@ -1333,6 +1341,13 @@ Authorization: Bearer <token>
 - `category`: 크루 카테고리 (nullable — 기존 크루는 null)
 - `visibility`: 공개 설정 (`PUBLIC` / `PRIVATE`)
 - `todayVerified`: 오늘 인증 완료 여부 (boolean)
+- `successCount` (int): 요청자가 이 크루에서 달성한 작심삼일(연속 3일 인증 성공) 횟수. `COMPLETED` 크루만 실집계, `RECRUITING`/`ACTIVE`는 `0`(미집계) — ACTIVE 크루의 `0`을 "달성 0회"로 오해 금지(미집계 ≠ 0회 달성).
+- `verifiedDayCount` (int): 요청자가 이 크루에서 `APPROVED` 인증을 한 총 일수. `COMPLETED` 크루만 실집계, `RECRUITING`/`ACTIVE`는 `0`(미집계) — ACTIVE 크루의 `0`을 "달성 0회"로 오해 금지(미집계 ≠ 0회 달성).
+- `inviteCode`: 크루 초대코드 (6자리 — 본인이 멤버인 크루 목록이므로 노출 안전)
+- `challengeProgress` (nullable): 요청자의 현재 진행 중인 챌린지 진행도. 활성(IN_PROGRESS) 챌린지 없으면 `null`.
+  - `challengeStatus`: 챌린지 상태 (`IN_PROGRESS`)
+  - `completedDays`: 완료한 인증 일수 (0 ~ targetDays-1 — 목표 도달 시 챌린지가 SUCCESS로 전환되어 목록엔 미노출)
+  - `targetDays`: 목표 일수 (현재 항상 3)
 
 **에러 응답**
 | HTTP | 코드 | 메시지 | 설명 |
@@ -1395,6 +1410,48 @@ X-Internal-Api-Key: {api-key}
 **보안:**
 - `/internal/**` 경로는 `X-Internal-Api-Key` 헤더로 인증 (InternalApiKeyFilter)
 - API Key 불일치 시 403 Forbidden 반환
+- prod 환경: `internal.api-key` 속성으로 설정
+
+---
+
+### POST /internal/fcm-test (FCM 키 스모크 테스트 — Internal API)
+
+Firebase 서비스계정 키 로테이션·배포 직후, 단건 FCM 발송으로 키 유효성을 즉시 확인한다. (cron/이벤트 기반 발송 경로는 키 무효 시 다음 실행까지 장애를 탐지하지 못하는 공백을 메움)
+
+**요청 (Request)**
+```
+POST /internal/fcm-test?fcmToken={token} HTTP/1.1
+X-Internal-Api-Key: {api-key}
+```
+
+**쿼리 파라미터:**
+- `fcmToken`: (필수) 테스트 발송 대상 FCM 토큰 (DB의 실제 토큰 권장)
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": {
+    "sent": true,
+    "status": "SUCCESS",
+    "detail": "발송 성공"
+  },
+  "error": null
+}
+```
+
+`status` 값:
+- `SUCCESS` — 발송 성공, 키 유효 (`sent: true`)
+- `TOKEN_INVALID` — 토큰이 영구 무효 (UNREGISTERED/INVALID_ARGUMENT, `sent: false`). 키 자체는 정상
+- `ERROR` — 발송 실패 (`sent: false`, `detail`에 사유). 키 무효 시 3회 재시도(~3초) 후 `FCM_SEND_FAILED`
+
+**에러 응답:**
+- `403 Forbidden` — API Key 누락 또는 불일치
+- `404 Not Found` — `firebase.enabled=false` 환경(dev/test 및 `FIREBASE_ENABLED` 미설정 prod)에서는 엔드포인트 미존재
+
+**보안:**
+- `/internal/**` 경로는 `X-Internal-Api-Key` 헤더로 인증 (InternalApiKeyFilter)
+- `firebase.enabled=true` (= FcmAdapter 활성) 환경에서만 빈 등록 — 그 외 404 (dev/test의 NoOp 어댑터로 인한 거짓 성공 차단)
 - prod 환경: `internal.api-key` 속성으로 설정
 
 ---
@@ -1468,7 +1525,15 @@ Content-Type: application/json
 
 ### DELETE /crews/{crewId} (크루 삭제)
 
-크루장이 RECRUITING 상태이고 본인만 남아있는 크루를 삭제한다. hard delete (DB에서 완전 삭제).
+크루장이 혼자이고 인증을 시작하지 않은 크루를 삭제한다. hard delete (DB에서 완전 삭제, FK-safe).
+
+**처리 정책**
+- RECRUITING + 혼자(멤버 1명) → 삭제 가능 (기존)
+- ACTIVE + 혼자 + 인증 전(`challenges`에 `crew_id` 레코드 없음) → 삭제 가능 (신규)
+- ACTIVE + 인증 시작(`challenges`에 `crew_id` 레코드 존재) → 거부 (`CR026`)
+- COMPLETED → 거부 (`CR026`)
+- 멤버 2명 이상 → 거부 (`CR019`)
+- **검증 순서**: 상태 게이트(`CR026`)가 멤버 수 체크(`CR019`)보다 먼저
 
 **요청 (Request)**
 ```
@@ -1483,7 +1548,7 @@ Authorization: Bearer <token>
 **에러 응답**
 | HTTP | 코드 | 메시지 | 설명 |
 |------|------|--------|------|
-| 400 | CR003 | 모집 중인 크루가 아닙니다. | RECRUITING 상태가 아님 |
+| 400 | CR026 | 인증을 시작한 크루는 삭제할 수 없습니다. | ACTIVE+인증시작 / COMPLETED 등 삭제 불가 상태 |
 | 403 | CR009 | 크루장만 삭제할 수 있습니다. | LEADER가 아님 |
 | 404 | CR001 | 크루를 찾을 수 없습니다. | 존재하지 않는 crewId |
 | 404 | CR021 | 해당 크루의 멤버가 아닙니다. | 크루 미참여 |
@@ -1833,6 +1898,41 @@ Authorization: Bearer <token>
 | HTTP | 코드 | 메시지 |
 |------|------|--------|
 | 401 | A003 | 인증이 필요합니다. |
+
+---
+
+### GET /invite/{inviteCode} (초대 링크 랜딩 페이지)
+
+초대코드를 포함한 HTML 랜딩 페이지를 반환한다. 인증 불필요.
+
+**요청 (Request)**
+```
+GET /invite/ABC123 HTTP/1.1
+Host: triagain.kr
+Accept: text/html
+```
+
+**경로 파라미터:**
+- `inviteCode`: 6자리 초대코드 (URL에서 추출, DB 검증 없음)
+
+**성공 응답 (200 OK)**
+```
+Content-Type: text/html;charset=UTF-8
+
+[HTML 랜딩 페이지 — Thymeleaf 렌더링]
+```
+
+**보안:**
+- Spring Security `permitAll()` 적용: `/invite/**`, `/images/**`, `/css/**`, `/feedback`
+- 기존 API 인증 흐름에 영향 없음
+
+**정적 리소스:**
+- `/images/logo.png` — TriAgain 로고 (frontend에서 복사)
+
+**참고:**
+- DB 조회 없음 — URL의 inviteCode를 그대로 Thymeleaf Model에 담아 템플릿에 전달
+- 잘못된 코드 별도 검증 없음 — 앱에서 입력 시 검증됨
+- Phase 2: 딥링크(App Links / Universal Links) 추가 예정
 
 ---
 

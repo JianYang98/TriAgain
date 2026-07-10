@@ -68,7 +68,7 @@ erDiagram
         enum role
         timestamp joined_at
     }
-    %% (crew_id, user_id) UNIQUE 제약 — V22 (전략 C 동시성 안전망, uq_crew_members_crew_id_user_id)
+    %% (crew_id, user_id) UNIQUE 제약 — V22 (uq_crew_members_crew_id_user_id, 전략 C 동시성 안전망)
     
     challenges {
         string id PK
@@ -311,6 +311,7 @@ erDiagram
 | UPLOAD_COMPLETED | 이미지 업로드 완료 |
 | REMINDER | 인증 리마인더 (스케줄러) |
 | CREW_STARTED | 크루 시작 알림 |
+| CREW_FIRST_VERIFICATION | 크루 첫 인증 알림 |
 
 ### notifications.target_type
 | 값 | 의미 |

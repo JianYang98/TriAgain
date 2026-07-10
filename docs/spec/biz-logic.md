@@ -60,11 +60,14 @@
 | 항목 | 내용 |
 |------|------|
 | 권한 | LEADER만 가능 |
-| 상태 조건 | 크루 상태 = RECRUITING |
+| 상태 조건 | RECRUITING **또는** ACTIVE |
+| ACTIVE 추가 조건 | 인증 시작 전(`challenges` 테이블에 `crew_id` 레코드 없음)일 때만 삭제 가능 |
 | 멤버 조건 | crew_member 수 = 1 (LEADER 본인만 존재) |
-| 삭제 방식 | hard delete — Crew 엔티티 + crew_member(리더 본인) 레코드 DB에서 완전 삭제 |
-| 크루원 존재 시 | 삭제 불가 → 409 Conflict |
-| cascade 확인 | 삭제 시 관련 데이터 FK 관계 확인 필요 |
+| 크루원 2명 이상 | 삭제 불가 → 409 Conflict (`CR019`) |
+| 인증 시작 후 / COMPLETED | 삭제 불가 → 400 Bad Request (`CR026`) |
+| 검증 순서 | 상태 게이트(`CR026`)가 멤버 수 체크(`CR019`)보다 먼저 |
+| 삭제 방식 | hard delete (FK-safe) — leaf→root 순서로 연관 데이터 완전 삭제 |
+| 인증 판정 기준 | `challenges` 테이블에 `crew_id` 레코드가 1건이라도 존재하면 "시작함" (상태 무관: IN_PROGRESS/SUCCESS/FAILED/ENDED 모두 포함) |
 
 ### 1.6 크루 탈퇴
 
@@ -125,11 +128,12 @@
 | FCM 토큰 관리 | PATCH /users/me/fcm-token으로 등록/갱신, nullable |
 | 인앱 알림 | 목록 조회 (페이지네이션), 안 읽은 수, 읽음 처리 |
 | 장애 격리 | TransactionTemplate 개별 트랜잭션 — 한 건 실패해도 나머지 계속 발송 |
-| 알림 타입 | CREW_STARTED, REMINDER, CHALLENGE_SUCCESS, CHALLENGE_FAILED (추후 VERIFICATION_APPROVED 등 확장) |
-| 메시지 템플릿 | 랜덤 메시지 선택, {crewName} 플레이스홀더 치환 |
+| 알림 타입 | CREW_STARTED, REMINDER, CHALLENGE_SUCCESS, CHALLENGE_FAILED, CREW_FIRST_VERIFICATION (추후 VERIFICATION_APPROVED 등 확장) |
+| 메시지 템플릿 | 랜덤 메시지 선택, {crewName}/{nickname} 플레이스홀더 치환 |
 | 발송 방식 | 인앱 알림 저장 → FCM 푸시 (best-effort, 실패해도 인앱은 유지) |
 | 챌린지 성공 알림 | SUCCESS 시 인앱 알림 + FCM 발송 (인증 완료 시점) |
 | 챌린지 실패 알림 | FAILED 시 인앱 알림 + FCM 발송 (스케줄러에서 실패 처리 시점) |
+| 크루 첫 인증 모닝콜 | 오늘 크루 첫 인증 시점에 트리거. 첫인증자 제외 ACTIVE 멤버 전원에게 인앱+FCM(best-effort). 08:00~22:00(quiet hours) 밖이면 skip. 같은 크루·같은 날 중복 fan-out은 existsCrewFirstVerificationOnDate 멱등 가드로 차단. prod 기본 OFF(notification.crew-first-verification.enabled=false). 동시 첫인증 race 시 2회 이벤트 발행 가능(best-effort) → 리스너 멱등 가드가 최종 방어선. |
 | 알림 전체 삭제 | 본인 알림 전체 Hard Delete, 0건이어도 200 OK (멱등) |
 | 알림 전체 읽음 | 본인의 is_read=false 알림 일괄 true 갱신, 0건이어도 200 OK (멱등) |
 | 읽음 필터 조회 | 기존 목록 API에 isRead 파라미터 추가 — null: 전체, false: 안 읽은 것만, true: 읽은 것만 |
@@ -361,13 +365,13 @@
 ### 4.1 크루 정원 초과 참여
 
 - **영향:** 공정성 붕괴
-- **대응:** yml 설정으로 비관적/낙관적/조건부 락 전환 가능 (`triagain.crew.lock-strategy`, 기본값 `PESSIMISTIC`)
-  - **PESSIMISTIC** (Phase 1 기본): `SELECT FOR UPDATE`로 직렬화, 안정성 우선
-  - **OPTIMISTIC** (트래픽 증가 시 전환): crews 테이블 `version` 컬럼으로 동시 수정 감지
+- **대응:** yml 설정으로 비관적/낙관적/조건부 락 전환 가능 (`triagain.crew.lock-strategy`, 기본값 `CONDITIONAL`)
+  - **CONDITIONAL** (현재 기본): 조건부 원자적 UPDATE — 정원은 `current_members < max_members` predicate로 단일 statement 보호(재시도·version 불사용), 중복 가입은 `(crew_id, user_id)` 유니크 제약으로 방어. Postgres EvalPlanQual 재검사로 정원 초과 0건 보장. 동시성 벤치마크에서 p95 최저로 기본 채택.
+  - **PESSIMISTIC**: `SELECT FOR UPDATE`로 직렬화, 안정성 우선
+  - **OPTIMISTIC**: crews 테이블 `version` 컬럼으로 동시 수정 감지
   - UPDATE 시 `WHERE version = ?` 조건 — 버전 불일치 시 재시도 (최대 `triagain.crew.max-retry`, 기본 3회)
   - 재시도 전부 실패 시 `CREW_JOIN_CONFLICT(409, CR023)` 응답
-  - 전환: `--triagain.crew.lock-strategy=OPTIMISTIC` (재빌드 불필요)
-  - **CONDITIONAL** (feat/load-test 벤치마크): 조건부 원자적 UPDATE — 정원은 `current_members < max_members` predicate로 단일 statement 보호(재시도·version 불사용), 중복 가입은 `(crew_id, user_id)` 유니크 제약으로 방어. Postgres EvalPlanQual 재검사로 정원 초과 0건 보장.
+  - 전환: `--triagain.crew.lock-strategy=PESSIMISTIC` (재빌드 불필요)
   - 삭제(`DeleteCrewService`)와 탈퇴(`LeaveCrewService`)는 빈도가 극히 낮아 항상 비관적 락 고정
 
 ### 4.2 마감 직전 동시 인증 폭주

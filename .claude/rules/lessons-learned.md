@@ -41,6 +41,12 @@ paths: "src/**/*.java"
 - 왜?: 처음에 한 곳에서 만들고, 다른 곳에서 필요할 때 복붙으로 해결. "지금은 2곳뿐이니까"라고 판단했지만 4곳까지 늘어남.
 - 규칙: 2곳 이상에서 쓰이는 유틸 함수는 즉시 공유 파일로 추출
 
+### 시간 윈도우 상수는 "발송 가능 구간"이 아닌 반대 의미 이름 붙이지 마라
+- 출처: crew-first-verification /simplify (2026-06-17)
+- 사례: `QUIET_START = 08:00`, `QUIET_END = 22:00` — 실제로는 발송 윈도우 시작/끝인데 "quiet"이라는 이름을 붙임. quiet period는 `[22:00, 08:00)`이므로 상수명과 값이 반대
+- 왜?: 사용자 관점("이 시간 이외에는 quiet")과 코드 관점("이 상수로 skip 조건 판단")이 뒤섞임
+- 규칙: 시간 윈도우 상수는 실제 그 값이 "무엇의 시작/끝"인지 이름으로 명확히 표현. 발송 가능 구간이면 `NOTIFY_START/NOTIFY_END`, quiet period 경계면 `QUIET_START/QUIET_END`
+
 ---
 
 ## DB / 쿼리
@@ -50,6 +56,22 @@ paths: "src/**/*.java"
 - 사례: upload_sessions(복수형) 오타 → 실제 테이블은 upload_session(단수형)
 - 왜?: 네이티브 쿼리를 작성할 때 테이블명을 기억에 의존함. JPA Entity의 @Table 어노테이션이나 schema.md를 확인하지 않은 것.
 - 규칙: 네이티브 쿼리 작성 시 schema.md 또는 @Table 어노테이션과 반드시 대조 확인
+
+---
+
+## 테스트
+
+### FK 없는 DB의 삭제/캐스케이드 SQL은 실DB로 고아행 0건을 검증하라
+- 출처: crew-solo-delete /verify (2026-06-12)
+- 사례: deleteCrewWithAssociations(9테이블 네이티브 삭제)를 단위테스트에서 `verify(port).deleteCrewWithAssociations(id)` mock 호출 검증으로만 확인 → 실제 SQL 정합 미검증. step4가 "삭제 후 참조행 0건 assert"를 명시했는데도 mock으로 축소됨.
+- 왜?: FK 제약이 없는 DB라 SQL 테이블명 오타·누락·순서 오류가 있어도 에러 없이 고아행만 남고 단위테스트는 그린이다. mock verify는 "호출됐다"만 보장할 뿐 "올바르게 지웠다"를 보장하지 않는다.
+- 규칙: 삭제/캐스케이드/정리 경로는 TestContainers(integration 프로파일)로 실제 삭제를 실행하고 참조 자식 테이블 행 0건(또는 SET NULL)을 count로 assert한다. mock verify로 대체 금지. (write-test.md 3-6 참조)
+
+### 단락평가로 호출이 사라지면 해당 테스트 stub도 같이 정리하라
+- 출처: crew-solo-delete /simplify (2026-06-12)
+- 사례: existsByCrewId 조회를 ACTIVE일 때만 호출하도록 단락평가로 바꾼 뒤, RECRUITING/COMPLETED 테스트의 given-stub이 남아 MockitoExtension STRICT_STUBS의 UnnecessaryStubbingException 발생
+- 왜?: 서비스 최적화로 특정 분기에서 메서드 호출이 사라졌는데 테스트의 기존 stub을 함께 정리하지 않았다. 최적화와 테스트 정리는 항상 쌍이다.
+- 규칙: 호출 경로를 줄이는 최적화(단락평가 등)를 넣으면 그 호출에 의존하던 테스트 stub을 같이 점검·제거한다
 
 ---
 

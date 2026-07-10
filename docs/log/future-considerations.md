@@ -6,6 +6,62 @@
 
 ---
 
+### [2026-06-17] 크루 첫 인증 알림 fan-out: 배치 발송 + Dead Letter 큐 도입
+
+- 현재 상태: `VerificationNotificationAdapter.sendCrewFirstVerificationNotification`이 수신자 목록을 루프로 순회하며 수신자별 try/catch로 격리 발송. 발송 실패 건은 로그만 남기고 재시도 없음.
+- 필요 시점: 크루 규모가 커지거나 FCM 일시 장애 시 재시도 필요성이 생기는 시점
+- 이유: Phase 1(2~10명 소규모 크루, TPS 50)에서는 동기 루프 + 실패 로그로 충분. Phase 2 이상에서는 (1) FCM Batch API로 1회 호출 전환하여 N회 왕복 제거, (2) 실패 건을 `dead_letters` 테이블에 적재 후 `DeadLetterProcessor`로 재시도, (3) `notificationExecutor` 풀 크기를 트래픽 기반으로 재조정하는 방향으로 개선한다.
+
+### [2026-06-17] 크루 첫 인증 알림 멱등 가드: DB 쿼리 → 인메모리 캐시 전환 검토
+
+- 현재 상태: `existsCrewFirstVerificationOnDate`가 매 fan-out 진입마다 `notifications` 테이블 JPQL 쿼리를 실행. Phase 1 규모(소규모 크루, 낮은 TPS)에서는 문제 없음.
+- 필요 시점: 크루 수가 수천 개를 넘어 스케줄러/동시 첫인증 요청이 DB에 집중되는 시점
+- 이유: 동일 `(crewId, targetDate)` 쌍에 대해 첫 인증 직후 수 초 이내 중복 이벤트가 들어올 수 있고, 이 시간 내 동시 쿼리가 모두 `false`를 반환해 복수 fan-out이 트리거될 수 있다. 근본 해결은 Redis SET NX + TTL(당일 23:59 만료)로 원자적 중복 방지를 적용하는 것. Option 2(DB 쿼리 가드)의 한계임을 인지하고 캐시 도입 시 이 항목을 재검토한다.
+
+### [2026-06-12] FK-safe 크루 삭제 SQL이 CrewJpaAdapter / UserCrewMembershipAdapter 2곳 중복 → 공유 추출 필요
+
+- 현재 상태: `CrewJpaAdapter.deleteCrewWithAssociations`(크루 삭제 경로)와 `UserCrewMembershipAdapter.deleteCrewWithAllData`(회원탈퇴 경로)에 leaf→root 삭제 SQL이 중복. FK 구조 변경 시 두 곳을 함께 수정해야 한다.
+- 필요 시점: FK 구조 변경, 또는 삭제 경로 추가 시
+- 이유: 이번 범위에서 공유 추출을 하려면 withdrawal 어댑터(`UserCrewMembershipAdapter`)까지 수정해야 해 범위를 초과. 복제를 허용하되 기록으로 남긴다.
+- 추가 미처리: FK-safe 크루 삭제가 `dead_letters`(target_id=crewId, CREW_ACTIVATE/CREW_COMPLETE 타입)는 정리하지 않음 — `deleteCrewWithAssociations`/`deleteCrewWithAllData` 공유 추출 시 함께 처리 검토(자동 재시도 스케줄러 없어 기능 영향은 없음).
+
+### [2026-06-11] permitAll 공개 경로 목록이 SecurityConfig/DevSecurityConfig에 중복 — 공유 상수 추출 후보
+
+- 현재 상태: 공개 경로 matcher 8줄이 `SecurityConfig`(prod)와 `DevSecurityConfig`(!prod)에 동일하게 중복. 공개 경로 추가 때마다 두 파일을 짝으로 수정해야 하며, 한쪽 누락 시 해당 프로필에서만 401이 나는 비대칭 버그가 됨 (feedback-link PR AI 셀프리뷰에서 지적). 추가로 permitAll 동작 자체를 검증하는 자동 테스트가 없어 한쪽 누락을 CI가 못 잡음 (현재는 수동 curl로 검증).
+- 필요 시점: 공개 경로가 다음에 또 추가될 때 (그 PR에서 함께 처리)
+- 이유: `PUBLIC_PATHS` 공유 상수 추출은 작은 리팩토링이지만, feedback-link PR은 지시서가 "기존 보안 설정 변경 금지 — 항목만 추가"라 범위 외였음. 추출 시 permitAll 검증 테스트(공개 경로 무토큰 200/302, 보호 경로 401) 추가도 함께 검토.
+
+### [2026-06-11] 문의/건의는 `/feedback` → 외부 구글폼 302로 수집 — 인앱 피드백 도메인 미도입
+
+- 현재 상태: `GET /feedback`(공개, permitAll 단일 경로)이 `application.yml`의 `triagain.feedback-form-url`로 302 리다이렉트. 앱은 고정 URL(`triagain.kr/feedback`)만 가리키고, 폼 교체는 설정값 변경 + 재배포로 끝(앱 릴리스 불필요). 응답은 구글 시트에서 수동 확인.
+- 필요 시점: 피드백 유입량 증가 시
+- 이유: 인앱 피드백 도메인(테이블·입력 폼·이메일 인프라)은 수십 명 규모 출시 앱에 오버엔지니어링. 유입 늘면 인앱 도메인 도입 재검토 (중복 설계 방지용 기록 — sdd/feedback-link)
+
+### [2026-06-10] crews 날짜 역전 방지 — DB CHECK 제약 추가 보류 (데이터 정리 후 별도)
+
+- 현재 상태: `home-crew-tabs` SDD에서 "사부작"(03.18~03.02, 종료일<시작일) 같은 역전 데이터를 일회성 정리하기로 함. 재발 방지용 `CHECK (end_date > start_date)`(crews) Flyway 마이그레이션은 이번 라운드에서 **추가하지 않음**(option A로 데이터 작업을 /implement와 분리).
+- 필요 시점: 위반 데이터 정리(진단 0건) 완료 직후 별도 PR. 시드/직접 insert로 역전 데이터가 재유입되면 우선순위↑.
+- 이유: ① CHECK 마이그레이션은 적용 시 기존 전 행을 검사 → 위반 행이 남아 있으면 `ADD CONSTRAINT` 실패로 부팅/배포가 깨짐(정리 0건 선행 필수). ② `/implement` 자동 루프는 삭제 vs 보정 결정에서 못 멈춰, 데이터 정리/CHECK를 자동 run에 넣으면 위험. ③ 기능(탭/성취)과 무관한 순수 재발 방지라 미뤄도 화면 영향 0. (범위는 `end_date > start_date`만; 최소 +6일은 레거시 호환 위해 앱 `validateDates`로만 유지.)
+
+### [2026-06-10] 홈 완료 크루 성취 표시 — 달성률(%) 지표 보류 (분모 정의 미합의)
+
+- 현재 상태: `home-crew-tabs` SDD에서 완료 크루 카드 성취 표시는 양수 지표(`successCount` 작심삼일 N회, `verifiedDayCount` 총 N일 인증)만 노출하기로 확정. 달성률(%)은 이번 범위에서 제외.
+- 필요 시점: 완료 크루에 "비율형" 성취를 보여줄 니즈가 생기거나 성취 프레이밍을 강화할 때
+- 이유: 달성률의 분모 정의가 갈린다 — (a) 전체 챌린지 사이클 수 대비 SUCCESS 비율, (b) 크루 전체 기간 일수 대비 인증 일수, (c) 가입~종료 사이 인증 가능일 대비 등. 특히 가입만 하고 인증 0인 유저는 어떤 분모로도 0%가 되어 "작심삼일도 괜찮아" 컨셉과 충돌(실패 박제). 분모·표기 정책(0% 비노출 여부 포함)을 먼저 합의한 뒤 추가해야 안전. v1은 양수 지표만으로 동기부여한다. (성취 0회 크루는 성취 라인 자체를 미렌더링 — SDD step1 §4)
+
+### [2026-06-09] 혼자 크루장 크루 삭제 — 게이트가 "크루 전체 기준"이라 유령 멤버 기록 시 솔로 리더가 삭제 불가
+
+- 현재 상태: `crew-solo-delete` SDD에서 ACTIVE 솔로 크루 삭제 게이트를 **crew_id 기준**(`challenges`에 해당 crew_id 레코드가 1건이라도 있으면 거부, `CR026`)으로 확정. 리더 user_id 기준이 아님.
+- 한계(의도된 트레이드오프): 멤버 B가 인증(challenge 생성) 후 **회원탈퇴**하면, `WithdrawUserService`가 B의 challenge를 ENDED로 두고 행만 남긴 채(`endActiveChallenges`) crew_member에서 제거(`removeMember`)해 크루가 솔로화된다. 이때 리더 본인은 인증 전이어도 B의 ENDED challenge가 crew_id를 단 채 남아 있어 `existsByCrewId`가 true → **솔로 리더가 자기 크루를 삭제하지 못한다**(CR026). 정 지우려면 회원탈퇴(통째 하드삭제) 경로를 타야 함 — 이 기능이 줄이려던 "크루 하나 지우려고 계정 삭제" 비대칭이 이 드문 케이스에 한해 재현된다.
+- 필요 시점: 위 케이스 문의가 실제 접수되거나, 회원탈퇴한 멤버의 잔존 인증 기록 보호 가치를 재평가할 때
+- 이유: ① 발생 조건이 다중 겹침(2명↑ 크루 → 멤버가 인증까지 → 그 멤버 계정 탈퇴 → 리더는 미인증)이라 수십 명 규모에선 거의 안 나옴. ② "삭제 허용 후 기록 동반 삭제(crew 기준 + FK-safe로 정리)" 대안보다 "차단(현행)"이 데이터 파괴 위험이 없어 안전. 대안 전환 시엔 떠난 멤버의 인증 기록을 함께 하드삭제하게 되므로 정책 판단 필요. ③ 회원탈퇴 시 비-리더 멤버의 challenge/verification 행을 ENDED만 하고 남기는 현 동작 자체를 "탈퇴 시 정리"로 바꾸면 이 한계가 근본 해소되나, 별도 과제(탈퇴 데이터 정리 정책)로 분리.
+
+### [2026-06-08] 배포/CI 안정성 — Docker 빌드가 매 빌드마다 gradle 배포판을 라이브 다운로드
+
+- 현재 상태: `Dockerfile` builder 스테이지가 `RUN ./gradlew bootJar`로 빌드하는데, gradle wrapper가 매 빌드마다 `services.gradle.org`에서 `gradle-8.12-bin.zip`을 다운로드한다(타임아웃 10초, 레이어 캐시 없음). CI의 E2E job도 동일하게 wrapper로 gradle을 받는다.
+- 필요 시점: gradle CDN 장애로 배포/CI가 재차 실패하거나, 무인 배포 신뢰성이 중요해질 때 (Phase 2 전 권장)
+- 이유: 2026-06-08 invite-landing 운영 배포(#70) 시 `services.gradle.org` 일시 장애로 deploy-backend가 2회 연속 실패(SocketTimeout 10초, `org.gradle.wrapper.Install.forceFetch`)했고, 같은 날 E2E도 504로 1회 실패. CDN 회복 후 3차 재실행으로 배포 성공. **코드와 무관한 외부 인프라 의존성이 배포 성공률을 좌우**한다. 개선 옵션: (1) gradle 배포판을 Docker 레이어/`--mount=type=cache`로 캐시, (2) `gradle:8.12-jdk17` 베이스 이미지로 wrapper 다운로드 자체 제거, (3) `gradle-wrapper.properties`의 `networkTimeout`을 10s→60s로 완화, (4) 미러 `distributionUrl` 사용. Phase 1에선 재실행으로 우회 가능하나 근본 제거 권장.
+
 ### [2026-04-09] 스케줄러 윈도우 + 보정 이중 구조 (부하 분산)
 
 - 현재 상태: `FailExpiredChallengesScheduler` / `ExpireUploadSessionScheduler` 모두 5분마다 전량 스캔으로 단순화 (Phase 1, 500명 규모 기준 안전). 별도 startup compensation runner도 동일 스케줄러 메서드를 호출.

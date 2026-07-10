@@ -38,4 +38,13 @@ public interface ChallengeRepositoryPort {
 
     /** 유저·크루의 챌린지 존재 여부 확인 — ACTIVE 크루 탈퇴 시 챌린지 시작 여부 판단에 사용 */
     boolean existsByUserIdAndCrewId(String userId, String crewId);
+
+    /** 크루의 챌린지 존재 여부 확인 — 크루 삭제 시 인증 시작 여부 판단에 사용 (crew_id 기준) */
+    boolean existsByCrewId(String crewId);
+
+    /** 유저·크루 묶음별 SUCCESS 챌린지 수 조회 — 홈 완료 탭 작심삼일 횟수 배치 집계에 사용 */
+    Map<String, Integer> findSuccessCountsByUserIdAndCrewIds(String userId, List<String> crewIds);
+
+    /** 유저·크루 묶음별 특정 상태 챌린지 조회 — 홈 목록 챌린지 진행도 배치 조회에 사용 */
+    List<Challenge> findAllByUserIdAndCrewIdInAndStatus(String userId, List<String> crewIds, ChallengeStatus status);
 }

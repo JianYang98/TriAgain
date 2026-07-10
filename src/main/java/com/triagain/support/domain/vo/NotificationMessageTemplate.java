@@ -26,6 +26,15 @@ public class NotificationMessageTemplate {
             "괜찮아요, 다시 시작하면 돼요!"
     );
 
+    private static final List<String> CREW_FIRST_VERIFICATION_MESSAGES = List.of(
+            "{nickname}님이 오늘 우리 크루 첫 번째 인증자예요! 이어서 가볼까요?",
+            "오늘의 선두주자는 {nickname}님! 나도 작심삼일 한 걸음 가요",
+            "{nickname}님이 먼저 출발했어요. 크루원들과 함께 가요!",
+            "오늘 우리 크루 첫 인증이 떴어요! 크루 시동 걸렸어요",
+            "누군가 오늘 첫 번째로 인증했어요. 나도 이어서 가볼까요?",
+            "우리 크루 오늘도 시작됐어요! 인증하러 가볼까요?"
+    );
+
     private NotificationMessageTemplate() {}
 
     /** 리마인더 메시지 랜덤 선택 — title에 크루명 prefix 포함 */
@@ -50,6 +59,12 @@ public class NotificationMessageTemplate {
     public static NotificationMessage challengeFailed(String crewName) {
         String content = randomPick(CHALLENGE_FAILED_MESSAGES);
         return new NotificationMessage(crewName + " | 아쉽지만 다음에 다시 도전!", content);
+    }
+
+    /** 첫 인증 모닝콜 메시지 — title에 크루명 prefix, content는 {nickname} 치환(없는 줄은 no-op) */
+    public static NotificationMessage crewFirstVerification(String crewName, String nickname) {
+        String content = randomPick(CREW_FIRST_VERIFICATION_MESSAGES).replace("{nickname}", nickname);
+        return new NotificationMessage(crewName + " | 오늘 첫 인증 등장!", content);
     }
 
     private static String randomPick(List<String> messages) {

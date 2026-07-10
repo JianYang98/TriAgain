@@ -12,6 +12,10 @@ public interface NotificationTargetQueryPort {
     /** 오늘 시작 크루의 전체 멤버 조회 — 크루 시작 알림용 */
     List<CrewStartTarget> findCrewStartTargets(LocalDate startDate);
 
+    /** 첫 인증 모닝콜 수신자 조회 — c.status='ACTIVE' 크루의 crew_members 전원 − 첫인증자 */
+    List<CrewFirstVerificationTarget> findCrewFirstVerificationTargets(String crewId, String excludeUserId);
+
     record ReminderTarget(String userId, String fcmToken, String crewId, String crewName) {}
     record CrewStartTarget(String userId, String fcmToken, String crewId, String crewName) {}
+    record CrewFirstVerificationTarget(String userId, String fcmToken, String crewId, String crewName) {}
 }

@@ -16,9 +16,9 @@ import java.time.LocalDateTime;
 // → V22 마이그레이션 테스트에서 실행 안 됨. 유니크 인덱스는 이 어노테이션이 단일 출처.
 @Entity
 @Table(name = "crew_members",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uq_crew_members_crew_id_user_id",
-                columnNames = {"crew_id", "user_id"}))
+		uniqueConstraints = @UniqueConstraint(
+				name = "uq_crew_members_crew_id_user_id",
+				columnNames = {"crew_id", "user_id"}))
 public class CrewMemberJpaEntity {
 
     @Id

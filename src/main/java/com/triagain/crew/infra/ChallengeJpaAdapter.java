@@ -79,6 +79,12 @@ public class ChallengeJpaAdapter implements ChallengeRepositoryPort {
         return challengeJpaRepository.existsByUserIdAndCrewId(userId, crewId);
     }
 
+    /** 크루의 챌린지 존재 여부 확인 — 크루 삭제 시 인증 시작 여부 판단에 사용 (crew_id 기준) */
+    @Override
+    public boolean existsByCrewId(String crewId) {
+        return challengeJpaRepository.existsByCrewId(crewId);
+    }
+
     /** 크루 멤버별 성공 횟수 조회 — 작심삼일 성공 카운트에 사용 */
     @Override
     public Map<String, Integer> countSuccessByCrewId(String crewId) {
@@ -88,5 +94,31 @@ public class ChallengeJpaAdapter implements ChallengeRepositoryPort {
             map.put((String) row[0], ((Long) row[1]).intValue());
         }
         return map;
+    }
+
+    /** 유저·크루 묶음별 SUCCESS 챌린지 수 조회 — 홈 완료 탭 배치 집계에 사용 */
+    @Override
+    public Map<String, Integer> findSuccessCountsByUserIdAndCrewIds(String userId, List<String> crewIds) {
+        if (crewIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Object[]> results = challengeJpaRepository.countSuccessGroupByCrewId(userId, crewIds);
+        Map<String, Integer> map = new HashMap<>();
+        for (Object[] row : results) {
+            map.put((String) row[0], ((Long) row[1]).intValue());
+        }
+        return map;
+    }
+
+    /** 유저·크루 묶음별 특정 상태 챌린지 조회 — 홈 목록 챌린지 진행도 배치 조회에 사용 */
+    @Override
+    public List<Challenge> findAllByUserIdAndCrewIdInAndStatus(
+            String userId, List<String> crewIds, ChallengeStatus status) {
+        if (crewIds.isEmpty()) {
+            return List.of();
+        }
+        return challengeJpaRepository.findAllByUserIdAndCrewIdInAndStatus(userId, crewIds, status).stream()
+                .map(ChallengeJpaEntity::toDomain)
+                .toList();
     }
 }

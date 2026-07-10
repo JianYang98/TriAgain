@@ -207,10 +207,12 @@ public class Crew {
                 .orElseThrow(() -> new BusinessException(ErrorCode.CREW_MEMBER_NOT_FOUND));
     }
 
-    /** 삭제 가능 여부 검증 — RECRUITING + 멤버 1명(리더만) */
-    public void validateDeletable() {
-        if (this.status != CrewStatus.RECRUITING) {
-            throw new BusinessException(ErrorCode.CREW_NOT_RECRUITING);
+    /** 삭제 가능 여부 검증 — RECRUITING 또는 ACTIVE(크루 챌린지 0건), 멤버 1명(리더만) */
+    public void validateDeletable(boolean hasStartedChallenge) {
+        boolean recruiting = this.status == CrewStatus.RECRUITING;
+        boolean activeNoChal = this.status == CrewStatus.ACTIVE && !hasStartedChallenge;
+        if (!recruiting && !activeNoChal) {
+            throw new BusinessException(ErrorCode.CANNOT_DELETE_STARTED_CREW);
         }
         if (this.currentMembers > 1) {
             throw new BusinessException(ErrorCode.CREW_HAS_MEMBERS);
