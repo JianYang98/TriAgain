@@ -73,7 +73,7 @@ class HabitUniqueConstraintsIntegrationTest {
 
 	@BeforeEach
 	void setUp() {
-		Habit habit = Habit.create("uk-test-user", "매일 물 2L", HabitVerificationType.TEXT, LocalTime.of(23, 59, 59));
+		Habit habit = Habit.create("uk-test-user", "매일 물 2L", HabitVerificationType.TEXT, LocalTime.of(23, 59, 59), null);
 		habitId = habitRepositoryPort.save(habit).getId();
 	}
 

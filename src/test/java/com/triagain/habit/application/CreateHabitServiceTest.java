@@ -40,12 +40,27 @@ class CreateHabitServiceTest {
 
 		// When
 		HabitResponse result = service.createHabit(new CreateHabitCommand(
-				"user-1", "매일 물 2L", HabitVerificationType.TEXT, LocalTime.of(23, 59, 59)));
+				"user-1", "매일 물 2L", HabitVerificationType.TEXT, LocalTime.of(23, 59, 59), null));
 
 		// Then
 		assertThat(result.habitId()).startsWith("HBIT");
 		assertThat(result.status()).isEqualTo(HabitStatus.ACTIVE);
 		assertThat(result.name()).isEqualTo("매일 물 2L");
+		assertThat(result.verificationContent()).isNull();
+	}
+
+	@Test
+	@DisplayName("verificationContent를 지정하면 저장되어 응답에 그대로 반환된다 (지시서 05 #3)")
+	void createHabit_withVerificationContent() {
+		// Given
+		given(habitRepositoryPort.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+		// When
+		HabitResponse result = service.createHabit(new CreateHabitCommand(
+				"user-1", "매일 물 2L", HabitVerificationType.TEXT, LocalTime.of(23, 59, 59), "운동 완료 인증샷 찍기"));
+
+		// Then
+		assertThat(result.verificationContent()).isEqualTo("운동 완료 인증샷 찍기");
 	}
 
 	@Test
@@ -56,7 +71,7 @@ class CreateHabitServiceTest {
 
 		// When
 		HabitResponse result = service.createHabit(new CreateHabitCommand(
-				"user-1", "매일 물 2L", HabitVerificationType.TEXT, null));
+				"user-1", "매일 물 2L", HabitVerificationType.TEXT, null, null));
 
 		// Then
 		assertThat(result.deadlineTime()).isEqualTo(LocalTime.of(23, 59, 59));

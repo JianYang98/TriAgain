@@ -76,7 +76,7 @@ class UpdateHabitNameServiceTest {
 	void endedHabit_throws() {
 		// Given
 		Habit ended = Habit.of(HABIT_ID, USER_ID, "습관", HabitVerificationType.TEXT,
-				LocalTime.of(23, 59, 59), HabitStatus.ENDED, LocalDateTime.now().minusDays(5), LocalDateTime.now());
+				LocalTime.of(23, 59, 59), HabitStatus.ENDED, LocalDateTime.now().minusDays(5), LocalDateTime.now(), null);
 		given(habitRepositoryPort.findById(HABIT_ID)).willReturn(Optional.of(ended));
 
 		// When & Then
@@ -88,6 +88,6 @@ class UpdateHabitNameServiceTest {
 
 	private Habit activeHabit() {
 		return Habit.of(HABIT_ID, USER_ID, "매일 물 2L", HabitVerificationType.TEXT,
-				LocalTime.of(23, 59, 59), HabitStatus.ACTIVE, LocalDateTime.now().minusDays(1), null);
+				LocalTime.of(23, 59, 59), HabitStatus.ACTIVE, LocalDateTime.now().minusDays(1), null, null);
 	}
 }

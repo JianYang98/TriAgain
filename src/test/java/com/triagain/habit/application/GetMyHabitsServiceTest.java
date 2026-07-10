@@ -123,6 +123,6 @@ class GetMyHabitsServiceTest {
 
 	private Habit habit(String id, HabitStatus status) {
 		return Habit.of(id, USER_ID, "매일 물 2L", HabitVerificationType.TEXT,
-				LocalTime.of(23, 59, 59), status, FIXED_NOW.minusDays(10), null);
+				LocalTime.of(23, 59, 59), status, FIXED_NOW.minusDays(10), null, null);
 	}
 }

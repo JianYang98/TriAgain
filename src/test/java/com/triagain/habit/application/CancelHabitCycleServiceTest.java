@@ -107,6 +107,6 @@ class CancelHabitCycleServiceTest {
 
 	private Habit activeHabit() {
 		return Habit.of(HABIT_ID, USER_ID, "매일 물 2L", HabitVerificationType.TEXT,
-				LocalTime.of(23, 59, 59), HabitStatus.ACTIVE, FIXED_NOW.minusDays(1), null);
+				LocalTime.of(23, 59, 59), HabitStatus.ACTIVE, FIXED_NOW.minusDays(1), null, null);
 	}
 }

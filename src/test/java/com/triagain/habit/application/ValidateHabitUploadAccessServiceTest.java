@@ -84,7 +84,7 @@ class ValidateHabitUploadAccessServiceTest {
 	void textHabit_throws() {
 		// Given
 		Habit habit = Habit.of(HABIT_ID, USER_ID, "습관", HabitVerificationType.TEXT,
-				LocalTime.of(23, 59, 59), HabitStatus.ACTIVE, FIXED_NOW.minusDays(1), null);
+				LocalTime.of(23, 59, 59), HabitStatus.ACTIVE, FIXED_NOW.minusDays(1), null, null);
 		given(habitRepositoryPort.findById(HABIT_ID)).willReturn(Optional.of(habit));
 
 		// When & Then
@@ -127,7 +127,7 @@ class ValidateHabitUploadAccessServiceTest {
 	void endedHabit_throws() {
 		// Given
 		Habit habit = Habit.of(HABIT_ID, USER_ID, "습관", HabitVerificationType.PHOTO,
-				LocalTime.of(23, 59, 59), HabitStatus.ENDED, FIXED_NOW.minusDays(10), FIXED_NOW.minusDays(1));
+				LocalTime.of(23, 59, 59), HabitStatus.ENDED, FIXED_NOW.minusDays(10), FIXED_NOW.minusDays(1), null);
 		given(habitRepositoryPort.findById(HABIT_ID)).willReturn(Optional.of(habit));
 
 		// When & Then
@@ -166,6 +166,6 @@ class ValidateHabitUploadAccessServiceTest {
 
 	private Habit photoHabit(HabitStatus status, LocalTime deadlineTime) {
 		return Habit.of(HABIT_ID, USER_ID, "달리기 30분", HabitVerificationType.PHOTO,
-				deadlineTime, status, FIXED_NOW.minusDays(1), null);
+				deadlineTime, status, FIXED_NOW.minusDays(1), null, null);
 	}
 }

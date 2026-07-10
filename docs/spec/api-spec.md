@@ -1992,6 +1992,7 @@ Content-Type: application/json
 {
   "name": "매일 물 2L",
   "verificationType": "TEXT",
+  "verificationContent": "운동 완료 인증샷 찍기",
   "deadlineTime": "23:59:59"
 }
 ```
@@ -1999,6 +2000,7 @@ Content-Type: application/json
 **필드 설명:**
 - `name`: 필수, 1~50자
 - `verificationType`: 필수, `TEXT` | `PHOTO`
+- `verificationContent`: 선택, 최대 100자 — 인증 화면 안내 문구 (V24). 빈 문자열은 null로 정규화(안내 없음)
 - `deadlineTime`: 선택, 기본 `23:59:59` (v1 FE는 미노출 — 서버 스펙만 지원)
 
 **성공 응답 (201 Created)**
@@ -2009,6 +2011,7 @@ Content-Type: application/json
     "habitId": "HBIT-a1b2c3d4e5f60708",
     "name": "매일 물 2L",
     "verificationType": "TEXT",
+    "verificationContent": "운동 완료 인증샷 찍기",
     "deadlineTime": "23:59:59",
     "status": "ACTIVE",
     "createdAt": "2026-07-05T14:30:00",
@@ -2051,6 +2054,7 @@ Content-Type: application/json
       "habitId": "HBIT-a1b2c3d4e5f60708",
       "name": "매일 물 2L",
       "verificationType": "TEXT",
+      "verificationContent": "운동 완료 인증샷 찍기",
       "deadlineTime": "23:59:59",
       "status": "ACTIVE",
       "successCount": 4,
@@ -2069,6 +2073,7 @@ Content-Type: application/json
       "habitId": "HBIT-b2c3d4e5f6071819",
       "name": "달리기 30분",
       "verificationType": "PHOTO",
+      "verificationContent": null,
       "deadlineTime": "23:59:59",
       "status": "PAUSED",
       "successCount": 2,
@@ -2081,6 +2086,7 @@ Content-Type: application/json
 ```
 
 **필드 설명:**
+- `verificationContent`: 인증 안내 문구 — 미설정 시 null (V24). 솔로 인증 화면 가이드 노출용
 - `successCount`: SUCCESS 사이클 COUNT (별도 캐시 컬럼 없음)
 - `todayVerified`: 오늘 인증 존재 여부
 - `activeCycle`: IN_PROGRESS 사이클 없으면 null (FAILED/SUCCESS 직후·PAUSED·등록 직후). `startDate`가 미래면 FE는 "내일부터 시작" 표기
