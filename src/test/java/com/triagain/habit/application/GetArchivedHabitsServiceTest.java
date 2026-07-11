@@ -46,7 +46,7 @@ class GetArchivedHabitsServiceTest {
 		// Given
 		LocalDateTime endedAt = LocalDateTime.of(2026, 7, 5, 21, 30, 0);
 		Habit ended = Habit.of("habit-1", USER_ID, "매일 물 2L", HabitVerificationType.TEXT,
-				LocalTime.of(23, 59, 59), HabitStatus.ENDED, endedAt.minusDays(10), endedAt);
+				LocalTime.of(23, 59, 59), HabitStatus.ENDED, endedAt.minusDays(10), endedAt, null);
 		given(habitRepositoryPort.findAllByUserIdAndStatusOrderByEndedAtDesc(USER_ID, HabitStatus.ENDED))
 				.willReturn(List.of(ended));
 		given(habitCycleRepositoryPort.countSuccessByHabitIds(List.of("habit-1")))

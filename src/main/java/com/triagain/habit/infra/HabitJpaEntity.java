@@ -45,12 +45,16 @@ public class HabitJpaEntity {
 	@Column(name = "ended_at")
 	private LocalDateTime endedAt;
 
+	@Column(name = "verification_content", length = 100)
+	private String verificationContent;
+
 	protected HabitJpaEntity() {
 	}
 
 	/** JPA 엔티티를 도메인 모델로 변환 */
 	public Habit toDomain() {
-		return Habit.of(id, userId, name, verificationType, deadlineTime, status, createdAt, endedAt);
+		return Habit.of(id, userId, name, verificationType, deadlineTime, status, createdAt, endedAt,
+				verificationContent);
 	}
 
 	/** 도메인 모델을 JPA 엔티티로 변환 — 저장 시 사용 */
@@ -64,6 +68,7 @@ public class HabitJpaEntity {
 		entity.status = habit.getStatus();
 		entity.createdAt = habit.getCreatedAt();
 		entity.endedAt = habit.getEndedAt();
+		entity.verificationContent = habit.getVerificationContent();
 		return entity;
 	}
 }

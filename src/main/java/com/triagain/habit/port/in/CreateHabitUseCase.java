@@ -14,7 +14,8 @@ public interface CreateHabitUseCase {
 			String userId,
 			String name,
 			HabitVerificationType verificationType,
-			LocalTime deadlineTime
+			LocalTime deadlineTime,
+			String verificationContent
 	) {
 	}
 }

@@ -161,7 +161,7 @@ class StartHabitCycleServiceTest {
 	void pausedHabit_throws() {
 		// Given
 		Habit habit = Habit.of(HABIT_ID, USER_ID, "습관", HabitVerificationType.TEXT,
-				LocalTime.of(23, 59, 59), HabitStatus.PAUSED, FIXED_NOW.minusDays(1), null);
+				LocalTime.of(23, 59, 59), HabitStatus.PAUSED, FIXED_NOW.minusDays(1), null, null);
 		given(habitRepositoryPort.findByIdForUpdate(HABIT_ID)).willReturn(Optional.of(habit));
 
 		// When & Then
@@ -242,6 +242,6 @@ class StartHabitCycleServiceTest {
 
 	private Habit activeHabit(LocalTime deadlineTime) {
 		return Habit.of(HABIT_ID, USER_ID, "매일 물 2L", HabitVerificationType.TEXT,
-				deadlineTime, HabitStatus.ACTIVE, FIXED_NOW.minusDays(1), null);
+				deadlineTime, HabitStatus.ACTIVE, FIXED_NOW.minusDays(1), null, null);
 	}
 }

@@ -173,6 +173,7 @@ erDiagram
         varchar(36) id PK
         varchar(64) user_id FK
         varchar(50) name
+        varchar(100) verification_content "nullable — 인증 안내 문구, 인증 화면 가이드 노출 (V24)"
         enum verification_type "TEXT / PHOTO"
         time deadline_time "DEFAULT 23:59:59"
         enum status "ACTIVE / PAUSED / ENDED"

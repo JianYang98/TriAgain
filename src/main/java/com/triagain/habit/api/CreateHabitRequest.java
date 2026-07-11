@@ -11,6 +11,7 @@ import jakarta.validation.constraints.Size;
 public record CreateHabitRequest(
 		@NotBlank(message = "습관 이름은 필수입니다") @Size(max = 50) String name,
 		@NotNull(message = "인증 방식은 필수입니다") HabitVerificationType verificationType,
-		LocalTime deadlineTime
+		LocalTime deadlineTime,
+		@Size(max = 100) String verificationContent
 ) {
 }

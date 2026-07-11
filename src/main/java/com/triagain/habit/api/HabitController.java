@@ -48,7 +48,8 @@ public class HabitController {
 			@Valid @RequestBody CreateHabitRequest request
 	) {
 		CreateHabitCommand command = new CreateHabitCommand(
-				userId, request.name(), request.verificationType(), request.deadlineTime()
+				userId, request.name(), request.verificationType(), request.deadlineTime(),
+				request.verificationContent()
 		);
 
 		HabitResponse result = createHabitUseCase.createHabit(command);

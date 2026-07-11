@@ -24,7 +24,8 @@ class HabitTest {
 		@DisplayName("status=ACTIVE, endedAt=null로 생성된다")
 		void success() {
 			// Given & When
-			Habit habit = Habit.create("user-1", "매일 물 2L", HabitVerificationType.TEXT, LocalTime.of(22, 0, 0));
+			Habit habit = Habit.create("user-1", "매일 물 2L", HabitVerificationType.TEXT, LocalTime.of(22, 0, 0),
+					null);
 
 			// Then
 			assertThat(habit.getId()).startsWith("HBIT");
@@ -34,13 +35,46 @@ class HabitTest {
 			assertThat(habit.getDeadlineTime()).isEqualTo(LocalTime.of(22, 0, 0));
 			assertThat(habit.getStatus()).isEqualTo(HabitStatus.ACTIVE);
 			assertThat(habit.getEndedAt()).isNull();
+			assertThat(habit.getVerificationContent()).isNull();
+		}
+
+		@Test
+		@DisplayName("verificationContent를 지정하면 그대로 보존된다")
+		void verificationContent_kept() {
+			// Given & When
+			Habit habit = Habit.create("user-1", "매일 물 2L", HabitVerificationType.TEXT, null,
+					"운동 완료 인증샷 찍기");
+
+			// Then
+			assertThat(habit.getVerificationContent()).isEqualTo("운동 완료 인증샷 찍기");
+		}
+
+		@Test
+		@DisplayName("verificationContent가 공백이면 null(안내 없음)로 정규화된다")
+		void blankVerificationContent_normalizedToNull() {
+			// Given & When
+			Habit habit = Habit.create("user-1", "매일 물 2L", HabitVerificationType.TEXT, null, "   ");
+
+			// Then
+			assertThat(habit.getVerificationContent()).isNull();
+		}
+
+		@Test
+		@DisplayName("verificationContent가 100자를 초과하면 INVALID_INPUT 예외가 발생한다")
+		void tooLongVerificationContent_throws() {
+			String tooLong = "a".repeat(101);
+
+			assertThatThrownBy(() -> Habit.create("user-1", "매일 물 2L", HabitVerificationType.TEXT, null, tooLong))
+					.isInstanceOf(BusinessException.class)
+					.extracting("errorCode")
+					.isEqualTo(ErrorCode.INVALID_INPUT);
 		}
 
 		@Test
 		@DisplayName("deadlineTime 미지정 시 기본값 23:59:59가 적용된다")
 		void defaultDeadlineTime() {
 			// Given & When
-			Habit habit = Habit.create("user-1", "매일 물 2L", HabitVerificationType.TEXT, null);
+			Habit habit = Habit.create("user-1", "매일 물 2L", HabitVerificationType.TEXT, null, null);
 
 			// Then
 			assertThat(habit.getDeadlineTime()).isEqualTo(LocalTime.of(23, 59, 59));
@@ -49,7 +83,7 @@ class HabitTest {
 		@Test
 		@DisplayName("이름이 공백이면 INVALID_INPUT 예외가 발생한다")
 		void blankName_throws() {
-			assertThatThrownBy(() -> Habit.create("user-1", "  ", HabitVerificationType.TEXT, null))
+			assertThatThrownBy(() -> Habit.create("user-1", "  ", HabitVerificationType.TEXT, null, null))
 					.isInstanceOf(BusinessException.class)
 					.extracting("errorCode")
 					.isEqualTo(ErrorCode.INVALID_INPUT);
@@ -60,7 +94,7 @@ class HabitTest {
 		void tooLongName_throws() {
 			String tooLong = "a".repeat(51);
 
-			assertThatThrownBy(() -> Habit.create("user-1", tooLong, HabitVerificationType.TEXT, null))
+			assertThatThrownBy(() -> Habit.create("user-1", tooLong, HabitVerificationType.TEXT, null, null))
 					.isInstanceOf(BusinessException.class)
 					.extracting("errorCode")
 					.isEqualTo(ErrorCode.INVALID_INPUT);
@@ -146,6 +180,6 @@ class HabitTest {
 	}
 
 	private Habit activeHabit() {
-		return Habit.create("user-1", "매일 물 2L", HabitVerificationType.TEXT, LocalTime.of(23, 59, 59));
+		return Habit.create("user-1", "매일 물 2L", HabitVerificationType.TEXT, LocalTime.of(23, 59, 59), null);
 	}
 }

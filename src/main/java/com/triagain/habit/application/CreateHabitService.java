@@ -20,7 +20,8 @@ public class CreateHabitService implements CreateHabitUseCase {
 	@Transactional
 	public HabitResponse createHabit(CreateHabitCommand command) {
 		Habit habit = Habit.create(
-				command.userId(), command.name(), command.verificationType(), command.deadlineTime());
+				command.userId(), command.name(), command.verificationType(), command.deadlineTime(),
+				command.verificationContent());
 		Habit saved = habitRepositoryPort.save(habit);
 		return HabitResponse.from(saved);
 	}

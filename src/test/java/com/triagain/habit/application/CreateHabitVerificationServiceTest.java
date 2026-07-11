@@ -385,7 +385,7 @@ class CreateHabitVerificationServiceTest {
 
 	private void givenHabit(HabitVerificationType type, HabitStatus status) {
 		Habit habit = Habit.of(HABIT_ID, USER_ID, "매일 습관", type,
-				LocalTime.of(23, 59, 59), status, FIXED_NOW.minusDays(10), null);
+				LocalTime.of(23, 59, 59), status, FIXED_NOW.minusDays(10), null, null);
 		given(habitRepositoryPort.findByIdForUpdate(HABIT_ID)).willReturn(Optional.of(habit));
 	}
 
