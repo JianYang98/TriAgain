@@ -172,6 +172,11 @@
 
 - 주의: 5s 스크레이프 게이지(pending·busy)는 <1s 버스트 과소표집 — 워터마크(`*_max`)만 정본 대비 [`0704_..비교.md` §3-1].
 - CPU: 전 회차 포화 아님 — 07-01 23~24%, 5차 max 51.2%(vu700 직후), C10 28%, C11 35.6% [각 Prometheus 문서].
+- 07-13 A9(off)/A10(on, Serial·CONDITIONAL) 세션 전체 system_cpu max: A9 **69.2%**(process 46.5%, vu700 직후 표본) / A10 **49.6%**(process 28.7%, vu400 직후 표본) — 역대 최고치(포화는 아님) · heap_used_sum max A9 121.3MB(52.0%) / A10 106.2MB(45.5%), 힙 상한(Eden+Survivor+Tenured≈233MB) 대비 [`results/0713/A9A10/prometheus-a9a10/merged_timeseries.csv`, `extra3_jvm_memory_max.json`].
+- 07-13 C15(off)/C16(on, Serial·PESSIMISTIC) system_cpu max: C15 41.0%(process 20.8%) / C16 49.9%(process 29.3%) — **on이 off보다 높음(A9/A10과 반대 방향)** · heap max C15 135.5MB(58.1%) / C16 116.0MB(49.7%) [`results/0713/C15C16/prometheus/merged_timeseries.csv`].
+- 07-14 A11(off)/A12(on, G1·CONDITIONAL) system_cpu max: A11 61.5%(process 39.6%) / A12 56.8%(process 36.8%) · heap max A11 122.3MB(50.7%) / A12 117.9MB(48.9%), 힙 상한(G1 Old Gen max≈241MB) 대비 [`results/0714/prometheus-a11a12/merged_timeseries.csv`].
+- 07-14 C17(off)/C18(on, G1·PESSIMISTIC) system_cpu max: C17 64.8%(process 43.2%) / C18 61.0%(process 39.8%) · heap max C17 131.0MB(54.3%) / C18 130.8MB(54.3%, 사실상 동률) [`results/0714/prometheus-c17c18/merged_timeseries.csv`].
+- ⚠️ PRE_GC 게이트 on/off를 CPU/heap으로 판정: **heap max는 4쌍 전부 on≤off**(gate가 런 진입 전 힙을 청소하는 메커니즘과 정합, 방향 일관) — **system_cpu max는 4쌍 중 3쌍만 on<off, C15/C16은 역전**(단일세션·5s 언더샘플링 교란 그대로 — CPU를 arm 효과 증거로 쓰지 말 것, heap이 상대적으로 더 방어 가능한 보조지표).
 
 ## 9. 04-17/04-20 원본 HTML 재확인 (conn_reset의 정체)
 
