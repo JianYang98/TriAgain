@@ -172,11 +172,35 @@
 
 - 주의: 5s 스크레이프 게이지(pending·busy)는 <1s 버스트 과소표집 — 워터마크(`*_max`)만 정본 대비 [`0704_..비교.md` §3-1].
 - CPU: 전 회차 포화 아님 — 07-01 23~24%, 5차 max 51.2%(vu700 직후), C10 28%, C11 35.6% [각 Prometheus 문서].
-- 07-13 A9(off)/A10(on, Serial·CONDITIONAL) 세션 전체 system_cpu max: A9 **69.2%**(process 46.5%, vu700 직후 표본) / A10 **49.6%**(process 28.7%, vu400 직후 표본) — 역대 최고치(포화는 아님) · heap_used_sum max A9 121.3MB(52.0%) / A10 106.2MB(45.5%), 힙 상한(Eden+Survivor+Tenured≈233MB) 대비 [`results/0713/A9A10/prometheus-a9a10/merged_timeseries.csv`, `extra3_jvm_memory_max.json`].
-- 07-13 C15(off)/C16(on, Serial·PESSIMISTIC) system_cpu max: C15 41.0%(process 20.8%) / C16 49.9%(process 29.3%) — **on이 off보다 높음(A9/A10과 반대 방향)** · heap max C15 135.5MB(58.1%) / C16 116.0MB(49.7%) [`results/0713/C15C16/prometheus/merged_timeseries.csv`].
-- 07-14 A11(off)/A12(on, G1·CONDITIONAL) system_cpu max: A11 61.5%(process 39.6%) / A12 56.8%(process 36.8%) · heap max A11 122.3MB(50.7%) / A12 117.9MB(48.9%), 힙 상한(G1 Old Gen max≈241MB) 대비 [`results/0714/prometheus-a11a12/merged_timeseries.csv`].
-- 07-14 C17(off)/C18(on, G1·PESSIMISTIC) system_cpu max: C17 64.8%(process 43.2%) / C18 61.0%(process 39.8%) · heap max C17 131.0MB(54.3%) / C18 130.8MB(54.3%, 사실상 동률) [`results/0714/prometheus-c17c18/merged_timeseries.csv`].
-- ⚠️ PRE_GC 게이트 on/off를 CPU/heap으로 판정: **heap max는 4쌍 전부 on≤off**(gate가 런 진입 전 힙을 청소하는 메커니즘과 정합, 방향 일관) — **system_cpu max는 4쌍 중 3쌍만 on<off, C15/C16은 역전**(단일세션·5s 언더샘플링 교란 그대로 — CPU를 arm 효과 증거로 쓰지 말 것, heap이 상대적으로 더 방어 가능한 보조지표).
+- 07-13/07-14 PRE_GC 게이트 4쌍(A9/A10·C15/C16·A11/A12·C17/C18) CPU·heap max — 세션 전체 창 기준 개별 최댓값(각 지표 독립, 205±개 5s 표본 중 최댓값):
+
+| 세션 | 락·GC·게이트 | process_cpu max | system_cpu max | heap max |
+|---|---|---|---|---|
+| A9 | atomic UPDATE·Serial·off | 46.46% | 69.16% | **121.31MB**(52.0%) |
+| A10 | atomic UPDATE·Serial·on | 28.67% | 49.59% | **106.17MB**(45.5%) |
+| C15 | PESSIMISTIC·Serial·off | 20.79% | 40.98% | **135.48MB**(58.1%) |
+| C16 | PESSIMISTIC·Serial·on | 29.29% | 49.90% | **116.00MB**(49.7%) |
+| A11 | atomic UPDATE·G1·off | 39.58% | 61.54% | **122.26MB**(50.7%) |
+| A12 | atomic UPDATE·G1·on | 36.83% | 56.82% | **117.85MB**(48.9%) |
+| C17 | PESSIMISTIC·G1·off | 43.19% | 64.77% | **131.03MB**(54.3%) |
+| C18 | PESSIMISTIC·G1·on | 39.80% | 61.02% | **124.15MB**(51.5%, 정정) |
+
+- 힙 상한: Serial(A9/A10/C15/C16) Eden+Survivor+Tenured≈233.18MB · G1(A11/A12/C17/C18) G1 Old Gen max≈241.17MB(G1 Eden/Survivor는 동적 리사이징이라 max 미정의, Old Gen max를 힙 상한으로 채택) [`extra3_jvm_memory_max.json`].
+- process_cpu·system_cpu·heap 세 열은 각각 **독립적인 최댓값**(같은 순간 표본이 아님) — 8개 세션 전부 heap max 시각의 system_cpu는 18~20%(idle 베이스라인)로 떨어져 있었고, C15·C16·A11은 process_cpu 자체 최댓값 시각이 system_cpu 최댓값 시각과도 다름. 정확한 시각·상호 참조는 대화 기록(`ai-log` 또는 세션 원본 질의) 참조 — 이 문서엔 각 지표 최댓값만 채택.
+- ⚠️ **C18 heap max 정정(130.8MB→124.15MB)**: 원래 잡힌 130.84MB@00:30:40은 C17 vu700(00:28:45 종료) 이후 안 치워진 잔여 힙이 C18 첫 게이트 리셋(00:30:45~50) 5초 전까지 이어진 것 — C18 자체 부하가 아니라 C17 잔재. 게이트 리셋 이후만 재계산한 값이 위 표 수치. 정정 후 **heap max는 4쌍 전부 on≤off로 일관**(C17>C18도 포함).
+- ⚠️ **heap_used_sum은 부하 유무와 무관하게 ~30~40s 주기로 climb→young GC reset을 반복하는 자연 사이클이 있음**(A10 종료 후 idle 구간에서도 확인, 60→106MB climb 후 리셋 반복) — "창 안 최댓값"은 이 사이클의 어느 위상에서 창이 끊기느냐에 따라 달라짐. A10·C17의 heap max는 창 끝단과 거의 일치해 우측 절단(right-censored) 가능성 있음.
+- system_cpu max는 여전히 **4쌍 중 3쌍만 on<off, C15/C16만 역전** — CPU를 arm 효과 증거로 쓰지 말 것, heap이 상대적으로 더 방어 가능한 보조지표라는 결론은 유지.
+- t3.micro 2vCPU 기준 8개 세션 전부 CPU/heap 어느 것도 포화(100%)에 못 미침 — 병목은 CPU/메모리가 아니라 커널 SYN 수립층(§6, `serial-vs-g1/Serial-vs-G1_통합비교-4쌍.md`).
+- 위 표를 Serial↔G1 축으로 재편(같은 락전략·게이트끼리 짝):
+
+| 조건 | Serial | G1 | 차이 (G1−Serial) |
+|---|---|---|---|
+| atomic UPDATE·off | A9 69.16% / 121.31MB | A11 61.54% / 122.26MB | CPU **−7.62pp**(Serial 높음) / heap +0.95MB(거의 동일) |
+| atomic UPDATE·on | A10 49.59% / 106.17MB | A12 56.82% / 117.85MB | CPU **+7.23pp**(G1 높음) / heap **+11.68MB** |
+| PESSIMISTIC·off | C15 40.98% / 135.48MB | C17 64.77% / 131.03MB | CPU **+23.79pp**(G1 훨씬 높음) / heap **−4.45MB** |
+| PESSIMISTIC·on | C16 49.90% / 116.00MB | C18 61.02% / 124.15MB(정정) | CPU **+11.12pp**(G1 높음) / heap **+8.15MB** |
+
+- system_cpu는 **4쌍 중 3쌍에서 G1이 Serial보다 높음**(유일한 예외 atomic·off는 8개 세션 중 A9가 최고치라 이상치 가능성) — G1의 concurrent marking/refinement 백그라운드 스레드가 Serial(stop-the-world만 수행)보다 상시 CPU 오버헤드가 높다는 GC 이론과 방향은 부합하나, 세션당 1회뿐이라 확정 근거는 아님(같은 5s 언더샘플링·무반복 caveat 적용). heap은 뚜렷한 방향 없음(2쌍 G1 높음, 2쌍 Serial 높음/동률).
 
 ## 9. 04-17/04-20 원본 HTML 재확인 (conn_reset의 정체)
 
