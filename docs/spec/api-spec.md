@@ -123,6 +123,7 @@ Content-Type: application/json
 }
 
 // 400 Bad Request - 인증 마감 시간 초과
+// 발생 조건: min(슬롯 일일마감(crew.deadlineTime, 기본 23:59:59), 사이클 마감(challenge.deadline)) + 5분 초과
 {
   "code": "VERIFICATION_DEADLINE_EXCEEDED",
   "message": "인증 마감 시간이 지났습니다."
@@ -257,6 +258,7 @@ Idempotency-Key: <uuid>
 }
 
 // 400 Bad Request - 인증 마감 시간 초과
+// 발생 조건: min(슬롯 일일마감(crew.deadlineTime, 기본 23:59:59), 사이클 마감(challenge.deadline)) + 5분 초과
 {
   "code": "VERIFICATION_DEADLINE_EXCEEDED",
   "message": "인증 마감 시간이 지났습니다.",
@@ -301,6 +303,7 @@ Idempotency-Key: <uuid>
 - verification 생성 시 session COMPLETED 확인만 수행, 중복 사용은 DB UNIQUE constraint(verification.upload_session_id)로 방지
 - 텍스트 인증 크루인 경우 uploadSessionId, imageUrl 없이 호출 가능
 - 마감 시간 기준: upload_session.requested_at (서버 기록, 조작 불가)
+- targetDate는 슬롯(챌린지의 미인증 당일 = startDate+completedDays)으로 서버가 귀속한다 (grace 자정 케이스 포함)
 
 ---
 

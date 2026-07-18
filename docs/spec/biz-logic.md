@@ -323,8 +323,18 @@
 | 9:59 요청, 업로드 안 함 | ⏰ EXPIRED 처리 |
 | 10:01 요청 | ❌ 서버에서 마감 지남 → URL 발급 거부 |
 
-- 인증 시간 기준: upload_session.requested_at (서버가 기록, 조작 불가)
-- Grace Period: challenge.deadline + 5분 (텍스트/사진 인증 모두 동일 적용)
+- 인증 시간 기준(앵커): 사진은 upload_session.requested_at(서버가 기록, 조작 불가), 텍스트는 요청 처리 시각(now)
+- **슬롯 귀속**: 인증은 "슬롯"(챌린지의 미인증 당일 = challenge.startDate + challenge.completedDays)에
+  귀속되며, targetDate는 인증 생성 시각의 날짜가 아니라 슬롯 값으로 저장한다. 자정 직후(예: 00:02) grace
+  제출도 "생성된 날"이 아니라 전날 슬롯으로 정확히 귀속된다.
+- **유효창**: 슬롯 당일 00:00 ~ 유효 상한. 유효 상한 = min(슬롯 일일마감, challenge.deadline) + Grace
+  Period(5분) — 슬롯 일일마감은 `슬롯날짜.atTime(crew.deadlineTime)`(deadlineTime null이면 기본 23:59:59),
+  challenge.deadline은 사이클 전체 마감(crew.endDate 캡 포함)이다. 두 마감을 혼용하지 않고 항상 더 이른
+  쪽을 적용한다(텍스트/사진 인증 모두 동일 적용).
+- 앵커의 날짜가 슬롯보다 이르면(=해당 슬롯을 이미 인증한 뒤 재제출) VERIFICATION_ALREADY_EXISTS(409)로
+  거부한다 — 하루치를 몰아서 채우는 것을 방지한다.
+- **크루/솔로 비대칭**: 크루는 마감 폭주 완충을 위해 자정을 넘긴 grace 제출을 인정한다(위 유효창). 솔로
+  습관은 자기규율 목적으로 슬롯 가드가 자정을 하드컷한다 — 두 모드의 정체성 차이에 따른 의도된 정책이다.
 
 ---
 
