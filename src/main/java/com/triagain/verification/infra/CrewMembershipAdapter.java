@@ -19,12 +19,6 @@ public class CrewMembershipAdapter implements CrewPort {
         crewMembershipQueryUseCase.validateMembership(crewId, userId);
     }
 
-    /** 크루 인증방식 조회 — PHOTO/TEXT 반환 */
-    @Override
-    public String getVerificationType(String crewId) {
-        return crewMembershipQueryUseCase.getVerificationType(crewId);
-    }
-
     /** 크루 기간 조회 — 같은 트랜잭션 내 JPA L1 캐시로 중복 DB 호출 없음 */
     @Override
     public CrewPeriod getCrewPeriod(String crewId) {

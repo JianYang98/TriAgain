@@ -119,17 +119,22 @@ public abstract class E2eTestBase {
         return crew;
     }
 
-    /** IN_PROGRESS 챌린지 생성 — completedDays 지정 가능 */
+    /**
+     * IN_PROGRESS 챌린지 생성 — completedDays 지정 가능.
+     * startDate=오늘-completedDays로 맞춰 슬롯(startDate+completedDays)이 항상 "오늘"이 되도록 한다 —
+     * grace-targetdate SDD로 targetDate가 슬롯 기준이 되면서, startDate=오늘 고정이면 completedDays>0일 때
+     * 슬롯이 미래로 밀려 하한(V003)에 걸리는 문제가 있었다.
+     */
     protected Challenge createChallenge(String userId, String crewId, int completedDays) {
         Challenge challenge = Challenge.of(
                 IdGenerator.generate("CHAL"), userId, crewId, 1,
                 3, completedDays, ChallengeStatus.IN_PROGRESS,
-                LocalDate.now(), LocalDateTime.now().plusDays(3), LocalDateTime.now()
+                LocalDate.now().minusDays(completedDays), LocalDateTime.now().plusDays(3), LocalDateTime.now()
         );
         return challengeRepositoryPort.save(challenge);
     }
 
-    private String generateInviteCode() {
+    protected String generateInviteCode() {
         String chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
         StringBuilder code = new StringBuilder(6);
         for (int i = 0; i < 6; i++) {

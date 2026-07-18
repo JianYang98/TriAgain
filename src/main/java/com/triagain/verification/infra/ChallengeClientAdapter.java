@@ -65,6 +65,7 @@ public class ChallengeClientAdapter implements ChallengePort {
                 dto.status(),
                 dto.completedDays(),
                 dto.targetDays(),
+                dto.startDate(),
                 dto.deadline()
         );
     }

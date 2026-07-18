@@ -38,6 +38,7 @@ public interface ChallengePort {
             String status,
             int completedDays,
             int targetDays,
+            LocalDate startDate,
             LocalDateTime deadline
     ) {
     }

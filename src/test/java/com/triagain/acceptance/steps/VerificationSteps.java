@@ -2,6 +2,7 @@ package com.triagain.acceptance.steps;
 
 import com.triagain.acceptance.ScenarioContext;
 import com.triagain.acceptance.adapter.VerificationTestAdapter;
+import com.triagain.common.domain.DeadlinePolicy;
 import com.triagain.common.util.IdGenerator;
 import com.triagain.crew.domain.model.Challenge;
 import com.triagain.crew.domain.model.Crew;
@@ -120,10 +121,7 @@ public class VerificationSteps {
 
     @조건("업로드 세션이 마감 직전에 요청되었다")
     public void 업로드_세션이_마감_직전에_요청되었다() {
-        String challengeId = scenarioContext.getChallengeId();
-        Challenge challenge = challengeRepositoryPort.findById(challengeId).orElseThrow();
-
-        LocalDateTime requestedAt = challenge.getDeadline().minusMinutes(1);
+        LocalDateTime requestedAt = slotEffectiveDeadline().minusMinutes(1);
         UploadSession session = createAndSaveSession(UploadSessionStatus.COMPLETED, requestedAt);
         scenarioContext.setUploadSessionId(session.getId());
     }
@@ -135,12 +133,23 @@ public class VerificationSteps {
 
     @조건("업로드 세션 요청 시각이 마감 시간 이후 5분을 초과했다")
     public void 업로드_세션_요청_시각이_마감_시간_이후_5분을_초과했다() {
-        String challengeId = scenarioContext.getChallengeId();
-        Challenge challenge = challengeRepositoryPort.findById(challengeId).orElseThrow();
-
-        LocalDateTime requestedAt = challenge.getDeadline().plusMinutes(6);
+        LocalDateTime requestedAt = slotEffectiveDeadline().plusMinutes(6);
         UploadSession session = createAndSaveSession(UploadSessionStatus.COMPLETED, requestedAt);
         scenarioContext.setUploadSessionId(session.getId());
+    }
+
+    /**
+     * 슬롯(challenge.startDate+completedDays)의 유효 상한 계산 — CreateVerificationService의
+     * validateDeadline과 동일 기준(min(슬롯 일일마감, 사이클 마감), step4) — grace-targetdate SDD로
+     * 마감 판정 기준이 사이클 마감(challenge.deadline) 단독에서 슬롯 일일마감과의 min으로 바뀌어
+     * 기존 "마감 직전/이후" 스텝도 같은 기준으로 앵커를 맞춘다.
+     */
+    private LocalDateTime slotEffectiveDeadline() {
+        String challengeId = scenarioContext.getChallengeId();
+        Challenge challenge = challengeRepositoryPort.findById(challengeId).orElseThrow();
+        Crew crew = crewRepositoryPort.findById(challenge.getCrewId()).orElseThrow();
+        LocalDate slot = DeadlinePolicy.slotFor(challenge.getStartDate(), challenge.getCompletedDays());
+        return DeadlinePolicy.effectiveSlotDeadline(slot, crew.getDeadlineTime(), challenge.getDeadline());
     }
 
     // ===== 만일 (When) =====

@@ -6,6 +6,7 @@ import com.triagain.verification.port.in.CreateVerificationUseCase.CreateVerific
 import com.triagain.verification.port.out.ChallengePort;
 import com.triagain.verification.port.out.ChallengePort.ChallengeInfo;
 import com.triagain.verification.port.out.CrewPort;
+import com.triagain.verification.port.out.CrewPort.CrewVerificationWindowInfo;
 import com.triagain.common.port.out.StoragePort;
 import com.triagain.verification.port.out.UploadSessionRepositoryPort;
 import com.triagain.verification.port.out.VerificationRepositoryPort;
@@ -14,11 +15,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -42,6 +46,10 @@ class CrewFirstVerificationServiceTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
+    // 실제 시스템 Clock을 감싸는 spy — 아래 challengeInfo()가 LocalDate.now() 기반 동적 값을 쓰므로 무변경으로 통과
+    @Spy
+    private Clock clock = Clock.systemDefaultZone();
+
     @InjectMocks
     private CreateVerificationService createVerificationService;
 
@@ -58,6 +66,13 @@ class CrewFirstVerificationServiceTest {
         );
     }
 
+    private static CrewVerificationWindowInfo windowInfo(String verificationType) {
+        return new CrewVerificationWindowInfo(
+                verificationType, "ACTIVE",
+                LocalDate.now().minusDays(30), LocalDate.now().plusDays(30),
+                false, LocalTime.of(23, 59, 59));
+    }
+
     @Test
     @DisplayName("첫 인증(count==1)이면 CrewFirstVerificationEvent가 1회 발행된다")
     void firstVerification_count1_publishesEvent() {
@@ -67,7 +82,7 @@ class CrewFirstVerificationServiceTest {
                 USER_ID, null, CREW_ID, null, "텍스트 인증");
 
         given(challengePort.findOrCreateActiveChallenge(USER_ID, CREW_ID)).willReturn(challenge);
-        given(crewPort.getVerificationType(CREW_ID)).willReturn("TEXT");
+        given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("TEXT"));
         given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
                 .willReturn(false);
         given(verificationRepositoryPort.save(any(Verification.class)))
@@ -92,7 +107,7 @@ class CrewFirstVerificationServiceTest {
                 USER_ID, null, CREW_ID, null, "텍스트 인증");
 
         given(challengePort.findOrCreateActiveChallenge(USER_ID, CREW_ID)).willReturn(challenge);
-        given(crewPort.getVerificationType(CREW_ID)).willReturn("TEXT");
+        given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("TEXT"));
         given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
                 .willReturn(false);
         given(verificationRepositoryPort.save(any(Verification.class)))
