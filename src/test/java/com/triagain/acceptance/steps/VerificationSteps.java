@@ -148,7 +148,7 @@ public class VerificationSteps {
         String challengeId = scenarioContext.getChallengeId();
         Challenge challenge = challengeRepositoryPort.findById(challengeId).orElseThrow();
         Crew crew = crewRepositoryPort.findById(challenge.getCrewId()).orElseThrow();
-        LocalDate slot = challenge.getStartDate().plusDays(challenge.getCompletedDays());
+        LocalDate slot = DeadlinePolicy.slotFor(challenge.getStartDate(), challenge.getCompletedDays());
         return DeadlinePolicy.effectiveSlotDeadline(slot, crew.getDeadlineTime(), challenge.getDeadline());
     }
 

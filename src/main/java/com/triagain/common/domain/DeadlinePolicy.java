@@ -39,4 +39,9 @@ public class DeadlinePolicy {
 		LocalDateTime slotDeadline = deadlineFor(slot, deadlineTime);
 		return slotDeadline.isBefore(cycleDeadline) ? slotDeadline : cycleDeadline;
 	}
+
+	/** 슬롯(챌린지의 미인증 당일) 산출 = startDate + completedDays */
+	public static LocalDate slotFor(LocalDate startDate, int completedDays) {
+		return startDate.plusDays(completedDays);
+	}
 }

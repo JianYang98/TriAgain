@@ -105,7 +105,7 @@ public class CreateUploadSessionService implements CreateUploadSessionUseCase {
 
         if (active.isPresent()) {
             // [신규] 상한 = min(슬롯 일일마감, 사이클 마감) — endDate 캡 보존(step1 §3-2). 하한(V003)은 발급에 미적용
-            LocalDate slot = active.get().startDate().plusDays(active.get().completedDays());
+            LocalDate slot = DeadlinePolicy.slotFor(active.get().startDate(), active.get().completedDays());
             LocalDateTime effective = DeadlinePolicy.effectiveSlotDeadline(
                     slot, crewInfo.deadlineTime(), active.get().deadline());
             if (!DeadlinePolicy.isWithinDeadline(LocalDateTime.now(clock), effective)) {

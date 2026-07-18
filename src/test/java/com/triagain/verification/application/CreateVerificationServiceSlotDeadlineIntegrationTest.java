@@ -79,14 +79,4 @@ class CreateVerificationServiceSlotDeadlineIntegrationTest extends E2eTestBase {
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
     }
-
-    /** 6자리 초대코드 생성 — E2eTestBase.generateInviteCode()가 private이라 이 테스트 전용으로 별도 구현 */
-    private String generateInviteCode() {
-        String chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-        StringBuilder code = new StringBuilder(6);
-        for (int i = 0; i < 6; i++) {
-            code.append(chars.charAt((int) (Math.random() * chars.length())));
-        }
-        return code.toString();
-    }
 }

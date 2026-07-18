@@ -134,7 +134,7 @@ public abstract class E2eTestBase {
         return challengeRepositoryPort.save(challenge);
     }
 
-    private String generateInviteCode() {
+    protected String generateInviteCode() {
         String chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
         StringBuilder code = new StringBuilder(6);
         for (int i = 0; i < 6; i++) {

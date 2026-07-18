@@ -158,7 +158,7 @@ public class CreateVerificationService implements CreateVerificationUseCase {
      * 앵커 날짜가 슬롯보다 이르면(=해당 슬롯을 이미 인증한 뒤 재제출) 하루치를 몰아 채우는 것으로 간주해 거부한다.
      */
     private LocalDate resolveSlot(ChallengeInfo challenge, LocalDateTime anchor) {
-        LocalDate slot = challenge.startDate().plusDays(challenge.completedDays());
+        LocalDate slot = DeadlinePolicy.slotFor(challenge.startDate(), challenge.completedDays());
         if (anchor.toLocalDate().isBefore(slot)) {
             throw new BusinessException(ErrorCode.VERIFICATION_ALREADY_EXISTS);
         }
