@@ -23,9 +23,20 @@ public class DeadlinePolicy {
 
 	/** Clock 지정 오버로드 — 테스트에서 고정 시각 사용 */
 	public static LocalDateTime todayDeadline(LocalTime deadlineTime, Clock clock) {
+		return deadlineFor(LocalDate.now(clock), deadlineTime);
+	}
+
+	/** 특정 날짜의 마감 시각 계산 — deadlineTime null이면 기본값 23:59:59 */
+	public static LocalDateTime deadlineFor(LocalDate date, LocalTime deadlineTime) {
 		LocalTime time = (deadlineTime != null)
 				? deadlineTime
 				: LocalTime.of(23, 59, 59);
-		return LocalDate.now(clock).atTime(time);
+		return date.atTime(time);
+	}
+
+	/** 슬롯 유효 상한 = min(슬롯 일일마감, 사이클 마감) — endDate 캡 보존 */
+	public static LocalDateTime effectiveSlotDeadline(LocalDate slot, LocalTime deadlineTime, LocalDateTime cycleDeadline) {
+		LocalDateTime slotDeadline = deadlineFor(slot, deadlineTime);
+		return slotDeadline.isBefore(cycleDeadline) ? slotDeadline : cycleDeadline;
 	}
 }

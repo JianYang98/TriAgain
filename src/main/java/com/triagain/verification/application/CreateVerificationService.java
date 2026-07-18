@@ -19,6 +19,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -32,6 +33,8 @@ public class CreateVerificationService implements CreateVerificationUseCase {
     private final CrewPort crewPort;
     private final StoragePort storagePort;
     private final ApplicationEventPublisher eventPublisher;
+    // [신규 스캐폴딩] targetDate 슬롯 귀속 구현(step4)에서 사용 예정 — 이 커밋에서는 아직 미사용
+    private final Clock clock;
 
     @Override
     @Transactional

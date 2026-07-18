@@ -90,7 +90,18 @@ class CreateUploadSessionServiceTest {
 	}
 
 	private static ActiveChallengeInfo activeChallengeWithDeadline(LocalDateTime deadline) {
-		return new ActiveChallengeInfo(CHALLENGE_ID, "IN_PROGRESS", 1, 3, deadline);
+		return activeChallengeWithDeadline(TODAY.minusDays(1), deadline);
+	}
+
+	private static ActiveChallengeInfo activeChallengeWithDeadline(LocalDate startDate, LocalDateTime deadline) {
+		return new ActiveChallengeInfo(CHALLENGE_ID, "IN_PROGRESS", 1, 3, startDate, deadline);
+	}
+
+	/** 고정 시각을 다르게 주입한 별도 서비스 인스턴스 — T-U8(b)처럼 클래스 공용 FIXED_CLOCK과 다른 시각이 필요할 때 사용 */
+	private CreateUploadSessionService serviceAt(LocalDateTime fixedNow) {
+		Clock fixedClock = Clock.fixed(fixedNow.atZone(ZONE).toInstant(), ZONE);
+		return new CreateUploadSessionService(
+				uploadSessionRepositoryPort, storagePort, challengePort, crewPort, habitPort, fixedClock);
 	}
 
 	private CreateUploadSessionCommand defaultCommand() {
@@ -407,5 +418,40 @@ class CreateUploadSessionServiceTest {
 		assertThat(captor.getValue().getCrewId()).isEqualTo(CREW_ID);
 		assertThat(captor.getValue().getHabitId()).isNull();
 		verify(habitPort, never()).validateHabitAndDeadline(any(), any());
+	}
+
+	// ===== T-U8: 슬롯 일일마감 통합(step4 §2) — 발급 경로는 하한(V003) 미적용, 상한만 슬롯 기준으로 통합 =====
+
+	@Test
+	@DisplayName("T-U8(a) 당일 인증 완료 후(슬롯=내일) 같은 날 재발급 시도 — 발급은 성공한다(하한 미적용, 비대칭)")
+	void slotTomorrow_reissueSameDay_success() {
+		// Given — 오늘 이미 완료해 completedDays=1, 슬롯은 내일(TODAY+1)로 넘어간 상태
+		stubMembershipAndCrewInfo(activePhotoCrew(LocalTime.of(23, 59, 59)));
+		given(challengePort.findActiveByUserIdAndCrewId(USER_ID, CREW_ID))
+				.willReturn(Optional.of(activeChallengeWithDeadline(TODAY, TODAY.plusDays(2).atTime(23, 59, 59))));
+		stubStorageAndRepository();
+
+		// When
+		var result = createUploadSessionService.createUploadSession(defaultCommand());
+
+		// Then — 슬롯(내일) 마감 전이므로 재발급 성공 (V003 하한은 /verifications에만 적용)
+		assertThat(result).isNotNull();
+	}
+
+	@Test
+	@DisplayName("T-U8(b) 마감 21:00 크루 2일차 슬롯, 23:00 발급 시도 — 슬롯 일일마감 초과로 V002 (07-18 건 해소)")
+	void slotDailyDeadlineExceeded_issuance_throwsV002() {
+		// Given — deadlineTime=21:00, 슬롯=오늘(2일차, startDate=어제+completedDays=1), 발급 시각=오늘 23:00
+		CreateUploadSessionService service = serviceAt(TODAY.atTime(23, 0, 0));
+		stubMembershipAndCrewInfo(activePhotoCrew(LocalTime.of(21, 0, 0)));
+		given(challengePort.findActiveByUserIdAndCrewId(USER_ID, CREW_ID))
+				.willReturn(Optional.of(activeChallengeWithDeadline(
+						TODAY.minusDays(1), TODAY.plusDays(5).atTime(21, 0, 0))));
+
+		// When & Then — 사이클 마감(TODAY+5)은 넉넉히 남았지만 슬롯 일일마감(TODAY 21:00)을 초과
+		assertThatThrownBy(() -> service.createUploadSession(defaultCommand()))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
 	}
 }
