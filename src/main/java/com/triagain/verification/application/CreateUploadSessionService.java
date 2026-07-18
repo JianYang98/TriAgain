@@ -104,7 +104,11 @@ public class CreateUploadSessionService implements CreateUploadSessionUseCase {
                 .findActiveByUserIdAndCrewId(userId, crewId);
 
         if (active.isPresent()) {
-            if (!DeadlinePolicy.isWithinDeadline(LocalDateTime.now(clock), active.get().deadline())) {
+            // [신규] 상한 = min(슬롯 일일마감, 사이클 마감) — endDate 캡 보존(step1 §3-2). 하한(V003)은 발급에 미적용
+            LocalDate slot = DeadlinePolicy.slotFor(active.get().startDate(), active.get().completedDays());
+            LocalDateTime effective = DeadlinePolicy.effectiveSlotDeadline(
+                    slot, crewInfo.deadlineTime(), active.get().deadline());
+            if (!DeadlinePolicy.isWithinDeadline(LocalDateTime.now(clock), effective)) {
                 throw new BusinessException(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
             }
         } else {
