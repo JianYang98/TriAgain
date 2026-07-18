@@ -9,6 +9,7 @@ import com.triagain.verification.port.in.CreateVerificationUseCase;
 import com.triagain.verification.port.out.ChallengePort;
 import com.triagain.verification.port.out.ChallengePort.ChallengeInfo;
 import com.triagain.verification.port.out.CrewPort;
+import com.triagain.verification.port.out.CrewPort.CrewVerificationWindowInfo;
 import com.triagain.common.port.out.StoragePort;
 import com.triagain.verification.application.event.ChallengeSuccessEvent;
 import com.triagain.verification.application.event.CrewFirstVerificationEvent;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Service
 @RequiredArgsConstructor
@@ -33,7 +35,6 @@ public class CreateVerificationService implements CreateVerificationUseCase {
     private final CrewPort crewPort;
     private final StoragePort storagePort;
     private final ApplicationEventPublisher eventPublisher;
-    // [신규 스캐폴딩] targetDate 슬롯 귀속 구현(step4)에서 사용 예정 — 이 커밋에서는 아직 미사용
     private final Clock clock;
 
     @Override
@@ -69,17 +70,28 @@ public class CreateVerificationService implements CreateVerificationUseCase {
             crewPort.validateMembership(challenge.crewId(), command.userId());
         }
 
-        LocalDate targetDate = LocalDate.now();
+        // [신규] verificationType·deadlineTime을 1회 조회로 통합 (구 getVerificationType 대체, 위치 상향)
+        CrewVerificationWindowInfo windowInfo = crewPort.getCrewVerificationWindowInfo(challenge.crewId());
+
+        // [신규] 앵커 — 사진은 세션의 requestedAt(서버 기록, 조작 불가), 텍스트는 요청 처리 시각
+        LocalDateTime anchor = (preloadedSession != null)
+                ? preloadedSession.getRequestedAt()
+                : LocalDateTime.now(clock);
+
+        // [신규] 슬롯 산출 + 하한 검증(V003) — targetDate는 생성 시각이 아닌 챌린지의 미인증 당일(슬롯)
+        LocalDate targetDate = resolveSlot(challenge, anchor);
 
         if (verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(
                 command.userId(), challenge.crewId(), targetDate)) {
             throw new BusinessException(ErrorCode.VERIFICATION_ALREADY_EXISTS);
         }
 
-        String verificationType = crewPort.getVerificationType(challenge.crewId());
-        if ("PHOTO".equals(verificationType) && command.uploadSessionId() == null) {
+        if ("PHOTO".equals(windowInfo.verificationType()) && command.uploadSessionId() == null) {
             throw new BusinessException(ErrorCode.PHOTO_REQUIRED);
         }
+
+        // [신규] 상한 검증(V002) — min(슬롯 일일마감, 사이클 마감) + grace. PHOTO_REQUIRED 다음, 생성 분기 이전
+        validateDeadline(challenge, windowInfo.deadlineTime(), targetDate, anchor);
 
         Verification verification;
 
@@ -141,6 +153,27 @@ public class CreateVerificationService implements CreateVerificationUseCase {
         return challengePort.findOrCreateActiveChallenge(command.userId(), command.crewId());
     }
 
+    /**
+     * 슬롯 산출 + 하한 검증 — targetDate는 인증 생성 시각이 아닌 챌린지의 미인증 당일(슬롯)로 귀속한다.
+     * 앵커 날짜가 슬롯보다 이르면(=해당 슬롯을 이미 인증한 뒤 재제출) 하루치를 몰아 채우는 것으로 간주해 거부한다.
+     */
+    private LocalDate resolveSlot(ChallengeInfo challenge, LocalDateTime anchor) {
+        LocalDate slot = challenge.startDate().plusDays(challenge.completedDays());
+        if (anchor.toLocalDate().isBefore(slot)) {
+            throw new BusinessException(ErrorCode.VERIFICATION_ALREADY_EXISTS);
+        }
+        return slot;
+    }
+
+    /** 슬롯 유효 상한 검증 — min(슬롯 일일마감, 사이클 마감) + grace period 초과 시 거부 */
+    private void validateDeadline(ChallengeInfo challenge, LocalTime deadlineTime,
+                                   LocalDate slot, LocalDateTime anchor) {
+        LocalDateTime effective = DeadlinePolicy.effectiveSlotDeadline(slot, deadlineTime, challenge.deadline());
+        if (!DeadlinePolicy.isWithinDeadline(anchor, effective)) {
+            throw new BusinessException(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
+        }
+    }
+
     /** 사진 인증 생성 — 선조회된 session을 재사용하여 중복 DB 조회 방지 */
     private Verification createPhotoVerification(UploadSession session,
                                                   CreateVerificationCommand command,
@@ -156,10 +189,6 @@ public class CreateVerificationService implements CreateVerificationUseCase {
                 throw new BusinessException(ErrorCode.UPLOAD_SESSION_NOT_COMPLETED);
             }
             throw new BusinessException(ErrorCode.UPLOAD_SESSION_EXPIRED);
-        }
-
-        if (!DeadlinePolicy.isWithinDeadline(session.getRequestedAt(), challenge.deadline())) {
-            throw new BusinessException(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
         }
 
         String imageUrl = storagePort.getImageUrl(session.getImageKey());
@@ -179,10 +208,6 @@ public class CreateVerificationService implements CreateVerificationUseCase {
     private Verification createTextVerification(CreateVerificationCommand command,
                                                  ChallengeInfo challenge,
                                                  LocalDate targetDate) {
-        if (!DeadlinePolicy.isWithinDeadline(LocalDateTime.now(), challenge.deadline())) {
-            throw new BusinessException(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
-        }
-
         return Verification.createText(
                 challenge.id(),
                 command.userId(),

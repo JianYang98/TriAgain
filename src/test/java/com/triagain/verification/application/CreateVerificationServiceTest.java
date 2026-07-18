@@ -120,7 +120,7 @@ class CreateVerificationServiceTest {
                 USER_ID, CHALLENGE_ID, null, SESSION_ID, "오늘도 완료!");
 
         given(challengePort.findChallengeById(CHALLENGE_ID)).willReturn(Optional.of(challenge));
-        given(crewPort.getVerificationType(CREW_ID)).willReturn("PHOTO");
+        given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("PHOTO", LocalTime.of(23, 59, 59)));
         given(uploadSessionRepositoryPort.findByIdAndUserId(SESSION_ID, USER_ID))
                 .willReturn(Optional.of(session));
         given(storagePort.getImageUrl("images/test.jpg")).willReturn("https://cdn.example.com/images/test.jpg");
@@ -146,7 +146,7 @@ class CreateVerificationServiceTest {
                 USER_ID, null, CREW_ID, null, "텍스트 인증");
 
         given(challengePort.findOrCreateActiveChallenge(USER_ID, CREW_ID)).willReturn(challenge);
-        given(crewPort.getVerificationType(CREW_ID)).willReturn("TEXT");
+        given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("TEXT", LocalTime.of(23, 59, 59)));
         given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
                 .willReturn(false);
         given(verificationRepositoryPort.save(any(Verification.class)))
@@ -213,7 +213,7 @@ class CreateVerificationServiceTest {
                 USER_ID, CHALLENGE_ID, null, null, "텍스트 인증");
 
         given(challengePort.findChallengeById(CHALLENGE_ID)).willReturn(Optional.of(challenge));
-        given(crewPort.getVerificationType(CREW_ID)).willReturn("TEXT");
+        given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("TEXT", LocalTime.of(23, 59, 59)));
         given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
                 .willReturn(false);
         given(verificationRepositoryPort.save(any(Verification.class)))
@@ -240,7 +240,7 @@ class CreateVerificationServiceTest {
                 USER_ID, CHALLENGE_ID, null, null, "텍스트 인증");
 
         given(challengePort.findChallengeById(CHALLENGE_ID)).willReturn(Optional.of(challenge));
-        given(crewPort.getVerificationType(CREW_ID)).willReturn("TEXT");
+        given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("TEXT", LocalTime.of(23, 59, 59)));
         given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
                 .willReturn(false);
 
@@ -286,7 +286,7 @@ class CreateVerificationServiceTest {
         given(challengePort.findChallengeById(CHALLENGE_ID)).willReturn(Optional.of(challenge));
         given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
                 .willReturn(false);
-        given(crewPort.getVerificationType(CREW_ID)).willReturn("PHOTO");
+        given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("PHOTO", LocalTime.of(23, 59, 59)));
 
         // When & Then
         assertThatThrownBy(() -> createVerificationService.createVerification(command))
@@ -306,7 +306,7 @@ class CreateVerificationServiceTest {
                 USER_ID, null, CREW_ID, null, "텍스트 인증");
 
         given(challengePort.findOrCreateActiveChallenge(USER_ID, CREW_ID)).willReturn(challenge);
-        given(crewPort.getVerificationType(CREW_ID)).willReturn("TEXT");
+        given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("TEXT", LocalTime.of(23, 59, 59)));
         given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
                 .willReturn(false);
         given(verificationRepositoryPort.save(any(Verification.class)))
@@ -329,7 +329,7 @@ class CreateVerificationServiceTest {
                 USER_ID, null, CREW_ID, null, "텍스트 인증");
 
         given(challengePort.findOrCreateActiveChallenge(USER_ID, CREW_ID)).willReturn(challenge);
-        given(crewPort.getVerificationType(CREW_ID)).willReturn("TEXT");
+        given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("TEXT", LocalTime.of(23, 59, 59)));
         given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
                 .willReturn(false);
         given(verificationRepositoryPort.save(any(Verification.class)))
