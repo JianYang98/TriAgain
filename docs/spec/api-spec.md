@@ -292,8 +292,7 @@ Idempotency-Key: <uuid>
 // 409 Conflict - 중복 인증
 {
   "code": "VERIFICATION_ALREADY_EXISTS",
-  "message": "이미 해당 날짜에 인증이 존재합니다.",
-  "existingVerificationId": "ver_123"
+  "message": "이미 해당 날짜에 인증이 존재합니다."
 }
 
 ```
