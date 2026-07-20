@@ -9,6 +9,7 @@ import com.triagain.verification.port.out.ChallengePort;
 import com.triagain.verification.port.out.ChallengePort.ActiveChallengeInfo;
 import com.triagain.verification.port.out.CrewPort;
 import com.triagain.verification.port.out.CrewPort.CrewVerificationWindowInfo;
+import com.triagain.verification.port.out.HabitPort;
 import com.triagain.common.port.out.StoragePort;
 import com.triagain.verification.port.out.UploadSessionRepositoryPort;
 import lombok.RequiredArgsConstructor;
@@ -34,18 +35,25 @@ public class CreateUploadSessionService implements CreateUploadSessionUseCase {
     private final StoragePort storagePort;
     private final ChallengePort challengePort;
     private final CrewPort crewPort;
+    private final HabitPort habitPort;
     private final Clock clock;
 
     @Override
     @Transactional
     public UploadSessionResult createUploadSession(CreateUploadSessionCommand command) {
-        validateCrewAndDeadline(command.crewId(), command.userId());
+        validateCrewIdHabitIdXor(command.crewId(), command.habitId());
+        if (command.crewId() != null) {
+            validateCrewAndDeadline(command.crewId(), command.userId());
+        } else {
+            habitPort.validateHabitAndDeadline(command.habitId(), command.userId());
+        }
         validateFileType(command.fileType());
         validateFileSize(command.fileSize());
 
         String imageKey = storagePort.generateImageKey(command.userId(), command.fileType());
 
-        UploadSession session = UploadSession.create(command.userId(), command.crewId(), imageKey, command.fileType());
+        UploadSession session = UploadSession.create(
+                command.userId(), command.crewId(), command.habitId(), imageKey, command.fileType());
         UploadSession saved = uploadSessionRepositoryPort.save(session);
 
         String presignedUrl = storagePort.generatePresignedUrl(imageKey, command.fileType(), command.fileSize());
@@ -61,7 +69,16 @@ public class CreateUploadSessionService implements CreateUploadSessionUseCase {
         );
     }
 
-    /** 크루 상태 + 마감 시간 검증 — 크루 기반으로 업로드 세션 생성 가능 여부 판단 */
+    /** crewId/habitId XOR 검증 — 둘 다 없거나 둘 다 있으면 C001(step2 §9) */
+    private void validateCrewIdHabitIdXor(String crewId, String habitId) {
+        boolean hasCrewId = crewId != null;
+        boolean hasHabitId = habitId != null;
+        if (hasCrewId == hasHabitId) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+    }
+
+    /** 크루 상태 + 마감 시간 검증 — 크루 기반으로 업로드 세션 생성 가능 여부 판단 (거동 불변, G1) */
     private void validateCrewAndDeadline(String crewId, String userId) {
         crewPort.validateMembership(crewId, userId);
 
@@ -87,7 +104,11 @@ public class CreateUploadSessionService implements CreateUploadSessionUseCase {
                 .findActiveByUserIdAndCrewId(userId, crewId);
 
         if (active.isPresent()) {
-            if (!DeadlinePolicy.isWithinDeadline(LocalDateTime.now(clock), active.get().deadline())) {
+            // [신규] 상한 = min(슬롯 일일마감, 사이클 마감) — endDate 캡 보존(step1 §3-2). 하한(V003)은 발급에 미적용
+            LocalDate slot = DeadlinePolicy.slotFor(active.get().startDate(), active.get().completedDays());
+            LocalDateTime effective = DeadlinePolicy.effectiveSlotDeadline(
+                    slot, crewInfo.deadlineTime(), active.get().deadline());
+            if (!DeadlinePolicy.isWithinDeadline(LocalDateTime.now(clock), effective)) {
                 throw new BusinessException(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
             }
         } else {

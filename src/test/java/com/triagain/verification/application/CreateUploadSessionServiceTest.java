@@ -8,6 +8,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -20,6 +22,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -31,6 +34,7 @@ import com.triagain.verification.port.out.ChallengePort;
 import com.triagain.verification.port.out.ChallengePort.ActiveChallengeInfo;
 import com.triagain.verification.port.out.CrewPort;
 import com.triagain.verification.port.out.CrewPort.CrewVerificationWindowInfo;
+import com.triagain.verification.port.out.HabitPort;
 import com.triagain.common.port.out.StoragePort;
 import com.triagain.verification.port.out.UploadSessionRepositoryPort;
 
@@ -45,6 +49,7 @@ class CreateUploadSessionServiceTest {
 
 	private static final String USER_ID = "user-1";
 	private static final String CREW_ID = "crew-1";
+	private static final String HABIT_ID = "habit-1";
 	private static final String CHALLENGE_ID = "challenge-1";
 	private static final String FILE_NAME = "photo.jpg";
 	private static final String FILE_TYPE = "image/jpeg";
@@ -65,12 +70,15 @@ class CreateUploadSessionServiceTest {
 	@Mock
 	private CrewPort crewPort;
 
+	@Mock
+	private HabitPort habitPort;
+
 	private CreateUploadSessionService createUploadSessionService;
 
 	@BeforeEach
 	void setUp() {
 		createUploadSessionService = new CreateUploadSessionService(
-				uploadSessionRepositoryPort, storagePort, challengePort, crewPort, FIXED_CLOCK);
+				uploadSessionRepositoryPort, storagePort, challengePort, crewPort, habitPort, FIXED_CLOCK);
 	}
 
 	private static CrewVerificationWindowInfo activePhotoCrew(LocalTime deadlineTime) {
@@ -82,11 +90,22 @@ class CreateUploadSessionServiceTest {
 	}
 
 	private static ActiveChallengeInfo activeChallengeWithDeadline(LocalDateTime deadline) {
-		return new ActiveChallengeInfo(CHALLENGE_ID, "IN_PROGRESS", 1, 3, deadline);
+		return activeChallengeWithDeadline(TODAY.minusDays(1), deadline);
+	}
+
+	private static ActiveChallengeInfo activeChallengeWithDeadline(LocalDate startDate, LocalDateTime deadline) {
+		return new ActiveChallengeInfo(CHALLENGE_ID, "IN_PROGRESS", 1, 3, startDate, deadline);
+	}
+
+	/** 고정 시각을 다르게 주입한 별도 서비스 인스턴스 — T-U8(b)처럼 클래스 공용 FIXED_CLOCK과 다른 시각이 필요할 때 사용 */
+	private CreateUploadSessionService serviceAt(LocalDateTime fixedNow) {
+		Clock fixedClock = Clock.fixed(fixedNow.atZone(ZONE).toInstant(), ZONE);
+		return new CreateUploadSessionService(
+				uploadSessionRepositoryPort, storagePort, challengePort, crewPort, habitPort, fixedClock);
 	}
 
 	private CreateUploadSessionCommand defaultCommand() {
-		return new CreateUploadSessionCommand(USER_ID, CREW_ID, FILE_NAME, FILE_TYPE, FILE_SIZE);
+		return new CreateUploadSessionCommand(USER_ID, CREW_ID, null, FILE_NAME, FILE_TYPE, FILE_SIZE);
 	}
 
 	private void stubMembershipAndCrewInfo(CrewVerificationWindowInfo crewInfo) {
@@ -101,7 +120,7 @@ class CreateUploadSessionServiceTest {
 		given(uploadSessionRepositoryPort.save(any(UploadSession.class)))
 				.willAnswer(invocation -> {
 					UploadSession session = invocation.getArgument(0);
-					return UploadSession.of(1L, session.getUserId(), session.getCrewId(),
+					return UploadSession.of(1L, session.getUserId(), session.getCrewId(), session.getHabitId(),
 							session.getImageKey(), session.getContentType(),
 							session.getStatus(), session.getRequestedAt(), session.getCreatedAt());
 				});
@@ -289,7 +308,7 @@ class CreateUploadSessionServiceTest {
 		given(challengePort.findActiveByUserIdAndCrewId(USER_ID, CREW_ID))
 				.willReturn(Optional.of(activeChallengeWithDeadline(FIXED_NOW.plusHours(1))));
 		CreateUploadSessionCommand command = new CreateUploadSessionCommand(
-				USER_ID, CREW_ID, "doc.pdf", "application/pdf", FILE_SIZE);
+				USER_ID, CREW_ID, null, "doc.pdf", "application/pdf", FILE_SIZE);
 
 		// When & Then
 		assertThatThrownBy(() -> createUploadSessionService.createUploadSession(command))
@@ -307,12 +326,132 @@ class CreateUploadSessionServiceTest {
 				.willReturn(Optional.of(activeChallengeWithDeadline(FIXED_NOW.plusHours(1))));
 		long oversizedFile = 6 * 1024 * 1024; // 6MB (max 5MB)
 		CreateUploadSessionCommand command = new CreateUploadSessionCommand(
-				USER_ID, CREW_ID, FILE_NAME, FILE_TYPE, oversizedFile);
+				USER_ID, CREW_ID, null, FILE_NAME, FILE_TYPE, oversizedFile);
 
 		// When & Then
 		assertThatThrownBy(() -> createUploadSessionService.createUploadSession(command))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.FILE_TOO_LARGE);
+	}
+
+	@Test
+	@DisplayName("crewId/habitId 둘 다 없음 → INVALID_INPUT(C001, XOR 위반)")
+	void neitherCrewIdNorHabitId_throws() {
+		// Given
+		CreateUploadSessionCommand command = new CreateUploadSessionCommand(
+				USER_ID, null, null, FILE_NAME, FILE_TYPE, FILE_SIZE);
+
+		// When & Then
+		assertThatThrownBy(() -> createUploadSessionService.createUploadSession(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.INVALID_INPUT);
+	}
+
+	@Test
+	@DisplayName("crewId/habitId 둘 다 존재 → INVALID_INPUT(C001, XOR 위반)")
+	void bothCrewIdAndHabitId_throws() {
+		// Given
+		CreateUploadSessionCommand command = new CreateUploadSessionCommand(
+				USER_ID, CREW_ID, HABIT_ID, FILE_NAME, FILE_TYPE, FILE_SIZE);
+
+		// When & Then
+		assertThatThrownBy(() -> createUploadSessionService.createUploadSession(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.INVALID_INPUT);
+	}
+
+	@Test
+	@DisplayName("habitId 경로 — HabitPort 위임 후 발급 성공, habit_id만 저장(crew_id는 NULL)")
+	void habitIdPath_success_savesHabitIdOnly() {
+		// Given
+		doNothing().when(habitPort).validateHabitAndDeadline(HABIT_ID, USER_ID);
+		stubStorageAndRepository();
+		CreateUploadSessionCommand command = new CreateUploadSessionCommand(
+				USER_ID, null, HABIT_ID, FILE_NAME, FILE_TYPE, FILE_SIZE);
+
+		// When
+		var result = createUploadSessionService.createUploadSession(command);
+
+		// Then
+		assertThat(result).isNotNull();
+		ArgumentCaptor<UploadSession> captor = ArgumentCaptor.forClass(UploadSession.class);
+		verify(uploadSessionRepositoryPort).save(captor.capture());
+		assertThat(captor.getValue().getHabitId()).isEqualTo(HABIT_ID);
+		assertThat(captor.getValue().getCrewId()).isNull();
+		verify(crewPort, never()).validateMembership(any(), any());
+	}
+
+	@Test
+	@DisplayName("habitId 경로 — HabitPort가 던진 예외가 그대로 전파된다(예: 멈춘 습관 HABIT_NOT_ACTIVE)")
+	void habitIdPath_habitPortThrows_propagates() {
+		// Given
+		doThrow(new BusinessException(ErrorCode.HABIT_NOT_ACTIVE))
+				.when(habitPort).validateHabitAndDeadline(HABIT_ID, USER_ID);
+		CreateUploadSessionCommand command = new CreateUploadSessionCommand(
+				USER_ID, null, HABIT_ID, FILE_NAME, FILE_TYPE, FILE_SIZE);
+
+		// When & Then
+		assertThatThrownBy(() -> createUploadSessionService.createUploadSession(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.HABIT_NOT_ACTIVE);
+	}
+
+	@Test
+	@DisplayName("crewId 경로 회귀 — habit_id는 NULL로 저장되고 HabitPort는 호출되지 않는다(G1)")
+	void crewIdPath_regression_habitIdNullAndHabitPortNotCalled() {
+		// Given
+		stubMembershipAndCrewInfo(activePhotoCrew(LocalTime.of(23, 59, 59)));
+		given(challengePort.findActiveByUserIdAndCrewId(USER_ID, CREW_ID))
+				.willReturn(Optional.empty());
+		stubStorageAndRepository();
+
+		// When
+		createUploadSessionService.createUploadSession(defaultCommand());
+
+		// Then
+		ArgumentCaptor<UploadSession> captor = ArgumentCaptor.forClass(UploadSession.class);
+		verify(uploadSessionRepositoryPort).save(captor.capture());
+		assertThat(captor.getValue().getCrewId()).isEqualTo(CREW_ID);
+		assertThat(captor.getValue().getHabitId()).isNull();
+		verify(habitPort, never()).validateHabitAndDeadline(any(), any());
+	}
+
+	// ===== T-U8: 슬롯 일일마감 통합(step4 §2) — 발급 경로는 하한(V003) 미적용, 상한만 슬롯 기준으로 통합 =====
+
+	@Test
+	@DisplayName("T-U8(a) 당일 인증 완료 후(슬롯=내일) 같은 날 재발급 시도 — 발급은 성공한다(하한 미적용, 비대칭)")
+	void slotTomorrow_reissueSameDay_success() {
+		// Given — 오늘 이미 완료해 completedDays=1, 슬롯은 내일(TODAY+1)로 넘어간 상태
+		stubMembershipAndCrewInfo(activePhotoCrew(LocalTime.of(23, 59, 59)));
+		given(challengePort.findActiveByUserIdAndCrewId(USER_ID, CREW_ID))
+				.willReturn(Optional.of(activeChallengeWithDeadline(TODAY, TODAY.plusDays(2).atTime(23, 59, 59))));
+		stubStorageAndRepository();
+
+		// When
+		var result = createUploadSessionService.createUploadSession(defaultCommand());
+
+		// Then — 슬롯(내일) 마감 전이므로 재발급 성공 (V003 하한은 /verifications에만 적용)
+		assertThat(result).isNotNull();
+	}
+
+	@Test
+	@DisplayName("T-U8(b) 마감 21:00 크루 2일차 슬롯, 23:00 발급 시도 — 슬롯 일일마감 초과로 V002 (07-18 건 해소)")
+	void slotDailyDeadlineExceeded_issuance_throwsV002() {
+		// Given — deadlineTime=21:00, 슬롯=오늘(2일차, startDate=어제+completedDays=1), 발급 시각=오늘 23:00
+		CreateUploadSessionService service = serviceAt(TODAY.atTime(23, 0, 0));
+		stubMembershipAndCrewInfo(activePhotoCrew(LocalTime.of(21, 0, 0)));
+		given(challengePort.findActiveByUserIdAndCrewId(USER_ID, CREW_ID))
+				.willReturn(Optional.of(activeChallengeWithDeadline(
+						TODAY.minusDays(1), TODAY.plusDays(5).atTime(21, 0, 0))));
+
+		// When & Then — 사이클 마감(TODAY+5)은 넉넉히 남았지만 슬롯 일일마감(TODAY 21:00)을 초과
+		assertThatThrownBy(() -> service.createUploadSession(defaultCommand()))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
 	}
 }

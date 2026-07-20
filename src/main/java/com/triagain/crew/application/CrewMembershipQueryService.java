@@ -30,12 +30,6 @@ public class CrewMembershipQueryService implements CrewMembershipQueryUseCase {
     }
 
     @Override
-    public String getVerificationType(String crewId) {
-        Crew crew = findCrewOrThrow(crewId);
-        return crew.getVerificationType().name();
-    }
-
-    @Override
     public CrewPeriodDto getCrewPeriod(String crewId) {
         Crew crew = findCrewOrThrow(crewId);
         return new CrewPeriodDto(crew.getStartDate(), crew.getEndDate());

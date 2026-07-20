@@ -43,20 +43,6 @@ class CrewMembershipAdapterTest {
     }
 
     @Test
-    @DisplayName("getVerificationType — 크루 인증방식 문자열 반환 확인")
-    void getVerificationType_returnsString() {
-        // Given
-        String crewId = "crew-1";
-        given(crewMembershipQueryUseCase.getVerificationType(crewId)).willReturn("PHOTO");
-
-        // When
-        String result = crewMembershipAdapter.getVerificationType(crewId);
-
-        // Then
-        assertThat(result).isEqualTo("PHOTO");
-    }
-
-    @Test
     @DisplayName("getCrewPeriod — CrewPeriodDto → CrewPeriod 변환 확인")
     void getCrewPeriod_convertsDto() {
         // Given
