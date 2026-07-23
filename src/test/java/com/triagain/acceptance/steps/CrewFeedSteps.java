@@ -107,7 +107,7 @@ public class CrewFeedSteps {
                 IdGenerator.generate("VRFY"), challengeId, userId, crewId,
                 null, null, "오늘의 인증입니다",
                 VerificationStatus.APPROVED, 0, LocalDate.now(),
-                1, ReviewStatus.NOT_REQUIRED, LocalDateTime.now()
+                1, 1, ReviewStatus.NOT_REQUIRED, LocalDateTime.now()
         );
         verificationRepositoryPort.save(verification);
     }
@@ -149,7 +149,7 @@ public class CrewFeedSteps {
                 IdGenerator.generate("VRFY"), challenge.getId(), userId, crewId,
                 null, null, day + "일차 인증",
                 VerificationStatus.APPROVED, 0, LocalDate.now(),
-                1, ReviewStatus.NOT_REQUIRED, LocalDateTime.now()
+                1, 1, ReviewStatus.NOT_REQUIRED, LocalDateTime.now()
         );
         verificationRepositoryPort.save(verification);
     }
@@ -167,7 +167,7 @@ public class CrewFeedSteps {
                 IdGenerator.generate("VRFY"), challengeId, userId, crewId,
                 null, null, "어제 인증입니다",
                 VerificationStatus.APPROVED, 0, LocalDate.now().minusDays(1),
-                1, ReviewStatus.NOT_REQUIRED, LocalDateTime.now().minusDays(1)
+                1, 1, ReviewStatus.NOT_REQUIRED, LocalDateTime.now().minusDays(1)
         );
         verificationRepositoryPort.save(verification);
     }
@@ -194,7 +194,7 @@ public class CrewFeedSteps {
                         IdGenerator.generate("VRFY"), challengeId, userId, crewId,
                         null, null, "인증 " + u + "-" + d,
                         VerificationStatus.APPROVED, 0, LocalDate.now().minusDays(d),
-                        1, ReviewStatus.NOT_REQUIRED, LocalDateTime.now().minusDays(d)
+                        1, 1, ReviewStatus.NOT_REQUIRED, LocalDateTime.now().minusDays(d)
                 );
                 verificationRepositoryPort.save(verification);
             }

@@ -23,13 +23,15 @@ public class Verification {
     private int reportCount;
     private final LocalDate targetDate;
     private final int attemptNumber;
+    private final int slotAttempt;
     private ReviewStatus reviewStatus;
     private final LocalDateTime createdAt;
 
     private Verification(String id, String challengeId, String userId, String crewId,
                          Long uploadSessionId, String imageUrl, String textContent,
                          VerificationStatus status, int reportCount, LocalDate targetDate,
-                         int attemptNumber, ReviewStatus reviewStatus, LocalDateTime createdAt) {
+                         int attemptNumber, int slotAttempt, ReviewStatus reviewStatus,
+                         LocalDateTime createdAt) {
         this.id = id;
         this.challengeId = challengeId;
         this.userId = userId;
@@ -41,12 +43,14 @@ public class Verification {
         this.reportCount = reportCount;
         this.targetDate = targetDate;
         this.attemptNumber = attemptNumber;
+        this.slotAttempt = slotAttempt;
         this.reviewStatus = reviewStatus;
         this.createdAt = createdAt;
     }
 
     public static Verification createText(String challengeId, String userId, String crewId,
-                                          String textContent, LocalDate targetDate, int attemptNumber) {
+                                          String textContent, LocalDate targetDate, int attemptNumber,
+                                          int slotAttempt) {
         if (textContent == null || textContent.isBlank()) {
             throw new BusinessException(ErrorCode.TEXT_CONTENT_REQUIRED);
         }
@@ -55,7 +59,7 @@ public class Verification {
                 challengeId, userId, crewId,
                 null, null, textContent,
                 VerificationStatus.APPROVED, 0,
-                targetDate, attemptNumber,
+                targetDate, attemptNumber, slotAttempt,
                 ReviewStatus.NOT_REQUIRED,
                 LocalDateTime.now()
         );
@@ -63,7 +67,7 @@ public class Verification {
 
     public static Verification createPhoto(String challengeId, String userId, String crewId,
                                            Long uploadSessionId, String imageUrl, String textContent,
-                                           LocalDate targetDate, int attemptNumber) {
+                                           LocalDate targetDate, int attemptNumber, int slotAttempt) {
         if (imageUrl == null || imageUrl.isBlank()) {
             throw new BusinessException(ErrorCode.IMAGE_URL_REQUIRED);
         }
@@ -72,7 +76,7 @@ public class Verification {
                 challengeId, userId, crewId,
                 uploadSessionId, imageUrl, textContent,
                 VerificationStatus.APPROVED, 0,
-                targetDate, attemptNumber,
+                targetDate, attemptNumber, slotAttempt,
                 ReviewStatus.NOT_REQUIRED,
                 LocalDateTime.now()
         );
@@ -81,10 +85,11 @@ public class Verification {
     public static Verification of(String id, String challengeId, String userId, String crewId,
                                   Long uploadSessionId, String imageUrl, String textContent,
                                   VerificationStatus status, int reportCount, LocalDate targetDate,
-                                  int attemptNumber, ReviewStatus reviewStatus, LocalDateTime createdAt) {
+                                  int attemptNumber, int slotAttempt, ReviewStatus reviewStatus,
+                                  LocalDateTime createdAt) {
         return new Verification(id, challengeId, userId, crewId, uploadSessionId,
                 imageUrl, textContent, status, reportCount, targetDate,
-                attemptNumber, reviewStatus, createdAt);
+                attemptNumber, slotAttempt, reviewStatus, createdAt);
     }
 
     public void incrementReportCount() {
@@ -104,6 +109,11 @@ public class Verification {
     public void approve() {
         this.status = VerificationStatus.APPROVED;
         this.reviewStatus = ReviewStatus.COMPLETED;
+    }
+
+    /** 인증 취소 처리 — 유저가 마감 전 취소할 때 사용. 가드(모더레이션·마감 등)는 호출자(Service)가 수행한다 */
+    public void cancel() {
+        this.status = VerificationStatus.CANCELLED;
     }
 
     public String getId() {
@@ -148,6 +158,10 @@ public class Verification {
 
     public int getAttemptNumber() {
         return attemptNumber;
+    }
+
+    public int getSlotAttempt() {
+        return slotAttempt;
     }
 
     public ReviewStatus getReviewStatus() {

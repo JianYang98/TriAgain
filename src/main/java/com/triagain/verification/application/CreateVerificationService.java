@@ -201,7 +201,8 @@ public class CreateVerificationService implements CreateVerificationUseCase {
                 imageUrl,
                 command.textContent(),
                 targetDate,
-                challenge.completedDays() + 1
+                challenge.completedDays() + 1,
+                1 // TODO(커밋3): findMaxSlotAttempt + 1 로 교체
         );
     }
 
@@ -214,7 +215,8 @@ public class CreateVerificationService implements CreateVerificationUseCase {
                 challenge.crewId(),
                 command.textContent(),
                 targetDate,
-                challenge.completedDays() + 1
+                challenge.completedDays() + 1,
+                1 // TODO(커밋3): findMaxSlotAttempt + 1 로 교체
         );
     }
 }

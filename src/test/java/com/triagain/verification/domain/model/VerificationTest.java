@@ -27,7 +27,7 @@ class VerificationTest {
         void success() {
             // Given & When
             Verification v = Verification.createText("chal1", "user1", "crew1",
-                    "오늘 30분 독서 완료!", TODAY, 1);
+                    "오늘 30분 독서 완료!", TODAY, 1, 1);
 
             // Then
             assertThat(v.getId()).startsWith("VRFY");
@@ -43,7 +43,7 @@ class VerificationTest {
         @DisplayName("textContent가 null이면 예외가 발생한다")
         void textNull() {
             assertThatThrownBy(() -> Verification.createText("chal1", "user1", "crew1",
-                    null, TODAY, 1))
+                    null, TODAY, 1, 1))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.TEXT_CONTENT_REQUIRED);
@@ -53,7 +53,7 @@ class VerificationTest {
         @DisplayName("textContent가 빈 문자열이면 예외가 발생한다")
         void textBlank() {
             assertThatThrownBy(() -> Verification.createText("chal1", "user1", "crew1",
-                    "  ", TODAY, 1))
+                    "  ", TODAY, 1, 1))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.TEXT_CONTENT_REQUIRED);
@@ -69,7 +69,7 @@ class VerificationTest {
         void success() {
             // Given & When
             Verification v = Verification.createPhoto("chal1", "user1", "crew1",
-                    1L, "https://s3.amazonaws.com/photo.jpg", "오늘 인증!", TODAY, 1);
+                    1L, "https://s3.amazonaws.com/photo.jpg", "오늘 인증!", TODAY, 1, 1);
 
             // Then
             assertThat(v.getId()).startsWith("VRFY");
@@ -84,7 +84,7 @@ class VerificationTest {
         @DisplayName("textContent가 null이어도 사진 인증은 성공한다")
         void textNullAllowed() {
             Verification v = Verification.createPhoto("chal1", "user1", "crew1",
-                    1L, "https://s3.amazonaws.com/photo.jpg", null, TODAY, 1);
+                    1L, "https://s3.amazonaws.com/photo.jpg", null, TODAY, 1, 1);
 
             assertThat(v.getTextContent()).isNull();
             assertThat(v.getImageUrl()).isNotNull();
@@ -94,7 +94,7 @@ class VerificationTest {
         @DisplayName("imageUrl이 null이면 예외가 발생한다")
         void imageUrlNull() {
             assertThatThrownBy(() -> Verification.createPhoto("chal1", "user1", "crew1",
-                    1L, null, "텍스트", TODAY, 1))
+                    1L, null, "텍스트", TODAY, 1, 1))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.IMAGE_URL_REQUIRED);
@@ -104,7 +104,7 @@ class VerificationTest {
         @DisplayName("imageUrl이 빈 문자열이면 예외가 발생한다")
         void imageUrlBlank() {
             assertThatThrownBy(() -> Verification.createPhoto("chal1", "user1", "crew1",
-                    1L, "  ", "텍스트", TODAY, 1))
+                    1L, "  ", "텍스트", TODAY, 1, 1))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.IMAGE_URL_REQUIRED);
@@ -195,19 +195,37 @@ class VerificationTest {
         }
     }
 
+    @Nested
+    @DisplayName("cancel — 인증 취소 처리")
+    class Cancel {
+
+        @Test
+        @DisplayName("CANCELLED 상태로 전환된다")
+        void success() {
+            // Given
+            Verification v = approvedVerification();
+
+            // When
+            v.cancel();
+
+            // Then
+            assertThat(v.getStatus()).isEqualTo(VerificationStatus.CANCELLED);
+        }
+    }
+
     // --- 헬퍼 메서드 ---
 
     private Verification approvedVerification() {
         return Verification.of("VRFY-1", "chal1", "user1", "crew1",
                 null, null, "텍스트 인증",
-                VerificationStatus.APPROVED, 0, TODAY, 1,
+                VerificationStatus.APPROVED, 0, TODAY, 1, 1,
                 ReviewStatus.NOT_REQUIRED, LocalDateTime.now());
     }
 
     private Verification hiddenVerification() {
         return Verification.of("VRFY-1", "chal1", "user1", "crew1",
                 1L, "https://s3.amazonaws.com/photo.jpg", "텍스트",
-                VerificationStatus.HIDDEN, 3, TODAY, 1,
+                VerificationStatus.HIDDEN, 3, TODAY, 1, 1,
                 ReviewStatus.PENDING, LocalDateTime.now());
     }
 }
