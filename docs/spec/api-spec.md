@@ -356,7 +356,7 @@ Authorization: Bearer <token>
 | 400 | V020 | 마감이 임박해 취소할 수 없습니다. 내용을 바꾸려면 수정하기를 이용해 주세요. | 마감 임박 컷오프(기본 5분) 이내 |
 | 400 | V021 | 오늘은 더 이상 인증을 수정하거나 취소할 수 없습니다. | 슬롯당 상한(기본 3회) 초과 |
 | 409 | V023 | 신고 검토 중인 인증은 수정하거나 취소할 수 없습니다. | 대상이 `REPORTED`/`HIDDEN`/`REJECTED` |
-| 403 | FORBIDDEN | 접근 권한이 없습니다. | 남의 인증 |
+| 403 | CR009 | 크루 멤버만 조회할 수 있습니다. | 남의 인증 (`CREW_ACCESS_DENIED` 재사용, 전용 코드 없음) |
 | 404 | V001 | 인증을 찾을 수 없습니다. | 존재하지 않는 인증 |
 
 ---
@@ -435,7 +435,7 @@ Content-Type: application/json
 | 409 | V015 | 이미 사용된 업로드 세션입니다. | 세션 이미 사용됨 |
 | 409 | V022 | 이미 취소되었거나 수정된 인증입니다. | 대상이 이미 `CANCELLED` (취소됐거나 수정으로 치환되어 id가 낡음) |
 | 409 | V023 | 신고 검토 중인 인증은 수정하거나 취소할 수 없습니다. | 대상이 `REPORTED`/`HIDDEN`/`REJECTED` |
-| 403 | FORBIDDEN | 접근 권한이 없습니다. | 남의 인증 |
+| 403 | CR009 | 크루 멤버만 조회할 수 있습니다. | 남의 인증 (`CREW_ACCESS_DENIED` 재사용, 전용 코드 없음) |
 | 404 | V001 | 인증을 찾을 수 없습니다. | 존재하지 않는 인증 |
 
 **공통 참고:** 취소·수정 마감/컷오프는 `triagain.verification` 설정값(기본 `cancel-cutoff-minutes: 5`, `slot-attempt-limit: 3`)을 따르며, 판정 시 `DeadlinePolicy.isWithinDeadline()`(grace 5분 포함)이 아닌 **grace 미포함 순수 비교**를 사용한다.
