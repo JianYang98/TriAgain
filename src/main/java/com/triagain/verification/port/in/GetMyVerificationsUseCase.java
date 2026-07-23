@@ -20,7 +20,11 @@ public interface GetMyVerificationsUseCase {
     ) {
     }
 
-    /** 오늘 슬롯 인증 현황 — FE가 수정/취소 가능 여부·잔여 횟수를 판단하는 데 사용. null이면 오늘 인증 없음 */
-    record TodaySlot(String verificationId, int slotAttempt) {
+    /**
+     * 오늘 슬롯 인증 현황 — FE가 수정/취소 가능 여부·잔여 횟수를 판단하는 데 사용.
+     * null이면 오늘 인증 없음. textContent·imageUrl은 수정 다이얼로그 프리필용
+     * (TEXT/PHOTO 인증 종류에 따라 한쪽은 null)
+     */
+    record TodaySlot(String verificationId, int slotAttempt, String textContent, String imageUrl) {
     }
 }

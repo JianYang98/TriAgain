@@ -1093,7 +1093,9 @@ Authorization: Bearer <token>
     },
     "todaySlot": {
       "verificationId": "ver_789",
-      "slotAttempt": 1
+      "slotAttempt": 1,
+      "textContent": "오늘도 달리기 완료!",
+      "imageUrl": null
     }
   },
   "error": null
@@ -1107,6 +1109,8 @@ Authorization: Bearer <token>
 - `todaySlot`: 오늘 슬롯의 인증 현황 (**nullable** — 오늘 인증이 없으면 null)
   - `verificationId`: 오늘 슬롯의 유효(비-CANCELLED) 인증 ID
   - `slotAttempt`: 오늘 슬롯의 제출 회차 — FE가 수정/취소 가능 여부·잔여 횟수(상한 대비)를 판단하는 데 사용. 과거 날짜의 `slotAttempt`는 노출하지 않는다(캘린더는 `verifiedDates`만 사용)
+  - `textContent`: 인증 텍스트 (nullable — 사진 인증 크루에서 텍스트 미입력 시). 수정 다이얼로그 프리필용
+  - `imageUrl`: 인증 이미지 URL (nullable — 텍스트 인증 크루). 수정 다이얼로그 프리필용
 - `myProgress`: 나의 현재 챌린지 현황 (**nullable** — 활성 챌린지가 없으면 null)
   - `challengeId`: 챌린지 ID
   - `status`: 챌린지 상태 (IN_PROGRESS, SUCCESS, FAILED, ENDED)
