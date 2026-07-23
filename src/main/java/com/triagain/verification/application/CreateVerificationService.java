@@ -36,6 +36,7 @@ public class CreateVerificationService implements CreateVerificationUseCase {
     private final StoragePort storagePort;
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
+    private final VerificationPolicyProperties policyProperties;
 
     @Override
     @Transactional
@@ -81,10 +82,18 @@ public class CreateVerificationService implements CreateVerificationUseCase {
         // [신규] 슬롯 산출 + 하한 검증(V003) — targetDate는 생성 시각이 아닌 챌린지의 미인증 당일(슬롯)
         LocalDate targetDate = resolveSlot(challenge, anchor);
 
-        if (verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(
+        if (verificationRepositoryPort.existsActiveByUserIdAndCrewIdAndTargetDate(
                 command.userId(), challenge.crewId(), targetDate)) {
             throw new BusinessException(ErrorCode.VERIFICATION_ALREADY_EXISTS);
         }
+
+        // [신규] 슬롯당 제출 상한(G5, V021) — CANCELLED 포함 전체 행 수 기준. 재인증 반복을 막는다
+        int maxSlotAttempt = verificationRepositoryPort.findMaxSlotAttempt(
+                command.userId(), challenge.crewId(), targetDate);
+        if (maxSlotAttempt >= policyProperties.getSlotAttemptLimit()) {
+            throw new BusinessException(ErrorCode.VERIFICATION_ATTEMPT_LIMIT_EXCEEDED);
+        }
+        int slotAttempt = maxSlotAttempt + 1;
 
         if ("PHOTO".equals(windowInfo.verificationType()) && command.uploadSessionId() == null) {
             throw new BusinessException(ErrorCode.PHOTO_REQUIRED);
@@ -96,9 +105,9 @@ public class CreateVerificationService implements CreateVerificationUseCase {
         Verification verification;
 
         if (command.uploadSessionId() != null) {
-            verification = createPhotoVerification(preloadedSession, command, challenge, targetDate);
+            verification = createPhotoVerification(preloadedSession, command, challenge, targetDate, slotAttempt);
         } else {
-            verification = createTextVerification(command, challenge, targetDate);
+            verification = createTextVerification(command, challenge, targetDate, slotAttempt);
         }
 
         Verification saved = verificationRepositoryPort.save(verification);
@@ -130,6 +139,7 @@ public class CreateVerificationService implements CreateVerificationUseCase {
                 saved.getReviewStatus(),
                 saved.getReportCount(),
                 saved.getTargetDate(),
+                saved.getSlotAttempt(),
                 saved.getCreatedAt()
         );
     }
@@ -178,7 +188,8 @@ public class CreateVerificationService implements CreateVerificationUseCase {
     private Verification createPhotoVerification(UploadSession session,
                                                   CreateVerificationCommand command,
                                                   ChallengeInfo challenge,
-                                                  LocalDate targetDate) {
+                                                  LocalDate targetDate,
+                                                  int slotAttempt) {
         // session.crewId와 challenge.crewId 일치 검증 — command.crewId() 제공 여부와 무관
         if (session.getCrewId() != null && !session.getCrewId().equals(challenge.crewId())) {
             throw new BusinessException(ErrorCode.UPLOAD_SESSION_CREW_MISMATCH);
@@ -202,13 +213,14 @@ public class CreateVerificationService implements CreateVerificationUseCase {
                 command.textContent(),
                 targetDate,
                 challenge.completedDays() + 1,
-                1 // TODO(커밋3): findMaxSlotAttempt + 1 로 교체
+                slotAttempt
         );
     }
 
     private Verification createTextVerification(CreateVerificationCommand command,
                                                  ChallengeInfo challenge,
-                                                 LocalDate targetDate) {
+                                                 LocalDate targetDate,
+                                                 int slotAttempt) {
         return Verification.createText(
                 challenge.id(),
                 command.userId(),
@@ -216,7 +228,7 @@ public class CreateVerificationService implements CreateVerificationUseCase {
                 command.textContent(),
                 targetDate,
                 challenge.completedDays() + 1,
-                1 // TODO(커밋3): findMaxSlotAttempt + 1 로 교체
+                slotAttempt
         );
     }
 }

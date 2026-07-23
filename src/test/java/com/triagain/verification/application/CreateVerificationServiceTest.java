@@ -14,6 +14,7 @@ import com.triagain.common.port.out.StoragePort;
 import com.triagain.verification.application.event.ChallengeSuccessEvent;
 import com.triagain.verification.port.out.UploadSessionRepositoryPort;
 import com.triagain.verification.port.out.VerificationRepositoryPort;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +37,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -65,8 +67,17 @@ class CreateVerificationServiceTest {
     @Spy
     private Clock clock = Clock.systemDefaultZone();
 
+    @Mock
+    private VerificationPolicyProperties policyProperties;
+
     @InjectMocks
     private CreateVerificationService createVerificationService;
+
+    @BeforeEach
+    void setUpPolicy() {
+        // 슬롯 상한(G5, V021) 기본값 — 대부분의 기존 테스트는 상한과 무관하므로 lenient로 등록한다
+        lenient().when(policyProperties.getSlotAttemptLimit()).thenReturn(3);
+    }
 
     private static final String USER_ID = "user-1";
     private static final String CREW_ID = "crew-1";
@@ -107,7 +118,7 @@ class CreateVerificationServiceTest {
         Clock fixedClock = Clock.fixed(fixedNow.atZone(ZONE).toInstant(), ZONE);
         return new CreateVerificationService(
                 verificationRepositoryPort, uploadSessionRepositoryPort, challengePort,
-                crewPort, storagePort, eventPublisher, fixedClock);
+                crewPort, storagePort, eventPublisher, fixedClock, policyProperties);
     }
 
     @Test
@@ -124,7 +135,7 @@ class CreateVerificationServiceTest {
         given(uploadSessionRepositoryPort.findByIdAndUserId(SESSION_ID, USER_ID))
                 .willReturn(Optional.of(session));
         given(storagePort.getImageUrl("images/test.jpg")).willReturn("https://cdn.example.com/images/test.jpg");
-        given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
+        given(verificationRepositoryPort.existsActiveByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
                 .willReturn(false);
         given(verificationRepositoryPort.save(any(Verification.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
@@ -147,7 +158,7 @@ class CreateVerificationServiceTest {
 
         given(challengePort.findOrCreateActiveChallenge(USER_ID, CREW_ID)).willReturn(challenge);
         given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("TEXT", LocalTime.of(23, 59, 59)));
-        given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
+        given(verificationRepositoryPort.existsActiveByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
                 .willReturn(false);
         given(verificationRepositoryPort.save(any(Verification.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
@@ -214,7 +225,7 @@ class CreateVerificationServiceTest {
 
         given(challengePort.findChallengeById(CHALLENGE_ID)).willReturn(Optional.of(challenge));
         given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("TEXT", LocalTime.of(23, 59, 59)));
-        given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
+        given(verificationRepositoryPort.existsActiveByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
                 .willReturn(false);
         given(verificationRepositoryPort.save(any(Verification.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
@@ -241,7 +252,7 @@ class CreateVerificationServiceTest {
 
         given(challengePort.findChallengeById(CHALLENGE_ID)).willReturn(Optional.of(challenge));
         given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("TEXT", LocalTime.of(23, 59, 59)));
-        given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
+        given(verificationRepositoryPort.existsActiveByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
                 .willReturn(false);
 
         // When & Then
@@ -284,7 +295,7 @@ class CreateVerificationServiceTest {
         given(uploadSessionRepositoryPort.findByIdAndUserId(SESSION_ID, USER_ID))
                 .willReturn(Optional.of(crossCrewSession));
         given(challengePort.findChallengeById(CHALLENGE_ID)).willReturn(Optional.of(challenge));
-        given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
+        given(verificationRepositoryPort.existsActiveByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
                 .willReturn(false);
         given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("PHOTO", LocalTime.of(23, 59, 59)));
 
@@ -307,7 +318,7 @@ class CreateVerificationServiceTest {
 
         given(challengePort.findOrCreateActiveChallenge(USER_ID, CREW_ID)).willReturn(challenge);
         given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("TEXT", LocalTime.of(23, 59, 59)));
-        given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
+        given(verificationRepositoryPort.existsActiveByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
                 .willReturn(false);
         given(verificationRepositoryPort.save(any(Verification.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
@@ -330,7 +341,7 @@ class CreateVerificationServiceTest {
 
         given(challengePort.findOrCreateActiveChallenge(USER_ID, CREW_ID)).willReturn(challenge);
         given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("TEXT", LocalTime.of(23, 59, 59)));
-        given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
+        given(verificationRepositoryPort.existsActiveByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
                 .willReturn(false);
         given(verificationRepositoryPort.save(any(Verification.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
@@ -374,7 +385,7 @@ class CreateVerificationServiceTest {
 
         given(challengePort.findChallengeById(CHALLENGE_ID)).willReturn(Optional.of(challenge));
         given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("TEXT", LocalTime.of(23, 59, 59)));
-        given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, D))
+        given(verificationRepositoryPort.existsActiveByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, D))
                 .willReturn(false);
         given(verificationRepositoryPort.save(any(Verification.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
@@ -401,7 +412,7 @@ class CreateVerificationServiceTest {
         given(challengePort.findChallengeById(CHALLENGE_ID)).willReturn(Optional.of(challenge));
         given(uploadSessionRepositoryPort.findByIdAndUserId(SESSION_ID, USER_ID)).willReturn(Optional.of(session));
         given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("PHOTO", LocalTime.of(23, 59, 59)));
-        given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, D))
+        given(verificationRepositoryPort.existsActiveByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, D))
                 .willReturn(false);
         given(storagePort.getImageUrl("images/test.jpg")).willReturn("https://cdn.example.com/images/test.jpg");
         given(verificationRepositoryPort.save(any(Verification.class)))
@@ -426,7 +437,7 @@ class CreateVerificationServiceTest {
 
         given(challengePort.findChallengeById(CHALLENGE_ID)).willReturn(Optional.of(challenge));
         given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("TEXT", LocalTime.of(23, 59, 59)));
-        given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, D.plusDays(1)))
+        given(verificationRepositoryPort.existsActiveByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, D.plusDays(1)))
                 .willReturn(false);
         given(verificationRepositoryPort.save(any(Verification.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
@@ -461,7 +472,7 @@ class CreateVerificationServiceTest {
                     assertThat(be.getArgs()).isNull();
                 });
 
-        verify(verificationRepositoryPort, never()).existsByUserIdAndCrewIdAndTargetDate(any(), any(), any());
+        verify(verificationRepositoryPort, never()).existsActiveByUserIdAndCrewIdAndTargetDate(any(), any(), any());
     }
 
     @Test
@@ -474,7 +485,7 @@ class CreateVerificationServiceTest {
 
         given(challengePort.findChallengeById(CHALLENGE_ID)).willReturn(Optional.of(challenge));
         given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("TEXT", LocalTime.of(21, 0, 0)));
-        given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, D))
+        given(verificationRepositoryPort.existsActiveByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, D))
                 .willReturn(false);
 
         // When & Then
@@ -494,7 +505,7 @@ class CreateVerificationServiceTest {
 
         given(challengePort.findChallengeById(CHALLENGE_ID)).willReturn(Optional.of(challenge));
         given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("TEXT", LocalTime.of(23, 59, 59)));
-        given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, D))
+        given(verificationRepositoryPort.existsActiveByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, D))
                 .willReturn(false);
         given(verificationRepositoryPort.save(any(Verification.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
@@ -539,7 +550,7 @@ class CreateVerificationServiceTest {
         given(challengePort.findChallengeById(CHALLENGE_ID)).willReturn(Optional.of(challenge));
         given(uploadSessionRepositoryPort.findByIdAndUserId(SESSION_ID, USER_ID)).willReturn(Optional.of(expiredSession));
         given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("PHOTO", LocalTime.of(21, 0, 0)));
-        given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, D))
+        given(verificationRepositoryPort.existsActiveByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, D))
                 .willReturn(false);
 
         // When & Then
@@ -547,5 +558,57 @@ class CreateVerificationServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
+    }
+
+    // ===== 슬롯당 제출 상한(G5) — 취소·수정 도입에 따른 CreateVerificationService 변경분 =====
+
+    @Test
+    @DisplayName("슬롯의 findMaxSlotAttempt가 상한 이상이면 V021(슬롯당 제출 상한 초과)")
+    void createVerification_slotAttemptLimitReached_throwsV021() {
+        // Given — 같은 슬롯에 이미 3건(상한) 존재
+        ChallengeInfo challenge = challengeInfo();
+        CreateVerificationCommand command = new CreateVerificationCommand(
+                USER_ID, null, CREW_ID, null, "텍스트 인증");
+
+        given(challengePort.findOrCreateActiveChallenge(USER_ID, CREW_ID)).willReturn(challenge);
+        given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("TEXT", LocalTime.of(23, 59, 59)));
+        given(verificationRepositoryPort.existsActiveByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
+                .willReturn(false);
+        given(verificationRepositoryPort.findMaxSlotAttempt(USER_ID, CREW_ID, LocalDate.now()))
+                .willReturn(3);
+
+        // When & Then
+        assertThatThrownBy(() -> createVerificationService.createVerification(command))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VERIFICATION_ATTEMPT_LIMIT_EXCEEDED);
+
+        verify(verificationRepositoryPort, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("취소 후 재인증 — findMaxSlotAttempt(1)+1이 새 행의 slotAttempt로 저장된다")
+    void createVerification_afterCancel_slotAttemptIncrements() {
+        // Given — 취소된 행 1건이 있어 findMaxSlotAttempt가 1을 반환
+        ChallengeInfo challenge = challengeInfo();
+        CreateVerificationCommand command = new CreateVerificationCommand(
+                USER_ID, null, CREW_ID, null, "텍스트 인증");
+
+        given(challengePort.findOrCreateActiveChallenge(USER_ID, CREW_ID)).willReturn(challenge);
+        given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("TEXT", LocalTime.of(23, 59, 59)));
+        given(verificationRepositoryPort.existsActiveByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
+                .willReturn(false);
+        given(verificationRepositoryPort.findMaxSlotAttempt(USER_ID, CREW_ID, LocalDate.now()))
+                .willReturn(1);
+        given(verificationRepositoryPort.save(any(Verification.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+
+        // When
+        createVerificationService.createVerification(command);
+
+        // Then
+        ArgumentCaptor<Verification> captor = ArgumentCaptor.forClass(Verification.class);
+        verify(verificationRepositoryPort).save(captor.capture());
+        assertThat(captor.getValue().getSlotAttempt()).isEqualTo(2);
     }
 }

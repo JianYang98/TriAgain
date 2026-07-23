@@ -30,6 +30,7 @@ public interface CreateVerificationUseCase {
             ReviewStatus reviewStatus,
             int reportCount,
             LocalDate targetDate,
+            int slotAttempt,
             LocalDateTime createdAt
     ) {
     }

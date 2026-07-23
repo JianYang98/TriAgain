@@ -1,5 +1,6 @@
 package com.triagain.verification.application;
 
+import com.triagain.verification.domain.model.Verification;
 import com.triagain.verification.port.in.GetMyVerificationsUseCase;
 import com.triagain.verification.port.out.ChallengePort;
 import com.triagain.verification.port.out.CrewPort;
@@ -9,8 +10,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +22,7 @@ public class GetMyVerificationsService implements GetMyVerificationsUseCase {
     private final CrewPort crewPort;
     private final ChallengePort challengePort;
     private final VerificationRepositoryPort verificationRepositoryPort;
+    private final Clock clock;
 
     /** 내 인증 현황 조회 — 멤버십 검증 후 날짜·스트릭·달성 횟수 반환 */
     @Override
@@ -37,7 +41,16 @@ public class GetMyVerificationsService implements GetMyVerificationsUseCase {
                 .map(info -> new MyProgress(info.id(), info.status(), info.completedDays(), info.targetDays()))
                 .orElse(null);
 
-        return new MyVerificationsResult(verifiedDates, streakCount, completedChallenges, myProgress);
+        TodaySlot todaySlot = findTodaySlot(userId, crewId);
+
+        return new MyVerificationsResult(verifiedDates, streakCount, completedChallenges, myProgress, todaySlot);
+    }
+
+    /** 오늘 슬롯의 활성(비CANCELLED) 인증 조회 — FE가 남은 수정/취소 횟수를 안내하는 데 사용(impl-guards G-18) */
+    private TodaySlot findTodaySlot(String userId, String crewId) {
+        Optional<Verification> today = verificationRepositoryPort
+                .findActiveByUserIdAndCrewIdAndTargetDate(userId, crewId, LocalDate.now(clock));
+        return today.map(v -> new TodaySlot(v.getId(), v.getSlotAttempt())).orElse(null);
     }
 
     /** 최근 날짜부터 역방향 연속 인증 일수 계산 */

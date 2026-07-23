@@ -15,7 +15,12 @@ public interface GetMyVerificationsUseCase {
             List<LocalDate> verifiedDates,
             int streakCount,
             int completedChallenges,
-            MyProgress myProgress
+            MyProgress myProgress,
+            TodaySlot todaySlot
     ) {
+    }
+
+    /** 오늘 슬롯 인증 현황 — FE가 수정/취소 가능 여부·잔여 횟수를 판단하는 데 사용. null이면 오늘 인증 없음 */
+    record TodaySlot(String verificationId, int slotAttempt) {
     }
 }
