@@ -5,6 +5,15 @@
 
 ---
 
+### [2026-07-23] 만료 챌린지 스케줄러 lost update — 조건부 UPDATE로 교체 (D14-b)
+
+- 상황: `FailExpiredChallengesScheduler`가 `findExpiredWithoutVerification()`을 **청크 트랜잭션 밖**(`:42`)에서 조회한 뒤, 그 스냅샷으로 `challenge.fail(); save(challenge)`를 수행(`:49-52`). `ChallengeJpaEntity`에 `@Version`도 `@DynamicUpdate`도 없어 `save()`가 전 컬럼 UPDATE라, 조회~저장 사이에 유저가 인증을 커밋하면 낡은 `completed_days` + `FAILED`로 덮어써 **유저의 성공이 실패로 뒤집힌다**. 예외도 DeadLetter도 없고 로그엔 "성공 1건"으로 남아 조용히 데이터가 틀어진다. 인증 창(마감+grace 5분)과 스케줄러 창(마감+5분 초과)이 밀리초 단위로만 겹쳐 발생 확률이 낮았을 뿐, 구조적으로 열려 있었다. 인증 취소·수정(SDD verification-cancel)이 들어오면 같은 행에 쓰는 주체가 3개가 되므로 선행 수정
+- 내 판단: (1) **크루 참여 전략 C 선례를 그대로 따랐다** — `JoinCrewService:102-105` + `CrewJpaRepository.incrementMembersIfNotFull`처럼 도메인 메서드(`challenge.fail()`)는 유지하고 경합 조건만 DB predicate로 위임(`failIfUnchanged(id, expectedCompletedDays)`). `fail()`을 지우면 상태 전이 규칙이 SQL로 새어 헥사고날 경계가 무너진다. (2) `affected == 0`은 **오류가 아니라 정상 스킵** — 예외를 던지면 rehydrate 재시도 → 또 0 → DeadLetter 오염이라 기각. (3) **알림 대상 보정**: `ChunkProcessor.processor`가 `Consumer`라 스킵 건도 `successItems`에 포함되므로, 스킵 여부를 `Map<id, Boolean>`에 기록해 알림 대상에서 필터. 공용 엔진(`ChunkProcessor`, 스케줄러 6곳 공유)은 무변경. 알림은 현재 비활성이지만 "on/off UI 구현 후 복원" TODO가 있어 복원 시 터질 것을 지금 닫았다. (4) `@Version` 추가는 기각 — 조건부 UPDATE가 이미 compare-and-set이라 중복이고 다른 경로에 파급
+- AI 역할: 오케스트레이터가 지시서를 실제 코드로 그라운딩(`ChunkProcessor` rehydrator 발동 조건·엔티티 어노테이션 부재·컬럼명 schema.md 대조)하고 sonnet이 구현. **사용자가 "`skippedIds.remove()` 분기가 실제로 도달하냐"고 물은 것이 설계 결함을 잡아냈다** — 추적해보니 도달 경로는 있었고(같은 청크의 *다른* 항목이 예외를 던지면 0행이던 건도 함께 재시도됨), 그 경로에서 기대치를 **rehydrate된 fresh 인스턴스**에서 읽고 있어 "DB 값 vs DB 값" 비교로 compare-and-set이 무효화되는 상태였다. 원본 스냅샷 맵으로 기대치를 고정해 수정
+- 배운 점: **compare-and-set의 기대값은 "경합을 감지하려는 그 시점의 스냅샷"에서 와야 한다.** 값을 어디서 읽는지가 곧 감지 창의 정의다 — 재시도 경로에서 무심코 최신값을 읽으면 가드가 문법적으로는 멀쩡한 채 의미만 사라진다(테스트도 통과한다). 그리고 이 구멍은 수정 전 코드의 재시도 경로에도 이미 있었다: 조회 결과를 여러 트랜잭션에 걸쳐 처리하는 배치는 "재시도 시 무엇을 다시 읽고 무엇을 고정할지"를 명시적으로 정해야 한다
+
+---
+
 ### [2026-06-13] FCM 키 스모크 테스트 엔드포인트 추가 (POST /internal/fcm-test)
 
 - 상황: 2026-06-12 Firebase 서비스계정 키 무효(401)로 FCM 전멸. 발송 4경로가 전부 cron/이벤트/비활성이라 다음 cron까지 장애 탐지 불가. 키 로테이션·배포 직후 즉시 검증할 단건 스모크 엔드포인트 필요

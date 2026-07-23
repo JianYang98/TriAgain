@@ -121,4 +121,10 @@ public class ChallengeJpaAdapter implements ChallengeRepositoryPort {
                 .map(ChallengeJpaEntity::toDomain)
                 .toList();
     }
+
+    /** IN_PROGRESS + completed_days 일치 시에만 FAILED 전환 — 만료 스케줄러 lost update 방지에 사용 */
+    @Override
+    public int failIfUnchanged(String id, int expectedCompletedDays) {
+        return challengeJpaRepository.failIfUnchanged(id, expectedCompletedDays);
+    }
 }
