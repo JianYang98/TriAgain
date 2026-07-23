@@ -287,7 +287,8 @@ class UpdateVerificationServiceTest {
 	}
 
 	@Test
-	@DisplayName("새 사진으로 교체 성공 — 새 세션 검증 후 imageUrl 갱신, upload_session_id는 NULL(G-10)")
+	@DisplayName("새 사진으로 교체 성공 — 새 세션 검증 후 imageUrl 갱신, 새 행이 새 세션ID를 보유한다"
+			+ "(G-10 정정, 사진교체는 텍스트수정과 달리 NULL이 아니라 세션ID 보유)")
 	void updateVerification_newPhoto_success() {
 		Verification old = oldPhotoVerification(555L, "https://cdn.example.com/old.jpg", 1);
 		UploadSession newSession = UploadSession.of(SESSION_ID, USER_ID, CREW_ID, "images/new.jpg", "image/jpeg",
@@ -311,7 +312,8 @@ class UpdateVerificationServiceTest {
 		assertThat(result.imageUrl()).isEqualTo("https://cdn.example.com/new.jpg");
 		ArgumentCaptor<Verification> captor = ArgumentCaptor.forClass(Verification.class);
 		verify(verificationRepositoryPort).saveAndFlush(captor.capture());
-		assertThat(captor.getValue().getUploadSessionId()).isNull();
+		// 결함1 회귀: 새 세션ID를 저장해야 uk_verifications_upload_session이 그 세션의 재사용을 막는다
+		assertThat(captor.getValue().getUploadSessionId()).isEqualTo(SESSION_ID);
 	}
 
 	@Test

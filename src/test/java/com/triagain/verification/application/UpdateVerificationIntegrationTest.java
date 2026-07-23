@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -31,6 +32,7 @@ import com.triagain.crew.domain.vo.CrewVisibility;
 import com.triagain.crew.domain.vo.VerificationType;
 import com.triagain.crew.port.out.ChallengeRepositoryPort;
 import com.triagain.crew.port.out.CrewRepositoryPort;
+import com.triagain.verification.domain.model.UploadSession;
 import com.triagain.verification.domain.model.Verification;
 import com.triagain.verification.domain.vo.ReviewStatus;
 import com.triagain.verification.domain.vo.VerificationStatus;
@@ -38,6 +40,7 @@ import com.triagain.verification.port.in.CancelVerificationUseCase;
 import com.triagain.verification.port.in.UpdateVerificationUseCase;
 import com.triagain.verification.port.in.UpdateVerificationUseCase.UpdateCommand;
 import com.triagain.verification.port.in.UpdateVerificationUseCase.UpdateResult;
+import com.triagain.verification.port.out.UploadSessionRepositoryPort;
 import com.triagain.verification.port.out.VerificationRepositoryPort;
 
 /**
@@ -45,6 +48,7 @@ import com.triagain.verification.port.out.VerificationRepositoryPort;
  * <p>
  * step4 §10-1 P1~P5 — PHOTO 크루 텍스트만 수정(image_url 승계 + upload_session_id NULL, G-10·G-11),
  * challenge 불변(G-12), TEXT 크루 사진 첨부 차단(V017), moderation·CANCELLED 대상 차단을 검증한다.
+ * P6 — 사진 교체(uploadSessionId 제공) 시 새 행이 새 세션ID를 보유해 재사용이 막히는지(G-10 정정, Codex 리뷰).
  */
 @SpringBootTest
 @ActiveProfiles("integration")
@@ -77,6 +81,9 @@ class UpdateVerificationIntegrationTest {
 	private VerificationRepositoryPort verificationRepositoryPort;
 
 	@Autowired
+	private UploadSessionRepositoryPort uploadSessionRepositoryPort;
+
+	@Autowired
 	private ChallengeRepositoryPort challengeRepositoryPort;
 
 	@Autowired
@@ -98,6 +105,14 @@ class UpdateVerificationIntegrationTest {
 				3, completedDays, status,
 				LocalDate.now().minusDays(2), LocalDateTime.now().plusDays(5), LocalDateTime.now());
 		return challengeRepositoryPort.save(challenge);
+	}
+
+	/** COMPLETED 업로드 세션 생성 — 사진 교체 PATCH가 요구하는 사전조건(session.isCompleted()) */
+	private UploadSession createCompletedSession(String userId, String crewId, String imageKey) {
+		UploadSession pending = UploadSession.create(userId, crewId, imageKey, "image/jpeg");
+		UploadSession saved = uploadSessionRepositoryPort.save(pending);
+		saved.complete();
+		return uploadSessionRepositoryPort.save(saved);
 	}
 
 	/** crews.invite_code는 VARCHAR(6) — 6자 랜덤 코드 생성(E2eTestBase.generateInviteCode와 동일 패턴) */
@@ -240,5 +255,40 @@ class UpdateVerificationIntegrationTest {
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.VERIFICATION_NOT_ACTIVE);
+	}
+
+	@Test
+	@DisplayName("P6/결함1 회귀(G-10 정정): 사진 교체 시 새 행이 새 세션ID를 보유하고, 그 세션 재사용 시도는 제약 위반으로 막힌다")
+	void p6_photoReplace_newRowHoldsSessionId_reuseIsBlocked() {
+		// Given — PHOTO 크루 + 옛 세션(111L)으로 만들어진 기존 인증
+		String userId = "p6-user";
+		String crewId = IdGenerator.generate("CREW");
+		createCrew(crewId, userId, VerificationType.PHOTO);
+		Challenge challenge = createChallenge(userId, crewId, 1, ChallengeStatus.IN_PROGRESS);
+		Verification old = Verification.createPhoto(
+				challenge.getId(), userId, crewId, 111L,
+				"https://cdn.example.com/old.jpg", "옛 캡션", LocalDate.now(), 1, 1);
+		Verification savedOld = verificationRepositoryPort.save(old);
+
+		UploadSession newSession = createCompletedSession(userId, crewId, "uploads/" + userId + "/p6-new.jpg");
+
+		// When — 새 세션으로 사진 교체
+		UpdateResult result = updateVerificationUseCase.updateVerification(
+				new UpdateCommand(savedOld.getId(), userId, newSession.getId(), null));
+
+		// Then — 새 행이 새 세션ID를 보유해야 한다 (교체 전 버그: NULL로 저장되어 세션이 해방됨)
+		Verification newVerification = verificationRepositoryPort.findById(result.verificationId()).orElseThrow();
+		assertThat(newVerification.getUploadSessionId()).isEqualTo(newSession.getId());
+
+		// 옛 행은 옛 세션(111L)을 그대로 보유 — 서로 다른 세션값이라 유니크 충돌 없음
+		Verification oldNow = verificationRepositoryPort.findById(savedOld.getId()).orElseThrow();
+		assertThat(oldNow.getStatus()).isEqualTo(VerificationStatus.CANCELLED);
+		assertThat(oldNow.getUploadSessionId()).isEqualTo(111L);
+
+		// When & Then — 같은 새 세션(newSession)을 다시 PATCH에 재사용하면 uk_verifications_upload_session 위반
+		// (수정 전 버그였다면 새 행의 upload_session_id가 NULL이라 이 재사용이 조용히 성공했을 것)
+		assertThatThrownBy(() -> updateVerificationUseCase.updateVerification(
+				new UpdateCommand(result.verificationId(), userId, newSession.getId(), null)))
+				.isInstanceOf(DataIntegrityViolationException.class);
 	}
 }

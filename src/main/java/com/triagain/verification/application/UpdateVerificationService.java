@@ -102,11 +102,13 @@ public class UpdateVerificationService implements UpdateVerificationUseCase {
 		String textContent = command.textContent() != null ? command.textContent() : old.getTextContent();
 
 		if (command.uploadSessionId() != null) {
-			// 새 사진으로 교체 — 새 행의 upload_session_id는 NULL, image_url만 승계하지 않고 새로 발급(G-10)
+			// 새 사진으로 교체 — 새 행이 그 새 세션ID를 보유해야 세션 재사용 방지가 유지된다(G-10 정정,
+			// 2026-07-24 Codex). 텍스트만 수정하는 두 분기(NULL 유지)와 달리 여기는 새 세션을 발급받은
+			// 경우라 NULL로 두면 uk_verifications_upload_session이 무력화된다.
 			String imageUrl = resolveNewImageUrl(command, old);
 			return Verification.createPhoto(
 					old.getChallengeId(), old.getUserId(), old.getCrewId(),
-					null, imageUrl, textContent,
+					command.uploadSessionId(), imageUrl, textContent,
 					old.getTargetDate(), old.getAttemptNumber(), slotAttempt);
 		}
 
