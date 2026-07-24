@@ -224,11 +224,15 @@ Idempotency-Key: <uuid>
     "reviewStatus": "NOT_REQUIRED",
     "reportCount": 0,
     "targetDate": "2026-02-18",
+    "slotAttempt": 1,
     "createdAt": "2026-02-18T14:30:00Z"
   },
   "error": null
 }
 ```
+
+**필드 설명 (추가):**
+- `slotAttempt`: 해당 슬롯(같은 유저·크루·날짜)의 제출 회차. 최초 인증은 1, 취소 후 재인증·수정(치환)마다 1씩 증가한다. `triagain.verification.slot-attempt-limit`(기본 3) 도달 시 더 이상 수정·취소 불가(V021)
 
 **실패 응답**
 ```json
@@ -292,8 +296,7 @@ Idempotency-Key: <uuid>
 // 409 Conflict - 중복 인증
 {
   "code": "VERIFICATION_ALREADY_EXISTS",
-  "message": "이미 해당 날짜에 인증이 존재합니다.",
-  "existingVerificationId": "ver_123"
+  "message": "이미 해당 날짜에 인증이 존재합니다."
 }
 
 ```
@@ -306,6 +309,137 @@ Idempotency-Key: <uuid>
 - targetDate는 슬롯(챌린지의 미인증 당일 = startDate+completedDays)으로 서버가 귀속한다 (grace 자정 케이스 포함)
 
 ---
+
+### DELETE /verifications/{verificationId} (인증 취소)
+
+마감 전 유저가 자신의 인증을 스스로 취소한다.
+
+**요청 (Request)**
+```
+DELETE /verifications/ver_789 HTTP/1.1
+Authorization: Bearer <token>
+```
+본문 없음.
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": {
+    "verificationId": "ver_789",
+    "status": "CANCELLED",
+    "slotAttempt": 1,
+    "challengeProgress": {
+      "challengeId": "chal_123",
+      "completedDays": 2,
+      "targetDays": 3,
+      "status": "IN_PROGRESS"
+    }
+  },
+  "error": null
+}
+```
+
+**필드 설명:**
+- `verificationId`: 취소한 인증 ID (요청 경로와 동일)
+- `status`: 항상 `"CANCELLED"`
+- `slotAttempt`: 취소된 인증의 제출 회차
+- `challengeProgress`: 취소 직후 챌린지 현황 — FE가 재조회 없이 진행 카드를 즉시 갱신하는 데 사용
+  - `completedDays`·`status`는 취소로 인해 감소·역전이된 값을 반영한다 (예: 3일차 취소 시 `SUCCESS→IN_PROGRESS`, `3→2`)
+
+**멱등:** 이미 `CANCELLED`인 대상에 재요청하면 **200**을 반환하고 `challengeProgress`는 현재 값을 담는다 (중복 감산 없음). 단, **수정으로 치환되어 `CANCELLED`가 된 id**에 DELETE를 보내는 것은 유저 의도(현재 인증 취소)와 다를 수 있다 — 이 구분은 서버가 할 수 없으므로 FE가 최신 `verificationId`를 유지해야 한다.
+
+**에러 응답**
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 400 | V019 | 인증 마감 시간이 지나 취소·수정할 수 없습니다. | 슬롯 마감 지남 |
+| 400 | V020 | 마감이 임박해 취소할 수 없습니다. 내용을 바꾸려면 수정하기를 이용해 주세요. | 마감 임박 컷오프(기본 5분) 이내 |
+| 400 | V021 | 오늘은 더 이상 인증을 수정하거나 취소할 수 없습니다. | 슬롯당 상한(기본 3회) 초과 |
+| 400 | CR013 | 진행 중인 챌린지만 처리할 수 있습니다. | 취소 역연산 CAS 실패(희귀 레이스) — 트랜잭션 전체 롤백, 재조회 후 재시도 |
+| 409 | V023 | 신고 검토 중인 인증은 수정하거나 취소할 수 없습니다. | 대상이 `REPORTED`/`HIDDEN`/`REJECTED` |
+| 403 | CR009 | 크루 멤버만 조회할 수 있습니다. | 남의 인증 (`CREW_ACCESS_DENIED` 재사용, 전용 코드 없음) |
+| 404 | V001 | 인증을 찾을 수 없습니다. | 존재하지 않는 인증 |
+
+---
+
+### PATCH /verifications/{verificationId} (인증 수정)
+
+마감 전 텍스트·사진을 바꾼다. 내부적으로 **옛 행을 CANCELLED 처리하고 새 행을 만드는 치환 방식**이다.
+
+**요청 (Request)**
+```json
+PATCH /verifications/ver_789 HTTP/1.1
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "uploadSessionId": 456,
+  "textContent": "오늘도 달리기 완료! (오타 수정)"
+}
+```
+
+**필드 설명:**
+- `uploadSessionId`: (조건부) 사진을 교체할 때만 전달. 없으면 기존 `imageUrl`을 새 행이 승계한다
+- `textContent`: (조건부) 텍스트 교체. 없으면 기존 값을 새 행이 승계한다
+- 둘 다 없으면 **400 (`INVALID_INPUT`)** — 바꿀 내용이 없는 요청
+
+**크루 타입별 규칙:**
+| 크루 타입 | `uploadSessionId` 있음 | 없음 |
+|:---:|---|---|
+| TEXT | 400 `V017`(`UPLOAD_SESSION_NOT_REQUIRED`) | 텍스트만 교체 |
+| PHOTO | 새 사진 + 텍스트 교체 | 기존 `imageUrl` 승계 + 텍스트만 교체 (재업로드 불필요) |
+
+> PHOTO 크루에서 `uploadSessionId` 없는 요청은 `PHOTO_REQUIRED`(V009)가 **아니다** — 텍스트만 수정하는 정상 케이스다.
+
+**성공 응답 (200 OK) — ⚠️ `verificationId`가 바뀐다**
+```json
+{
+  "success": true,
+  "data": {
+    "verificationId": "ver_901",
+    "previousVerificationId": "ver_789",
+    "challengeId": "chal_123",
+    "userId": "user_456",
+    "crewId": "crew_123",
+    "imageUrl": "https://s3.../image.jpg",
+    "textContent": "오늘도 달리기 완료! (오타 수정)",
+    "status": "APPROVED",
+    "reviewStatus": "NOT_REQUIRED",
+    "reportCount": 0,
+    "targetDate": "2026-02-18",
+    "slotAttempt": 2,
+    "createdAt": "2026-02-18T14:52:00Z"
+  },
+  "error": null
+}
+```
+
+`POST /verifications`의 응답과 같은 형태에 `previousVerificationId`·`slotAttempt` 2필드를 더한 것이다.
+
+**필드 설명:**
+- `verificationId`: 치환으로 새로 생성된 인증 ID — **응답을 받으면 FE는 로컬 상태를 이 id로 즉시 교체해야 한다** (옛 id를 들고 있지 않는다)
+- `previousVerificationId`: 치환 전 인증 ID. 디버깅·로깅용이며 화면 로직에는 쓰지 않는다
+- `reviewStatus`·`reportCount`: 새 행이므로 `NOT_REQUIRED`·`0`으로 초기화된다. 신고 이력은 옛 행에 남는다 (다만 `REPORTED` 대상은 애초에 수정이 막힌다)
+- `slotAttempt`: 새 행의 제출 회차 (옛 값 + 1)
+
+> ⚠️ **`PATCH`인데 리소스 id가 바뀐다.** 치환 설계의 필연적 결과로, REST 관례에서 벗어나므로 계약에 명시한다. `V022 NOT_ACTIVE`를 받으면 목록을 재조회하고 최신 id로 재시도할 수 있음을 안내한다 — 낡은 id로 재요청해도 404가 아니라 행은 존재하되 `CANCELLED`라서 `V022`가 나가는 것이다.
+
+**에러 응답**
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 400 | V019 | 인증 마감 시간이 지나 취소·수정할 수 없습니다. | 슬롯 마감 지남 (수정에는 컷오프 미적용) |
+| 400 | V021 | 오늘은 더 이상 인증을 수정하거나 취소할 수 없습니다. | 슬롯당 상한(기본 3회) 초과 |
+| 400 | V017 | 텍스트 인증 크루에서는 업로드 세션이 필요하지 않습니다. | TEXT 크루에 `uploadSessionId` 첨부 |
+| 400 | INVALID_INPUT | 잘못된 입력값입니다. | `uploadSessionId`·`textContent` 둘 다 없음 |
+| 400 | V005 / V006 | 업로드 세션이 완료되지 않았습니다. / 업로드 세션이 만료되었습니다. | 세션이 COMPLETED 아님 |
+| 400 | V016 | 업로드 세션의 크루 정보가 일치하지 않습니다. | 세션이 다른 크루 소속 |
+| 409 | V015 | 이미 사용된 업로드 세션입니다. | 세션 이미 사용됨 |
+| 409 | V022 | 이미 취소되었거나 수정된 인증입니다. | 대상이 이미 `CANCELLED` (취소됐거나 수정으로 치환되어 id가 낡음) |
+| 409 | V023 | 신고 검토 중인 인증은 수정하거나 취소할 수 없습니다. | 대상이 `REPORTED`/`HIDDEN`/`REJECTED` |
+| 403 | CR009 | 크루 멤버만 조회할 수 있습니다. | 남의 인증 (`CREW_ACCESS_DENIED` 재사용, 전용 코드 없음) |
+| 404 | V001 | 인증을 찾을 수 없습니다. | 존재하지 않는 인증 |
+
+**공통 참고:** 취소·수정 마감/컷오프는 `triagain.verification` 설정값(기본 `cancel-cutoff-minutes: 5`, `slot-attempt-limit: 3`)을 따르며, 판정 시 `DeadlinePolicy.isWithinDeadline()`(grace 5분 포함)이 아닌 **grace 미포함 순수 비교**를 사용한다.
 
 ---
 
@@ -878,6 +1012,7 @@ Authorization: Bearer <token>
         "imageUrl": "https://s3.../image.jpg",
         "textContent": "오늘도 달리기 완료!",
         "targetDate": "2026-03-04",
+        "slotAttempt": 1,
         "createdAt": "2026-03-04T14:30:00"
       }
     ],
@@ -915,6 +1050,7 @@ Authorization: Bearer <token>
   - `imageUrl`: 인증 이미지 URL (nullable — 텍스트 인증 크루)
   - `textContent`: 인증 텍스트 (nullable — 사진 인증 크루에서 텍스트 미입력 시)
   - `targetDate`: 인증 대상 날짜
+  - `slotAttempt`: 해당 슬롯의 제출 회차 (취소·수정 이력 포함). `_FeedCard`의 ⋯ 메뉴(수정/취소) 활성 여부 판단에 사용
   - `createdAt`: 인증 생성 시각
 - `myProgress`: 나의 챌린지 현황 (**nullable** — 활성 챌린지가 없으면 null)
   - `challengeId`: 챌린지 ID
@@ -955,6 +1091,12 @@ Authorization: Bearer <token>
       "status": "IN_PROGRESS",
       "completedDays": 2,
       "targetDays": 3
+    },
+    "todaySlot": {
+      "verificationId": "ver_789",
+      "slotAttempt": 1,
+      "textContent": "오늘도 달리기 완료!",
+      "imageUrl": null
     }
   },
   "error": null
@@ -962,9 +1104,14 @@ Authorization: Bearer <token>
 ```
 
 **필드 설명:**
-- `verifiedDates`: APPROVED 인증 날짜 목록 (크루 기간 범위 내, ASC 정렬)
+- `verifiedDates`: APPROVED 인증 날짜 목록 (크루 기간 범위 내, ASC 정렬). **타입·의미 불변** — 취소·수정 기능 추가와 무관하게 유지된다 (FE 캘린더가 그대로 사용)
 - `streakCount`: 최근 날짜부터 역방향 연속 인증 일수
 - `completedChallenges`: challenges.status = SUCCESS 개수 (작심삼일 달성 횟수)
+- `todaySlot`: 오늘 슬롯의 인증 현황 (**nullable** — 오늘 인증이 없으면 null)
+  - `verificationId`: 오늘 슬롯의 유효(비-CANCELLED) 인증 ID
+  - `slotAttempt`: 오늘 슬롯의 제출 회차 — FE가 수정/취소 가능 여부·잔여 횟수(상한 대비)를 판단하는 데 사용. 과거 날짜의 `slotAttempt`는 노출하지 않는다(캘린더는 `verifiedDates`만 사용)
+  - `textContent`: 인증 텍스트 (nullable — 사진 인증 크루에서 텍스트 미입력 시). 수정 다이얼로그 프리필용
+  - `imageUrl`: 인증 이미지 URL (nullable — 텍스트 인증 크루). 수정 다이얼로그 프리필용
 - `myProgress`: 나의 현재 챌린지 현황 (**nullable** — 활성 챌린지가 없으면 null)
   - `challengeId`: 챌린지 ID
   - `status`: 챌린지 상태 (IN_PROGRESS, SUCCESS, FAILED, ENDED)

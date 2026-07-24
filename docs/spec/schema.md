@@ -100,6 +100,7 @@ erDiagram
         int report_count
         date target_date
         int attempt_number
+        int slot_attempt
         enum review_status
         timestamp created_at
     }
@@ -280,6 +281,7 @@ erDiagram
 | REPORTED | 신고 접수됨 (3건 이상) |
 | HIDDEN | 검토 중 숨김 처리 |
 | REJECTED | 검토 후 반려됨 |
+| CANCELLED | 유저가 마감 전 취소/수정하여 무효화됨 (soft delete, 통계·피드 제외) |
 
 ### verifications.review_status
 | 값 | 의미 |
@@ -395,12 +397,13 @@ erDiagram
 
 ```sql
 -- 크루 피드 조회 (인증 목록)
-CREATE INDEX idx_verification_crew_verified 
-ON verification(crew_id, created_at DESC);
+CREATE INDEX idx_verifications_crew_created
+ON verifications(crew_id, created_at DESC);
 
--- 중복 인증 방지
-CREATE UNIQUE INDEX idx_verification_unique
-ON verification(user_id, crew_id, target_date);
+-- 하루 1인증 (취소된 인증은 슬롯을 점유하지 않음)
+-- Flyway V25에서 교체 (기존 uk_verifications_user_crew_date 제약 대체)
+CREATE UNIQUE INDEX uk_verifications_user_crew_date_active
+ON verifications(user_id, crew_id, target_date) WHERE status <> 'CANCELLED';
 
 -- 동시 챌린지 생성 방지 (유저·크루당 IN_PROGRESS 1개만 허용)
 -- Flyway V6에서 추가
@@ -409,8 +412,8 @@ ON challenges(user_id, crew_id)
 WHERE status = 'IN_PROGRESS';
 
 -- 신고 중복 방지
-CREATE UNIQUE INDEX idx_report_unique
-ON report(verification_id, reporter_id);
+CREATE UNIQUE INDEX uk_reports_verification_reporter
+ON reports(verification_id, reporter_id);
 
 -- 크루 중복 가입 방지 (유저·크루당 멤버십 1개만 허용)
 -- Flyway V22에서 추가 (전략 C 조건부 UPDATE의 동시성 안전망)

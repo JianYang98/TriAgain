@@ -58,7 +58,7 @@ class ChallengeExpiredWithoutVerificationIntegrationTest extends E2eTestBase {
         challengeRepositoryPort.save(verifiedChallenge);
         verificationRepositoryPort.save(Verification.createText(
                 verifiedChallenge.getId(), verifiedUserId, verifiedCrew.getId(),
-                "완료", slot, 1));
+                "완료", slot, 1, 1));
 
         String unverifiedUserId = "integ-exp-user-unverified";
         createUser(unverifiedUserId);

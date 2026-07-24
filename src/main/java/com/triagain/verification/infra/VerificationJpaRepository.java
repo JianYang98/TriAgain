@@ -1,15 +1,38 @@
 package com.triagain.verification.infra;
 
+import com.triagain.verification.domain.vo.VerificationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface VerificationJpaRepository extends JpaRepository<VerificationJpaEntity, String> {
 
-    boolean existsByUserIdAndCrewIdAndTargetDate(String userId, String crewId, LocalDate targetDate);
+    /** 유효(비CANCELLED) 인증 존재 여부 — 하루 1건 중복 검사(V003)에 사용 */
+    boolean existsByUserIdAndCrewIdAndTargetDateAndStatusNot(
+            String userId, String crewId, LocalDate targetDate, VerificationStatus status);
+
+    /** 슬롯의 유효(비CANCELLED) 인증 조회 — 오늘 슬롯 현황(todaySlot) 노출에 사용 */
+    Optional<VerificationJpaEntity> findByUserIdAndCrewIdAndTargetDateAndStatusNot(
+            String userId, String crewId, LocalDate targetDate, VerificationStatus status);
+
+    /** 슬롯의 최대 제출 회차 — 행이 없으면 0 */
+    @Query("SELECT COALESCE(MAX(v.slotAttempt), 0) FROM VerificationJpaEntity v "
+            + "WHERE v.userId = :userId AND v.crewId = :crewId AND v.targetDate = :targetDate")
+    int findMaxSlotAttempt(
+            @Param("userId") String userId,
+            @Param("crewId") String crewId,
+            @Param("targetDate") LocalDate targetDate);
+
+    /** 조건부 원자적 취소 — APPROVED일 때만 CANCELLED 전이, 영향 행 수 반환(더블탭·순차 재요청 멱등 처리) */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "UPDATE verifications SET status = 'CANCELLED' "
+            + "WHERE id = :id AND status = 'APPROVED'", nativeQuery = true)
+    int cancelIfApproved(@Param("id") String id);
 
     /** APPROVED 인증 날짜 조회 — 크루 기간 범위 내, ASC 정렬 */
     @Query("SELECT v.targetDate FROM VerificationJpaEntity v " +

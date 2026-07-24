@@ -9,15 +9,14 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "verifications", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"user_id", "crew_id", "target_date"})
-})
+// 하루 1회 유일성은 V25의 partial unique(uk_verifications_user_crew_date_active)가 보장한다.
+// JPA는 partial 조건(WHERE status <> 'CANCELLED')을 표현할 수 없어 uniqueConstraints를 선언하지 않는다.
+@Table(name = "verifications")
 public class VerificationJpaEntity {
 
     @Id
@@ -55,6 +54,9 @@ public class VerificationJpaEntity {
     @Column(name = "attempt_number", nullable = false)
     private int attemptNumber;
 
+    @Column(name = "slot_attempt", nullable = false)
+    private int slotAttempt;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "review_status", nullable = false)
     private ReviewStatus reviewStatus;
@@ -68,7 +70,7 @@ public class VerificationJpaEntity {
     public Verification toDomain() {
         return Verification.of(id, challengeId, userId, crewId, uploadSessionId,
                 imageUrl, textContent, status, reportCount, targetDate,
-                attemptNumber, reviewStatus, createdAt);
+                attemptNumber, slotAttempt, reviewStatus, createdAt);
     }
 
     public static VerificationJpaEntity fromDomain(Verification verification) {
@@ -84,6 +86,7 @@ public class VerificationJpaEntity {
         entity.reportCount = verification.getReportCount();
         entity.targetDate = verification.getTargetDate();
         entity.attemptNumber = verification.getAttemptNumber();
+        entity.slotAttempt = verification.getSlotAttempt();
         entity.reviewStatus = verification.getReviewStatus();
         entity.createdAt = verification.getCreatedAt();
         return entity;

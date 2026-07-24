@@ -4,5 +4,6 @@ public enum VerificationStatus {
     APPROVED,
     REPORTED,
     HIDDEN,
-    REJECTED
+    REJECTED,
+    CANCELLED
 }

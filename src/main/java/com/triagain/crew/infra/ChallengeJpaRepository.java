@@ -4,6 +4,7 @@ import com.triagain.crew.domain.vo.ChallengeStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -35,6 +36,7 @@ public interface ChallengeJpaRepository extends JpaRepository<ChallengeJpaEntity
                   WHERE v.user_id = c.user_id
                     AND v.crew_id = c.crew_id
                     AND v.target_date = c.start_date + c.completed_days
+                    AND v.status <> 'CANCELLED'
               )
             """)
     List<ChallengeJpaEntity> findExpiredWithoutVerification();
@@ -72,4 +74,23 @@ public interface ChallengeJpaRepository extends JpaRepository<ChallengeJpaEntity
     /** 유저·크루 묶음별 특정 상태 챌린지 목록 조회 — 홈 목록 챌린지 진행도 배치 조회 */
     List<ChallengeJpaEntity> findAllByUserIdAndCrewIdInAndStatus(
             String userId, List<String> crewIds, ChallengeStatus status);
+
+    /** 조건부 원자적 실패 전환 — status·completed_days가 스냅샷과 같을 때만 FAILED (스케줄러 lost update 방지) */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "UPDATE challenges SET status = 'FAILED' "
+            + "WHERE id = :id AND status = 'IN_PROGRESS' AND completed_days = :expectedCompletedDays",
+            nativeQuery = true)
+    int failIfUnchanged(@Param("id") String id, @Param("expectedCompletedDays") int expectedCompletedDays);
+
+    /**
+     * 조건부 원자적 역연산 — completed_days가 스냅샷과 같을 때만 1 감소(0 하한, I3) + IN_PROGRESS 복귀.
+     * 인증 취소 lost update 방지(D-C13 G-3, D14-b failIfUnchanged와 대칭 패턴).
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "UPDATE challenges SET completed_days = GREATEST(completed_days - 1, 0), status = 'IN_PROGRESS' "
+            + "WHERE id = :id AND completed_days = :expectedCompletedDays "
+            + "AND status IN ('IN_PROGRESS', 'SUCCESS')",
+            nativeQuery = true)
+    int revertCompletionIfUnchanged(
+            @Param("id") String id, @Param("expectedCompletedDays") int expectedCompletedDays);
 }

@@ -18,6 +18,9 @@ public interface ChallengeQueryUseCase {
     /** 인증 완료 기록 — completedDays 증가 + SUCCESS 전환, SUCCESS 시 true 반환 */
     boolean recordCompletion(String challengeId);
 
+    /** 인증 취소 역연산 — completedDays가 기대값과 같을 때만 감소 + IN_PROGRESS 복귀. 영향 행 수 반환 */
+    int revertCompletion(String challengeId, int expectedCompletedDays);
+
     /** 유저의 SUCCESS 챌린지 수 조회 — 작심삼일 달성 횟수 */
     int countCompletedChallenges(String userId, String crewId);
 

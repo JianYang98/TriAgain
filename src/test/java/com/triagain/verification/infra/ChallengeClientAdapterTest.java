@@ -126,6 +126,21 @@ class ChallengeClientAdapterTest {
     }
 
     @Test
+    @DisplayName("revertCompletion — ChallengeQueryUseCase에 위임, 영향 행 수 그대로 반환")
+    void revertCompletion_delegatesToUseCase() {
+        // Given
+        String challengeId = "CHAL-001";
+        given(challengeQueryUseCase.revertCompletion(challengeId, 2)).willReturn(1);
+
+        // When
+        int affected = challengeClientAdapter.revertCompletion(challengeId, 2);
+
+        // Then
+        assertThat(affected).isEqualTo(1);
+        verify(challengeQueryUseCase).revertCompletion(challengeId, 2);
+    }
+
+    @Test
     @DisplayName("countCompletedChallenges — ChallengeQueryUseCase에 위임")
     void countCompletedChallenges_delegatesToUseCase() {
         // Given

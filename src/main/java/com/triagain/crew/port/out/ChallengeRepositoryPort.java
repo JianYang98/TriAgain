@@ -47,4 +47,10 @@ public interface ChallengeRepositoryPort {
 
     /** 유저·크루 묶음별 특정 상태 챌린지 조회 — 홈 목록 챌린지 진행도 배치 조회에 사용 */
     List<Challenge> findAllByUserIdAndCrewIdInAndStatus(String userId, List<String> crewIds, ChallengeStatus status);
+
+    /** IN_PROGRESS + completed_days 일치 시에만 FAILED 전환 — 만료 스케줄러 lost update 방지(영향 행 수 반환) */
+    int failIfUnchanged(String id, int expectedCompletedDays);
+
+    /** IN_PROGRESS/SUCCESS + completed_days 일치 시에만 1 감소 + IN_PROGRESS 복귀 — 인증 취소 역연산(영향 행 수 반환) */
+    int revertCompletionIfUnchanged(String id, int expectedCompletedDays);
 }
