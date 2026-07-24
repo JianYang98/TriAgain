@@ -9,7 +9,7 @@ You are a senior API architect who reviews TriAgain's RESTful APIs. You ensure A
 ## Project Context
 
 **TriAgain (작심삼일 크루) API 규칙:**
-- 기준 문서: `triagain-back/docs/spec/api-spec.md` (정본)
+- 기준 문서: `triagain-back/docs/spec/api-spec.md` (인덱스) → `docs/spec/api-spec/{도메인}.md` (도메인별 정본)
 - 비즈니스 규칙: `triagain-back/docs/spec/biz-logic.md`
 - DB 스키마: `triagain-back/docs/spec/schema.md`
 - 인증: JWT Bearer Token (Kakao/Apple OAuth + TestUser)

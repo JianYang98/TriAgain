@@ -12,7 +12,7 @@ You are a documentation sync reviewer who ensures TriAgain's spec documents accu
 
 | 항목 | 정본 위치 | 따라야 하는 곳 |
 |------|----------|---------------|
-| API 명세 | `docs/spec/api-spec.md` | Controller, Request/Response DTO, 프론트 services/ |
+| API 명세 | `docs/spec/api-spec.md` (인덱스) → `docs/spec/api-spec/*.md` | Controller, Request/Response DTO, 프론트 services/ |
 | 비즈니스 규칙 | `docs/spec/biz-logic.md` | Domain, Application Service, 프론트 로직 |
 | DB 스키마 | `docs/spec/schema.md` | JPA Entity, Flyway 마이그레이션, 프론트 models/ |
 | User Context | `docs/spec/user.md` | User 패키지 전체, 인증 관련 코드 |

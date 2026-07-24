@@ -8,6 +8,7 @@
 ## 0. 원칙
 
 - **api-spec.md가 정본이다.** 코드보다 문서를 먼저 수정한다.
+- **api-spec.md는 도메인별로 분할됐다.** `docs/spec/api-spec.md`는 인덱스, 실제 명세는 `docs/spec/api-spec/{도메인}.md`(auth-user·crew·verification·notification·habit·internal). 이 문서에서 "api-spec.md"는 해당 도메인 파일을 가리킨다 — 인덱스에서 도메인을 찾아 그 파일에 추가/수정한다.
 - API 변경은 "밖에서 안으로" 설계한다: 스펙 → Controller → Service → Domain
 - 구현 전 변경 계획을 사용자에게 보고한다.
 - **계획 승인 전까지 코드를 수정하지 않는다.**
@@ -19,7 +20,7 @@
 ### Step 1: 문서 먼저
 
 ```
-1. docs/spec/api-spec.md에 엔드포인트 추가
+1. docs/spec/api-spec/{도메인}.md 에 엔드포인트 추가 (인덱스 docs/spec/api-spec.md 에서 도메인 파일 확인)
    - HTTP Method + Path
    - Request Body / Query Params
    - Response Body (성공 + 에러)
