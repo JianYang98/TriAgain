@@ -78,7 +78,7 @@ class ChallengeFailIfUnchangedIntegrationTest extends E2eTestBase {
 
             // 인터리브 — 스냅샷 확보 직후, 유저가 슬롯 인증을 커밋해 completed_days=3, SUCCESS로 전이
             verificationRepositoryPort.save(Verification.createText(
-                    challenge.getId(), userId, crew.getId(), "완료", slot, 1));
+                    challenge.getId(), userId, crew.getId(), "완료", slot, 1, 1));
             Challenge committing = challengeRepositoryPort.findById(challenge.getId()).orElseThrow();
             committing.recordCompletion();
             challengeRepositoryPort.save(committing);

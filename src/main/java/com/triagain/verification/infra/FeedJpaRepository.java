@@ -13,7 +13,8 @@ public interface FeedJpaRepository extends JpaRepository<VerificationJpaEntity, 
     @Query(value = """
             SELECT v.id, v.user_id AS userId, u.nickname, u.profile_image_url AS profileImageUrl,
                    v.image_url AS imageUrl, v.text_content AS textContent,
-                   v.target_date AS targetDate, v.created_at AS createdAt
+                   v.target_date AS targetDate, v.created_at AS createdAt,
+                   v.slot_attempt AS slotAttempt
             FROM verifications v JOIN users u ON v.user_id = u.id
             WHERE v.crew_id = :crewId AND v.status = 'APPROVED'
             ORDER BY v.created_at DESC

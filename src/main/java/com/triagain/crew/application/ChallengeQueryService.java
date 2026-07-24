@@ -54,6 +54,19 @@ public class ChallengeQueryService implements ChallengeQueryUseCase {
         return challengeRepositoryPort.countSuccessByUserIdAndCrewId(userId, crewId);
     }
 
+    /**
+     * 인증 취소 역연산 — 도메인 가드(상태 검증)로 조기 실패 후, 실제 반영은 조건부 UPDATE에 위임.
+     * D14-b(failIfUnchanged)와 대칭 패턴 — 도메인 객체는 검증만 하고 save()로 persist하지 않는다.
+     */
+    @Override
+    @Transactional
+    public int revertCompletion(String challengeId, int expectedCompletedDays) {
+        Challenge challenge = challengeRepositoryPort.findById(challengeId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHALLENGE_NOT_FOUND));
+        challenge.revertCompletion();
+        return challengeRepositoryPort.revertCompletionIfUnchanged(challengeId, expectedCompletedDays);
+    }
+
     private ChallengeInfoDto toDto(Challenge challenge) {
         return new ChallengeInfoDto(
                 challenge.getId(),

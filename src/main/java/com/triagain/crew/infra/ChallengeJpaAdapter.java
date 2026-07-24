@@ -127,4 +127,10 @@ public class ChallengeJpaAdapter implements ChallengeRepositoryPort {
     public int failIfUnchanged(String id, int expectedCompletedDays) {
         return challengeJpaRepository.failIfUnchanged(id, expectedCompletedDays);
     }
+
+    /** IN_PROGRESS/SUCCESS + completed_days 일치 시에만 1 감소 + IN_PROGRESS 복귀 — 인증 취소 역연산에 사용 */
+    @Override
+    public int revertCompletionIfUnchanged(String id, int expectedCompletedDays) {
+        return challengeJpaRepository.revertCompletionIfUnchanged(id, expectedCompletedDays);
+    }
 }

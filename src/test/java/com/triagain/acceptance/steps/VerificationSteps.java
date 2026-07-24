@@ -92,7 +92,7 @@ public class VerificationSteps {
                 IdGenerator.generate("VRFY"), challengeId, userId, crewId,
                 null, null, "오늘의 인증입니다",
                 VerificationStatus.APPROVED, 0, LocalDate.now(),
-                1, ReviewStatus.NOT_REQUIRED, LocalDateTime.now()
+                1, 1, ReviewStatus.NOT_REQUIRED, LocalDateTime.now()
         );
         verificationRepositoryPort.save(verification);
     }

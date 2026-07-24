@@ -36,6 +36,7 @@ public interface ChallengeJpaRepository extends JpaRepository<ChallengeJpaEntity
                   WHERE v.user_id = c.user_id
                     AND v.crew_id = c.crew_id
                     AND v.target_date = c.start_date + c.completed_days
+                    AND v.status <> 'CANCELLED'
               )
             """)
     List<ChallengeJpaEntity> findExpiredWithoutVerification();
@@ -80,4 +81,16 @@ public interface ChallengeJpaRepository extends JpaRepository<ChallengeJpaEntity
             + "WHERE id = :id AND status = 'IN_PROGRESS' AND completed_days = :expectedCompletedDays",
             nativeQuery = true)
     int failIfUnchanged(@Param("id") String id, @Param("expectedCompletedDays") int expectedCompletedDays);
+
+    /**
+     * 조건부 원자적 역연산 — completed_days가 스냅샷과 같을 때만 1 감소(0 하한, I3) + IN_PROGRESS 복귀.
+     * 인증 취소 lost update 방지(D-C13 G-3, D14-b failIfUnchanged와 대칭 패턴).
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "UPDATE challenges SET completed_days = GREATEST(completed_days - 1, 0), status = 'IN_PROGRESS' "
+            + "WHERE id = :id AND completed_days = :expectedCompletedDays "
+            + "AND status IN ('IN_PROGRESS', 'SUCCESS')",
+            nativeQuery = true)
+    int revertCompletionIfUnchanged(
+            @Param("id") String id, @Param("expectedCompletedDays") int expectedCompletedDays);
 }

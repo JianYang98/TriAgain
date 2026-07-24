@@ -99,6 +99,17 @@ public class Challenge {
         this.status = ChallengeStatus.FAILED;
     }
 
+    /** 인증 취소에 의한 역연산 — completedDays 1 감소 + IN_PROGRESS 복귀 */
+    public void revertCompletion() {
+        if (this.status != ChallengeStatus.IN_PROGRESS && this.status != ChallengeStatus.SUCCESS) {
+            throw new BusinessException(ErrorCode.CHALLENGE_NOT_IN_PROGRESS);
+        }
+        if (this.completedDays > 0) {
+            this.completedDays--;
+        }
+        this.status = ChallengeStatus.IN_PROGRESS;
+    }
+
     /** 크루 기간 종료에 의한 챌린지 종료 — IN_PROGRESS → ENDED */
     public void end() {
         if (this.status != ChallengeStatus.IN_PROGRESS) {

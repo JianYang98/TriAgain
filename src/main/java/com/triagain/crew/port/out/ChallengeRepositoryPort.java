@@ -50,4 +50,7 @@ public interface ChallengeRepositoryPort {
 
     /** IN_PROGRESS + completed_days 일치 시에만 FAILED 전환 — 만료 스케줄러 lost update 방지(영향 행 수 반환) */
     int failIfUnchanged(String id, int expectedCompletedDays);
+
+    /** IN_PROGRESS/SUCCESS + completed_days 일치 시에만 1 감소 + IN_PROGRESS 복귀 — 인증 취소 역연산(영향 행 수 반환) */
+    int revertCompletionIfUnchanged(String id, int expectedCompletedDays);
 }

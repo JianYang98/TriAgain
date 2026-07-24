@@ -26,6 +26,12 @@ public class ChallengeClientAdapter implements ChallengePort {
         return challengeQueryUseCase.recordCompletion(challengeId);
     }
 
+    /** 인증 취소 역연산 — ChallengeQueryUseCase에 위임(crew BC의 조건부 UPDATE로 최종 처리) */
+    @Override
+    public int revertCompletion(String challengeId, int expectedCompletedDays) {
+        return challengeQueryUseCase.revertCompletion(challengeId, expectedCompletedDays);
+    }
+
     /** 유저의 활성 챌린지 조회 — IN_PROGRESS 상태만 반환 */
     @Override
     public Optional<ActiveChallengeInfo> findActiveByUserIdAndCrewId(String userId, String crewId) {

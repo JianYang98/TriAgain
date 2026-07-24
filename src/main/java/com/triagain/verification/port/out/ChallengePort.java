@@ -12,6 +12,9 @@ public interface ChallengePort {
     /** 인증 완료 기록 — 챌린지 SUCCESS 시 true 반환 */
     boolean recordCompletion(String challengeId);
 
+    /** 인증 취소 역연산 — completedDays가 기대값과 같을 때만 감소. 영향 행 수 반환(0이면 스냅샷 이후 변경됨) */
+    int revertCompletion(String challengeId, int expectedCompletedDays);
+
     /** 유저의 활성 챌린지 조회 — 피드 myProgress 표시에 사용 */
     Optional<ActiveChallengeInfo> findActiveByUserIdAndCrewId(String userId, String crewId);
 

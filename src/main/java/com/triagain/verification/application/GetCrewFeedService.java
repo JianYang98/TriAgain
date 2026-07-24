@@ -53,6 +53,7 @@ public class GetCrewFeedService implements GetCrewFeedUseCase {
                 row.getImageUrl(),
                 row.getTextContent(),
                 row.getTargetDate(),
+                row.getSlotAttempt(),
                 row.getCreatedAt()
         );
     }
