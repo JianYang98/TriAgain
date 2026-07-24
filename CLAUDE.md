@@ -110,7 +110,7 @@ skill 파일을 읽지 않고 작업하는 것은 규칙 위반이다.
 | 비즈니스 규칙 | `/docs/spec/biz-logic.md` | 비즈니스 규칙, 엣지케이스, Fallback 등급 |
 | 컨텍스트 맵 | `/docs/spec/context-map.md` | 바운디드 컨텍스트 관계도 |
 | ERD | `/docs/spec/schema.md` | 전체 엔티티 관계 다이어그램 |
-| API 명세 | `/docs/spec/api-spec.md` | API 계약서 (요청/응답/에러) |
+| API 명세 | `/docs/spec/api-spec.md` (인덱스) → `/docs/spec/api-spec/` | API 계약서. 도메인별 분할: auth-user·crew·verification·notification·habit·internal |
 | 아키텍처 | `/docs/spec/architecture.md` | 헥사고날 아키텍처 상세 |
 | 시퀀스 다이어그램 | `/docs/spec/sequence/` | 크루 가입, 인증 업로드 흐름 |
 | 디버깅 로그 | `/docs/log/debugging-log.md` | 버그 수정, 설계 판단, AI 방향 수정 기록 |
