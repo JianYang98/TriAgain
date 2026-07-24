@@ -195,24 +195,6 @@ class VerificationTest {
         }
     }
 
-    @Nested
-    @DisplayName("cancel — 인증 취소 처리")
-    class Cancel {
-
-        @Test
-        @DisplayName("CANCELLED 상태로 전환된다")
-        void success() {
-            // Given
-            Verification v = approvedVerification();
-
-            // When
-            v.cancel();
-
-            // Then
-            assertThat(v.getStatus()).isEqualTo(VerificationStatus.CANCELLED);
-        }
-    }
-
     // --- 헬퍼 메서드 ---
 
     private Verification approvedVerification() {

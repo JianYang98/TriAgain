@@ -111,11 +111,6 @@ public class Verification {
         this.reviewStatus = ReviewStatus.COMPLETED;
     }
 
-    /** 인증 취소 처리 — 유저가 마감 전 취소할 때 사용. 가드(모더레이션·마감 등)는 호출자(Service)가 수행한다 */
-    public void cancel() {
-        this.status = VerificationStatus.CANCELLED;
-    }
-
     public String getId() {
         return id;
     }
