@@ -69,7 +69,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "INVALID_FILE_TYPE",
+    "code": "V007",
     "message": "지원하지 않는 파일 형식입니다."
   }
 }
@@ -79,7 +79,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "FILE_TOO_LARGE",
+    "code": "V008",
     "message": "파일 크기가 너무 큽니다."
   }
 }
@@ -89,7 +89,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "UNAUTHORIZED",
+    "code": "A003",
     "message": "로그인이 필요합니다."
   }
 }
@@ -99,7 +99,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "UPLOAD_SESSION_NOT_REQUIRED",
+    "code": "V017",
     "message": "텍스트 인증 크루에서는 업로드 세션이 필요하지 않습니다."
   }
 }
@@ -109,7 +109,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "CREW_NOT_ACTIVE",
+    "code": "CR007",
     "message": "활성 상태의 크루가 아닙니다."
   }
 }
@@ -119,7 +119,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "CREW_NOT_STARTED",
+    "code": "V018",
     "message": "크루가 아직 시작되지 않았습니다."
   }
 }
@@ -129,7 +129,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "CREW_PERIOD_ENDED",
+    "code": "CR015",
     "message": "크루 기간이 종료되었습니다."
   }
 }
@@ -140,7 +140,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "VERIFICATION_DEADLINE_EXCEEDED",
+    "code": "V002",
     "message": "인증 마감 시간이 지났습니다."
   }
 }
@@ -150,7 +150,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "CREW_ACCESS_DENIED",
+    "code": "CR009",
     "message": "크루 멤버만 조회할 수 있습니다."
   }
 }
@@ -160,7 +160,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "HABIT_NOT_FOUND",
+    "code": "HB001",
     "message": "습관을 찾을 수 없습니다."
   }
 }
@@ -170,7 +170,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "HABIT_ACCESS_DENIED",
+    "code": "HB005",
     "message": "본인 습관만 이용할 수 있습니다."
   }
 }
@@ -180,7 +180,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "HABIT_NOT_ACTIVE",
+    "code": "HB008",
     "message": "멈춘 습관입니다. 재개 후 이용할 수 있습니다."
   }
 }
@@ -190,7 +190,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "INVALID_INPUT",
+    "code": "C001",
     "message": "잘못된 입력값입니다."
   }
 }
@@ -277,7 +277,7 @@ Idempotency-Key: <uuid>
   "success": false,
   "data": null,
   "error": {
-    "code": "INVALID_INPUT",
+    "code": "C001",
     "message": "잘못된 입력값입니다."
   }
 }
@@ -287,7 +287,7 @@ Idempotency-Key: <uuid>
   "success": false,
   "data": null,
   "error": {
-    "code": "PHOTO_REQUIRED",
+    "code": "V009",
     "message": "사진 인증이 필요합니다."
   }
 }
@@ -297,7 +297,7 @@ Idempotency-Key: <uuid>
   "success": false,
   "data": null,
   "error": {
-    "code": "UPLOAD_SESSION_NOT_COMPLETED",
+    "code": "V005",
     "message": "업로드 세션이 완료되지 않았습니다."
   }
 }
@@ -307,7 +307,7 @@ Idempotency-Key: <uuid>
   "success": false,
   "data": null,
   "error": {
-    "code": "UPLOAD_SESSION_EXPIRED",
+    "code": "V006",
     "message": "업로드 세션이 만료되었습니다."
   }
 }
@@ -318,7 +318,7 @@ Idempotency-Key: <uuid>
   "success": false,
   "data": null,
   "error": {
-    "code": "VERIFICATION_DEADLINE_EXCEEDED",
+    "code": "V002",
     "message": "인증 마감 시간이 지났습니다."
   }
 }
@@ -328,7 +328,7 @@ Idempotency-Key: <uuid>
   "success": false,
   "data": null,
   "error": {
-    "code": "UNAUTHORIZED",
+    "code": "A003",
     "message": "로그인이 필요합니다."
   }
 }
@@ -338,7 +338,7 @@ Idempotency-Key: <uuid>
   "success": false,
   "data": null,
   "error": {
-    "code": "CREW_ACCESS_DENIED",
+    "code": "CR009",
     "message": "크루 멤버만 조회할 수 있습니다."
   }
 }
@@ -348,7 +348,7 @@ Idempotency-Key: <uuid>
   "success": false,
   "data": null,
   "error": {
-    "code": "UPLOAD_SESSION_NOT_FOUND",
+    "code": "V004",
     "message": "업로드 세션을 찾을 수 없습니다."
   }
 }
@@ -358,7 +358,7 @@ Idempotency-Key: <uuid>
   "success": false,
   "data": null,
   "error": {
-    "code": "UPLOAD_SESSION_CREW_MISMATCH",
+    "code": "V016",
     "message": "업로드 세션의 크루 정보가 일치하지 않습니다."
   }
 }
@@ -368,7 +368,7 @@ Idempotency-Key: <uuid>
   "success": false,
   "data": null,
   "error": {
-    "code": "VERIFICATION_ALREADY_EXISTS",
+    "code": "V003",
     "message": "이미 해당 날짜에 인증이 존재합니다."
   }
 }

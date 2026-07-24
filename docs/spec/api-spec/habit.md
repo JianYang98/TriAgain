@@ -56,7 +56,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "INVALID_INPUT",
+    "code": "C001",
     "message": "잘못된 입력값입니다."
   }
 }
@@ -66,7 +66,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "UNAUTHORIZED",
+    "code": "A003",
     "message": "로그인이 필요합니다."
   }
 }
@@ -163,7 +163,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "UNAUTHORIZED",
+    "code": "A003",
     "message": "로그인이 필요합니다."
   }
 }
@@ -194,7 +194,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "HABIT_NOT_FOUND",
+    "code": "HB001",
     "message": "습관을 찾을 수 없습니다."
   }
 }
@@ -204,7 +204,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "HABIT_ACCESS_DENIED",
+    "code": "HB005",
     "message": "본인 습관만 이용할 수 있습니다."
   }
 }
@@ -214,7 +214,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "INVALID_INPUT",
+    "code": "C001",
     "message": "잘못된 입력값입니다."
   }
 }
@@ -235,7 +235,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "HABIT_NOT_FOUND",
+    "code": "HB001",
     "message": "습관을 찾을 수 없습니다."
   }
 }
@@ -245,7 +245,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "HABIT_ACCESS_DENIED",
+    "code": "HB005",
     "message": "본인 습관만 이용할 수 있습니다."
   }
 }
@@ -268,7 +268,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "HABIT_PAUSE_NOT_ALLOWED",
+    "code": "HB004",
     "message": "진행 중인 작심이 있으면 멈출 수 없습니다."
   }
 }
@@ -278,7 +278,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "HABIT_NOT_FOUND",
+    "code": "HB001",
     "message": "습관을 찾을 수 없습니다."
   }
 }
@@ -288,7 +288,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "HABIT_ACCESS_DENIED",
+    "code": "HB005",
     "message": "본인 습관만 이용할 수 있습니다."
   }
 }
@@ -340,7 +340,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "HABIT_CYCLE_ALREADY_IN_PROGRESS",
+    "code": "HB002",
     "message": "이미 진행 중인 작심이 있습니다."
   }
 }
@@ -350,7 +350,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "VERIFICATION_DEADLINE_EXCEEDED",
+    "code": "V002",
     "message": "인증 마감 시간이 지났습니다."
   }
 }
@@ -360,7 +360,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "VERIFICATION_ALREADY_EXISTS",
+    "code": "V003",
     "message": "오늘은 이미 인증을 완료했어요. 내일부터 시작할 수 있어요."
   }
 }
@@ -370,7 +370,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "HABIT_NOT_ACTIVE",
+    "code": "HB008",
     "message": "멈춘 습관입니다. 재개 후 시작할 수 있습니다."
   }
 }
@@ -380,7 +380,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "HABIT_NOT_FOUND",
+    "code": "HB001",
     "message": "습관을 찾을 수 없습니다."
   }
 }
@@ -402,7 +402,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "HABIT_CYCLE_NOT_IN_PROGRESS",
+    "code": "HB003",
     "message": "진행 중인 작심이 없습니다."
   }
 }
@@ -412,7 +412,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "HABIT_CYCLE_CANCEL_NOT_ALLOWED",
+    "code": "HB007",
     "message": "시작일이 지난 작심은 취소할 수 없습니다."
   }
 }
@@ -422,7 +422,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "HABIT_NOT_FOUND",
+    "code": "HB001",
     "message": "습관을 찾을 수 없습니다."
   }
 }
@@ -477,7 +477,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "HABIT_CYCLE_NOT_IN_PROGRESS",
+    "code": "HB003",
     "message": "진행 중인 작심이 없습니다."
   }
 }
@@ -487,7 +487,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "HABIT_CYCLE_NOT_STARTED",
+    "code": "HB006",
     "message": "아직 시작일이 되지 않은 작심입니다."
   }
 }
@@ -497,7 +497,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "HABIT_NOT_ACTIVE",
+    "code": "HB008",
     "message": "멈춘 습관입니다. 재개 후 이용할 수 있습니다."
   }
 }
@@ -507,7 +507,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "HABIT_UPLOAD_SESSION_MISMATCH",
+    "code": "HB009",
     "message": "다른 습관용으로 발급된 업로드 세션입니다."
   }
 }
@@ -517,7 +517,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "VERIFICATION_ALREADY_EXISTS",
+    "code": "V003",
     "message": "이미 해당 날짜에 인증이 존재합니다."
   }
 }
@@ -527,7 +527,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "VERIFICATION_DEADLINE_EXCEEDED",
+    "code": "V002",
     "message": "인증 마감 시간이 지났습니다."
   }
 }
@@ -537,7 +537,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "UPLOAD_SESSION_CREW_MISMATCH",
+    "code": "V016",
     "message": "업로드 세션의 크루 정보가 일치하지 않습니다."
   }
 }
@@ -547,7 +547,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "HABIT_NOT_FOUND",
+    "code": "HB001",
     "message": "습관을 찾을 수 없습니다."
   }
 }
@@ -557,7 +557,7 @@ Content-Type: application/json
   "success": false,
   "data": null,
   "error": {
-    "code": "HABIT_ACCESS_DENIED",
+    "code": "HB005",
     "message": "본인 습관만 이용할 수 있습니다."
   }
 }
