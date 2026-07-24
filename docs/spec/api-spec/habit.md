@@ -53,14 +53,22 @@ Content-Type: application/json
 ```json
 // 400 Bad Request - 잘못된 입력값
 {
-  "code": "INVALID_INPUT",
-  "message": "잘못된 입력값입니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "INVALID_INPUT",
+    "message": "잘못된 입력값입니다."
+  }
 }
 
 // 401 Unauthorized
 {
-  "code": "UNAUTHORIZED",
-  "message": "로그인이 필요합니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "로그인이 필요합니다."
+  }
 }
 ```
 
@@ -152,8 +160,12 @@ Content-Type: application/json
 ```json
 // 401 Unauthorized
 {
-  "code": "UNAUTHORIZED",
-  "message": "로그인이 필요합니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "로그인이 필요합니다."
+  }
 }
 ```
 
@@ -179,20 +191,32 @@ Content-Type: application/json
 ```json
 // 404 Not Found
 {
-  "code": "HABIT_NOT_FOUND",
-  "message": "습관을 찾을 수 없습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "HABIT_NOT_FOUND",
+    "message": "습관을 찾을 수 없습니다."
+  }
 }
 
 // 403 Forbidden
 {
-  "code": "HABIT_ACCESS_DENIED",
-  "message": "본인 습관만 이용할 수 있습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "HABIT_ACCESS_DENIED",
+    "message": "본인 습관만 이용할 수 있습니다."
+  }
 }
 
 // 400 Bad Request - 잘못된 입력값
 {
-  "code": "INVALID_INPUT",
-  "message": "잘못된 입력값입니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "INVALID_INPUT",
+    "message": "잘못된 입력값입니다."
+  }
 }
 ```
 
@@ -208,14 +232,22 @@ Content-Type: application/json
 ```json
 // 404 Not Found
 {
-  "code": "HABIT_NOT_FOUND",
-  "message": "습관을 찾을 수 없습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "HABIT_NOT_FOUND",
+    "message": "습관을 찾을 수 없습니다."
+  }
 }
 
 // 403 Forbidden
 {
-  "code": "HABIT_ACCESS_DENIED",
-  "message": "본인 습관만 이용할 수 있습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "HABIT_ACCESS_DENIED",
+    "message": "본인 습관만 이용할 수 있습니다."
+  }
 }
 ```
 
@@ -233,20 +265,32 @@ Content-Type: application/json
 ```json
 // 400 Bad Request - pause 전용, IN_PROGRESS 사이클 존재
 {
-  "code": "HABIT_PAUSE_NOT_ALLOWED",
-  "message": "진행 중인 작심이 있으면 멈출 수 없습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "HABIT_PAUSE_NOT_ALLOWED",
+    "message": "진행 중인 작심이 있으면 멈출 수 없습니다."
+  }
 }
 
 // 404 Not Found
 {
-  "code": "HABIT_NOT_FOUND",
-  "message": "습관을 찾을 수 없습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "HABIT_NOT_FOUND",
+    "message": "습관을 찾을 수 없습니다."
+  }
 }
 
 // 403 Forbidden
 {
-  "code": "HABIT_ACCESS_DENIED",
-  "message": "본인 습관만 이용할 수 있습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "HABIT_ACCESS_DENIED",
+    "message": "본인 습관만 이용할 수 있습니다."
+  }
 }
 ```
 
@@ -293,32 +337,52 @@ Content-Type: application/json
 ```json
 // 409 Conflict - 이미 진행 중인 작심이 있음 (더블탭은 유니크 제약 catch 후 기존 사이클을 200으로 반환 — 멱등 처리)
 {
-  "code": "HABIT_CYCLE_ALREADY_IN_PROGRESS",
-  "message": "이미 진행 중인 작심이 있습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "HABIT_CYCLE_ALREADY_IN_PROGRESS",
+    "message": "이미 진행 중인 작심이 있습니다."
+  }
 }
 
 // 400 Bad Request - TODAY인데 오늘 마감+유예 경과
 {
-  "code": "VERIFICATION_DEADLINE_EXCEEDED",
-  "message": "인증 마감 시간이 지났습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "VERIFICATION_DEADLINE_EXCEEDED",
+    "message": "인증 마감 시간이 지났습니다."
+  }
 }
 
 // 409 Conflict - TODAY인데 오늘 이미 인증함 (좀비 사이클 방지)
 {
-  "code": "VERIFICATION_ALREADY_EXISTS",
-  "message": "오늘은 이미 인증을 완료했어요. 내일부터 시작할 수 있어요."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "VERIFICATION_ALREADY_EXISTS",
+    "message": "오늘은 이미 인증을 완료했어요. 내일부터 시작할 수 있어요."
+  }
 }
 
 // 400 Bad Request - PAUSED 습관
 {
-  "code": "HABIT_NOT_ACTIVE",
-  "message": "멈춘 습관입니다. 재개 후 시작할 수 있습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "HABIT_NOT_ACTIVE",
+    "message": "멈춘 습관입니다. 재개 후 시작할 수 있습니다."
+  }
 }
 
 // 404 Not Found
 {
-  "code": "HABIT_NOT_FOUND",
-  "message": "습관을 찾을 수 없습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "HABIT_NOT_FOUND",
+    "message": "습관을 찾을 수 없습니다."
+  }
 }
 ```
 
@@ -335,20 +399,32 @@ Content-Type: application/json
 ```json
 // 400 Bad Request - 활성 사이클 없음
 {
-  "code": "HABIT_CYCLE_NOT_IN_PROGRESS",
-  "message": "진행 중인 작심이 없습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "HABIT_CYCLE_NOT_IN_PROGRESS",
+    "message": "진행 중인 작심이 없습니다."
+  }
 }
 
 // 400 Bad Request - 시작일 도래 후 취소 시도
 {
-  "code": "HABIT_CYCLE_CANCEL_NOT_ALLOWED",
-  "message": "시작일이 지난 작심은 취소할 수 없습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "HABIT_CYCLE_CANCEL_NOT_ALLOWED",
+    "message": "시작일이 지난 작심은 취소할 수 없습니다."
+  }
 }
 
 // 404 Not Found
 {
-  "code": "HABIT_NOT_FOUND",
-  "message": "습관을 찾을 수 없습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "HABIT_NOT_FOUND",
+    "message": "습관을 찾을 수 없습니다."
+  }
 }
 ```
 
@@ -398,56 +474,92 @@ Content-Type: application/json
 ```json
 // 400 Bad Request - 활성 사이클 없음(FAILED 후 등)
 {
-  "code": "HABIT_CYCLE_NOT_IN_PROGRESS",
-  "message": "진행 중인 작심이 없습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "HABIT_CYCLE_NOT_IN_PROGRESS",
+    "message": "진행 중인 작심이 없습니다."
+  }
 }
 
 // 400 Bad Request - 시작일 전(TOMORROW 사이클 사전 인증)
 {
-  "code": "HABIT_CYCLE_NOT_STARTED",
-  "message": "아직 시작일이 되지 않은 작심입니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "HABIT_CYCLE_NOT_STARTED",
+    "message": "아직 시작일이 되지 않은 작심입니다."
+  }
 }
 
 // 400 Bad Request - 멈춘 습관
 {
-  "code": "HABIT_NOT_ACTIVE",
-  "message": "멈춘 습관입니다. 재개 후 이용할 수 있습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "HABIT_NOT_ACTIVE",
+    "message": "멈춘 습관입니다. 재개 후 이용할 수 있습니다."
+  }
 }
 
 // 400 Bad Request - 다른 습관용으로 발급된 업로드 세션
 {
-  "code": "HABIT_UPLOAD_SESSION_MISMATCH",
-  "message": "다른 습관용으로 발급된 업로드 세션입니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "HABIT_UPLOAD_SESSION_MISMATCH",
+    "message": "다른 습관용으로 발급된 업로드 세션입니다."
+  }
 }
 
 // 409 Conflict - 오늘 이미 인증함
 {
-  "code": "VERIFICATION_ALREADY_EXISTS",
-  "message": "이미 해당 날짜에 인증이 존재합니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "VERIFICATION_ALREADY_EXISTS",
+    "message": "이미 해당 날짜에 인증이 존재합니다."
+  }
 }
 
 // 400 Bad Request - 마감 초과 또는 기대 슬롯 불일치(자정 넘긴 grace 인증 포함)
 {
-  "code": "VERIFICATION_DEADLINE_EXCEEDED",
-  "message": "인증 마감 시간이 지났습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "VERIFICATION_DEADLINE_EXCEEDED",
+    "message": "인증 마감 시간이 지났습니다."
+  }
 }
 
 // 400 Bad Request - 크루용 세션 교차 사용
 {
-  "code": "UPLOAD_SESSION_CREW_MISMATCH",
-  "message": "업로드 세션의 크루 정보가 일치하지 않습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "UPLOAD_SESSION_CREW_MISMATCH",
+    "message": "업로드 세션의 크루 정보가 일치하지 않습니다."
+  }
 }
 
 // 404 Not Found
 {
-  "code": "HABIT_NOT_FOUND",
-  "message": "습관을 찾을 수 없습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "HABIT_NOT_FOUND",
+    "message": "습관을 찾을 수 없습니다."
+  }
 }
 
 // 403 Forbidden
 {
-  "code": "HABIT_ACCESS_DENIED",
-  "message": "본인 습관만 이용할 수 있습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "HABIT_ACCESS_DENIED",
+    "message": "본인 습관만 이용할 수 있습니다."
+  }
 }
 ```
 

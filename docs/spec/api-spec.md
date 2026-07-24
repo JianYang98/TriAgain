@@ -10,7 +10,7 @@
 → 텍스트만 인증 가능한 크루라면 바로 POST /verifications
 
 ```
-1. POST /upload-sessions → presignedUrl + sessionId 수신
+1. POST /upload-sessions → presignedUrl + uploadSessionId 수신
 2. GET /upload-sessions/{id}/events (SSE 구독)
 3. S3에 직접 업로드 (PUT {presignedUrl})
 4. Lambda → 자동 완료 감지 → SSE "COMPLETED" 수신

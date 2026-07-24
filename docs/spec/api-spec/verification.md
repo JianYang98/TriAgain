@@ -66,84 +66,133 @@ Content-Type: application/json
 ```json
 // 400 Bad Request - 파일 타입 불허
 {
-  "code": "INVALID_FILE_TYPE",
-  "message": "지원하지 않는 파일 형식입니다.",
-  "allowedTypes": ["image/jpeg", "image/png", "image/webp"]
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "INVALID_FILE_TYPE",
+    "message": "지원하지 않는 파일 형식입니다."
+  }
 }
 
 // 400 Bad Request - 파일 크기 초과
 {
-  "code": "FILE_TOO_LARGE",
-  "message": "파일 크기가 너무 큽니다.",
-  "maxFileSize": 5242880,
-  "requestedSize": 10485760
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "FILE_TOO_LARGE",
+    "message": "파일 크기가 너무 큽니다."
+  }
 }
 
 // 401 Unauthorized
 {
-  "code": "UNAUTHORIZED",
-  "message": "로그인이 필요합니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "로그인이 필요합니다."
+  }
 }
 
 // 400 Bad Request - TEXT 크루에서 upload session 생성 시도
 {
-  "code": "UPLOAD_SESSION_NOT_REQUIRED",
-  "message": "텍스트 인증 크루에서는 업로드 세션이 필요하지 않습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "UPLOAD_SESSION_NOT_REQUIRED",
+    "message": "텍스트 인증 크루에서는 업로드 세션이 필요하지 않습니다."
+  }
 }
 
 // 400 Bad Request - 크루가 ACTIVE 상태가 아님
 {
-  "code": "CREW_NOT_ACTIVE",
-  "message": "활성 상태의 크루가 아닙니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "CREW_NOT_ACTIVE",
+    "message": "활성 상태의 크루가 아닙니다."
+  }
 }
 
 // 400 Bad Request - 크루 시작 전
 {
-  "code": "CREW_NOT_STARTED",
-  "message": "크루가 아직 시작되지 않았습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "CREW_NOT_STARTED",
+    "message": "크루가 아직 시작되지 않았습니다."
+  }
 }
 
 // 400 Bad Request - 크루 기간 종료
 {
-  "code": "CREW_PERIOD_ENDED",
-  "message": "크루 기간이 종료되었습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "CREW_PERIOD_ENDED",
+    "message": "크루 기간이 종료되었습니다."
+  }
 }
 
 // 400 Bad Request - 인증 마감 시간 초과
 // 발생 조건: min(슬롯 일일마감(crew.deadlineTime, 기본 23:59:59), 사이클 마감(challenge.deadline)) + 5분 초과
 {
-  "code": "VERIFICATION_DEADLINE_EXCEEDED",
-  "message": "인증 마감 시간이 지났습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "VERIFICATION_DEADLINE_EXCEEDED",
+    "message": "인증 마감 시간이 지났습니다."
+  }
 }
 
 // 403 Forbidden - 크루 멤버 아님
 {
-  "code": "CREW_ACCESS_DENIED",
-  "message": "크루 멤버만 조회할 수 있습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "CREW_ACCESS_DENIED",
+    "message": "크루 멤버만 조회할 수 있습니다."
+  }
 }
 
 // 404 Not Found - 습관을 찾을 수 없음 (솔로 세션)
 {
-  "code": "HABIT_NOT_FOUND",
-  "message": "습관을 찾을 수 없습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "HABIT_NOT_FOUND",
+    "message": "습관을 찾을 수 없습니다."
+  }
 }
 
 // 403 Forbidden - 본인 습관이 아님 (솔로 세션)
 {
-  "code": "HABIT_ACCESS_DENIED",
-  "message": "본인 습관만 이용할 수 있습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "HABIT_ACCESS_DENIED",
+    "message": "본인 습관만 이용할 수 있습니다."
+  }
 }
 
 // 400 Bad Request - 멈춘 습관 (솔로 세션)
 {
-  "code": "HABIT_NOT_ACTIVE",
-  "message": "멈춘 습관입니다. 재개 후 이용할 수 있습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "HABIT_NOT_ACTIVE",
+    "message": "멈춘 습관입니다. 재개 후 이용할 수 있습니다."
+  }
 }
 
 // 400 Bad Request - crewId/habitId 둘 다 없거나 둘 다 존재 (XOR 위반)
 {
-  "code": "INVALID_INPUT",
-  "message": "잘못된 입력값입니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "INVALID_INPUT",
+    "message": "잘못된 입력값입니다."
+  }
 }
 
 ```
@@ -225,65 +274,103 @@ Idempotency-Key: <uuid>
 ```json
 // 400 Bad Request - 잘못된 입력값
 {
-  "code": "INVALID_INPUT",
-  "message": "잘못된 입력값입니다.",
-  "field": "challengeId"
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "INVALID_INPUT",
+    "message": "잘못된 입력값입니다."
+  }
 }
 
 // 400 Bad Request - 사진 인증 필수
 {
-  "code": "PHOTO_REQUIRED",
-  "message": "사진 인증이 필요합니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "PHOTO_REQUIRED",
+    "message": "사진 인증이 필요합니다."
+  }
 }
 
 // 400 Bad Request - 업로드 세션 미완료
 {
-  "code": "UPLOAD_SESSION_NOT_COMPLETED",
-  "message": "업로드 세션이 완료되지 않았습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "UPLOAD_SESSION_NOT_COMPLETED",
+    "message": "업로드 세션이 완료되지 않았습니다."
+  }
 }
 
 // 400 Bad Request - 업로드 세션 만료
 {
-  "code": "UPLOAD_SESSION_EXPIRED",
-  "message": "업로드 세션이 만료되었습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "UPLOAD_SESSION_EXPIRED",
+    "message": "업로드 세션이 만료되었습니다."
+  }
 }
 
 // 400 Bad Request - 인증 마감 시간 초과
 // 발생 조건: min(슬롯 일일마감(crew.deadlineTime, 기본 23:59:59), 사이클 마감(challenge.deadline)) + 5분 초과
 {
-  "code": "VERIFICATION_DEADLINE_EXCEEDED",
-  "message": "인증 마감 시간이 지났습니다.",
-  "deadline": "2026-02-18T23:59:59Z"
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "VERIFICATION_DEADLINE_EXCEEDED",
+    "message": "인증 마감 시간이 지났습니다."
+  }
 }
 
 // 401 Unauthorized
 {
-  "code": "UNAUTHORIZED",
-  "message": "로그인이 필요합니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "로그인이 필요합니다."
+  }
 }
 
 // 403 Forbidden - 크루 멤버 아님
 {
-  "code": "CREW_ACCESS_DENIED",
-  "message": "크루 멤버만 조회할 수 있습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "CREW_ACCESS_DENIED",
+    "message": "크루 멤버만 조회할 수 있습니다."
+  }
 }
 
 // 404 Not Found - 업로드 세션 없음
 {
-  "code": "UPLOAD_SESSION_NOT_FOUND",
-  "message": "업로드 세션을 찾을 수 없습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "UPLOAD_SESSION_NOT_FOUND",
+    "message": "업로드 세션을 찾을 수 없습니다."
+  }
 }
 
 // 400 Bad Request - upload session의 crewId와 요청 crewId 불일치
 {
-  "code": "UPLOAD_SESSION_CREW_MISMATCH",
-  "message": "업로드 세션의 크루 정보가 일치하지 않습니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "UPLOAD_SESSION_CREW_MISMATCH",
+    "message": "업로드 세션의 크루 정보가 일치하지 않습니다."
+  }
 }
 
 // 409 Conflict - 중복 인증
 {
-  "code": "VERIFICATION_ALREADY_EXISTS",
-  "message": "이미 해당 날짜에 인증이 존재합니다."
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "VERIFICATION_ALREADY_EXISTS",
+    "message": "이미 해당 날짜에 인증이 존재합니다."
+  }
 }
 
 ```
