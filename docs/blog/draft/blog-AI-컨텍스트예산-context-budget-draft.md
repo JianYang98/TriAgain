@@ -44,7 +44,7 @@
 
 ```bash
 $ wc -l docs/spec/*.md
-   2441 api-spec.md      # ← 얘
+   2441 api-spec.md      # ← 얘 (분할 전 스냅샷; 지금 이 파일은 38줄 라우터)
     647 biz-logic.md
     525 schema.md
     373 user.md
@@ -82,7 +82,7 @@ $ wc -l docs/spec/*.md
 라인 수로 반 자르면? 최악이다. 크루 API가 두 파일에 걸친다.
 그래서 **바운디드 컨텍스트**로 잘랐다. 내 프로젝트는 어차피 DDD 헥사고날이라, 도메인 경계가 이미 있다.
 
-```
+```text
 docs/spec/api-spec.md          38줄  ← 라우터/인덱스 (개요 + 엔드포인트→파일 표)
 docs/spec/api-spec/
 ├── auth-user.md      547줄  (auth/* + users/me + 프로필 이미지)
@@ -105,7 +105,7 @@ DDD를 코드에서만 쓰라는 법은 없다. 문서 구조에도 같은 경�
 2,400줄을 손으로 옮기면 반드시 뭔가 흘린다.
 그래서 옮기는 건 손이 아니라 **라인 범위 슬라이싱**으로 했다. 원본의 20~172줄은 그대로 verification으로, 311~851줄은 그대로 auth-user로. 재입력이 없으니 전사 오류가 없다.
 
-그리고 검증. 부하테스트에서 `checks_failed`로 서버 건강성을 확인했듯이, 여기선 **헤더 대조**로 무손실을 확인했다.
+그리고 검증. 콘텐츠가 안 샜다는 건 위 **슬라이싱(verbatim 복사)** 자체가 보장한다 — 재입력이 없으니까. 그 위에 **`### ` 헤더 대조**로 "엔드포인트가 하나도 빠지거나 뒤섞이지 않았나"를 교차 확인했다. 부하테스트에서 `checks_failed`로 서버 건강성을 본 것과 같은 결의 확인이다.
 
 ```bash
 $ grep -c '^### ' api-spec.original.md      # 원본 엔드포인트 헤더
@@ -168,6 +168,6 @@ $ diff <(grep '^### ' 원본 | sort) <(cat api-spec/*.md | grep '^### ' | sort)
 ## 참고
 
 - 분할 결과: `docs/spec/api-spec.md`(라우터) + `docs/spec/api-spec/*.md` 6파일
-- 무손실 검증: `grep '^### '` 원본 47 = 도메인 45 + TODO 2
+- 엔드포인트 완전성 검증: `grep '^### '` 원본 47 = 도메인 45 + TODO 2 (콘텐츠 무손실은 슬라이싱이 보장)
 - 하네스 갱신 지시서: `docs/archive/20260724-api-spec-split-harness-instruction.md`
 - 자매편(같은 방법론, 다른 리소스): [`부하테스트가 FAIL인데 서버는 PASS였다`](../blog-http-req-failed-vs-checks-failed.md)
