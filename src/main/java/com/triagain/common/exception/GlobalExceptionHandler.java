@@ -27,11 +27,14 @@ public class GlobalExceptionHandler {
     /**
      * DB 제약 이름 → 에러코드 정확 매칭. {@code contains()} 부분매칭 금지 — 새 제약이 추가돼도 조용히
      * 오매핑되지 않는다. 키는 마이그레이션 파일에서 그대로 복사한 값이다(추론 금지, lessons-learned.md).
-     * 미등록 제약(신고 중복·습관 인증 등)은 {@link ErrorCode#DATA_CONFLICT}로 폴백한다.
+     * 미등록 제약은 {@link ErrorCode#DATA_CONFLICT}로 폴백한다.
      */
     private static final Map<String, ErrorCode> CONSTRAINT_ERRORS = Map.of(
             "uk_verifications_user_crew_date_active", ErrorCode.VERIFICATION_ALREADY_EXISTS,
-            "uk_verifications_upload_session", ErrorCode.UPLOAD_SESSION_ALREADY_USED
+            "uk_verifications_upload_session",        ErrorCode.UPLOAD_SESSION_ALREADY_USED,
+            "uk_reports_verification_reporter",       ErrorCode.REPORT_ALREADY_EXISTS,
+            "uk_habit_verifications_upload_session",  ErrorCode.UPLOAD_SESSION_ALREADY_USED,
+            "uk_habit_verifications_habit_date",      ErrorCode.HABIT_VERIFICATION_ALREADY_EXISTS
     );
 
     /** ErrorCode → properties 메시지 resolve */
