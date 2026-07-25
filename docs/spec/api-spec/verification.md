@@ -213,7 +213,6 @@ Content-Type: application/json
 POST /verifications HTTP/1.1
 Authorization: Bearer <token>
 Content-Type: application/json
-Idempotency-Key: <uuid>
 
 {
   "crewId": "crew_123",
