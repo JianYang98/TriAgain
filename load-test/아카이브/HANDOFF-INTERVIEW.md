@@ -150,7 +150,7 @@ triagain:
 | 비관락 VU 50~300 | `load-test/results/07_crew-rush.md` |
 | **낙관 vs 비관 Before/After** | `load-test/results/09_optimistic-lock-comparison.md` |
 | 통찰/판정 기준 재정의 | `load-test/results/08_insights.md` |
-| 이미 정리된 면접 답변 | `load-test/INTERVIEW-PREP.md` (30초/2분/5분 + 숫자 퀵 레퍼런스) |
+| 이미 정리된 면접 답변 | `load-test/아카이브/INTERVIEW-PREP.md` (30초/2분/5분 + 숫자 퀵 레퍼런스) |
 
 ---
 

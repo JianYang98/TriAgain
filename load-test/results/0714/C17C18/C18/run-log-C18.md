@@ -1,0 +1,34 @@
+# C18 스윕 — 2026-07-14 00:28:55 시작 (순서: 20 400 50 300 100 500 200 700) | PESSIMISTIC·256·G1·PRE_GC=on
+- **C18_max10_vu20** 00:30:45~00:30:52 exit=0 arm=on | success=10 5xx=0 drop=0 p95=207.8ms
+  - arm증빙: [pre-GC] {\"success\":true,\
+  - GC before: G1 Old Generation/System.gc()=1 G1 Young Generation/G1 Evacuation Pause=43
+  - GC after : G1 Old Generation/System.gc()=2 G1 Young Generation/G1 Evacuation Pause=43
+- **C18_max10_vu400** 00:32:53~00:33:02 exit=99 arm=on | success=10 5xx=0 drop=25 p95=1581.3ms
+  - arm증빙: [pre-GC] {\"success\":true,\
+  - GC before: G1 Old Generation/System.gc()=2 G1 Young Generation/G1 Evacuation Pause=43
+  - GC after : G1 Old Generation/System.gc()=3 G1 Young Generation/G1 Evacuation Pause=45
+- **C18_max10_vu50** 00:35:04~00:35:10 exit=0 arm=on | success=10 5xx=0 drop=0 p95=436.7ms
+  - arm증빙: [pre-GC] {\"success\":true,\
+  - GC before: G1 Old Generation/System.gc()=3 G1 Young Generation/G1 Evacuation Pause=46
+  - GC after : G1 Old Generation/System.gc()=4 G1 Young Generation/G1 Evacuation Pause=46
+- **C18_max10_vu300** 00:37:11~00:37:18 exit=0 arm=on | success=10 5xx=0 drop=0 p95=977.0ms
+  - arm증빙: [pre-GC] {\"success\":true,\
+  - GC before: G1 Old Generation/System.gc()=4 G1 Young Generation/G1 Evacuation Pause=46
+  - GC after : G1 Old Generation/System.gc()=5 G1 Young Generation/G1 Evacuation Pause=47
+- **C18_max10_vu100** 00:39:19~00:39:26 exit=0 arm=on | success=10 5xx=0 drop=0 p95=430.5ms
+  - arm증빙: [pre-GC] {\"success\":true,\
+  - GC before: G1 Old Generation/System.gc()=5 G1 Young Generation/G1 Evacuation Pause=48
+  - GC after : G1 Old Generation/System.gc()=6 G1 Young Generation/G1 Evacuation Pause=48
+- **C18_max10_vu500** 00:41:27~00:41:37 exit=99 arm=on | success=10 5xx=0 drop=203 p95=1090.4ms
+  - arm증빙: [pre-GC] {\"success\":true,\
+  - GC before: G1 Old Generation/System.gc()=6 G1 Young Generation/G1 Evacuation Pause=49
+  - GC after : G1 Old Generation/System.gc()=7 G1 Young Generation/G1 Evacuation Pause=50
+- **C18_max10_vu200** 00:43:37~00:43:45 exit=0 arm=on | success=10 5xx=0 drop=0 p95=711.9ms
+  - arm증빙: [pre-GC] {\"success\":true,\
+  - GC before: G1 Old Generation/System.gc()=7 G1 Young Generation/G1 Evacuation Pause=51
+  - GC after : G1 Old Generation/System.gc()=8 G1 Young Generation/G1 Evacuation Pause=52
+- **C18_max10_vu700** 00:45:46~00:45:56 exit=99 arm=on | success=10 5xx=0 drop=165 p95=1958.9ms
+  - arm증빙: [pre-GC] {\"success\":true,\
+  - GC before: G1 Old Generation/System.gc()=8 G1 Young Generation/G1 Evacuation Pause=52
+  - GC after : G1 Old Generation/System.gc()=9 G1 Young Generation/G1 Evacuation Pause=55
+[runner] ✅ G1 야간 전체 완료 (워밍업3+C17 8+C18 8) — 2026-07-14 00:46:06

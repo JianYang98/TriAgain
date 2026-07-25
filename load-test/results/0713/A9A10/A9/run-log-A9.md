@@ -1,0 +1,33 @@
+# A9 스윕 — 2026-07-13 19:03:09 시작 (순서: 20 400 50 300 100 500 200 700) | CONDITIONAL·256·PRE_GC=off
+- **A9_max10_vu20** 19:05:00~19:05:01 exit=0 arm=off | success=10 5xx=0 drop=0 p95=298.2ms
+  - arm증빙: [pre-GC] SKIPPED (PRE_GC=off) — 무게이트 arm
+  - GC before: Copy/Allocation Failure=27 MarkSweepCompact/System.gc()=1
+  - GC after : Copy/Allocation Failure=27 MarkSweepCompact/System.gc()=1
+- **A9_max10_vu400** 19:07:02~19:07:05 exit=99 arm=off | success=10 5xx=0 drop=65 p95=2652.0ms
+  - arm증빙: [pre-GC] SKIPPED (PRE_GC=off) — 무게이트 arm
+  - GC before: Copy/Allocation Failure=28 MarkSweepCompact/System.gc()=1
+  - GC after : Copy/Allocation Failure=32 MarkSweepCompact/System.gc()=1
+- **A9_max10_vu50** 19:09:06~19:09:08 exit=0 arm=off | success=10 5xx=0 drop=0 p95=424.3ms
+  - arm증빙: [pre-GC] SKIPPED (PRE_GC=off) — 무게이트 arm
+  - GC before: Copy/Allocation Failure=33 MarkSweepCompact/System.gc()=1
+  - GC after : Copy/Allocation Failure=34 MarkSweepCompact/System.gc()=1
+- **A9_max10_vu300** 19:11:09~19:11:12 exit=0 arm=off | success=10 5xx=0 drop=0 p95=2068.4ms
+  - arm증빙: [pre-GC] SKIPPED (PRE_GC=off) — 무게이트 arm
+  - GC before: Copy/Allocation Failure=35 MarkSweepCompact/System.gc()=1
+  - GC after : Copy/Allocation Failure=39 MarkSweepCompact/System.gc()=1
+- **A9_max10_vu100** 19:13:13~19:13:14 exit=0 arm=off | success=10 5xx=0 drop=0 p95=648.9ms
+  - arm증빙: [pre-GC] SKIPPED (PRE_GC=off) — 무게이트 arm
+  - GC before: Copy/Allocation Failure=40 MarkSweepCompact/System.gc()=1
+  - GC after : Copy/Allocation Failure=41 MarkSweepCompact/System.gc()=1
+- **A9_max10_vu500** 19:15:15~19:15:18 exit=99 arm=off | success=10 5xx=0 drop=120 p95=2190.4ms
+  - arm증빙: [pre-GC] SKIPPED (PRE_GC=off) — 무게이트 arm
+  - GC before: Copy/Allocation Failure=42 MarkSweepCompact/System.gc()=1
+  - GC after : Copy/Allocation Failure=46 MarkSweepCompact/Allocation Failure=1 MarkSweepCompact/System.gc()=1
+- **A9_max10_vu200** 19:17:19~19:17:21 exit=0 arm=off | success=10 5xx=0 drop=0 p95=1056.0ms
+  - arm증빙: [pre-GC] SKIPPED (PRE_GC=off) — 무게이트 arm
+  - GC before: Copy/Allocation Failure=47 MarkSweepCompact/Allocation Failure=1 MarkSweepCompact/System.gc()=1
+  - GC after : Copy/Allocation Failure=49 MarkSweepCompact/Allocation Failure=1 MarkSweepCompact/System.gc()=1
+- **A9_max10_vu700** 19:19:22~19:19:25 exit=99 arm=off | success=10 5xx=0 drop=155 p95=2166.7ms
+  - arm증빙: [pre-GC] SKIPPED (PRE_GC=off) — 무게이트 arm
+  - GC before: Copy/Allocation Failure=50 MarkSweepCompact/Allocation Failure=1 MarkSweepCompact/System.gc()=1
+  - GC after : Copy/Allocation Failure=54 MarkSweepCompact/Allocation Failure=1 MarkSweepCompact/System.gc()=1

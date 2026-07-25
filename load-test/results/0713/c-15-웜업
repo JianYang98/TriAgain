@@ -1,0 +1,255 @@
+jian@jianui-MacBookPro load-test % TAG=0713_warmup1_vu50
+k6 run --env BASE_URL=http://13.125.7.72:8080 --env TARGET_VUS=50 \
+  --env RUN_TAG=$TAG --out json=results/0713/raw/${TAG}.json k6/crew-rush-jian.js
+
+         /\      Grafana   /‾‾/
+    /\  /  \     |\  __   /  /
+   /  \/    \    | |/ /  /   ‾‾\
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/
+
+
+     execution: local
+        script: k6/crew-rush-jian.js
+        output: json (results/0713/raw/0713_warmup1_vu50.json)
+
+     scenarios: (100.00%) 1 scenario, 50 max VUs, 1m0s max duration (incl. graceful stop):
+              * rush: 1 iterations for each of 50 VUs (maxDuration: 30s, exec: rushExec, gracefulStop: 30s)
+
+INFO[0001] [pre-GC] {"success":true,"data":{"heapUsedBeforeMb":67,"heapUsedAfterMb":46,"durationMs":197},"error":null}  source=console
+INFO[0008] [k6-reporter v2.3.0] Generating HTML summary report  source=console
+      ✓ valid status (201/409)
+      ✓ no server error (5xx)
+      ✓ no conn reset (status 0)
+      ✓ 409 has expected code
+
+      checks.........................: 100.00% ✓ 200      ✗ 0
+      data_received..................: 21 kB   3.3 kB/s
+      data_sent......................: 20 kB   3.1 kB/s
+      http_req_blocked...............: avg=15.25ms  min=9.64ms   med=15.55ms  max=19.86ms  p(90)=17.22ms  p(95)=17.8ms
+      http_req_connecting............: avg=15.1ms   min=9.29ms   med=15.4ms   max=19.84ms  p(90)=17.06ms  p(95)=17.77ms
+      http_req_duration..............: avg=963.38ms min=324.63ms med=995.48ms max=1.12s    p(90)=1.11s    p(95)=1.11s
+        { expected_response:true }...: avg=695.19ms min=324.63ms med=705.46ms max=849.41ms p(90)=825.21ms p(95)=837.31ms
+      http_req_failed................: 78.43%  ✓ 40       ✗ 11
+      http_req_receiving.............: avg=335.25µs min=11µs     med=43µs     max=5.58ms   p(90)=1.28ms   p(95)=1.89ms
+      http_req_sending...............: avg=43.37µs  min=13µs     med=25µs     max=680µs    p(90)=42µs     p(95)=64.49µs
+      http_req_tls_handshaking.......: avg=0s       min=0s       med=0s       max=0s       p(90)=0s       p(95)=0s
+      http_req_waiting...............: avg=963ms    min=323.84ms med=995.42ms max=1.12s    p(90)=1.11s    p(95)=1.11s
+      http_reqs......................: 51      7.872453/s
+      iteration_duration.............: avg=992.92ms min=680.2ms  med=1.01s    max=1.13s    p(90)=1.13s    p(95)=1.13s
+      iterations.....................: 50      7.718091/s
+    ✓ join_5xx.......................: 0       0/s
+    ✓ join_dropped...................: 0       0/s
+      join_full......................: 40      6.174473/s
+    ✓ join_success...................: 10      1.543618/s
+      scenario_d_duration............: avg=976.16ms min=664.36ms med=996.98ms max=1.12s    p(90)=1.11s    p(95)=1.11s
+      vus............................: 50      min=0      max=50
+      vus_max........................: 50      min=50     max=50
+=========
+ 🏁 RUSH  0713_warmup1_vu50
+    정원 10명 · 동시참가 50 VU
+
+  성공_success: 10
+  정원초과_full: 40
+  충돌_conflict: 0
+  5xx_err5xx: 0
+  드롭_dropped_연결실패: 0
+  기타_other: 0
+  p95: 1114.4 ms
+  ─────────────────────────
+  판정: ✅ PASS  (정합성 OK · 충돌 0 · p95 1114.4ms)
+
+
+running (0m06.5s), 00/50 VUs, 50 complete and 0 interrupted iterations
+rush ✓ [======================================] 50 VUs  01.1s/30s  50/50 iters, 1 per VU
+jian@jianui-MacBookPro load-test % TAG=0713_warmup2_vu100
+k6 run --env BASE_URL=http://13.125.7.72:8080 --env TARGET_VUS=100 --env PRE_GC=off \
+  --env RUN_TAG=$TAG --out json=results/0713/raw/${TAG}.json k6/crew-rush-jian.js
+
+         /\      Grafana   /‾‾/
+    /\  /  \     |\  __   /  /
+   /  \/    \    | |/ /  /   ‾‾\
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/
+
+
+     execution: local
+        script: k6/crew-rush-jian.js
+        output: json (results/0713/raw/0713_warmup2_vu100.json)
+
+     scenarios: (100.00%) 1 scenario, 100 max VUs, 1m0s max duration (incl. graceful stop):
+              * rush: 1 iterations for each of 100 VUs (maxDuration: 30s, exec: rushExec, gracefulStop: 30s)
+
+INFO[0000] [pre-GC] SKIPPED (PRE_GC=off) — 무게이트 arm      source=console
+INFO[0001] [k6-reporter v2.3.0] Generating HTML summary report  source=console
+      ✓ valid status (201/409)
+      ✓ no server error (5xx)
+      ✓ no conn reset (status 0)
+      ✓ 409 has expected code
+
+      checks.........................: 100.00% ✓ 400        ✗ 0
+      data_received..................: 41 kB   52 kB/s
+      data_sent......................: 40 kB   51 kB/s
+      http_req_blocked...............: avg=30.9ms   min=19.95ms  med=30.8ms   max=83.25ms  p(90)=36.45ms  p(95)=40.37ms
+      http_req_connecting............: avg=30.83ms  min=19.48ms  med=30.79ms  max=83.2ms   p(90)=36.44ms  p(95)=40.36ms
+      http_req_duration..............: avg=496.66ms min=100.8ms  med=490.64ms max=754.88ms p(90)=722.97ms p(95)=742.13ms
+        { expected_response:true }...: avg=216.4ms  min=100.8ms  med=235.22ms max=315.89ms p(90)=296.14ms p(95)=306.01ms
+      http_req_failed................: 90.00%  ✓ 90         ✗ 10
+      http_req_receiving.............: avg=683.48µs min=8µs      med=60.5µs   max=22.83ms  p(90)=1.18ms   p(95)=3.14ms
+      http_req_sending...............: avg=14.65µs  min=5µs      med=9µs      max=181µs    p(90)=28µs     p(95)=51.19µs
+      http_req_tls_handshaking.......: avg=0s       min=0s       med=0s       max=0s       p(90)=0s       p(95)=0s
+      http_req_waiting...............: avg=495.96ms min=100.55ms med=490.58ms max=754.85ms p(90)=722.93ms p(95)=731.67ms
+      http_reqs......................: 100     127.22533/s
+      iteration_duration.............: avg=527.83ms min=121.22ms med=524.58ms max=781.63ms p(90)=749.1ms  p(95)=768.1ms
+      iterations.....................: 100     127.22533/s
+    ✓ join_5xx.......................: 0       0/s
+    ✓ join_dropped...................: 0       0/s
+      join_full......................: 90      114.502797/s
+    ✓ join_success...................: 10      12.722533/s
+      scenario_d_duration............: avg=496.66ms min=100.8ms  med=490.64ms max=754.88ms p(90)=722.97ms p(95)=742.13ms
+=========
+ 🏁 RUSH  0713_warmup2_vu100
+    정원 10명 · 동시참가 100 VU
+
+  성공_success: 10
+  정원초과_full: 90
+  충돌_conflict: 0
+  5xx_err5xx: 0
+  드롭_dropped_연결실패: 0
+  기타_other: 0
+  p95: 742.1 ms
+  ─────────────────────────
+  판정: ✅ PASS  (정합성 OK · 충돌 0 · p95 742.1ms)
+
+
+running (0m00.8s), 000/100 VUs, 100 complete and 0 interrupted iterations
+rush ✓ [======================================] 100 VUs  00.8s/30s  100/100 iters, 1 per VU
+jian@jianui-MacBookPro load-test % TAG=0713_gateoff_vu200
+k6 run --env BASE_URL=http://13.125.7.72:8080 --env TARGET_VUS=200 --env PRE_GC=off \
+  --env RUN_TAG=$TAG --out json=results/0713/raw/${TAG}.json k6/crew-rush-jian.js
+
+         /\      Grafana   /‾‾/
+    /\  /  \     |\  __   /  /
+   /  \/    \    | |/ /  /   ‾‾\
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/
+
+
+     execution: local
+        script: k6/crew-rush-jian.js
+        output: json (results/0713/raw/0713_gateoff_vu200.json)
+
+     scenarios: (100.00%) 1 scenario, 200 max VUs, 1m0s max duration (incl. graceful stop):
+              * rush: 1 iterations for each of 200 VUs (maxDuration: 30s, exec: rushExec, gracefulStop: 30s)
+
+INFO[0000] [pre-GC] SKIPPED (PRE_GC=off) — 무게이트 arm      source=console
+INFO[0002] [k6-reporter v2.3.0] Generating HTML summary report  source=console
+      ✓ valid status (201/409)
+      ✓ no server error (5xx)
+      ✓ no conn reset (status 0)
+      ✓ 409 has expected code
+
+      checks.........................: 100.00% ✓ 800       ✗ 0
+      data_received..................: 81 kB   40 kB/s
+      data_sent......................: 80 kB   40 kB/s
+      http_req_blocked...............: avg=43.43ms  min=38.06ms  med=41.3ms   max=99.61ms  p(90)=45.87ms  p(95)=46ms
+      http_req_connecting............: avg=43.41ms  min=38.03ms  med=41.28ms  max=99.59ms  p(90)=45.84ms  p(95)=45.99ms
+      http_req_duration..............: avg=1.45s    min=496.21ms med=1.48s    max=1.95s    p(90)=1.89s    p(95)=1.93s
+        { expected_response:true }...: avg=618.57ms min=496.21ms med=613.31ms max=734.17ms p(90)=706.11ms p(95)=720.14ms
+      http_req_failed................: 95.00%  ✓ 190       ✗ 10
+      http_req_receiving.............: avg=1.86ms   min=12µs     med=80µs     max=128.43ms p(90)=2.48ms   p(95)=5.26ms
+      http_req_sending...............: avg=15.64µs  min=4µs      med=8µs      max=194µs    p(90)=23.1µs   p(95)=53.09µs
+      http_req_tls_handshaking.......: avg=0s       min=0s       med=0s       max=0s       p(90)=0s       p(95)=0s
+      http_req_waiting...............: avg=1.45s    min=495.89ms med=1.48s    max=1.95s    p(90)=1.89s    p(95)=1.93s
+      http_reqs......................: 200     99.694536/s
+      iteration_duration.............: avg=1.5s     min=535.21ms med=1.52s    max=2s       p(90)=1.94s    p(95)=1.98s
+      iterations.....................: 200     99.694536/s
+    ✓ join_5xx.......................: 0       0/s
+    ✓ join_dropped...................: 0       0/s
+      join_full......................: 190     94.709809/s
+    ✓ join_success...................: 10      4.984727/s
+      scenario_d_duration............: avg=1.45s    min=496.21ms med=1.48s    max=1.95s    p(90)=1.89s    p(95)=1.93s
+      vus............................: 14      min=14      max=172
+      vus_max........................: 200     min=200     max=200
+=========
+ 🏁 RUSH  0713_gateoff_vu200
+    정원 10명 · 동시참가 200 VU
+
+  성공_success: 10
+  정원초과_full: 190
+  충돌_conflict: 0
+  5xx_err5xx: 0
+  드롭_dropped_연결실패: 0
+  기타_other: 0
+  p95: 1934.8 ms
+  ─────────────────────────
+  판정: ✅ PASS  (정합성 OK · 충돌 0 · p95 1934.8ms)
+
+
+running (0m02.0s), 000/200 VUs, 200 complete and 0 interrupted iterations
+rush ✓ [======================================] 200 VUs  02.0s/30s  200/200 iters, 1 per VU
+jian@jianui-MacBookPro load-test
+jian@jianui-MacBookPro load-test % TAG=0713_gateon_vu200
+k6 run --env BASE_URL=http://13.125.7.72:8080 --env TARGET_VUS=200 \
+  --env RUN_TAG=$TAG --out json=results/0713/raw/${TAG}.json k6/crew-rush-jian.js
+
+         /\      Grafana   /‾‾/
+    /\  /  \     |\  __   /  /
+   /  \/    \    | |/ /  /   ‾‾\
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/
+
+
+     execution: local
+        script: k6/crew-rush-jian.js
+        output: json (results/0713/raw/0713_gateon_vu200.json)
+
+     scenarios: (100.00%) 1 scenario, 200 max VUs, 1m0s max duration (incl. graceful stop):
+              * rush: 1 iterations for each of 200 VUs (maxDuration: 30s, exec: rushExec, gracefulStop: 30s)
+
+INFO[0000] [pre-GC] {"success":true,"data":{"heapUsedBeforeMb":89,"heapUsedAfterMb":57,"durationMs":165},"error":null}  source=console
+INFO[0006] [k6-reporter v2.3.0] Generating HTML summary report  source=console
+      ✓ valid status (201/409)
+      ✓ no server error (5xx)
+      ✓ no conn reset (status 0)
+      ✓ 409 has expected code
+
+      checks.........................: 100.00% ✓ 800       ✗ 0
+      data_received..................: 81 kB   12 kB/s
+      data_sent......................: 81 kB   12 kB/s
+      http_req_blocked...............: avg=38.82ms  min=9.96ms   med=34.93ms  max=132.68ms p(90)=39.52ms  p(95)=116.73ms
+      http_req_connecting............: avg=38.77ms  min=9.5ms    med=34.89ms  max=131.68ms p(90)=39.46ms  p(95)=116.68ms
+      http_req_duration..............: avg=757.61ms min=82.47ms  med=796.1ms  max=1.27s    p(90)=1.08s    p(95)=1.17s
+        { expected_response:true }...: avg=246.19ms min=82.47ms  med=260.53ms max=315.85ms p(90)=307.12ms p(95)=311.49ms
+      http_req_failed................: 94.52%  ✓ 190       ✗ 11
+      http_req_receiving.............: avg=1.13ms   min=9µs      med=57µs     max=39.86ms  p(90)=1.55ms   p(95)=4.92ms
+      http_req_sending...............: avg=64.33µs  min=16µs     med=40µs     max=560µs    p(90)=134µs    p(95)=208µs
+      http_req_tls_handshaking.......: avg=0s       min=0s       med=0s       max=0s       p(90)=0s       p(95)=0s
+      http_req_waiting...............: avg=756.41ms min=82.07ms  med=795.95ms max=1.27s    p(90)=1.08s    p(95)=1.17s
+      http_reqs......................: 201     30.811988/s
+      iteration_duration.............: avg=799.98ms min=103.77ms med=832.3ms  max=1.29s    p(90)=1.15s    p(95)=1.2s
+      iterations.....................: 200     30.658694/s
+    ✓ join_5xx.......................: 0       0/s
+    ✓ join_dropped...................: 0       0/s
+      join_full......................: 190     29.12576/s
+    ✓ join_success...................: 10      1.532935/s
+      scenario_d_duration............: avg=760.42ms min=82.47ms  med=797.61ms max=1.27s    p(90)=1.08s    p(95)=1.17s
+      vus............................: 119     min=0       max=119
+      vus_max........................: 200     min=200     max=200
+=========
+ 🏁 RUSH  0713_gateon_vu200
+    정원 10명 · 동시참가 200 VU
+
+  성공_success: 10
+  정원초과_full: 190
+  충돌_conflict: 0
+  5xx_err5xx: 0
+  드롭_dropped_연결실패: 0
+  기타_other: 0
+  p95: 1170.3 ms
+  ─────────────────────────
+  판정: ✅ PASS  (정합성 OK · 충돌 0 · p95 1170.3ms)
+
+
+running (0m06.5s), 000/200 VUs, 200 complete and 0 interrupted iterations
+rush ✓ [======================================] 200 VUs  01.3s/30s  200/200 iters, 1 per VU

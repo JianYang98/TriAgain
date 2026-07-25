@@ -105,6 +105,6 @@ A1   (RTT 25ms): 버스트 원형 도착(<0.5s)       → SYN 큐 즉시 포화 
 - `load-test/results/0704/0704_원자적update-결과.md` (A1 정본 — §2~§9 수치 전재)
 - `load-test/results/0703/nstat-ts-203808-6.log` · `ss-state-203835-6.log` (6차 서버측 원본)
 - `load-test/results/0704/nstat-ts-211843.log` · `ss-state-211851.log` (A1 서버측 원본 — 본 세션에서 델타 독립 재계산으로 A1 문서 §7 검증 완료)
-- `load-test/INTERVIEW-EPISODE-커널큐-락전략.md` (06-23 재현성 요동 전례)
+- `load-test/아카이브/INTERVIEW-EPISODE-커널큐-락전략.md` (06-23 재현성 요동 전례)
 
 _생성: 2026-07-04 · 두 결과 문서의 확정 수치만 전재, 신규 측정 없음 · 해석은 §5~§7에 격리_

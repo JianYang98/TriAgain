@@ -131,6 +131,6 @@ FROM crews c WHERE id = 'loadtest-rush-crew-1';
   - `results/raw/crew-rush-jian_CCC_max10_vu300_2026-07-01T11-27-38.summary.json`
 - raw 이벤트 스트림(덮어쓰기, 최종 vu300만 보존): `results/raw/crew-rush-jian_CCC_max10_vu{50,100,200,300}.json`
 - accept 큐 실측: 사용자 `ss -lnt` 0.05s 폴링 캡처(대화 로그, KST 20:23~20:27)
-- 서버측 관측: Grafana `Tomcat Threads`·`HTTP p95/p99` 패널 (설정 지시서 `load-test/OBSERVABILITY-TOMCAT-LATENCY-INSTRUCTION.md`)
+- 서버측 관측: Grafana `Tomcat Threads`·`HTTP p95/p99` 패널 (설정 지시서 `load-test/아카이브/OBSERVABILITY-TOMCAT-LATENCY-INSTRUCTION.md`)
 - 스크립트: `k6/crew-rush-jian.js`
 - 포맷 참조: `results/0701/비관락-스윕-결과-20260701.md`, `results/11_conditional-update-comparison.md`

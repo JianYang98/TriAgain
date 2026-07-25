@@ -1,0 +1,33 @@
+# C17 스윕 — 2026-07-14 00:12:27 시작 (순서: 20 400 50 300 100 500 200 700) | PESSIMISTIC·256·G1·PRE_GC=off
+- **C17_max10_vu20** 00:14:18~00:14:20 exit=0 arm=off | success=10 5xx=0 drop=0 p95=408.3ms
+  - arm증빙: [pre-GC] SKIPPED (PRE_GC=off) — 무게이트 arm
+  - GC before: G1 Old Generation/System.gc()=1 G1 Young Generation/G1 Evacuation Pause=11
+  - GC after : G1 Old Generation/System.gc()=1 G1 Young Generation/G1 Evacuation Pause=11
+- **C17_max10_vu400** 00:16:21~00:16:23 exit=99 arm=off | success=10 5xx=0 drop=92 p95=1933.8ms
+  - arm증빙: [pre-GC] SKIPPED (PRE_GC=off) — 무게이트 arm
+  - GC before: G1 Old Generation/System.gc()=1 G1 Young Generation/G1 Evacuation Pause=12
+  - GC after : G1 Old Generation/System.gc()=1 G1 Young Generation/G1 Evacuation Pause=14
+- **C17_max10_vu50** 00:18:24~00:18:26 exit=0 arm=off | success=10 5xx=0 drop=0 p95=378.2ms
+  - arm증빙: [pre-GC] SKIPPED (PRE_GC=off) — 무게이트 arm
+  - GC before: G1 Old Generation/System.gc()=1 G1 Young Generation/G1 Evacuation Pause=14
+  - GC after : G1 Old Generation/System.gc()=1 G1 Young Generation/G1 Evacuation Pause=15
+- **C17_max10_vu300** 00:20:27~00:20:30 exit=0 arm=off | success=10 5xx=0 drop=0 p95=1531.2ms
+  - arm증빙: [pre-GC] SKIPPED (PRE_GC=off) — 무게이트 arm
+  - GC before: G1 Old Generation/System.gc()=1 G1 Young Generation/G1 Evacuation Pause=15
+  - GC after : G1 Old Generation/System.gc()=1 G1 Young Generation/G1 Evacuation Pause=18
+- **C17_max10_vu100** 00:22:30~00:22:32 exit=0 arm=off | success=10 5xx=0 drop=0 p95=563.4ms
+  - arm증빙: [pre-GC] SKIPPED (PRE_GC=off) — 무게이트 arm
+  - GC before: G1 Old Generation/System.gc()=1 G1 Young Generation/G1 Evacuation Pause=19
+  - GC after : G1 Old Generation/System.gc()=1 G1 Young Generation/G1 Evacuation Pause=19
+- **C17_max10_vu500** 00:24:32~00:24:36 exit=0 arm=off | success=10 5xx=0 drop=0 p95=2523.2ms
+  - arm증빙: [pre-GC] SKIPPED (PRE_GC=off) — 무게이트 arm
+  - GC before: G1 Old Generation/System.gc()=1 G1 Young Generation/G1 Evacuation Pause=20
+  - GC after : G1 Old Generation/System.gc()=1 G1 Young Generation/G1 Evacuation Pause=25
+- **C17_max10_vu200** 00:26:37~00:26:39 exit=0 arm=off | success=10 5xx=0 drop=0 p95=960.5ms
+  - arm증빙: [pre-GC] SKIPPED (PRE_GC=off) — 무게이트 arm
+  - GC before: G1 Old Generation/System.gc()=1 G1 Young Generation/G1 Evacuation Pause=26
+  - GC after : G1 Old Generation/System.gc()=1 G1 Young Generation/G1 Evacuation Pause=29
+- **C17_max10_vu700** 00:28:40~00:28:45 exit=99 arm=off | success=10 5xx=0 drop=242 p95=2008.6ms
+  - arm증빙: [pre-GC] SKIPPED (PRE_GC=off) — 무게이트 arm
+  - GC before: G1 Old Generation/System.gc()=1 G1 Young Generation/G1 Evacuation Pause=30
+  - GC after : G1 Old Generation/System.gc()=1 G1 Young Generation/G1 Evacuation Pause=40
