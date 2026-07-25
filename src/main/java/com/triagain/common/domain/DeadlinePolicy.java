@@ -44,4 +44,9 @@ public class DeadlinePolicy {
 	public static LocalDate slotFor(LocalDate startDate, int completedDays) {
 		return startDate.plusDays(completedDays);
 	}
+
+	/** 취소 가능 상한 = 슬롯 유효상한 − 컷오프 (grace 미포함, 취소 전용 G2) */
+	public static LocalDateTime cancelDeadline(LocalDateTime effectiveSlotDeadline, int cutoffMinutes) {
+		return effectiveSlotDeadline.minusMinutes(cutoffMinutes);
+	}
 }

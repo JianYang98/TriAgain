@@ -154,6 +154,75 @@ class ChallengeTest {
     }
 
     @Nested
+    @DisplayName("revertCompletion — 인증 취소에 의한 역연산")
+    class RevertCompletion {
+
+        @Test
+        @DisplayName("SUCCESS(3일차) 상태에서 취소하면 completedDays가 2로 줄고 IN_PROGRESS로 복귀한다")
+        void successToInProgress() {
+            // Given — 3일차 완료(SUCCESS) 상태
+            Challenge challenge = challengeWithStatus(ChallengeStatus.SUCCESS, 3);
+
+            // When
+            challenge.revertCompletion();
+
+            // Then
+            assertThat(challenge.getCompletedDays()).isEqualTo(2);
+            assertThat(challenge.getStatus()).isEqualTo(ChallengeStatus.IN_PROGRESS);
+        }
+
+        @Test
+        @DisplayName("IN_PROGRESS(1일차) 상태에서 취소하면 completedDays가 0으로 줄고 IN_PROGRESS를 유지한다")
+        void inProgressDecrementsToZero() {
+            // Given — 1일차 완료(IN_PROGRESS) 상태
+            Challenge challenge = inProgressChallenge(1);
+
+            // When
+            challenge.revertCompletion();
+
+            // Then
+            assertThat(challenge.getCompletedDays()).isEqualTo(0);
+            assertThat(challenge.getStatus()).isEqualTo(ChallengeStatus.IN_PROGRESS);
+        }
+
+        @Test
+        @DisplayName("completedDays가 이미 0이면 0 하한을 유지하고 예외 없이 IN_PROGRESS를 유지한다")
+        void zeroFloorStaysZero() {
+            // Given — 0일차(IN_PROGRESS) 상태
+            Challenge challenge = inProgressChallenge(0);
+
+            // When
+            challenge.revertCompletion();
+
+            // Then — 음수로 내려가지 않고 0에서 멈춘다 (step4 §3-4 결정 — 예외 대신 0 유지)
+            assertThat(challenge.getCompletedDays()).isEqualTo(0);
+            assertThat(challenge.getStatus()).isEqualTo(ChallengeStatus.IN_PROGRESS);
+        }
+
+        @Test
+        @DisplayName("FAILED 상태에서 취소하면 예외가 발생한다")
+        void failedThrows() {
+            Challenge challenge = challengeWithStatus(ChallengeStatus.FAILED, 1);
+
+            assertThatThrownBy(challenge::revertCompletion)
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.CHALLENGE_NOT_IN_PROGRESS);
+        }
+
+        @Test
+        @DisplayName("ENDED 상태에서 취소하면 예외가 발생한다")
+        void endedThrows() {
+            Challenge challenge = challengeWithStatus(ChallengeStatus.ENDED, 2);
+
+            assertThatThrownBy(challenge::revertCompletion)
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.CHALLENGE_NOT_IN_PROGRESS);
+        }
+    }
+
+    @Nested
     @DisplayName("isDeadlineExceeded — 마감 초과 여부")
     class IsDeadlineExceeded {
 

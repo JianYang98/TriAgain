@@ -1,6 +1,7 @@
 package com.triagain.verification.infra;
 
 import com.triagain.verification.domain.model.Verification;
+import com.triagain.verification.domain.vo.VerificationStatus;
 import com.triagain.verification.port.out.VerificationRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -26,14 +27,39 @@ public class VerificationJpaAdapter implements VerificationRepositoryPort {
     }
 
     @Override
+    public Verification saveAndFlush(Verification verification) {
+        VerificationJpaEntity entity = VerificationJpaEntity.fromDomain(verification);
+        return verificationJpaRepository.saveAndFlush(entity).toDomain();
+    }
+
+    @Override
     public Optional<Verification> findById(String id) {
         return verificationJpaRepository.findById(id)
                 .map(VerificationJpaEntity::toDomain);
     }
 
     @Override
-    public boolean existsByUserIdAndCrewIdAndTargetDate(String userId, String crewId, LocalDate targetDate) {
-        return verificationJpaRepository.existsByUserIdAndCrewIdAndTargetDate(userId, crewId, targetDate);
+    public boolean existsActiveByUserIdAndCrewIdAndTargetDate(String userId, String crewId, LocalDate targetDate) {
+        return verificationJpaRepository.existsByUserIdAndCrewIdAndTargetDateAndStatusNot(
+                userId, crewId, targetDate, VerificationStatus.CANCELLED);
+    }
+
+    @Override
+    public Optional<Verification> findActiveByUserIdAndCrewIdAndTargetDate(
+            String userId, String crewId, LocalDate targetDate) {
+        return verificationJpaRepository.findByUserIdAndCrewIdAndTargetDateAndStatusNot(
+                        userId, crewId, targetDate, VerificationStatus.CANCELLED)
+                .map(VerificationJpaEntity::toDomain);
+    }
+
+    @Override
+    public int findMaxSlotAttempt(String userId, String crewId, LocalDate targetDate) {
+        return verificationJpaRepository.findMaxSlotAttempt(userId, crewId, targetDate);
+    }
+
+    @Override
+    public int cancelIfApproved(String verificationId) {
+        return verificationJpaRepository.cancelIfApproved(verificationId);
     }
 
     /** APPROVED 인증 날짜 조회 — LocalDate 직접 반환, 도메인 변환 불필요 */

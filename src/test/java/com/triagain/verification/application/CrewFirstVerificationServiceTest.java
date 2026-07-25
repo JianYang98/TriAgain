@@ -10,6 +10,7 @@ import com.triagain.verification.port.out.CrewPort.CrewVerificationWindowInfo;
 import com.triagain.common.port.out.StoragePort;
 import com.triagain.verification.port.out.UploadSessionRepositoryPort;
 import com.triagain.verification.port.out.VerificationRepositoryPort;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,6 +27,7 @@ import java.time.LocalTime;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -50,8 +52,16 @@ class CrewFirstVerificationServiceTest {
     @Spy
     private Clock clock = Clock.systemDefaultZone();
 
+    @Mock
+    private VerificationPolicyProperties policyProperties;
+
     @InjectMocks
     private CreateVerificationService createVerificationService;
+
+    @BeforeEach
+    void setUpPolicy() {
+        lenient().when(policyProperties.getSlotAttemptLimit()).thenReturn(3);
+    }
 
     private static final String USER_ID = "user-1";
     private static final String CREW_ID = "crew-1";
@@ -83,7 +93,7 @@ class CrewFirstVerificationServiceTest {
 
         given(challengePort.findOrCreateActiveChallenge(USER_ID, CREW_ID)).willReturn(challenge);
         given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("TEXT"));
-        given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
+        given(verificationRepositoryPort.existsActiveByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
                 .willReturn(false);
         given(verificationRepositoryPort.save(any(Verification.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
@@ -108,7 +118,7 @@ class CrewFirstVerificationServiceTest {
 
         given(challengePort.findOrCreateActiveChallenge(USER_ID, CREW_ID)).willReturn(challenge);
         given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("TEXT"));
-        given(verificationRepositoryPort.existsByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
+        given(verificationRepositoryPort.existsActiveByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
                 .willReturn(false);
         given(verificationRepositoryPort.save(any(Verification.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));

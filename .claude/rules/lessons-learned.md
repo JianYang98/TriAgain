@@ -58,6 +58,26 @@ paths: "src/**/*.java"
 - 사례: upload_sessions(복수형) 오타 → 실제 테이블은 upload_session(단수형)
 - 왜?: 네이티브 쿼리를 작성할 때 테이블명을 기억에 의존함. JPA Entity의 @Table 어노테이션이나 schema.md를 확인하지 않은 것.
 - 규칙: 네이티브 쿼리 작성 시 schema.md 또는 @Table 어노테이션과 반드시 대조 확인
+- 재발: 1회
+  - 인증 취소 SDD step1 조사 중 발견 (2026-07-23, 원 버그는 2026-03-03 커밋 `7d9fe5b`): **제약 이름을 컬럼명에서 추론**해 `GlobalExceptionHandler`의 분기가 약 4개월간 오매핑됐다. 상세는 아래 "DB 제약 이름으로 분기할 땐 마이그레이션에서 이름을 복사하라" 항목. **같은 `upload_session` 식별자에서 같은 유형(DB 식별자를 확인 없이 추론)의 실수가 반복된 것.**
+
+### DB 제약 이름으로 분기할 땐 마이그레이션에서 이름을 복사하라 (contains 부분매칭 금지)
+- 출처: 인증 취소·수정 SDD step1 조사 (2026-07-23). 원 버그는 `7d9fe5b`(2026-03-03) — `[2026-03-03] DataIntegrityViolation 기본 에러코드 V003 하드코딩 버그` 수정 커밋 자체가 새 버그를 심었다
+- 사례: `GlobalExceptionHandler`가 `constraintName.contains("upload_session_id")` → `UPLOAD_SESSION_ALREADY_USED(V015)`로 분기했으나, **실제 제약 이름은 `uk_verifications_upload_session`으로 `_id`가 없다.** 이 분기는 한 번도 실행되지 않았고, 모든 위반이 다음 분기 `contains("verification")`로 흘러 **V003으로 오매핑**됐다. DB의 전체 제약 5건 중 4건이 틀린 코드를 반환:
+  - `uk_verifications_upload_session`(세션 중복 사용) → V003 (정답: V015)
+  - `uk_reports_verification_reporter`(**중복 신고**) → V003 "이미 해당 날짜에 인증이 존재합니다" (정답: M002)
+  - `uk_habit_verifications_habit_date` / `..._upload_session`(습관) → V003
+  - `UPLOAD_SESSION_ALREADY_USED(V015)`·`REPORT_ALREADY_EXISTS(M002)`는 **정의돼 있으나 도달 불가능한 死 코드**가 됐다
+- 왜?: 세 가지가 겹쳤다.
+  1. **식별자를 추론했다** — 커밋 메시지 `constraint name 기반 에러코드 분기 (verification, upload_session_id)`가 증거다. 하나는 테이블명(`verifications`)에서, 하나는 **컬럼명**(`upload_session_id`)에서 따왔다. 실제 제약 이름을 확인한 흔적이 없다. 마이그레이션 파일 1줄만 열어봤으면 즉시 보였을 값이다
+  2. **`contains()` 부분매칭이 남의 도메인 제약을 조용히 삼켰다** — `contains("verification")`이 moderation의 `uk_reports_verification_reporter`까지 매칭. V1부터 있던 제약이라 처음부터 오매핑이었다
+  3. **신규 제약 추가 시 기존 분기를 점검하지 않았다** — V23(solo-habit, 7월)이 `uk_habit_verifications_*` 2건을 추가했으나 분기는 갱신되지 않았다
+- 왜 오래 안 들켰나: V003도 409라 HTTP 레벨에선 그럴듯했고, 세션 중복·중복 신고는 정상 사용에서 거의 발생하지 않으며(더블탭 정도), **제약 이름 → 에러코드 매핑을 검증하는 테스트가 없었다**. 로그에 `constraintName`이 찍히고는 있었다
+- 규칙:
+  1. 제약 이름으로 분기할 땐 **마이그레이션 파일에서 이름을 복사**한다. 컬럼명·테이블명에서 추론 금지 (SDD `sdd-doc-grounding.md`의 "실제 코드에서 복사" 원칙과 동일)
+  2. **`contains()` 부분매칭 대신 정확 매칭 또는 명시적 상수 목록**을 쓴다. 부분매칭은 새 제약이 추가될 때 조용히 오매핑된다
+  3. **새 UNIQUE 제약을 추가하는 마이그레이션은 예외 매핑 분기 점검을 세트로 한다** (anti-patterns.md "DB 컬럼 변경 시 3곳 한 세트" 규칙과 같은 성격)
+  4. 제약 위반 → 에러코드 매핑은 **통합테스트로 검증**한다 (실제 위반을 유발해 응답 코드를 assert). 분기가 틀려도 컴파일·단위테스트는 통과한다
 
 ---
 

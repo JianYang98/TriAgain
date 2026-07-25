@@ -19,5 +19,6 @@ public interface FeedQueryPort {
         String getTextContent();
         LocalDate getTargetDate();
         LocalDateTime getCreatedAt();
+        int getSlotAttempt();
     }
 }

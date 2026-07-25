@@ -108,11 +108,14 @@
 
 | 항목 | 내용 |
 |------|------|
-| 횟수 | 하루에 1번만 가능 |
+| 횟수 | 하루 1건 유효(`APPROVED`). 마감 전 취소·수정 가능하며 슬롯당 최대 3회 제출(`slot-attempt-limit`, yml, 기본 3) |
 | 텍스트 인증 | 텍스트 입력 → 바로 인증 완료 |
 | 사진 인증 | 업로드 세션 → S3 업로드 → 인증 완료 |
 | 마감 시간 | 크루의 deadlineTime 기준 (미지정 시 23:59:59) |
 | 상태 | 생성 시 APPROVED (기본값) |
+| 취소 (`DELETE /verifications/{id}`) | 대상 `APPROVED → CANCELLED` + `challenge.completedDays--`(역연산, `SUCCESS`면 `IN_PROGRESS` 복귀). 이미 `CANCELLED`인 대상 재요청은 200 멱등 |
+| 수정 (`PATCH /verifications/{id}`) | in-place 갱신이 아니라 **치환** — 옛 행 `→ CANCELLED` + 새 행 생성(새 `verificationId`). challenge는 건드리지 않음 |
+| 취소·수정 가드 | 마감 전(G1) · [취소만] 컷오프 5분 전(G2, `cancel-cutoff-minutes`) · moderation 대상 아님(G3) · 본인 소유(G4, 위반 시 `CREW_ACCESS_DENIED` CR009 재사용 — 전용 코드 신설 안 함) · 슬롯 상한 미도달(G5) |
 
 ### 1.10 크루 내 상호 응원
 
@@ -309,6 +312,7 @@
 | REPORTED | 신고 접수됨 (3건 이상) |
 | HIDDEN | 검토 중 숨김 처리 |
 | REJECTED | 검토 후 반려됨 |
+| CANCELLED | 유저가 마감 전 취소/수정하여 무효화됨 (soft delete, 통계·피드 제외) |
 
 **핵심 규칙:**
 - S3 업로드 성공 후에만 verification 생성
@@ -336,6 +340,21 @@
 - **크루/솔로 비대칭**: 크루는 마감 폭주 완충을 위해 자정을 넘긴 grace 제출을 인정한다(위 유효창). 솔로
   습관은 자기규율 목적으로 슬롯 가드가 자정을 하드컷한다 — 두 모드의 정체성 차이에 따른 의도된 정책이다.
 
+**연산별 마감 기준 (인증 취소·수정)**: "인증 API와 스케줄러가 같은 마감 기준을 쓴다"는 원칙은 유지되지만,
+취소·수정은 별도 연산이며 창을 좁히는 방향이므로 아래 표가 정본이다. (`슬롯유효상한` = 위 유효창의
+`min(슬롯 일일마감, challenge.deadline)`, grace 미포함)
+
+| 연산 | 유효 상한 | 비고 |
+|------|-----------|------|
+| 인증 생성 | 슬롯유효상한 + grace 5분 | 기존 규칙 무변경 |
+| 인증 수정 | 슬롯유효상한 | grace 없음 |
+| 인증 취소 | 슬롯유효상한 − cancelCutoffMinutes | grace 없음 + 임박 컷오프. 기본 5분, `triagain.verification.cancel-cutoff-minutes`(yml) |
+| 만료 스케줄러 | 슬롯유효상한 + grace 5분 초과 시 FAILED | 기존 규칙 무변경 |
+
+취소 마지막 시점(슬롯유효상한 −5분)부터 스케줄러 판정 시점(슬롯유효상한 +5분 초과)까지 10분의 버퍼가
+확보되어, 취소↔스케줄러 경합 창은 구조적으로 0이다. 판정 시각은 서비스 진입 시 1회 스냅샷한 `now`이며,
+`DeadlinePolicy.isWithinDeadline()`(grace 5분 포함)이 아닌 grace 미포함 순수 비교를 쓴다.
+
 ---
 
 ## 3. 비기능 요구사항 (NFR)
@@ -345,10 +364,9 @@
 - 사용자의 노력(인증)이 시스템 문제로 무효화되면 안 된다
 - S3 Direct Upload(Pre-signed URL) 방식으로 업로드 경로 단순화
 - 클라이언트에서 이미지 압축 필수 (Phase 1 정책)
-  - maxWidth: 960px
-  - imageQuality: 70
-  - 목표 크기: 300KB ~ 700KB
-  - 최종 업로드 최대 크기: 1MB (클라이언트 기준)
+  - 1차(촬영/선택): maxWidth·maxHeight 1600px, imageQuality 90 (verification_screen.dart)
+  - 최종(크롭 후): 긴 변 1280px 캡 + JPEG 재인코딩 quality 85 (crop_screen.dart)
+  - 목표 크기: 실측 미확인 (측정 로그 없음)
   - 서버 허용 최대 크기: 5MB (안전마진, MAX_FILE_SIZE)
 - Phase 1에서는 썸네일 생성하지 않음 — 압축된 원본 1장만 업로드
 - 허용 확장자: jpg, jpeg, png, webp
@@ -362,6 +380,9 @@
 
 - 인증 데이터는 통계/랭킹/신뢰도 기반
 - UNIQUE 제약 조건 + 멱등성 키 + 분산 락으로 보장
+- 하루 1건(유효) 유일성은 `status <> 'CANCELLED'` 조건부 유니크(`uk_verifications_user_crew_date_active`)로
+  보장한다 — 취소된 인증은 슬롯을 점유하지 않아 같은 날 재인증·수정(치환)을 허용하면서도 유효 인증은
+  여전히 최대 1건으로 제한된다
 
 ### 3.4 시스템 가용성 99% 이상 (Availability)
 
@@ -407,6 +428,19 @@
   - Phase 1: 신고 접수 + 크루장 검토
   - 신고자 중복 체크 (1인 1신고)
   - 신고 이력 추적
+
+### 4.5 인증 취소·수정
+
+- **시나리오:** 취소 후 재인증하지 않고 마감 경과
+  - **대응:** 정상적으로 `FAILED` 처리된다. 취소는 그날 인증을 무효화하는 연산이므로 재인증이 없으면
+    미인증과 동일하게 취급하는 것이 일관된 동작이다 (만료 스케줄러가 `CANCELLED`를 슬롯 점유로 보지 않음)
+- **시나리오:** 3일차(`SUCCESS`) 인증을 취소 — 성공이 실패로 뒤집힐 수 있음
+  - **대응:** 허용한다. `completedDays` 3→2, challenge `SUCCESS → IN_PROGRESS`로 역전이된다. 되돌릴 수 없는
+    조작이므로 FE에서 강한 확인 경고가 필요하다
+- **시나리오:** 슬롯당 제출 상한(기본 3회)에 이미 도달한 인증을 취소 시도
+  - **대응:** 차단(`VERIFICATION_ATTEMPT_LIMIT_EXCEEDED`, V021). 취소 자체는 행을 늘리지 않지만, 상한에
+    도달한 인증을 취소하면 재인증할 여지가 없어 그날 실패가 확정되는 되돌릴 수 없는 취소가 되므로 취소에도
+    같은 상한을 적용한다
 
 ---
 

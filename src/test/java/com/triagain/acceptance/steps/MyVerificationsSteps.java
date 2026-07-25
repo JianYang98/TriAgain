@@ -71,7 +71,7 @@ public class MyVerificationsSteps {
                     IdGenerator.generate("VRFY"), challengeId, userId, crewId,
                     null, null, (days - i) + "일차 인증",
                     VerificationStatus.APPROVED, 0, targetDate,
-                    1, ReviewStatus.NOT_REQUIRED, LocalDateTime.now().minusDays(i)
+                    1, 1, ReviewStatus.NOT_REQUIRED, LocalDateTime.now().minusDays(i)
             );
             verificationRepositoryPort.save(verification);
         }
@@ -105,7 +105,7 @@ public class MyVerificationsSteps {
                     IdGenerator.generate("VRFY"), challengeId, userId, crewId,
                     null, null, "인증",
                     VerificationStatus.APPROVED, 0, targetDate,
-                    1, ReviewStatus.NOT_REQUIRED, LocalDateTime.now().minusDays(d)
+                    1, 1, ReviewStatus.NOT_REQUIRED, LocalDateTime.now().minusDays(d)
             );
             verificationRepositoryPort.save(verification);
         }

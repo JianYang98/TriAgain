@@ -35,6 +35,7 @@ public interface GetCrewFeedUseCase {
             String imageUrl,
             String textContent,
             LocalDate targetDate,
+            int slotAttempt,
             LocalDateTime createdAt
     ) {
     }

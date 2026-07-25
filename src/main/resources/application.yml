@@ -61,6 +61,10 @@ triagain:
   crew:
     lock-strategy: CONDITIONAL  # PESSIMISTIC | OPTIMISTIC | CONDITIONAL (전환: --triagain.crew.lock-strategy=PESSIMISTIC)
     max-retry: 3  # 낙관적 락 version 충돌 시 재시도 횟수
+  verification:
+    cancel-cutoff-minutes: 5  # 마감 임박 취소 차단 구간(G2, 분)
+    slot-attempt-limit: 3     # 슬롯당 최대 제출 회차(G5)
+
 mybatis:
   mapper-locations: classpath:mybatis/mapper/**/*.xml
   config-location: classpath:mybatis/mybatis-config.xml
