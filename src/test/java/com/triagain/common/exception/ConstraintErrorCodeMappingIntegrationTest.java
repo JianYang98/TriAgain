@@ -21,6 +21,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.triagain.common.response.ApiResponse;
+import com.triagain.habit.domain.model.HabitVerification;
+import com.triagain.habit.port.out.HabitVerificationRepositoryPort;
+import com.triagain.moderation.domain.model.Report;
+import com.triagain.moderation.domain.vo.ReportReason;
+import com.triagain.moderation.port.out.ReportRepositoryPort;
 import com.triagain.verification.domain.model.Verification;
 import com.triagain.verification.port.out.VerificationRepositoryPort;
 
@@ -58,6 +63,12 @@ class ConstraintErrorCodeMappingIntegrationTest {
 
 	@Autowired
 	private VerificationRepositoryPort verificationRepositoryPort;
+
+	@Autowired
+	private ReportRepositoryPort reportRepositoryPort;
+
+	@Autowired
+	private HabitVerificationRepositoryPort habitVerificationRepositoryPort;
 
 	@Autowired
 	private GlobalExceptionHandler globalExceptionHandler;
@@ -111,6 +122,79 @@ class ConstraintErrorCodeMappingIntegrationTest {
 		assertThat(response.getBody()).isNotNull();
 		assertThat(response.getBody().error()).isNotNull();
 		assertThat(response.getBody().error().code()).isEqualTo("V015");
+	}
+
+	@Test
+	@DisplayName("M1-3 — uk_reports_verification_reporter 위반 → M002(REPORT_ALREADY_EXISTS)")
+	void duplicateReport_mapsToReportAlreadyExists() {
+		// Given — 같은 (verification, reporter)로 신고가 이미 존재
+		String verificationId = "cmap-verf-1";
+		String reporterId = "cmap-reporter-1";
+		reportRepositoryPort.save(Report.create(verificationId, reporterId, ReportReason.SPAM, "설명"));
+
+		// When — 같은 (verification, reporter)로 두 번째 신고 insert 시도 → 실제 제약 위반 유발
+		DataIntegrityViolationException thrown = catchDataIntegrityViolation(() ->
+				reportRepositoryPort.save(
+						Report.create(verificationId, reporterId, ReportReason.FAKE, "설명2")));
+
+		// Then — GlobalExceptionHandler가 실제 constraintName으로 M002를 반환하는지 확인
+		ResponseEntity<ApiResponse<Void>> response = globalExceptionHandler.handleDataIntegrityViolation(
+				thrown, new MockHttpServletRequest("POST", "/reports"));
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+		assertThat(response.getBody()).isNotNull();
+		assertThat(response.getBody().error()).isNotNull();
+		assertThat(response.getBody().error().code()).isEqualTo("M002");
+	}
+
+	@Test
+	@DisplayName("M1-4 — uk_habit_verifications_upload_session 위반 → V015(UPLOAD_SESSION_ALREADY_USED)")
+	void duplicateHabitUploadSession_mapsToUploadSessionAlreadyUsed() {
+		// Given — 같은 upload_session_id를 쓰는 습관 사진 인증이 이미 존재 (다른 날짜 — habit_date 제약과 분리)
+		String habitCycleId = "cmap-cycle-1";
+		String habitId = "cmap-habit-1";
+		String userId = "cmap-user-3";
+		habitVerificationRepositoryPort.save(HabitVerification.createPhoto(
+				habitCycleId, habitId, userId, 888L, "https://cdn.example.com/h1.jpg", null,
+				LocalDate.now(), 1));
+
+		// When — 같은 upload_session_id로 다른 날짜에 두 번째 insert 시도
+		DataIntegrityViolationException thrown = catchDataIntegrityViolation(() ->
+				habitVerificationRepositoryPort.save(HabitVerification.createPhoto(
+						habitCycleId, habitId, userId, 888L, "https://cdn.example.com/h2.jpg", null,
+						LocalDate.now().minusDays(1), 1)));
+
+		// Then
+		ResponseEntity<ApiResponse<Void>> response = globalExceptionHandler.handleDataIntegrityViolation(
+				thrown, new MockHttpServletRequest("POST", "/habit-verifications"));
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+		assertThat(response.getBody()).isNotNull();
+		assertThat(response.getBody().error()).isNotNull();
+		assertThat(response.getBody().error().code()).isEqualTo("V015");
+	}
+
+	@Test
+	@DisplayName("M1-5 — uk_habit_verifications_habit_date 위반 → HB010(HABIT_VERIFICATION_ALREADY_EXISTS)")
+	void duplicateHabitDateSlot_mapsToHabitVerificationAlreadyExists() {
+		// Given — 같은 (habit, targetDate)에 텍스트 인증이 이미 존재 (upload_session_id는 둘 다 null — 별개 제약과 분리)
+		String habitCycleId = "cmap-cycle-2";
+		String habitId = "cmap-habit-2";
+		String userId = "cmap-user-4";
+		LocalDate targetDate = LocalDate.now();
+		habitVerificationRepositoryPort.save(HabitVerification.createText(
+				habitCycleId, habitId, userId, "오늘 인증", targetDate, 1));
+
+		// When — 같은 (habit, targetDate)에 두 번째 insert 시도 → 실제 제약 위반 유발
+		DataIntegrityViolationException thrown = catchDataIntegrityViolation(() ->
+				habitVerificationRepositoryPort.save(HabitVerification.createText(
+						habitCycleId, habitId, userId, "오늘 인증2", targetDate, 2)));
+
+		// Then — GlobalExceptionHandler가 실제 constraintName으로 HB010을 반환하는지 확인
+		ResponseEntity<ApiResponse<Void>> response = globalExceptionHandler.handleDataIntegrityViolation(
+				thrown, new MockHttpServletRequest("POST", "/habit-verifications"));
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+		assertThat(response.getBody()).isNotNull();
+		assertThat(response.getBody().error()).isNotNull();
+		assertThat(response.getBody().error().code()).isEqualTo("HB010");
 	}
 
 	/** 저장 중 발생하는 DataIntegrityViolationException을 실제로 캐치한다 — 없으면 즉시 실패 */
