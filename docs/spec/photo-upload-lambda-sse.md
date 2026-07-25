@@ -138,8 +138,9 @@ def handler(event, context):
 ### Phase 1 이미지 정책
 
 **클라이언트 압축 정책:**
-- maxWidth: 960px, imageQuality: 70
-- 목표 크기: 300KB ~ 700KB, 최대 1MB
+- 1차(촬영/선택): maxWidth·maxHeight 1600px, imageQuality 90 (verification_screen.dart)
+- 최종(크롭 후): 긴 변 1280px 캡 + JPEG 재인코딩 quality 85 (crop_screen.dart)
+- 목표 크기: 실측 미확인 (측정 로그 없음)
 - 서버 허용 최대: 5MB (안전마진)
 
 **Phase 1 업로드 완료(COMPLETED) 정의:**

@@ -456,22 +456,22 @@ WHERE visibility = 'PUBLIC';
 
 ```sql
 -- 신고 횟수 조회 (3건 → REPORTED)
-CREATE INDEX idx_verification_report_count
-ON verification(report_count) 
+CREATE INDEX idx_verifications_report_count
+ON verifications(report_count) 
 WHERE report_count >= 3;
 
 -- 검토 대기 목록 조회
-CREATE INDEX idx_verification_review_status
-ON verification(review_status, created_at DESC)
+CREATE INDEX idx_verifications_review_status
+ON verifications(review_status, created_at DESC)
 WHERE review_status = 'PENDING';
 
 -- 검토자별 검토 이력
-CREATE INDEX idx_review_reviewer
-ON review(reviewer_id, created_at DESC);
+CREATE INDEX idx_reviews_reviewer
+ON reviews(reviewer_id, created_at DESC);
 
 -- 신고 상태별 조회
-CREATE INDEX idx_report_status
-ON report(status, created_at DESC)
+CREATE INDEX idx_reports_status
+ON reports(status, created_at DESC)
 WHERE status = 'PENDING';
 
 -- Lambda의 imageKey 기반 업로드 세션 조회 (Flyway V7)
