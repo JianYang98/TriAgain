@@ -6,6 +6,14 @@
 
 ---
 
+### [2026-07-11] 솔로 인증 마감 검증을 사이클-끝 → 슬롯별 마감으로 정렬 (deadlineTime FE 노출 시)
+
+- 현재 상태: `CreateHabitVerificationService`가 마감 검증(텍스트 122행·사진 107행)에 `cycle.getDeadline()`(= `startDate + 3일` at deadlineTime, **사이클 끝**)을 쓴다. 스케줄러 `findExpiredWithoutVerification`는 **슬롯별 마감**(`start_date + completed_days` at deadlineTime + 5분)으로 실패 판정 → 검증-수락 경계와 스케줄러-실패 경계의 기준이 다르다. 그날 슬롯 마감을 넘긴 인증이 스케줄러가 사이클을 FAILED로 처리하기 전(~5분 창) 수락될 수 있다.
+- 발현 조건(둘 다 필요): (1) **커스텀 deadlineTime** — 기본 23:59:59는 grace가 자정을 넘겨 D12 슬롯 가드가 날짜 경계에서 거부하므로 안전. `POST /habits`(`CreateHabitRequest.deadlineTime`)는 커스텀 값을 수용하나 **v1 FE는 미노출**. (2) 스케줄러 `fixedDelay=5분` 창.
+- 결정 (2026-07-11, PR#94 Codex P1 검토): **수용 + 이연 (옵션 B)**. 솔로 = 자기 스트릭만 영향(타 유저 무관), 발현 조건 좁음, **crew도 동일 패턴**(`FindOrCreateActiveChallengeService` 사이클-끝 마감 + `FailExpiredChallengesScheduler` 슬롯별 SQL — 회귀 아님). 현 시점 조치 없음.
+- 필요 시점: **deadlineTime을 FE에 노출**하거나(정상 유저 도달 경로 생김) 커스텀 마감 습관을 정식 지원하는 시점. 그때 재평가.
+- 근본 해결: 검증 경로(107·122행)를 `(cycle.getStartDate() + cycle.getCompletedDays()).atTime(habit.getDeadlineTime())` 슬롯별 마감으로 교체 → 검증-수락 경계 == 스케줄러-실패 경계 불변식. habit 도메인 인증 로직 변경 = Tier 3 (SDD step1 §3 갱신 + 실패-선커밋 테스트). crew 동반 여부는 별도 판단. 상세: `triagain/docs/fix-instructions/06-pr94-codex-리뷰-2건.md` Issue 2.
+
 ### [2026-06-17] 크루 첫 인증 알림 fan-out: 배치 발송 + Dead Letter 큐 도입
 
 - 현재 상태: `VerificationNotificationAdapter.sendCrewFirstVerificationNotification`이 수신자 목록을 루프로 순회하며 수신자별 try/catch로 격리 발송. 발송 실패 건은 로그만 남기고 재시도 없음.
