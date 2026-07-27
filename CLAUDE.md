@@ -122,6 +122,14 @@ skill 파일을 읽지 않고 작업하는 것은 규칙 위반이다.
 코드 리뷰, /simplify, 버그 수정 중 아키텍처 위반, 버그, 안티패턴을 발견하면:
 
 근본 원인("왜?")을 분석한다
-.claude/rules/lessons-learned.md에 교훈을 추가한다
+아래 표의 해당 파일에 교훈을 추가한다
 
-구현 전에 반드시 .claude/rules/lessons-learned.md를 읽고, 같은 실수를 반복하지 않는다.
+구현 전에 반드시 해당 파일을 읽고, 같은 실수를 반복하지 않는다.
+
+| 교훈 영역 | 파일 | 로드 시점 |
+|---|---|---|
+| 서버(Java/Spring·DB·도메인) | `.claude/rules/lessons-learned.md` | `src/**/*.java` 작업 시 |
+| Dart/Flutter | `triagain-front/.claude/rules/lessons-learned.md` (정본) | FE 세션 |
+| iOS 네이티브(설정·빌드·배포) | `triagain-front/.claude/rules/lessons-learned-ios.md` (정본) | FE 세션 |
+
+교훈이 양쪽에 다 걸려도 **각자의 정본에만** 쓴다. 양쪽에 복사하면 한쪽만 갱신되며 갈라진다.

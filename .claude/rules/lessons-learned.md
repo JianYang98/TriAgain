@@ -1,13 +1,20 @@
 ---
-description: 과거 실수에서 배운 교훈 — 구현 전 반드시 읽고 같은 실수 반복 방지
+description: 서버(Java/Spring) 실수 교훈 — 구현 전 반드시 읽고 같은 실수 반복 방지
 paths: "src/**/*.java"
 ---
 
-# Lessons Learned — 실전에서 배운 교훈
+# Lessons Learned — 실전에서 배운 교훈 (서버)
 
 > 에이전트가 실수할 때마다 여기에 교훈을 추가한다.
 > "왜?" 근본 원인을 분석하고, 같은 실수를 두 번 하지 않기 위한 규칙을 남긴다.
-> 에이전트는 매 세션 시작 시 이 파일을 읽고 숙지한다.
+> `src/**/*.java` 작업 시 로드된다. 구현 전 반드시 읽는다.
+>
+> **다른 곳에 있는 교훈** — 여기서 찾지 말 것:
+> - Dart/Flutter → `triagain-front/.claude/rules/lessons-learned.md`가 정본
+> - iOS 네이티브(카메라·빌드·배포) → `triagain-front/.claude/rules/lessons-learned-ios.md`
+>
+> 교훈은 **각자의 정본에만** 쓴다. 양쪽에 복사하면 한쪽만 갱신되며 갈라진다
+> (실제로 갈라졌던 전례: 이 파일의 `## FE` 섹션이 FE 정본보다 `왜?` 분석을 더 갖고 있었음 — 2026-07-27 이관·삭제).
 
 ---
 
@@ -110,22 +117,6 @@ paths: "src/**/*.java"
 - 사례: syncAppleProfile엔 email != null 가드 있는데 syncKakaoProfile엔 없음
 - 왜?: Apple 로그인 구현할 때 "email이 없을 수 있다"는 걸 알고 가드를 넣었지만, 카카오는 "항상 email을 준다"고 가정함. 실제로는 카카오도 email 미제공 케이스 존재.
 - 규칙: 같은 역할의 메서드가 여러 개면 (카카오/애플) 방어 로직도 동일하게 적용
-
----
-
-## FE
-
-### dispose 시 비동기 작업 취소
-- 출처: user-profile SDD (2026-04-14)
-- 사례: EditProfileScreen에서 업로드 중 화면 나가면 CancelToken 미취소
-- 왜?: "업로드가 빨라서 화면 나가기 전에 끝날 거"라고 가정함. 네트워크 느린 환경이나 큰 파일 업로드 시 문제 발생 가능.
-- 규칙: 비동기 작업(API 호출, 업로드)이 있는 화면은 dispose에서 반드시 cancel 처리
-
-### 상태 이중 관리 금지
-- 출처: user-profile SDD (2026-04-14)
-- 사례: mypage_screen에서 _user + authUserProvider 중복 상태
-- 왜?: Provider에서 가져온 데이터를 로컬 변수에 복사해서 가공하려 함. 두 곳의 데이터가 달라질 수 있다는 점을 고려 안 한 것.
-- 규칙: 같은 데이터를 로컬 변수와 Provider 양쪽에서 관리하지 않기. 하나만 선택
 
 ---
 
