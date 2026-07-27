@@ -1,5 +1,5 @@
 ---
-description: 서버(Java/Spring) 실수 교훈 — 구현 전 반드시 읽고 같은 실수 반복 방지
+description: 서버 Java 구현(Spring·JPA·도메인·쿼리 작성) 실수 교훈 — 구현 전 반드시 읽고 같은 실수 반복 방지
 paths: "src/**/*.java"
 ---
 
@@ -9,9 +9,12 @@ paths: "src/**/*.java"
 > "왜?" 근본 원인을 분석하고, 같은 실수를 두 번 하지 않기 위한 규칙을 남긴다.
 > `src/**/*.java` 작업 시 로드된다. 구현 전 반드시 읽는다.
 >
-> **다른 곳에 있는 교훈** — 여기서 찾지 말 것:
-> - Dart/Flutter → `triagain-front/.claude/rules/lessons-learned.md`가 정본
-> - iOS 네이티브(카메라·빌드·배포) → `triagain-front/.claude/rules/lessons-learned-ios.md`
+> **다른 곳에 있는 교훈** — 여기서 찾지 말 것 (경로는 이 저장소 기준 형제 디렉토리):
+> - Dart/Flutter → `../triagain-front/.claude/rules/lessons-learned.md`가 정본
+> - iOS 네이티브(카메라·빌드·배포) → `../triagain-front/.claude/rules/lessons-learned-ios.md`
+>
+> ⚠️ 이 파일은 **`src/**/*.java` 편집 시에만** 로드된다. Flyway 마이그레이션·`application*.yml`·
+> `Dockerfile`·배포 워크플로는 **로드 대상이 아니다** — 그 영역 교훈은 여기 쓰지 말고 전용 규칙 신설을 검토한다.
 >
 > 교훈은 **각자의 정본에만** 쓴다. 양쪽에 복사하면 한쪽만 갱신되며 갈라진다
 > (실제로 갈라졌던 전례: 이 파일의 `## FE` 섹션이 FE 정본보다 `왜?` 분석을 더 갖고 있었음 — 2026-07-27 이관·삭제).
