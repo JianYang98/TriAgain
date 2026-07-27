@@ -445,7 +445,7 @@ Content-Type: application/json
 ```
 - `uploadSessionId`: PHOTO 습관 필수, TEXT 습관은 보내지 않음
 - `textContent`: TEXT 습관 필수, PHOTO 습관 선택
-- `Idempotency-Key` 헤더 미도입 — `uk_habit_verifications_habit_date` 유니크 제약이 더블카운트를 원천 차단
+- `Idempotency-Key` 헤더 미도입 — `uk_habit_verifications_habit_date` 유니크 제약이 더블카운트를 원천 차단 (충돌 시 HB010)
 
 **성공 응답 (201 Created)**
 ```json
@@ -522,6 +522,26 @@ Content-Type: application/json
   }
 }
 
+// 409 Conflict - 동시 요청으로 DB 유니크 제약 충돌 (uk_habit_verifications_habit_date)
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "HB010",
+    "message": "이미 오늘 인증을 완료했습니다."
+  }
+}
+
+// 409 Conflict - 같은 업로드 세션 재사용 (uk_habit_verifications_upload_session)
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "V015",
+    "message": "이미 사용된 업로드 세션입니다."
+  }
+}
+
 // 400 Bad Request - 마감 초과 또는 기대 슬롯 불일치(자정 넘긴 grace 인증 포함)
 {
   "success": false,
@@ -567,6 +587,7 @@ Content-Type: application/json
 - 인증 시 `targetDate == cycle.startDate + completedDays`(기대 슬롯) 강제 — 위반 시 V002. 건너뛴 날 마스킹, 자정 넘긴 grace 인증(예: 00:02 "어제 것")을 원천 차단("자정 넘기면 그 날은 실패" 확정)
 - 저장 + `cycle.recordCompletion()`은 같은 트랜잭션(원자적). `attemptNumber = completedDays + 1`
 - 가드 순서: 습관 존재+소유자 → 활성(ACTIVE) → 사이클 IN_PROGRESS → 시작일 도래 → 기대 슬롯+중복 → 타입/세션 → 마감
+- **중복 인증은 두 경로로 갈린다**: 앱 레벨 선검사에 걸리면 `V003`(`CreateHabitVerificationService:83,136`), 선검사를 동시에 통과한 요청이 DB 유니크 제약(`uk_habit_verifications_habit_date`)에 걸리면 `HB010`. **FE는 둘 다 "이미 인증 완료"로 동일 처리해야 한다** — 유저 입장에서 구분되지 않는 상황이다.
 
 ---
 
