@@ -12,6 +12,29 @@ paths: "src/test/**/*.java, **/*.feature"
 - **단위테스트**: AI 작성 (비즈니스 규칙 검증)
 - **E2E**: CI에서 배포 전 자동 실행 (핵심 해피패스 5개)
 
+## 테스트 레벨 — 이름과 판별
+
+| 접미사 | 레벨 | HTTP |
+|---|---|---|
+| `*Test` | 단위 — 도메인 모델 · 서비스 · 어댑터 | 안 탐 |
+| `*IntegrationTest` | 실 DB(TestContainers) 서비스·제약 검증 | 안 탐 |
+| `*ApiTest` | **MVC 스택 경유** — 라우팅 · 인증 헤더 · 직렬화 · 에러코드→HTTP status | **탐** |
+| `*E2eTest` | 핵심 해피패스 전 구간 | 탐 |
+
+`*ApiTest`가 `/verify` §1 게이트("신규 엔드포인트마다 API 레벨 테스트 1개 이상")를 충족하는 레벨이다.
+쿠컴버(`acceptance/`)와 E2E도 같은 게이트를 충족한다 — 셋 중 택1.
+
+⚠️ **이름은 신호일 뿐 진실이 아니다.** 이름은 붙이는 사람이 정하므로 실제와 어긋날 수 있다
+(실제로 `*IntegrationTest` 11개가 전부 HTTP를 안 타고, `FeedbackRedirectControllerTest`는
+이름이 `*Test`인데 MockMvc를 쓴다 — 2026-07-28 실측). 게이트 충족 여부는 **이름이 아니라 아래로 판별한다**:
+
+```bash
+grep -rln "RANDOM_PORT\|MockMvc" src/test/java/
+```
+
+**이름과 실제가 어긋나면 실제가 정본이고 이름을 고친다.**
+레벨별 작성 방법은 `.claude/skills/write-test.md` §2 참조 (여기는 이름 규칙만, 방법은 그쪽이 정본).
+
 ## 단위테스트 규칙 (AI 필수 준수)
 
 - 반드시 비즈니스 규칙을 검증해야 한다

@@ -81,6 +81,9 @@
 
 TriAgain은 3계층 테스트 구조를 따른다. 아래에서 위로 쌓는다.
 
+> **접미사↔레벨 규칙과 판별 명령은 `.claude/rules/test-strategy.md` "테스트 레벨 — 이름과 판별"이 정본이다.**
+> 여기서는 레벨별 *작성 방법*만 다룬다. (`*Test` / `*IntegrationTest` / `*ApiTest` / `*E2eTest`)
+
 ```
          E2E (해피패스 5개) — ./gradlew e2eTest
       Cucumber BDD — 스텝 본문은 한국어 (Gherkin 키워드는 혼용, §2-2 참조)
