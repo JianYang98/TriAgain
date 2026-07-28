@@ -17,8 +17,9 @@ description: Git 브랜치 전략과 커밋 메시지 컨벤션 (AngularJS Conve
 그 트리에서 브랜치를 바꾸지 말고 워크트리를 판다.
 
 ```bash
+git fetch origin develop                # ← origin/develop 이 낡으면 낡은 커밋에서 갈라진다
 git worktree add <경로> origin/develop -b <브랜치>
-git -C <경로> push -u origin <브랜치>   # ← 생략 금지. 이유는 아래
+git -C <경로> push -u origin <브랜치>   # ← 생략 금지(이유는 아래). 에이전트는 못 하니 사용자에게 요청
 ```
 
 **`push -u`를 생성 직후에 하는 이유** — 두 가지가 한 번에 해결된다.
@@ -34,8 +35,8 @@ untracked 파일은 워크트리를 따라가지 않으므로 "옮기면 되겠�
 **끝낼 때**: PR 머지 → `git worktree remove <경로>` → 원격 브랜치 삭제.
 로컬 브랜치는 squash-merge면 `-d`가 거부하므로, **PR 상태로 머지를 확인한 뒤** `-D`를 쓴다.
 
-**세션 마감 점검**: `git for-each-ref --format='%(refname:short) %(upstream:track)' refs/heads`
-로 `[ahead N]`이 0건인지 본다. 남아 있으면 push 안 된 커밋이 있다는 뜻이다.
+**세션 마감 점검**: `git log --branches --not --remotes --oneline` 이 비어 있는지 본다.
+비어 있지 않으면 push 안 된 커밋이 있다. (원격 없는 저장소 — 루트 `triagain` — 은 예외)
 
 ## 커밋 메시지 (AngularJS Convention)
 
