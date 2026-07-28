@@ -25,12 +25,16 @@ paths: "src/test/**/*.java, **/*.feature"
 쿠컴버(`acceptance/`)와 E2E도 같은 게이트를 충족한다 — 셋 중 택1.
 
 ⚠️ **이름은 신호일 뿐 진실이 아니다.** 이름은 붙이는 사람이 정하므로 실제와 어긋날 수 있다
-(실제로 `*IntegrationTest` 11개가 전부 HTTP를 안 타고, `FeedbackRedirectControllerTest`는
-이름이 `*Test`인데 MockMvc를 쓴다 — 2026-07-28 실측). 게이트 충족 여부는 **이름이 아니라 아래로 판별한다**:
+(실제로 `*IntegrationTest` 11개가 전부 HTTP를 안 탄다 — 2026-07-28 실측).
+**어느 테스트가 HTTP를 타는지**는 이름이 아니라 이걸로 본다:
 
 ```bash
-grep -rln "RANDOM_PORT\|MockMvc" src/test/java/
+grep -rln "RANDOM_PORT\|webAppContextSetup\|AutoConfigureMockMvc" src/test/java/
 ```
+
+`MockMvc`를 뺀 건 `standaloneSetup`이 걸리기 때문이다 — 컨텍스트를 안 띄워 인증 필터도
+전역 예외 매핑도 안 타므로 게이트를 충족하지 못한다.
+**엔드포인트별 충족 여부는 이 명령이 아니라 해당 `.feature`·`*ApiTest`를 직접 찾아 확인한다.**
 
 **이름과 실제가 어긋나면 실제가 정본이고 이름을 고친다.**
 레벨별 작성 방법은 `.claude/skills/write-test.md` §2 참조 (여기는 이름 규칙만, 방법은 그쪽이 정본).

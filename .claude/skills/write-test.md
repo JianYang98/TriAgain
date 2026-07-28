@@ -99,7 +99,8 @@ TriAgain은 3계층 테스트 구조를 따른다. 아래에서 위로 쌓는다
 > grep -rhE "^[[:space:]]*(Scenario|시나리오)( Outline| 개요)?:" \
 >      src/test/resources/features/*.feature | wc -l                      # 시나리오 수 (양 dialect)
 > find src/test/java -name '*Test.java' ! -path '*acceptance*' ! -path '*e2e*' \
->      ! -name '*IntegrationTest.java' | xargs grep -h "@Test" | wc -l     # 단위테스트 수
+>      ! -name '*IntegrationTest.java' ! -name '*ApiTest.java' \
+>      | xargs grep -h "@Test" | wc -l                                     # 단위테스트 수
 > ```
 >
 > 시나리오 카운트는 **반드시 양 dialect를 함께** 센다. 한글 `시나리오:`만 세면 6/20 파일만
@@ -241,7 +242,8 @@ dialect와 무관하게 스텝 본문은 20/20 전부 한국어이며, 영문 `G
 
 ```
 1. TestAdapter에 새 API 호출 메서드 추가
-2. API 레벨 테스트 1개 이상 — 쿠컴버 시나리오 | 통합테스트 | E2E 중 택1 (/verify §1 게이트)
+2. API 레벨 테스트 1개 이상 — 쿠컴버 시나리오 | *ApiTest | E2E 중 택1 (/verify §1 게이트)
+   HTTP를 안 타는 *IntegrationTest 는 충족하지 않는다
    쿠컴버로 쓰면 해피패스 + 주요 에러 케이스를 함께 담는다
 3. 단위테스트: 서비스 로직 테스트 (분기/검증이 있으면)
 4. E2E: 기존 해피패스에 영향 있으면 수정
