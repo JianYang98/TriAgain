@@ -512,7 +512,7 @@ Content-Type: application/json
   }
 }
 
-// 409 Conflict - 오늘 이미 인증함
+// 409 Conflict - 제약 위반 경로(:132-138 catch)로만 반환. 선검사(:82-83)는 도달 불가 — 아래 핵심 규칙 참조
 {
   "success": false,
   "data": null,
@@ -578,7 +578,7 @@ Content-Type: application/json
 - 저장 + `cycle.recordCompletion()`은 같은 트랜잭션(원자적). `attemptNumber = completedDays + 1`
 - 가드 순서: 습관 존재+소유자 → 활성(ACTIVE) → 사이클 IN_PROGRESS → 시작일 도래 → 기대 슬롯+중복 → 타입/세션 → 마감
 - **더블탭(같은 슬롯 재요청)은 `V002`다** — `findByIdForUpdate`(`CreateHabitVerificationService:45-46`)가 사이클을 읽기 전에 습관 행 비관적 락으로 요청을 직렬화한다. 두 번째 요청은 `completedDays`가 이미 증가한 사이클을 읽어 기대 슬롯 가드(`:78-80`)에서 걸린다. 동시·순차 모두 같다(실측 — `HabitVerificationConcurrentApiTest`)
-- **`uk_habit_verifications_habit_date` → `HB010` 매핑은 이 엔드포인트로 도달하지 않는다** — 락이 경합을 앞에서 흡수해 제약까지 가지 않는다. 제약·매핑 자체는 실재한다(`HabitUniqueConstraintsIntegrationTest`가 리포지토리 레벨에서 검증). `:82-83`의 `V003` 선검사도 도달 불가 — 그 전제(오늘자 인증 행 + `expectedSlot == today`)를 `StartHabitCycleService:78-85` 좀비 사이클 가드가 막는다
+- **`uk_habit_verifications_habit_date` → `HB010` 매핑은 이 엔드포인트로 도달하지 않는다** — 락이 경합을 앞에서 흡수해 제약까지 가지 않는다. 제약·매핑 자체는 실재한다(`HabitUniqueConstraintsIntegrationTest`가 리포지토리 레벨에서 검증). `:82-83`의 `V003` 선검사도 도달 불가 — 그 전제(오늘자 인증 행 + `expectedSlot == today`)를 `StartHabitCycleService:78-85` 좀비 사이클 가드가 막는다. 다만 `:132-138` catch가 제약 위반을 V003으로 매핑하는 경로는 **미측정**이다(업로드 세션 재사용 `uk_habit_verifications_upload_session` 등) — 위 V003 예시는 그 경로 기준으로 남겨둔다
 
 ---
 
