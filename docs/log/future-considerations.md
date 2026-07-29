@@ -6,6 +6,13 @@
 
 ---
 
+### [2026-07-26] 부하서버 GC를 Serial → G1으로 전환할지 (측정 완료, 전환 보류)
+
+- 현재 상태: 부하서버 JVM = **Serial GC** (1GiB 에르고노믹스). 2026-07-13/14 Serial↔G1 통제쌍 실험 완료 — 8블록(2밤 × 2전략 PESS/COND × 2암 게이트 on/off). 정본: `load-test/results/0714/serial-vs-g1/` 통합비교 4쌍.
+- 결정 (2026-07-26, Issue #97 종결): **측정만 하고 전환 보류.** G1은 런중 Major GC 오염을 소멸시키나(전략 교차 2/2 확정), 체감 지연인 **완료 p95는 Serial ≈ G1**으로 밤간 노이즈 봉투 안(판정 유보) → 전환을 정당화할 개선이 안 보임.
+- 필요 시점: 부하가 커져 런중 Major GC 오염이 실제 p95를 흔드는 규모에 도달하거나, 힙을 키워 Serial STW가 문제되는 시점. 그때 재평가.
+- 근거 상세: `load-test/results/0714/serial-vs-g1/Serial-vs-G1_통합비교-4쌍.md` §7 — ①오염 소멸=확정, ④기저 p95 우열=유보, ⑤커널 SYN drop=GC 독립, ⑥할당 불변식 0.46~0.51MB/도달 8/8.
+
 ### [2026-06-17] 크루 첫 인증 알림 fan-out: 배치 발송 + Dead Letter 큐 도입
 
 - 현재 상태: `VerificationNotificationAdapter.sendCrewFirstVerificationNotification`이 수신자 목록을 루프로 순회하며 수신자별 try/catch로 격리 발송. 발송 실패 건은 로그만 남기고 재시도 없음.

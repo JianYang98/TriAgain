@@ -110,7 +110,7 @@ skill 파일을 읽지 않고 작업하는 것은 규칙 위반이다.
 | 비즈니스 규칙 | `/docs/spec/biz-logic.md` | 비즈니스 규칙, 엣지케이스, Fallback 등급 |
 | 컨텍스트 맵 | `/docs/spec/context-map.md` | 바운디드 컨텍스트 관계도 |
 | ERD | `/docs/spec/schema.md` | 전체 엔티티 관계 다이어그램 |
-| API 명세 | `/docs/spec/api-spec.md` | API 계약서 (요청/응답/에러) |
+| API 명세 | `/docs/spec/api-spec.md` (인덱스) → `/docs/spec/api-spec/` | API 계약서. 도메인별 분할: auth-user·crew·verification·notification·habit·internal |
 | 아키텍처 | `/docs/spec/architecture.md` | 헥사고날 아키텍처 상세 |
 | 시퀀스 다이어그램 | `/docs/spec/sequence/` | 크루 가입, 인증 업로드 흐름 |
 | 디버깅 로그 | `/docs/log/debugging-log.md` | 버그 수정, 설계 판단, AI 방향 수정 기록 |
@@ -122,6 +122,21 @@ skill 파일을 읽지 않고 작업하는 것은 규칙 위반이다.
 코드 리뷰, /simplify, 버그 수정 중 아키텍처 위반, 버그, 안티패턴을 발견하면:
 
 근본 원인("왜?")을 분석한다
-.claude/rules/lessons-learned.md에 교훈을 추가한다
+아래 표의 해당 파일에 교훈을 추가한다
 
-구현 전에 반드시 .claude/rules/lessons-learned.md를 읽고, 같은 실수를 반복하지 않는다.
+구현 전에 반드시 해당 파일을 읽고, 같은 실수를 반복하지 않는다.
+
+| 교훈 영역 | 파일 | 로드 시점 |
+|---|---|---|
+| 서버 **Java 구현**(Spring·JPA·도메인·쿼리 작성) | `.claude/rules/lessons-learned.md` | `src/**/*.java` 작업 시 |
+| **DB 마이그레이션·스키마** | `.claude/rules/db-migration.md` | `src/main/resources/db/migration/**` 작업 시 |
+| Dart/Flutter | `../triagain-front/.claude/rules/lessons-learned.md` (정본) | FE 세션 |
+| iOS 네이티브(설정·빌드·배포) | `../triagain-front/.claude/rules/lessons-learned-ios.md` (정본) | FE 세션 |
+
+> FE 경로는 **이 저장소 기준 형제 디렉토리**(`triagain/triagain-back` ↔ `triagain/triagain-front`)다.
+>
+> ⚠️ **아직 규칙이 붙지 않은 영역**: `application*.yml`, `Dockerfile`, `.github/workflows/deploy.yml`.
+> 전부 tier-policy Tier 3 대상인데 로드되는 규칙이 0개다 — 이 영역에서 실수가 나오면 **위 표의 기존
+> 파일에 끼워 넣지 말고 전용 규칙 신설을 먼저 검토**한다(`db-migration.md`가 그 첫 사례).
+
+교훈이 양쪽에 다 걸려도 **각자의 정본에만** 쓴다. 양쪽에 복사하면 한쪽만 갱신되며 갈라진다.

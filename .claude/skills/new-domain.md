@@ -53,7 +53,7 @@ Flyway Migration (DB)
 ### 문서 수정 필요
 - [ ] schema.md — 컬럼 추가/수정/삭제
 - [ ] biz-logic.md — 비즈니스 규칙 추가/변경
-- [ ] api-spec.md — 응답 구조 변경
+- [ ] api-spec/{도메인}.md — 응답 구조 변경 (인덱스: api-spec.md)
 
 ### 코드 변경 체인
 - [ ] Entity — 필드/메서드 추가/수정
@@ -79,7 +79,7 @@ Flyway Migration (DB)
 
 ```
 1. docs/spec/schema.md에 컬럼 추가
-2. docs/spec/api-spec.md에 응답/요청 필드 추가 (필요 시)
+2. docs/spec/api-spec/{도메인}.md에 응답/요청 필드 추가 (필요 시)
 3. docs/spec/biz-logic.md에 규칙 추가 (필요 시)
 4. Flyway 마이그레이션 스크립트 작성
 5. Entity에 필드 + getter 추가
@@ -115,7 +115,7 @@ Flyway Migration (DB)
 2. 도메인 모델에 규칙 메서드 추가/수정
 3. Service에서 규칙 호출 확인                ← 여기가 빠진다
 4. 에러코드/예외 추가 (필요 시)
-5. api-spec.md에 에러 응답 추가 (필요 시)
+5. api-spec/{도메인}.md에 에러 응답 추가 (필요 시)
 6. 테스트 → .claude/skills/write-test.md 참조
 ```
 
