@@ -40,14 +40,19 @@
 ## 2. 핵심 수치 (인용 시 그대로 써도 됨)
 
 ### 2-1. 처리량 (Day 1~7)
-- **읽기 throughput**: 912 req/s (포화점 VU 50)
-- **쓰기 TPS**: 490 TPS (POST /verifications 단독, 포화점 VU 30~50)
+- **읽기 throughput**: 912 req/s — **GET 전용**, 포화점 VU 50, **2m0s 지속 측정**
+- **쓰기 포화 처리량**: **약 480~490/s** — POST /verifications 단독, 포화점 VU 30~50, **10~15초 구간 실측**
 - **읽기 Breaking Point**: VU 250 (p95 639ms)
 - **쓰기 Breaking Point**: VU 150 (p95 594ms)
 - **서버 에러율**: 전 구간 **0%** (5xx 없음)
-- Phase 1 목표(50 TPS) 대비 여유: 읽기 18배, 쓰기 10배
+- Phase 1 목표(50 TPS) 대비 여유: 읽기 18배, 쓰기 10배 (측정 창 차이를 감안해도 유지되는 결론)
 
 ⚠️ "920 TPS"는 혼합 부하 `http_reqs/s`로, 99.7%가 GET 읽기였다. **쓰기 TPS로 인용하면 거짓**. 읽기/쓰기 이원화 보고가 정본 (Day 7 측정).
+
+🚨 **측정 창 정정 (2026-07-29)** — 쓰기 수치를 **"지속 처리량"으로 말하면 안 된다.** Day 7 쓰기 런은
+VU별 30/15/15/10/10초짜리였다. 수치 자체는 유효하나(전 런 `verify_duplicate=0`), 인용 시 **"15초 구간
+실측"**을 반드시 붙일 것. 읽기 912는 2분 지속이라 이 문제가 없어 **둘을 나란히 비교하면 단위가 어긋난다.**
+면접에서 "그거 지속 처리량인가요?"가 나올 수 있는 지점이다 — 먼저 조건을 밝히는 편이 안전하다.
 
 ### 2-2. 비관적 락 단독 (Day 8, `crew-rush.js`, 정원 10명 크루)
 
@@ -96,7 +101,7 @@
 | "비관락이 커넥션 못 들고 있어서" | "비관락이 커넥션을 **오래** 들고 있어서" | 의미 정반대. SELECT FOR UPDATE는 트랜잭션 끝까지 행 락 점유 |
 | "낙관락은 행을 잠근다" | "낙관락은 version 컬럼으로 충돌 감지" | 낙관락은 락을 잡지 않음. UPDATE 시 `WHERE version=?`로 확인 |
 | "낙관락이 더 빠르다" | "낙관락은 p95가 비관락보다 **느리지만**, conn_reset이 0" | p95만 보면 비관락 승. 안정성에서 낙관락 승 |
-| "TPS 920" | "읽기 912 req/s + 쓰기 490 TPS" | 920은 혼합 부하 http_reqs/s. 쓰기 TPS는 490이 정본 |
+| "TPS 920" | "읽기 912 req/s(GET 전용·2분 지속) + 쓰기 포화 약 480~490/s(15초 구간)" | 920은 혼합 부하 http_reqs/s. 쓰기는 480~490/s가 정본이되 **측정 창 15초를 함께** 말할 것 (07-29 정정) |
 | "t2.micro" | "**t3.micro**" | 이전 기록 오류 정정 완료 (IMDS 실측) |
 | "HikariCP가 병목" | "HikariCP **Pending**은 높았지만 timeout은 0. **GC**가 1순위 병목" | pool 자체가 막힌 적 없음. STW가 커넥션 회수를 막은 것 |
 
@@ -146,7 +151,7 @@ triagain:
 | 주제 | 파일 |
 |------|------|
 | 환경 실측 | `load-test/results/00_environment.md` |
-| 쓰기 TPS (490) | `load-test/results/06_write-heavy.md` |
+| 쓰기 포화 처리량 (480~490/s, 15초 구간) | `load-test/results/구테스트/06_write-heavy.md` |
 | 비관락 VU 50~300 | `load-test/results/07_crew-rush.md` |
 | **낙관 vs 비관 Before/After** | `load-test/results/09_optimistic-lock-comparison.md` |
 | 통찰/판정 기준 재정의 | `load-test/results/08_insights.md` |
