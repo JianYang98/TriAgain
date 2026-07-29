@@ -30,6 +30,7 @@ checkstyle {
 }
 
 // 테스트 코드는 기존 스페이스 인덴트 + import 순서 위반이 다수 존재 — 정리 후 활성화 예정
+// 이 플래그는 .claude/hooks/checkstyle-hook.sh 의 src/test 스킵과 짝이다. 켤 땐 둘 다 바꾼다.
 checkstyleTest.enabled = false
 
 repositories {

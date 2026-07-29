@@ -12,6 +12,13 @@ if [[ ! -f "$FILE_PATH" ]]; then
   exit 0
 fi
 
+# gradle이 checkstyleTest를 끈 상태(build.gradle)라 테스트 소스는 훅도 검사하지 않는다.
+# 두 정책이 갈라지면 gradle이 무시하는 pre-existing 위반으로 훅만 편집을 막게 된다.
+# 되돌리는 시점: checkstyleTest.enabled = true 로 바뀔 때 이 블록을 함께 제거한다.
+case "$FILE_PATH" in
+  */src/test/*) exit 0 ;;
+esac
+
 PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 JAR="$PROJECT_ROOT/config/checkstyle/checkstyle-10.21.1-all.jar"
 CONFIG="$PROJECT_ROOT/config/checkstyle/triagain-checkstyle-rules.xml"
