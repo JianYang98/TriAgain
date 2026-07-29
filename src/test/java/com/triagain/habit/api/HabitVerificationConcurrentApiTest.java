@@ -38,6 +38,8 @@ import com.triagain.habit.port.out.HabitRepositoryPort;
 
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 /**
  * 솔로 인증 더블탭(POST /habits/&#123;habitId&#125;/verifications 2회) — 지는 쪽 에러코드 계약.
@@ -60,10 +62,10 @@ import io.restassured.response.Response;
  * 제약 자체는 실재하며 리포지토리 레벨에서 실제로 발화한다({@code HabitUniqueConstraintsIntegrationTest}가
  * V23의 {@code uk_habit_verifications_habit_date}로 검증). 이 엔드포인트가 그 앞에서 걸러질 뿐이다.
  *
- * <h2>문서와의 차이</h2>
+ * <h2>측정 전 문서와의 차이 (이 PR에서 정정 완료)</h2>
  * {@code docs/spec/api-spec/habit.md}는 "선검사를 동시에 통과한 요청이 DB 유니크 제약에 걸리면 HB010"이라고
- * 적고 있으나, 위 이유로 <b>동시 통과 자체가 성립하지 않는다</b>. 관측값은 HB010도 V003도 아닌 V002다.
- * (문서 정정 방향은 이 테스트의 판단 범위 밖이다.)
+ * 적고 <b>있었으나</b>, 위 이유로 <b>동시 통과 자체가 성립하지 않는다</b>. 관측값은 HB010도 V003도 아닌 V002였고,
+ * 그 실측에 맞춰 문서를 같은 PR에서 정정했다.
  *
  * <h2>{@code :82-83} V003는 이 엔드포인트로 도달 불가능하다</h2>
  * 위의 "패자가 V002에서 끝난다"와는 <b>별개의</b> 구조적 이유다. {@code :82-83}에 닿으려면
@@ -111,6 +113,9 @@ class HabitVerificationConcurrentApiTest {
 	@Autowired
 	private HabitCycleRepositoryPort habitCycleRepositoryPort;
 
+	@PersistenceContext
+	private EntityManager entityManager;
+
 	@Test
 	@DisplayName("T1: 동시 2요청 — 승자 201 정확히 1건, 패자는 400 V002(제약까지 못 감)")
 	void t1_concurrentDoubleTap() throws Exception {
@@ -118,26 +123,11 @@ class HabitVerificationConcurrentApiTest {
 		String userId = "dbltap-t1-user";
 		String habitId = givenActiveHabitWithFreshCycle(userId);
 
-		ExecutorService executor = Executors.newFixedThreadPool(2);
-		CountDownLatch ready = new CountDownLatch(2);
-		CountDownLatch start = new CountDownLatch(1);
-		Callable<Response> task = () -> {
-			ready.countDown();
-			start.await();
-			return postVerification(userId, habitId, "동시 인증");
-		};
-
 		// When — 두 스레드가 거의 동시에 인증 생성 요청
-		Future<Response> f1 = executor.submit(task);
-		Future<Response> f2 = executor.submit(task);
-		ready.await();
-		start.countDown();
-		Response r1 = f1.get(10, TimeUnit.SECONDS);
-		Response r2 = f2.get(10, TimeUnit.SECONDS);
-		executor.shutdown();
+		List<Response> responses = fireConcurrently(userId, habitId);
 
 		// Then
-		assertOneWinnerAndLoserGetsV002("T1(동시)", habitId, r1, r2);
+		assertOneWinnerAndLoserGetsV002("T1(동시)", habitId, responses.get(0), responses.get(1));
 	}
 
 	@Test
@@ -153,6 +143,33 @@ class HabitVerificationConcurrentApiTest {
 
 		// Then
 		assertOneWinnerAndLoserGetsV002("T2(순차)", habitId, first, second);
+	}
+
+	/**
+	 * 두 요청을 같은 순간에 발사하고 응답 2건을 돌려준다.
+	 * <p>
+	 * 풀 종료를 {@code finally}에 둔다 — 어느 한쪽이 던지거나 타임아웃하면 non-daemon 워커가 살아남아
+	 * Gradle 테스트 워커가 <b>원래 실패 대신 매달린다</b>. finally에는 assertion을 두지 않는다.
+	 * 두면 그 assertion이 원래 실패를 덮어써서 고치려던 문제를 그대로 만든다.
+	 */
+	private List<Response> fireConcurrently(String userId, String habitId) throws Exception {
+		ExecutorService executor = Executors.newFixedThreadPool(2);
+		CountDownLatch ready = new CountDownLatch(2);
+		CountDownLatch start = new CountDownLatch(1);
+		Callable<Response> task = () -> {
+			ready.countDown();
+			start.await();
+			return postVerification(userId, habitId, "동시 인증");
+		};
+		try {
+			Future<Response> f1 = executor.submit(task);
+			Future<Response> f2 = executor.submit(task);
+			assertThat(ready.await(10, TimeUnit.SECONDS)).as("두 스레드가 10초 안에 준비되지 않았다").isTrue();
+			start.countDown();
+			return List.of(f1.get(10, TimeUnit.SECONDS), f2.get(10, TimeUnit.SECONDS));
+		} finally {
+			executor.shutdownNow();
+		}
 	}
 
 	/** ACTIVE 습관 + completedDays=0 IN_PROGRESS 사이클(오늘 시작·마감 +3일) 준비 — users 행은 FK가 없어 불필요 */
@@ -177,7 +194,7 @@ class HabitVerificationConcurrentApiTest {
 				.post("/habits/{habitId}/verifications", habitId);
 	}
 
-	/** 승자 1건(201) + 패자 1건(400/V002) + completedDays 1회 증가 검증 — 클래스 Javadoc의 계약이 정본 */
+	/** 승자 1건(201) + 패자 1건(400/V002) + habit_verifications 행 1건 + completedDays 1회 증가 검증 — 클래스 Javadoc의 계약이 정본 */
 	private void assertOneWinnerAndLoserGetsV002(String label, String habitId, Response first, Response second) {
 		logOutcome(label, first, second);
 		List<Response> winners = Stream.of(first, second).filter(r -> r.statusCode() == 201).toList();
@@ -194,10 +211,23 @@ class HabitVerificationConcurrentApiTest {
 				.as("%s — 패자는 V002다. 습관 행 비관적 락 때문에 DB 유니크 제약(HB010)까지 못 간다", label)
 				.isEqualTo("V002");
 
+		assertThat(countVerifications(habitId))
+				.as("%s — habit_verifications 행은 정확히 1건이다(결과 불변식). 어느 층이 막았는지는 위 V002가 말한다", label)
+				.isEqualTo(1);
+
 		HabitCycle cycle = habitCycleRepositoryPort
 				.findByHabitIdAndStatus(habitId, HabitCycleStatus.IN_PROGRESS).orElseThrow();
 		assertThat(cycle.getCompletedDays())
 				.as("%s — completedDays는 정확히 1회만 증가해야 한다", label).isEqualTo(1);
+	}
+
+	/** 이 습관의 인증 행 개수 — habitId가 테스트마다 고유해 날짜 필터 없이도 이 테스트가 만든 행만 센다 */
+	private long countVerifications(String habitId) {
+		Number count = (Number) entityManager
+				.createNativeQuery("SELECT COUNT(*) FROM habit_verifications WHERE habit_id = :id")
+				.setParameter("id", habitId)
+				.getSingleResult();
+		return count.longValue();
 	}
 
 	/** 진단 로그 — 패자의 실제 HTTP status·error.code를 눈으로 확인하기 위한 출력 */
