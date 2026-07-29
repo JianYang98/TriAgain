@@ -128,15 +128,23 @@
 
 로그: ⓚ+Grafana 서술(nstat·ss 없음). 환경: t3.micro(t2 표기는 IMDS로 정정)·RDS PG **17.6**(00_environment) vs **16**(06_write-heavy) — 원문 충돌.
 
+> **⚠️ 측정 창 정정 (2026-07-29)** — 아래 **쓰기** 수치는 **10~15초 구간 실측치**이지 지속 처리량이 아니다.
+> Day 7 런 길이는 VU별 30/15/15/10/10초 (`06_write-heavy.md` 스윕 표 `시간` 열). 수치 자체는 유효 —
+> 전 런 `verify_duplicate=0`으로 유저풀 소진 오염 없음. **읽기는 2m0s 지속**이라 조건이 다르므로
+> **읽기↔쓰기 직접 비교 시 단위가 어긋난다.** 원본 두 문서(`06_write-heavy.md`·`08_insights.md`)에
+> 정정 배너 삽입 완료(2026-07-29). 경위: (루트) `TODO/TODO-추후-07-20-490TPS-문구정정.md`
+> ※ 이 배너 삽입으로 두 원본의 줄번호가 밀렸다 — 아래 `출처` 열은 **삽입 후 기준으로 재실측**한 값이다.
+
 | 항목 | 수치 | 조건 | 출처 |
 |---|---|---|---|
 | 읽기 포화점 | VU 30~50, **~920 req/s** (clean 재측정: 662→920→919/s) | 90:10 혼합, warm-up+리셋 적용 | `01_vuser-fixed-normal-clean.md`, `02_saturation-clean.md` |
 | ⚠️ "TPS 920"의 정체 | `http_reqs/s`, **99.7%가 GET** — "쓰기 TPS로 인용하면 거짓" | endpoint 분해: VU50 GET 912.6/s·POST 2.97/s | `03c_stress-breaking-point.md` L8~12·부록 |
+| ✅ "읽기 912 req/s"의 정확한 정의 | **GET 전용 요청 레이트**(iterations 레이트와 숫자가 같은 건 GET 건수 = iteration 건수라서 생긴 우연) | raw 직접 검산(07-29): `http_reqs` 110,671@915.634/s − POST 359건(created 50+dup 309) = GET 110,312@**912.664/s**, 그리고 912.664+2.970=915.634 ✓ / 런 길이 **2m0s 지속** | `screenshots/raw/03c_vufixed-50.log` |
 | 읽기 Breaking Point | **VU ~250** (p95〔A읽기〕 639ms) | 전 VU checks_failed=0 | `03c` L41~59, `02_saturation-clean.md` L49~50 |
-| 쓰기 포화점 | VU 30~50, **~490 TPS** (309→479→491/s) | POST /verifications 단독, XXL 데이터 | `06_write-heavy.md` L50~65 |
-| 쓰기 Breaking Point | **VU ~150** (p95 594ms) | 5xx 0% | `06_write-heavy.md` L68 |
-| 쓰기 병목 | HikariCP Pending max **140**(timeout 0)·GC Pause max **4.6s**·CPU max **85%** | Grafana 스크린샷 관찰 | `06_write-heavy.md` L96~107 |
-| ⚠️ 읽기 GC 충돌 | `08_insights.md` L85~89 "읽기 GC 6.8초" vs `06_write-heavy.md` L112~114 "읽기 GC 관측 미미" | 원문 충돌 — 6.8s의 원출처 문서 없음 | 둘 다 표기 |
+| 쓰기 포화점 | VU 30~50, **~480~490/s** (309→479→491/s) | POST /verifications 단독, XXL 데이터, **측정 창 10~15초(지속 아님)** | `06_write-heavy.md` L63~81 |
+| 쓰기 Breaking Point | **VU ~150** (p95 594ms) | 5xx 0%, 측정 창 10s | `06_write-heavy.md` L85 |
+| 쓰기 병목 | HikariCP Pending max **140**(timeout 0)·GC Pause max **4.6s**·CPU max **85%** | Grafana 스크린샷 관찰 | `06_write-heavy.md` L126~137 |
+| ⚠️ 읽기 GC 충돌 | `08_insights.md` L91~96 "읽기 GC 6.8초" vs `06_write-heavy.md` L143~145 "읽기 GC 관측 미미" | 원문 충돌 — 6.8s의 원출처 문서 없음 | 둘 다 표기 |
 | crew-rush 드롭 개시 VU (세션별) | 04-17: vu200(19건) / 06-19: 비관 0·조건부 vu300 / 06-23: vu200(9)~vu300 / 07-01: vu200~300 / 256 이후: vu300 (C10만 vu500) | 세션별 상이 — `03-timeline.md` 참조 | 각 회차 결과서 |
 
 ## 7. RTT (전부 k6 `http_req_connecting` 프록시 — ping 실측 없음)
