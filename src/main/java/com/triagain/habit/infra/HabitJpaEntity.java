@@ -3,16 +3,16 @@ package com.triagain.habit.infra;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
-import com.triagain.habit.domain.model.Habit;
-import com.triagain.habit.domain.vo.HabitStatus;
-import com.triagain.habit.domain.vo.HabitVerificationType;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+
+import com.triagain.habit.domain.model.Habit;
+import com.triagain.habit.domain.vo.HabitStatus;
+import com.triagain.habit.domain.vo.HabitVerificationType;
 
 @Entity
 @Table(name = "habits")
