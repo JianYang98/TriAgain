@@ -445,7 +445,7 @@ Content-Type: application/json
 ```
 - `uploadSessionId`: PHOTO 습관 필수, TEXT 습관은 보내지 않음
 - `textContent`: TEXT 습관 필수, PHOTO 습관 선택
-- `Idempotency-Key` 헤더 미도입 — `uk_habit_verifications_habit_date` 유니크 제약이 더블카운트를 원천 차단 (충돌 시 HB010)
+- `Idempotency-Key` 헤더 미도입 — 습관 행 비관적 락(`CreateHabitVerificationService:45-46`)이 요청을 직렬화해 더블카운트를 차단한다. 두 번째 요청은 기대 슬롯 가드에서 `V002`로 끝난다(실측 — `HabitVerificationConcurrentApiTest`)
 
 **성공 응답 (201 Created)**
 ```json
@@ -512,23 +512,13 @@ Content-Type: application/json
   }
 }
 
-// 409 Conflict - 오늘 이미 인증함
+// 409 Conflict - 제약 위반 경로(:132-138 catch)로만 반환. 선검사(:82-83)는 도달 불가 — 아래 핵심 규칙 참조
 {
   "success": false,
   "data": null,
   "error": {
     "code": "V003",
     "message": "이미 해당 날짜에 인증이 존재합니다."
-  }
-}
-
-// 409 Conflict - 동시 요청으로 DB 유니크 제약 충돌 (uk_habit_verifications_habit_date)
-{
-  "success": false,
-  "data": null,
-  "error": {
-    "code": "HB010",
-    "message": "이미 오늘 인증을 완료했습니다."
   }
 }
 
@@ -542,7 +532,7 @@ Content-Type: application/json
   }
 }
 
-// 400 Bad Request - 마감 초과 또는 기대 슬롯 불일치(자정 넘긴 grace 인증 포함)
+// 400 Bad Request - 마감 초과 / 기대 슬롯 불일치(자정 넘긴 grace 인증) / 더블탭 2번째 요청
 {
   "success": false,
   "data": null,
@@ -587,7 +577,8 @@ Content-Type: application/json
 - 인증 시 `targetDate == cycle.startDate + completedDays`(기대 슬롯) 강제 — 위반 시 V002. 건너뛴 날 마스킹, 자정 넘긴 grace 인증(예: 00:02 "어제 것")을 원천 차단("자정 넘기면 그 날은 실패" 확정)
 - 저장 + `cycle.recordCompletion()`은 같은 트랜잭션(원자적). `attemptNumber = completedDays + 1`
 - 가드 순서: 습관 존재+소유자 → 활성(ACTIVE) → 사이클 IN_PROGRESS → 시작일 도래 → 기대 슬롯+중복 → 타입/세션 → 마감
-- **중복 인증은 두 경로로 갈린다**: 앱 레벨 선검사에 걸리면 `V003`(`CreateHabitVerificationService:83,136`), 선검사를 동시에 통과한 요청이 DB 유니크 제약(`uk_habit_verifications_habit_date`)에 걸리면 `HB010`. **FE는 둘 다 "이미 인증 완료"로 동일 처리해야 한다** — 유저 입장에서 구분되지 않는 상황이다.
+- **더블탭(같은 슬롯 재요청)은 `V002`다** — `findByIdForUpdate`(`CreateHabitVerificationService:45-46`)가 사이클을 읽기 전에 습관 행 비관적 락으로 요청을 직렬화한다. 두 번째 요청은 `completedDays`가 이미 증가한 사이클을 읽어 기대 슬롯 가드(`:78-80`)에서 걸린다. 동시·순차 모두 같다(실측 — `HabitVerificationConcurrentApiTest`)
+- **`uk_habit_verifications_habit_date` → `HB010` 매핑은 이 엔드포인트로 도달하지 않는다** — 락이 경합을 앞에서 흡수해 제약까지 가지 않는다. 제약·매핑 자체는 실재한다(`HabitUniqueConstraintsIntegrationTest`가 리포지토리 레벨에서 검증). `:82-83`의 `V003` 선검사도 도달 불가 — 그 전제(오늘자 인증 행 + `expectedSlot == today`)를 `StartHabitCycleService:78-85` 좀비 사이클 가드가 막는다. 다만 `:132-138` catch가 제약 위반을 V003으로 매핑하는 경로는 **미측정**이다(업로드 세션 재사용 `uk_habit_verifications_upload_session` 등) — 위 V003 예시는 그 경로 기준으로 남겨둔다
 
 ---
 
