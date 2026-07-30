@@ -36,11 +36,11 @@ public interface VerificationJpaRepository extends JpaRepository<VerificationJpa
 	int cancelIfApproved(@Param("id") String id);
 
 	/** APPROVED 인증 날짜 조회 — 크루 기간 범위 내, ASC 정렬 */
-	@Query("SELECT v.targetDate FROM VerificationJpaEntity v " +
-		"WHERE v.userId = :userId AND v.crewId = :crewId " +
-		"AND v.status = 'APPROVED' " +
-		"AND v.targetDate BETWEEN :startDate AND :endDate " +
-		"ORDER BY v.targetDate ASC")
+	@Query("SELECT v.targetDate FROM VerificationJpaEntity v "
+		+ "WHERE v.userId = :userId AND v.crewId = :crewId "
+		+ "AND v.status = 'APPROVED' "
+		+ "AND v.targetDate BETWEEN :startDate AND :endDate "
+		+ "ORDER BY v.targetDate ASC")
 	List<LocalDate> findApprovedDatesByUserIdAndCrewId(
 			@Param("userId") String userId,
 			@Param("crewId") String crewId,
@@ -48,9 +48,9 @@ public interface VerificationJpaRepository extends JpaRepository<VerificationJpa
 			@Param("endDate") LocalDate endDate);
 
 	/** 오늘 인증 완료한 크루 ID 배치 조회 — N+1 방지 */
-	@Query("SELECT DISTINCT v.crewId FROM VerificationJpaEntity v " +
-		"WHERE v.userId = :userId AND v.crewId IN :crewIds AND v.targetDate = :targetDate " +
-		"AND v.status = 'APPROVED'")
+	@Query("SELECT DISTINCT v.crewId FROM VerificationJpaEntity v "
+		+ "WHERE v.userId = :userId AND v.crewId IN :crewIds AND v.targetDate = :targetDate "
+		+ "AND v.status = 'APPROVED'")
 	List<String> findVerifiedCrewIds(
 			@Param("userId") String userId,
 			@Param("crewIds") List<String> crewIds,

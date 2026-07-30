@@ -58,7 +58,8 @@ public class ChallengeJpaAdapter implements ChallengeRepositoryPort {
 
 	/** 비관적 락으로 IN_PROGRESS 챌린지 조회 — 동시 챌린지 생성 방지에 사용 */
 	@Override
-	public Optional<Challenge> findByUserIdAndCrewIdAndStatusWithLock(String userId, String crewId, ChallengeStatus status) {
+	public Optional<Challenge> findByUserIdAndCrewIdAndStatusWithLock(
+			String userId, String crewId, ChallengeStatus status) {
 		return challengeJpaRepository.findByUserIdAndCrewIdAndStatusWithLock(userId, crewId, status)
 				.map(ChallengeJpaEntity::toDomain);
 	}

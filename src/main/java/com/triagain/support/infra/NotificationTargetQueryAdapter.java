@@ -21,7 +21,8 @@ public class NotificationTargetQueryAdapter implements NotificationTargetQueryPo
 	/** 마감 임박 미인증자 조회 — deadlineTime 윈도우 + 자정 크로싱 처리 */
 	@Override
 	@SuppressWarnings("unchecked")
-	public List<ReminderTarget> findReminderTargets(LocalTime deadlineFrom, LocalTime deadlineTo, LocalDate targetDate) {
+	public List<ReminderTarget> findReminderTargets(
+			LocalTime deadlineFrom, LocalTime deadlineTo, LocalDate targetDate) {
 		// CANCELLED 행은 "인증함"이 아니다 — ON 절(WHERE 아님)에서 걸러야 LEFT JOIN이 아예 안 붙어
 		// v.id IS NULL이 살고 취소자가 리마인더 대상에 남는다. D14-a(ChallengeJpaRepository
 		// findExpiredWithoutVerification)와 동일 처방(Codex 리뷰, 2026-07-24).

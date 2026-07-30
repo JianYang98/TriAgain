@@ -51,7 +51,8 @@ public class SignupService implements SignupUseCase {
 			// 탈퇴 계정 재활성화
 			existing.reactivate(trimmedNickname, kakaoUser.email(), kakaoUser.profileImageUrl(), null);
 			User saved = userRepositoryPort.save(existing);
-			String accessToken = jwtProvider.createAccessToken(saved.getId(), saved.getProvider(), saved.getTokenVersion());
+			String accessToken = jwtProvider.createAccessToken(
+					saved.getId(), saved.getProvider(), saved.getTokenVersion());
 			String refreshToken = jwtProvider.createRefreshToken(saved.getId(), saved.getTokenVersion());
 			return new SignupResult(
 					accessToken, refreshToken, jwtProvider.getAccessTokenExpirationSeconds(),

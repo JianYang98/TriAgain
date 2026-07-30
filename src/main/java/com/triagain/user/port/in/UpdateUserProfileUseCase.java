@@ -12,6 +12,7 @@ public interface UpdateUserProfileUseCase {
 	record UpdateProfileCommand(String userId, String nickname, String profileImageUrl) {
 	}
 
-	record UpdateProfileResult(String id, String email, String nickname, String profileImageUrl, LocalDateTime createdAt) {
+	record UpdateProfileResult(
+			String id, String email, String nickname, String profileImageUrl, LocalDateTime createdAt) {
 	}
 }

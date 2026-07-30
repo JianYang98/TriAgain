@@ -47,10 +47,12 @@ public class GlobalExceptionHandler {
 	}
 
 	@ExceptionHandler(BusinessException.class)
-	protected ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException e, HttpServletRequest request) {
+	protected ResponseEntity<ApiResponse<Void>> handleBusinessException(
+			BusinessException e, HttpServletRequest request) {
 		ErrorCode errorCode = e.getErrorCode();
 		String message = resolveMessage(errorCode, e.getArgs());
-		log.warn("[{} {}] 비즈니스 예외 [errorCode={}]: {}", request.getMethod(), request.getRequestURI(), errorCode.getCode(), message);
+		log.warn("[{} {}] 비즈니스 예외 [errorCode={}]: {}",
+				request.getMethod(), request.getRequestURI(), errorCode.getCode(), message);
 		return ResponseEntity
 				.status(errorCode.getStatus())
 				.body(ApiResponse.fail(errorCode, message));
@@ -58,14 +60,16 @@ public class GlobalExceptionHandler {
 
 	/** Validation 예외 — message가 ErrorCode name이면 해당 코드 사용, 아니면 C001 INVALID_INPUT */
 	@ExceptionHandler(MethodArgumentNotValidException.class)
-	protected ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException e, HttpServletRequest request) {
+	protected ResponseEntity<ApiResponse<Void>> handleValidationException(
+			MethodArgumentNotValidException e, HttpServletRequest request) {
 		List<FieldError> fieldErrors = e.getBindingResult().getFieldErrors();
 
 		for (FieldError error : fieldErrors) {
 			try {
 				ErrorCode mappedCode = ErrorCode.valueOf(error.getDefaultMessage());
 				String message = resolveMessage(mappedCode, null);
-				log.warn("[{} {}] 입력값 검증 실패 [errorCode={}]: {}", request.getMethod(), request.getRequestURI(), mappedCode.getCode(), message);
+				log.warn("[{} {}] 입력값 검증 실패 [errorCode={}]: {}",
+						request.getMethod(), request.getRequestURI(), mappedCode.getCode(), message);
 				return ResponseEntity.status(mappedCode.getStatus())
 						.body(ApiResponse.fail(mappedCode, message));
 			} catch (IllegalArgumentException ignored) {
@@ -104,7 +108,8 @@ public class GlobalExceptionHandler {
 	}
 
 	@ExceptionHandler(IllegalArgumentException.class)
-	protected ResponseEntity<ApiResponse<Void>> handleIllegalArgumentException(IllegalArgumentException e, HttpServletRequest request) {
+	protected ResponseEntity<ApiResponse<Void>> handleIllegalArgumentException(
+			IllegalArgumentException e, HttpServletRequest request) {
 		log.warn("[{} {}] 잘못된 인자: {}", request.getMethod(), request.getRequestURI(), e.getMessage());
 		return ResponseEntity
 				.badRequest()

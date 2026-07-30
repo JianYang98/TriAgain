@@ -62,7 +62,8 @@ public class FcmAdapter implements NotificationSendPort {
 
 	/** FCM 발송 최종 실패 핸들러 — 3회 재시도 후 호출 */
 	@Recover
-	public boolean recoverSend(BusinessException e, String fcmToken, String title, String body, Map<String, String> data) {
+	public boolean recoverSend(
+			BusinessException e, String fcmToken, String title, String body, Map<String, String> data) {
 		log.error("FCM 발송 최종 실패 (3회 재시도 후): token={}", maskToken(fcmToken), e);
 		throw e;
 	}

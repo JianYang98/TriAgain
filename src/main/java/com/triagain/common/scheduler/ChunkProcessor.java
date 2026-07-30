@@ -25,7 +25,8 @@ public class ChunkProcessor {
 	}
 
 	/** 리스트를 청크 단위로 트랜잭션 처리, 청크 실패 시 rehydrator로 fresh 인스턴스 재조회 후 건별 재시도 */
-	public <T> ChunkProcessingResult<T> execute(List<T> items, int chunkSize, Consumer<T> processor, Function<T, T> rehydrator) {
+	public <T> ChunkProcessingResult<T> execute(
+			List<T> items, int chunkSize, Consumer<T> processor, Function<T, T> rehydrator) {
 		int successCount = 0;
 		List<FailedItem<T>> failedItems = new ArrayList<>();
 		List<T> successItems = new ArrayList<>();

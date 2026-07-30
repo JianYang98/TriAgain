@@ -52,7 +52,8 @@ public class GetMyVerificationsService implements GetMyVerificationsUseCase {
 	private TodaySlot findTodaySlot(String userId, String crewId) {
 		Optional<Verification> today = verificationRepositoryPort
 				.findActiveByUserIdAndCrewIdAndTargetDate(userId, crewId, LocalDate.now(clock));
-		return today.map(v -> new TodaySlot(v.getId(), v.getSlotAttempt(), v.getTextContent(), v.getImageUrl())).orElse(null);
+		return today.map(v -> new TodaySlot(v.getId(), v.getSlotAttempt(), v.getTextContent(), v.getImageUrl()))
+				.orElse(null);
 	}
 
 	/** 최근 날짜부터 역방향 연속 인증 일수 계산 */
