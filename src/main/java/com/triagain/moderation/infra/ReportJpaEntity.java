@@ -16,7 +16,7 @@ import com.triagain.moderation.domain.vo.ReportStatus;
 
 @Entity
 @Table(name = "reports", uniqueConstraints = {
-		@UniqueConstraint(columnNames = {"verification_id", "reporter_id"})
+	@UniqueConstraint(columnNames = {"verification_id", "reporter_id"})
 })
 public class ReportJpaEntity {
 

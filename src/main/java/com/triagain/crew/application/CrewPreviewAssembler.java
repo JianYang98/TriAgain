@@ -13,7 +13,8 @@ import com.triagain.crew.port.out.UserPort.UserProfile;
 /** 크루 미리보기 응답 조립 — 초대코드/크루ID 미리보기에서 공통으로 사용 */
 class CrewPreviewAssembler {
 
-	private CrewPreviewAssembler() {}
+	private CrewPreviewAssembler() {
+	}
 
 	/** 크루 + 유저 프로필로 미리보기 응답 조립 */
 	static CrewInvitePreviewResult toPreviewResult(Crew crew, String userId, UserPort userPort) {

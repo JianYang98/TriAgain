@@ -12,13 +12,21 @@ public interface FeedQueryPort {
 	/** 피드 인증 행 — native query 결과 매핑용 interface projection */
 	interface FeedVerificationRow {
 		String getId();
+
 		String getUserId();
+
 		String getNickname();
+
 		String getProfileImageUrl();
+
 		String getImageUrl();
+
 		String getTextContent();
+
 		LocalDate getTargetDate();
+
 		LocalDateTime getCreatedAt();
+
 		int getSlotAttempt();
 	}
 }

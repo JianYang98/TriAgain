@@ -35,7 +35,8 @@ public class NotificationMessageTemplate {
 			"우리 크루 오늘도 시작됐어요! 인증하러 가볼까요?"
 	);
 
-	private NotificationMessageTemplate() {}
+	private NotificationMessageTemplate() {
+	}
 
 	/** 리마인더 메시지 랜덤 선택 — title에 크루명 prefix 포함 */
 	public static NotificationMessage reminder(String crewName) {

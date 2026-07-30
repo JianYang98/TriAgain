@@ -143,27 +143,57 @@ public class User {
 		return false;
 	}
 
-	public String getId() { return id; }
-	public String getProvider() { return provider; }
-	public String getEmail() { return email; }
-	public String getNickname() { return nickname; }
-	public String getProfileImageUrl() { return profileImageUrl; }
-	public LocalDateTime getCreatedAt() { return createdAt; }
-	public LocalDateTime getTermsAgreedAt() { return termsAgreedAt; }
-	public LocalDateTime getDeletedAt() { return deletedAt; }
-	public int getTokenVersion() { return tokenVersion; }
+	public String getId() {
+		return id;
+	}
+
+	public String getProvider() {
+		return provider;
+	}
+
+	public String getEmail() {
+		return email;
+	}
+
+	public String getNickname() {
+		return nickname;
+	}
+
+	public String getProfileImageUrl() {
+		return profileImageUrl;
+	}
+
+	public LocalDateTime getCreatedAt() {
+		return createdAt;
+	}
+
+	public LocalDateTime getTermsAgreedAt() {
+		return termsAgreedAt;
+	}
+
+	public LocalDateTime getDeletedAt() {
+		return deletedAt;
+	}
+
+	public int getTokenVersion() {
+		return tokenVersion;
+	}
 
 	/** FCM 토큰 갱신 — 앱 실행/로그인 시 클라이언트가 호출 */
 	public void updateFcmToken(String fcmToken) {
 		this.fcmToken = fcmToken;
 	}
 
-	public String getFcmToken() { return fcmToken; }
+	public String getFcmToken() {
+		return fcmToken;
+	}
 
 	/** Apple OAuth refresh_token 갱신 — Apple 로그인 backfill 또는 재가입 시 */
 	public void updateAppleRefreshToken(String appleRefreshToken) {
 		this.appleRefreshToken = appleRefreshToken;
 	}
 
-	public String getAppleRefreshToken() { return appleRefreshToken; }
+	public String getAppleRefreshToken() {
+		return appleRefreshToken;
+	}
 }

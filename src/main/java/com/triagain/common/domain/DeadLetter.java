@@ -81,14 +81,43 @@ public class DeadLetter {
 		this.updatedAt = LocalDateTime.now();
 	}
 
-	public String getId() { return id; }
-	public DeadLetterTaskType getTaskType() { return taskType; }
-	public String getTargetId() { return targetId; }
-	public String getErrorMessage() { return errorMessage; }
-	public DeadLetterStatus getStatus() { return status; }
-	public int getRetryCount() { return retryCount; }
-	public int getMaxRetries() { return maxRetries; }
-	public LocalDateTime getNextRetryAt() { return nextRetryAt; }
-	public LocalDateTime getCreatedAt() { return createdAt; }
-	public LocalDateTime getUpdatedAt() { return updatedAt; }
+	public String getId() {
+		return id;
+	}
+
+	public DeadLetterTaskType getTaskType() {
+		return taskType;
+	}
+
+	public String getTargetId() {
+		return targetId;
+	}
+
+	public String getErrorMessage() {
+		return errorMessage;
+	}
+
+	public DeadLetterStatus getStatus() {
+		return status;
+	}
+
+	public int getRetryCount() {
+		return retryCount;
+	}
+
+	public int getMaxRetries() {
+		return maxRetries;
+	}
+
+	public LocalDateTime getNextRetryAt() {
+		return nextRetryAt;
+	}
+
+	public LocalDateTime getCreatedAt() {
+		return createdAt;
+	}
+
+	public LocalDateTime getUpdatedAt() {
+		return updatedAt;
+	}
 }
