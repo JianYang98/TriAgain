@@ -15,4 +15,3 @@ public interface JoinCrewUseCase {
 	record JoinCrewResult(String userId, String crewId, CrewRole role, int currentMembers, LocalDateTime joinedAt) {
 	}
 }
-
