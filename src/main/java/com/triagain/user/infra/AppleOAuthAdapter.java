@@ -77,12 +77,14 @@ public class AppleOAuthAdapter implements AppleOAuthPort {
 
 		if (allBlank) {
 			this.enabled = false;
-			log.warn("Apple OAuth disabled — APPLE_TEAM_ID/APPLE_KEY_ID/APPLE_PRIVATE_KEY 미설정. 회원가입 시 APPLE_TOKEN_EXCHANGE_ERROR 발생, 탈퇴 시 revoke 미호출");
+			log.warn("Apple OAuth disabled — APPLE_TEAM_ID/APPLE_KEY_ID/APPLE_PRIVATE_KEY 미설정. "
+					+ "회원가입 시 APPLE_TOKEN_EXCHANGE_ERROR 발생, 탈퇴 시 revoke 미호출");
 			return;
 		}
 		if (anyBlank) {
 			throw new IllegalStateException(
-					"Apple OAuth 설정 누락 — APPLE_TEAM_ID/APPLE_KEY_ID/APPLE_PRIVATE_KEY 중 일부만 채워져 있다. 셋 다 설정하거나 셋 다 비워야 한다");
+					"Apple OAuth 설정 누락 — APPLE_TEAM_ID/APPLE_KEY_ID/APPLE_PRIVATE_KEY 중 일부만 채워져 있다. "
+							+ "셋 다 설정하거나 셋 다 비워야 한다");
 		}
 
 		try {

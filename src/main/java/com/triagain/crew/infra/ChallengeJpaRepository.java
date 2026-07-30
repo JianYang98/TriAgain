@@ -22,7 +22,8 @@ public interface ChallengeJpaRepository extends JpaRepository<ChallengeJpaEntity
 	List<ChallengeJpaEntity> findAllByCrewIdAndStatus(String crewId, ChallengeStatus status);
 
 	/** 크루 멤버별 SUCCESS 챌린지 수 집계 */
-	@Query("SELECT c.userId, COUNT(c) FROM ChallengeJpaEntity c WHERE c.crewId = :crewId AND c.status = 'SUCCESS' GROUP BY c.userId")
+	@Query("SELECT c.userId, COUNT(c) FROM ChallengeJpaEntity c "
+			+ "WHERE c.crewId = :crewId AND c.status = 'SUCCESS' GROUP BY c.userId")
 	List<Object[]> countSuccessGroupByUserId(@Param("crewId") String crewId);
 
 	/** 마감 초과 + 미인증 IN_PROGRESS 챌린지 조회 — 실패 판정 스케줄러에서 사용 */
@@ -54,11 +55,13 @@ public interface ChallengeJpaRepository extends JpaRepository<ChallengeJpaEntity
 			@Param("status") ChallengeStatus status);
 
 	/** 유저·크루의 최대 사이클 번호 조회 — 다음 사이클 번호 결정 */
-	@Query("SELECT COALESCE(MAX(c.cycleNumber), 0) FROM ChallengeJpaEntity c WHERE c.userId = :userId AND c.crewId = :crewId")
+	@Query("SELECT COALESCE(MAX(c.cycleNumber), 0) FROM ChallengeJpaEntity c "
+			+ "WHERE c.userId = :userId AND c.crewId = :crewId")
 	int findMaxCycleNumber(@Param("userId") String userId, @Param("crewId") String crewId);
 
 	/** 유저·크루의 SUCCESS 챌린지 수 조회 — 작심삼일 달성 횟수 */
-	@Query("SELECT COUNT(c) FROM ChallengeJpaEntity c WHERE c.userId = :userId AND c.crewId = :crewId AND c.status = 'SUCCESS'")
+	@Query("SELECT COUNT(c) FROM ChallengeJpaEntity c "
+			+ "WHERE c.userId = :userId AND c.crewId = :crewId AND c.status = 'SUCCESS'")
 	int countSuccessByUserIdAndCrewId(@Param("userId") String userId, @Param("crewId") String crewId);
 
 	/** 유저·크루의 챌린지 존재 여부 확인 — ACTIVE 크루 탈퇴 시 챌린지 시작 여부 판단 */

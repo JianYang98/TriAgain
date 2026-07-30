@@ -72,7 +72,9 @@ public class UserCrewMembershipAdapter implements CrewMembershipPort {
 	public void deleteCrewWithAllData(String crewId) {
 		// 1) reviews (report_id FK → reports)
 		entityManager.createNativeQuery(
-				"DELETE FROM reviews WHERE report_id IN (SELECT id FROM reports WHERE verification_id IN (SELECT id FROM verifications WHERE crew_id = :crewId))")
+				"DELETE FROM reviews WHERE report_id IN ("
+						+ "SELECT id FROM reports WHERE verification_id IN ("
+						+ "SELECT id FROM verifications WHERE crew_id = :crewId))")
 				.setParameter("crewId", crewId).executeUpdate();
 		// 2) reports (verification_id FK → verifications)
 		entityManager.createNativeQuery(

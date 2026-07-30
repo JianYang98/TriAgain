@@ -33,7 +33,8 @@ public class InternalApiKeyFilter extends OncePerRequestFilter {
 			response.setStatus(HttpServletResponse.SC_FORBIDDEN);
 			response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 			response.getWriter().write(
-					"{\"success\":false,\"data\":null,\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Invalid internal API key\"}}");
+					"{\"success\":false,\"data\":null,"
+							+ "\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Invalid internal API key\"}}");
 			return;
 		}
 

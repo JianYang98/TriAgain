@@ -36,8 +36,8 @@ public interface CrewJpaRepository extends JpaRepository<CrewJpaEntity, String> 
 
 	/** 낙관적 락 — version 일치 시만 current_members 갱신 + version 증가 */
 	@Modifying
-	@Query("UPDATE CrewJpaEntity c SET c.currentMembers = :currentMembers, c.version = c.version + 1 " +
-			"WHERE c.id = :id AND c.version = :version")
+	@Query("UPDATE CrewJpaEntity c SET c.currentMembers = :currentMembers, c.version = c.version + 1 "
+			+ "WHERE c.id = :id AND c.version = :version")
 	int updateCurrentMembersWithVersion(
 			@Param("id") String id,
 			@Param("currentMembers") int currentMembers,
@@ -50,11 +50,13 @@ public interface CrewJpaRepository extends JpaRepository<CrewJpaEntity, String> 
 	int incrementMembersIfNotFull(@Param("id") String id);
 
 	/** 공개 크루 검색 — 키워드/카테고리 필터 + 상태 조건 */
-	@Query("SELECT c FROM CrewJpaEntity c WHERE c.visibility = :visibility " +
-			"AND (c.status = 'RECRUITING' OR (c.status = 'ACTIVE' AND c.allowLateJoin = true AND c.endDate >= :minEndDate)) " +
-			"AND (:keyword IS NULL OR LOWER(c.name) LIKE :keyword ESCAPE '\\' OR LOWER(c.goal) LIKE :keyword ESCAPE '\\') " +
-			"AND (:category IS NULL OR c.category = :category) " +
-			"ORDER BY c.createdAt DESC")
+	@Query("SELECT c FROM CrewJpaEntity c WHERE c.visibility = :visibility "
+			+ "AND (c.status = 'RECRUITING' "
+			+ "OR (c.status = 'ACTIVE' AND c.allowLateJoin = true AND c.endDate >= :minEndDate)) "
+			+ "AND (:keyword IS NULL OR LOWER(c.name) LIKE :keyword ESCAPE '\\' "
+			+ "OR LOWER(c.goal) LIKE :keyword ESCAPE '\\') "
+			+ "AND (:category IS NULL OR c.category = :category) "
+			+ "ORDER BY c.createdAt DESC")
 	Slice<CrewJpaEntity> searchPublicCrews(
 			@Param("visibility") CrewVisibility visibility,
 			@Param("keyword") String keyword,
