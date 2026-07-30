@@ -6,6 +6,39 @@
 
 ---
 
+> 📌 아래 5건은 PR #126(checkstyle 서프레션 해체) 리뷰에서 나왔다. 전부 코드 의미를 바꾸는
+> 수정이라 그 PR의 바이트코드 동일성 증명을 깨뜨려 이관했다.
+
+### [2026-07-31] 초대코드 생성이 `Math.random()` — `SecureRandom` 전환 검토
+
+- 현재 상태: `Crew.generateInviteCode()`가 `Math.random()`으로 31자 중 6자를 뽑는다(31⁶ ≈ 8.9억). `Math.random()`은 48비트 LCG인 `java.util.Random` 하나를 공유한다.
+- 필요 시점: 비공개 크루가 늘어 초대코드가 실질적 접근 통제 수단이 될 때
+- 이유: LCG는 출력을 충분히 모으면 이후 값을 예측할 여지가 있다. Phase 1 규모에서 실효 피해가 작고 전환은 인스턴스 교체 수준이라 미룬다.
+
+### [2026-07-31] `reviews.report_id`에 유니크 제약이 없는데 단건 반환
+
+- 현재 상태: `ReviewJpaRepository.findByReportId`가 `Optional`을 반환하는데, 마이그레이션 전수 확인 결과 `reviews.report_id`에 유니크 제약이 없다.
+- 필요 시점: 한 신고에 리뷰가 2건 이상 생길 수 있는 흐름이 생길 때 (재심사 등)
+- 이유: "신고당 리뷰 1건"이 코드로만 지켜지고 DB로는 안 지켜진다. 깨지면 `IncorrectResultSizeDataAccessException`으로 조회가 실패한다. 유니크 제약을 걸지 `List` 반환으로 바꿀지는 도메인 결정이 먼저다.
+
+### [2026-07-31] `NotificationTargetQueryAdapter`의 다중 조인 네이티브 쿼리 3개 → MyBatis 이관 검토
+
+- 현재 상태: `findReminderTargets` 등 3개가 네이티브 SQL을 `EntityManager`로 직접 실행하고 결과를 수동 매핑한다.
+- 필요 시점: 이 쿼리들을 수정할 일이 생길 때 (그 PR에서 함께)
+- 이유: 기술 선택("JPA=CRUD/쓰기, MyBatis=복잡한 조회")의 경계 밖이지만 동작에 문제가 없고, 이관은 XML 매퍼 신설을 수반한다. 위 [2026-06-12] `CrewJpaAdapter` 항목과 같은 성격이라 함께 볼 것.
+
+### [2026-07-31] 메서드 길이 "30줄"의 정의가 가이드라인 문구와 checkstyle 설정에서 다름
+
+- 현재 상태: 가이드라인은 "30 non-blank lines"인데 `MethodLength`는 `countEmpty=false`라 **빈 줄과 `//` 주석을 모두** 제외한다. `Crew.create`가 각각 34줄 / 28줄로 갈린다.
+- 필요 시점: 다음에 하네스 파일을 손댈 때 (하네스 변경 트랙)
+- 이유: 사람과 도구가 다른 답을 내면 리뷰에서 반복해 부딪힌다(PR #126에서 실제로 4파일). 문구를 고칠지 설정을 고칠지는 사용자 판단이 필요하다.
+
+### [2026-07-31] `scripts/tabify.py` — 주석 속 `"""`가 텍스트 블록 상태를 뒤집을 수 있음
+
+- 현재 상태: `convert()`가 렉시컬 문맥 없이 `'"""' in line`으로만 토글한다. `// """` 주석 두 개가 진짜 텍스트 블록을 감싸면 그 본문이 tabify되어 SQL이 조용히 바뀐다.
+- 필요 시점: **4번 작업에서 `src/test`에 tabify를 다시 돌리기 전**
+- 이유: PR #126에서는 발동 조건이 없어(주석 안 `"""` 0건) 고치지 않았다. `src/test`에 돌리기 전에는 가드가 필요하다.
+
 ### [2026-07-26] 부하서버 GC를 Serial → G1으로 전환할지 (측정 완료, 전환 보류)
 
 - 현재 상태: 부하서버 JVM = **Serial GC** (1GiB 에르고노믹스). 2026-07-13/14 Serial↔G1 통제쌍 실험 완료 — 8블록(2밤 × 2전략 PESS/COND × 2암 게이트 on/off). 정본: `load-test/results/0714/serial-vs-g1/` 통합비교 4쌍.
@@ -31,6 +64,7 @@
 - 필요 시점: FK 구조 변경, 또는 삭제 경로 추가 시
 - 이유: 이번 범위에서 공유 추출을 하려면 withdrawal 어댑터(`UserCrewMembershipAdapter`)까지 수정해야 해 범위를 초과. 복제를 허용하되 기록으로 남긴다.
 - 추가 미처리: FK-safe 크루 삭제가 `dead_letters`(target_id=crewId, CREW_ACTIVATE/CREW_COMPLETE 타입)는 정리하지 않음 — `deleteCrewWithAssociations`/`deleteCrewWithAllData` 공유 추출 시 함께 처리 검토(자동 재시도 스케줄러 없어 기능 영향은 없음).
+- 추가 (2026-07-31, PR #126 리뷰): 두 곳 모두 **네이티브 SQL을 `EntityManager`로 직접 실행**한다는 지적도 나왔다. 공유 추출을 할 때 "한 곳으로 모으기"와 "JPA 리포지토리/MyBatis로 옮기기"를 같이 볼 것 — 위 [2026-07-31] `NotificationTargetQueryAdapter` 항목과 같은 성격이다.
 
 ### [2026-06-11] permitAll 공개 경로 목록이 SecurityConfig/DevSecurityConfig에 중복 — 공유 상수 추출 후보
 
