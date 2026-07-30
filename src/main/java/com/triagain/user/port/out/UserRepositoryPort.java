@@ -1,9 +1,9 @@
 package com.triagain.user.port.out;
 
-import com.triagain.user.domain.model.User;
-
 import java.util.List;
 import java.util.Optional;
+
+import com.triagain.user.domain.model.User;
 
 public interface UserRepositoryPort {
 

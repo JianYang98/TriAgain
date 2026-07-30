@@ -1,5 +1,9 @@
 package com.triagain.user.application;
 
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.triagain.common.auth.JwtProvider;
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
@@ -9,9 +13,6 @@ import com.triagain.user.port.out.AppleOAuthPort;
 import com.triagain.user.port.out.AppleTokenVerifierPort;
 import com.triagain.user.port.out.AppleTokenVerifierPort.AppleUserInfo;
 import com.triagain.user.port.out.UserRepositoryPort;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AppleSignupService implements AppleSignupUseCase {

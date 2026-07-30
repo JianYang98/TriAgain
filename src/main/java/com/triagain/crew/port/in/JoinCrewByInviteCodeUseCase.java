@@ -1,8 +1,8 @@
 package com.triagain.crew.port.in;
 
-import com.triagain.crew.domain.vo.CrewRole;
-
 import java.time.LocalDateTime;
+
+import com.triagain.crew.domain.vo.CrewRole;
 
 public interface JoinCrewByInviteCodeUseCase {
 

@@ -1,9 +1,9 @@
 package com.triagain.crew.domain.model;
 
+import java.time.LocalDateTime;
+
 import com.triagain.common.util.IdGenerator;
 import com.triagain.crew.domain.vo.CrewRole;
-
-import java.time.LocalDateTime;
 
 public class CrewMember {
 

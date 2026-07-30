@@ -1,11 +1,12 @@
 package com.triagain.crew.application.scheduler;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /** 서버 시작 시 Crew 컨텍스트 밀린 스케줄러 작업 보정 — 활성화 → 실패 → 종료 순서 보장 */
 @Slf4j

@@ -1,10 +1,10 @@
 package com.triagain.common.port.out;
 
-import com.triagain.common.domain.DeadLetter;
-import com.triagain.common.domain.DeadLetterTaskType;
-
 import java.time.LocalDateTime;
 import java.util.List;
+
+import com.triagain.common.domain.DeadLetter;
+import com.triagain.common.domain.DeadLetterTaskType;
 
 public interface DeadLetterRepositoryPort {
 

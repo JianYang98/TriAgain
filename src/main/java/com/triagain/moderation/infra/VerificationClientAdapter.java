@@ -1,12 +1,14 @@
 package com.triagain.moderation.infra;
 
+import java.util.Optional;
+
+import org.springframework.stereotype.Component;
+
 import com.triagain.moderation.port.out.VerificationPort;
 import com.triagain.verification.port.in.VerificationModerationUseCase;
 import com.triagain.verification.port.in.VerificationModerationUseCase.VerificationInfoDto;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
 
-import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor

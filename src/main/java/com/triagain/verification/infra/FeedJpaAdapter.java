@@ -1,10 +1,12 @@
 package com.triagain.verification.infra;
 
-import com.triagain.verification.port.out.FeedQueryPort;
-import lombok.RequiredArgsConstructor;
+import java.util.List;
+
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
+import com.triagain.verification.port.out.FeedQueryPort;
+
+import lombok.RequiredArgsConstructor;
 
 @Repository
 @RequiredArgsConstructor

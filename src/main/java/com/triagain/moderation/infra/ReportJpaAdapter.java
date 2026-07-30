@@ -1,11 +1,13 @@
 package com.triagain.moderation.infra;
 
-import com.triagain.moderation.domain.model.Report;
-import com.triagain.moderation.port.out.ReportRepositoryPort;
-import lombok.RequiredArgsConstructor;
+import java.util.Optional;
+
 import org.springframework.stereotype.Repository;
 
-import java.util.Optional;
+import com.triagain.moderation.domain.model.Report;
+import com.triagain.moderation.port.out.ReportRepositoryPort;
+
+import lombok.RequiredArgsConstructor;
 
 @Repository
 @RequiredArgsConstructor

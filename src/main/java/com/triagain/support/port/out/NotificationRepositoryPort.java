@@ -1,11 +1,11 @@
 package com.triagain.support.port.out;
 
-import com.triagain.support.domain.model.Notification;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+
+import com.triagain.support.domain.model.Notification;
 
 public interface NotificationRepositoryPort {
 

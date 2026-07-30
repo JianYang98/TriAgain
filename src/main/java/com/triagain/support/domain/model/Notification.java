@@ -1,11 +1,10 @@
 package com.triagain.support.domain.model;
 
-import com.triagain.support.domain.vo.NotificationTargetType;
-import com.triagain.support.domain.vo.NotificationType;
+import java.time.LocalDateTime;
 
 import com.triagain.common.util.IdGenerator;
-
-import java.time.LocalDateTime;
+import com.triagain.support.domain.vo.NotificationTargetType;
+import com.triagain.support.domain.vo.NotificationType;
 
 public class Notification {
 

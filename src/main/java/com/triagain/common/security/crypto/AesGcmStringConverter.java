@@ -1,18 +1,20 @@
 package com.triagain.common.security.crypto;
 
-import jakarta.annotation.PostConstruct;
-import jakarta.persistence.AttributeConverter;
-import jakarta.persistence.Converter;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
+import java.nio.ByteBuffer;
+import java.security.SecureRandom;
+import java.util.Base64;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import java.nio.ByteBuffer;
-import java.security.SecureRandom;
-import java.util.Base64;
+
+import jakarta.annotation.PostConstruct;
+import jakarta.persistence.AttributeConverter;
+import jakarta.persistence.Converter;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 /**
  * AES-256-GCM 문자열 컬럼 암호화 컨버터 — Apple refresh_token 등 장기 자격증명 저장용.

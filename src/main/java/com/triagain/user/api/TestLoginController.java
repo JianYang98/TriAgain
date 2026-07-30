@@ -1,5 +1,15 @@
 package com.triagain.user.api;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+
+import org.springframework.context.annotation.Profile;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.triagain.common.auth.JwtProvider;
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
@@ -8,15 +18,8 @@ import com.triagain.user.domain.model.User;
 import com.triagain.user.port.in.KakaoLoginUseCase.KakaoLoginResult;
 import com.triagain.user.port.in.KakaoLoginUseCase.LoginUserInfo;
 import com.triagain.user.port.out.UserRepositoryPort;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Profile;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/auth")

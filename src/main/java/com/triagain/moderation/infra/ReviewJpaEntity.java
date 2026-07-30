@@ -1,8 +1,7 @@
 package com.triagain.moderation.infra;
 
-import com.triagain.moderation.domain.model.Review;
-import com.triagain.moderation.domain.vo.ReviewDecision;
-import com.triagain.moderation.domain.vo.ReviewerType;
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -10,7 +9,9 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import java.time.LocalDateTime;
+import com.triagain.moderation.domain.model.Review;
+import com.triagain.moderation.domain.vo.ReviewDecision;
+import com.triagain.moderation.domain.vo.ReviewerType;
 
 @Entity
 @Table(name = "reviews")

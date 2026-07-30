@@ -1,5 +1,15 @@
 package com.triagain.crew.application;
 
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.triagain.crew.domain.model.Challenge;
 import com.triagain.crew.domain.model.Crew;
 import com.triagain.crew.domain.vo.ChallengeStatus;
@@ -8,16 +18,8 @@ import com.triagain.crew.port.in.GetMyCrewsUseCase;
 import com.triagain.crew.port.out.ChallengeRepositoryPort;
 import com.triagain.crew.port.out.CrewRepositoryPort;
 import com.triagain.crew.port.out.VerificationQueryPort;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor

@@ -1,34 +1,9 @@
 package com.triagain.crew.api;
 
-import com.triagain.common.auth.AuthenticatedUser;
-import com.triagain.common.response.ApiResponse;
-import com.triagain.crew.port.in.CreateCrewUseCase;
-import com.triagain.crew.port.in.CreateCrewUseCase.CreateCrewCommand;
-import com.triagain.crew.port.in.CreateCrewUseCase.CreateCrewResult;
-import com.triagain.crew.port.in.DeleteCrewUseCase;
-import com.triagain.crew.port.in.EditCrewUseCase;
-import com.triagain.crew.port.in.EditCrewUseCase.EditCrewCommand;
-import com.triagain.crew.port.in.EditCrewUseCase.EditCrewResult;
-import com.triagain.crew.port.in.GetCrewByInviteCodeUseCase;
-import com.triagain.crew.port.in.GetCrewByInviteCodeUseCase.CrewInvitePreviewResult;
-import com.triagain.crew.port.in.GetCrewUseCase;
-import com.triagain.crew.port.in.GetCrewUseCase.CrewDetailResult;
-import com.triagain.crew.port.in.GetMyCrewsUseCase;
-import com.triagain.crew.port.in.GetMyCrewsUseCase.CrewSummaryResult;
-import com.triagain.crew.port.in.GetCrewPreviewUseCase;
-import com.triagain.crew.port.in.JoinCrewByInviteCodeUseCase;
-import com.triagain.crew.port.in.JoinCrewByInviteCodeUseCase.JoinByInviteCodeCommand;
-import com.triagain.crew.port.in.JoinCrewByInviteCodeUseCase.JoinByInviteCodeResult;
-import com.triagain.crew.domain.vo.CrewCategory;
-import com.triagain.crew.port.in.JoinCrewUseCase;
-import com.triagain.crew.port.in.JoinCrewUseCase.JoinCrewCommand;
-import com.triagain.crew.port.in.JoinCrewUseCase.JoinCrewResult;
-import com.triagain.crew.port.in.LeaveCrewUseCase;
-import com.triagain.crew.port.in.SearchCrewsUseCase;
-import com.triagain.crew.port.in.SearchCrewsUseCase.SearchCrewsQuery;
-import com.triagain.crew.port.in.SearchCrewsUseCase.SearchCrewsResult;
+import java.util.List;
+
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -41,7 +16,35 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
+import com.triagain.common.auth.AuthenticatedUser;
+import com.triagain.common.response.ApiResponse;
+import com.triagain.crew.domain.vo.CrewCategory;
+import com.triagain.crew.port.in.CreateCrewUseCase;
+import com.triagain.crew.port.in.CreateCrewUseCase.CreateCrewCommand;
+import com.triagain.crew.port.in.CreateCrewUseCase.CreateCrewResult;
+import com.triagain.crew.port.in.DeleteCrewUseCase;
+import com.triagain.crew.port.in.EditCrewUseCase;
+import com.triagain.crew.port.in.EditCrewUseCase.EditCrewCommand;
+import com.triagain.crew.port.in.EditCrewUseCase.EditCrewResult;
+import com.triagain.crew.port.in.GetCrewByInviteCodeUseCase;
+import com.triagain.crew.port.in.GetCrewByInviteCodeUseCase.CrewInvitePreviewResult;
+import com.triagain.crew.port.in.GetCrewPreviewUseCase;
+import com.triagain.crew.port.in.GetCrewUseCase;
+import com.triagain.crew.port.in.GetCrewUseCase.CrewDetailResult;
+import com.triagain.crew.port.in.GetMyCrewsUseCase;
+import com.triagain.crew.port.in.GetMyCrewsUseCase.CrewSummaryResult;
+import com.triagain.crew.port.in.JoinCrewByInviteCodeUseCase;
+import com.triagain.crew.port.in.JoinCrewByInviteCodeUseCase.JoinByInviteCodeCommand;
+import com.triagain.crew.port.in.JoinCrewByInviteCodeUseCase.JoinByInviteCodeResult;
+import com.triagain.crew.port.in.JoinCrewUseCase;
+import com.triagain.crew.port.in.JoinCrewUseCase.JoinCrewCommand;
+import com.triagain.crew.port.in.JoinCrewUseCase.JoinCrewResult;
+import com.triagain.crew.port.in.LeaveCrewUseCase;
+import com.triagain.crew.port.in.SearchCrewsUseCase;
+import com.triagain.crew.port.in.SearchCrewsUseCase.SearchCrewsQuery;
+import com.triagain.crew.port.in.SearchCrewsUseCase.SearchCrewsResult;
+
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/crews")

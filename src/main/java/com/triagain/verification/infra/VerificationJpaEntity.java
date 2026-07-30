@@ -1,8 +1,8 @@
 package com.triagain.verification.infra;
 
-import com.triagain.verification.domain.model.Verification;
-import com.triagain.verification.domain.vo.ReviewStatus;
-import com.triagain.verification.domain.vo.VerificationStatus;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -10,8 +10,9 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import com.triagain.verification.domain.model.Verification;
+import com.triagain.verification.domain.vo.ReviewStatus;
+import com.triagain.verification.domain.vo.VerificationStatus;
 
 @Entity
 // 하루 1회 유일성은 V25의 partial unique(uk_verifications_user_crew_date_active)가 보장한다.

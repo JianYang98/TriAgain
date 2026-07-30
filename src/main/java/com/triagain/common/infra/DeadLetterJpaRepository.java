@@ -1,11 +1,12 @@
 package com.triagain.common.infra;
 
-import com.triagain.common.domain.DeadLetterStatus;
-import com.triagain.common.domain.DeadLetterTaskType;
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.time.LocalDateTime;
 import java.util.List;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.triagain.common.domain.DeadLetterStatus;
+import com.triagain.common.domain.DeadLetterTaskType;
 
 public interface DeadLetterJpaRepository extends JpaRepository<DeadLetterJpaEntity, String> {
 

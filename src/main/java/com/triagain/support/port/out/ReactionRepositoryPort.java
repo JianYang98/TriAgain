@@ -1,8 +1,8 @@
 package com.triagain.support.port.out;
 
-import com.triagain.support.domain.model.Reaction;
-
 import java.util.Optional;
+
+import com.triagain.support.domain.model.Reaction;
 
 public interface ReactionRepositoryPort {
 

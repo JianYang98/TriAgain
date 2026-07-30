@@ -1,15 +1,17 @@
 package com.triagain.user.infra;
 
-import com.triagain.common.exception.BusinessException;
-import com.triagain.common.exception.ErrorCode;
-import com.triagain.user.port.out.KakaoApiPort;
-import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+
+import com.triagain.common.exception.BusinessException;
+import com.triagain.common.exception.ErrorCode;
+import com.triagain.user.port.out.KakaoApiPort;
+
+import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor

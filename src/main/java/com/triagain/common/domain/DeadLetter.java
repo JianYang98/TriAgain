@@ -1,8 +1,8 @@
 package com.triagain.common.domain;
 
-import com.triagain.common.util.IdGenerator;
-
 import java.time.LocalDateTime;
+
+import com.triagain.common.util.IdGenerator;
 
 /** 배치 처리 실패 기록 — 재시도 및 운영 모니터링에 사용 */
 public class DeadLetter {

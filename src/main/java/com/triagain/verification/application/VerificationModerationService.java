@@ -1,13 +1,15 @@
 package com.triagain.verification.application;
 
-import com.triagain.verification.domain.model.Verification;
-import com.triagain.verification.port.in.VerificationModerationUseCase;
-import com.triagain.verification.port.out.VerificationRepositoryPort;
-import lombok.RequiredArgsConstructor;
+import java.util.Optional;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
+import com.triagain.verification.domain.model.Verification;
+import com.triagain.verification.port.in.VerificationModerationUseCase;
+import com.triagain.verification.port.out.VerificationRepositoryPort;
+
+import lombok.RequiredArgsConstructor;
 
 /** Moderation Context 전용 인증 상태 제어 서비스 */
 @Service

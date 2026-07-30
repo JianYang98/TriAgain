@@ -1,12 +1,13 @@
 package com.triagain.support.infra;
 
-import com.triagain.support.domain.model.Reaction;
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import java.time.LocalDateTime;
+import com.triagain.support.domain.model.Reaction;
 
 @Entity
 @Table(name = "reactions")

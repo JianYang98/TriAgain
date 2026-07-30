@@ -1,10 +1,10 @@
 package com.triagain.verification.port.out;
 
-import com.triagain.verification.domain.model.UploadSession;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+
+import com.triagain.verification.domain.model.UploadSession;
 
 public interface UploadSessionRepositoryPort {
 

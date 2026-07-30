@@ -1,14 +1,5 @@
 package com.triagain.crew.domain.model;
 
-import com.triagain.common.exception.BusinessException;
-import com.triagain.common.exception.ErrorCode;
-import com.triagain.crew.domain.vo.CrewCategory;
-import com.triagain.crew.domain.vo.CrewStatus;
-import com.triagain.crew.domain.vo.CrewVisibility;
-import com.triagain.crew.domain.vo.VerificationType;
-
-import com.triagain.common.util.IdGenerator;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -16,6 +7,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+
+import com.triagain.common.exception.BusinessException;
+import com.triagain.common.exception.ErrorCode;
+import com.triagain.common.util.IdGenerator;
+import com.triagain.crew.domain.vo.CrewCategory;
+import com.triagain.crew.domain.vo.CrewStatus;
+import com.triagain.crew.domain.vo.CrewVisibility;
+import com.triagain.crew.domain.vo.VerificationType;
 
 public class Crew {
 

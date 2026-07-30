@@ -1,18 +1,5 @@
 package com.triagain.user.infra;
 
-import com.triagain.common.exception.BusinessException;
-import com.triagain.common.exception.ErrorCode;
-import com.triagain.user.port.out.AppleTokenVerifierPort;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.Jwts;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientException;
-
 import java.math.BigInteger;
 import java.security.KeyFactory;
 import java.security.PublicKey;
@@ -21,6 +8,21 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
+
+import com.triagain.common.exception.BusinessException;
+import com.triagain.common.exception.ErrorCode;
+import com.triagain.user.port.out.AppleTokenVerifierPort;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
 
 @Component
 public class AppleTokenVerifierAdapter implements AppleTokenVerifierPort {

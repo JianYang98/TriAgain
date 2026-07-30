@@ -1,10 +1,15 @@
 package com.triagain.user.infra;
 
-import com.triagain.common.exception.BusinessException;
-import com.triagain.common.exception.ErrorCode;
-import com.triagain.user.port.out.AppleOAuthPort;
-import io.jsonwebtoken.Jwts;
+import java.security.KeyFactory;
+import java.security.interfaces.ECPrivateKey;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.time.Instant;
+import java.util.Base64;
+import java.util.Date;
+import java.util.Map;
+
 import jakarta.annotation.PostConstruct;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,13 +20,11 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
-import java.security.KeyFactory;
-import java.security.interfaces.ECPrivateKey;
-import java.security.spec.PKCS8EncodedKeySpec;
-import java.time.Instant;
-import java.util.Base64;
-import java.util.Date;
-import java.util.Map;
+import com.triagain.common.exception.BusinessException;
+import com.triagain.common.exception.ErrorCode;
+import com.triagain.user.port.out.AppleOAuthPort;
+
+import io.jsonwebtoken.Jwts;
 
 /**
  * Apple OAuth 어댑터 — authorizationCode → refresh_token 교환 + refresh_token revoke 호출.

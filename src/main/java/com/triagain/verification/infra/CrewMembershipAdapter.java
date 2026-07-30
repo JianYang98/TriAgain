@@ -1,11 +1,13 @@
 package com.triagain.verification.infra;
 
+import org.springframework.stereotype.Component;
+
 import com.triagain.crew.port.in.CrewMembershipQueryUseCase;
 import com.triagain.crew.port.in.CrewMembershipQueryUseCase.CrewPeriodDto;
 import com.triagain.crew.port.in.CrewMembershipQueryUseCase.CrewVerificationWindowDto;
 import com.triagain.verification.port.out.CrewPort;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor

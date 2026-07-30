@@ -1,15 +1,17 @@
 package com.triagain.crew.infra;
 
-import com.triagain.crew.domain.model.Challenge;
-import com.triagain.crew.domain.vo.ChallengeStatus;
-import com.triagain.crew.port.out.ChallengeRepositoryPort;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Repository;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import org.springframework.stereotype.Repository;
+
+import com.triagain.crew.domain.model.Challenge;
+import com.triagain.crew.domain.vo.ChallengeStatus;
+import com.triagain.crew.port.out.ChallengeRepositoryPort;
+
+import lombok.RequiredArgsConstructor;
 
 @Repository
 @RequiredArgsConstructor

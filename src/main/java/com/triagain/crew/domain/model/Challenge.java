@@ -1,13 +1,12 @@
 package com.triagain.crew.domain.model;
 
-import com.triagain.common.exception.BusinessException;
-import com.triagain.common.exception.ErrorCode;
-import com.triagain.crew.domain.vo.ChallengeStatus;
-
-import com.triagain.common.util.IdGenerator;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+
+import com.triagain.common.exception.BusinessException;
+import com.triagain.common.exception.ErrorCode;
+import com.triagain.common.util.IdGenerator;
+import com.triagain.crew.domain.vo.ChallengeStatus;
 
 public class Challenge {
 

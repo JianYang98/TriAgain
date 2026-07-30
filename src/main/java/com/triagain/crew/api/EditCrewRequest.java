@@ -1,8 +1,9 @@
 package com.triagain.crew.api;
 
+import jakarta.validation.constraints.Size;
+
 import com.triagain.crew.domain.vo.CrewCategory;
 import com.triagain.crew.domain.vo.CrewVisibility;
-import jakarta.validation.constraints.Size;
 
 public record EditCrewRequest(
 		@Size(max = 50) String name,

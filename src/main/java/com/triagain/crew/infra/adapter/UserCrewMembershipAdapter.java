@@ -1,5 +1,11 @@
 package com.triagain.crew.infra.adapter;
 
+import java.util.List;
+
+import jakarta.persistence.EntityManager;
+
+import org.springframework.stereotype.Repository;
+
 import com.triagain.crew.domain.model.Challenge;
 import com.triagain.crew.domain.vo.ChallengeStatus;
 import com.triagain.crew.infra.ChallengeJpaEntity;
@@ -7,11 +13,8 @@ import com.triagain.crew.infra.ChallengeJpaRepository;
 import com.triagain.crew.infra.CrewJpaRepository;
 import com.triagain.crew.infra.CrewMemberJpaRepository;
 import com.triagain.user.port.out.CrewMembershipPort;
-import jakarta.persistence.EntityManager;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Repository;
 
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 /**
  * 회원탈퇴용 CrewMembershipPort 어댑터 — User Context가 정의한 Port를 Crew Context가 구현.

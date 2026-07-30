@@ -1,19 +1,21 @@
 package com.triagain.verification.application;
 
+import java.time.Clock;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.triagain.verification.domain.model.Verification;
 import com.triagain.verification.port.in.GetMyVerificationsUseCase;
 import com.triagain.verification.port.out.ChallengePort;
 import com.triagain.verification.port.out.CrewPort;
 import com.triagain.verification.port.out.CrewPort.CrewPeriod;
 import com.triagain.verification.port.out.VerificationRepositoryPort;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor

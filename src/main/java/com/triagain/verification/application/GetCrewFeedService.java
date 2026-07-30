@@ -1,15 +1,17 @@
 package com.triagain.verification.application;
 
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.triagain.verification.port.in.GetCrewFeedUseCase;
 import com.triagain.verification.port.out.ChallengePort;
 import com.triagain.verification.port.out.CrewPort;
 import com.triagain.verification.port.out.FeedQueryPort;
 import com.triagain.verification.port.out.FeedQueryPort.FeedVerificationRow;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor

@@ -1,12 +1,14 @@
 package com.triagain.user.infra;
 
-import com.triagain.user.domain.model.User;
-import com.triagain.user.port.out.UserRepositoryPort;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Repository;
-
 import java.util.List;
 import java.util.Optional;
+
+import org.springframework.stereotype.Repository;
+
+import com.triagain.user.domain.model.User;
+import com.triagain.user.port.out.UserRepositoryPort;
+
+import lombok.RequiredArgsConstructor;
 
 @Repository
 @RequiredArgsConstructor

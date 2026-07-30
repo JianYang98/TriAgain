@@ -1,11 +1,11 @@
 package com.triagain.crew.port.out;
 
-import com.triagain.crew.domain.model.Challenge;
-import com.triagain.crew.domain.vo.ChallengeStatus;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import com.triagain.crew.domain.model.Challenge;
+import com.triagain.crew.domain.vo.ChallengeStatus;
 
 public interface ChallengeRepositoryPort {
 

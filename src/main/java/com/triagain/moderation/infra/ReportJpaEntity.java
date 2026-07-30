@@ -1,8 +1,7 @@
 package com.triagain.moderation.infra;
 
-import com.triagain.moderation.domain.model.Report;
-import com.triagain.moderation.domain.vo.ReportReason;
-import com.triagain.moderation.domain.vo.ReportStatus;
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -11,7 +10,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
-import java.time.LocalDateTime;
+import com.triagain.moderation.domain.model.Report;
+import com.triagain.moderation.domain.vo.ReportReason;
+import com.triagain.moderation.domain.vo.ReportStatus;
 
 @Entity
 @Table(name = "reports", uniqueConstraints = {

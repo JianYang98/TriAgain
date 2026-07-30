@@ -1,14 +1,14 @@
 package com.triagain.crew.application;
 
+import java.util.List;
+import java.util.Map;
+
 import com.triagain.crew.domain.model.Crew;
 import com.triagain.crew.domain.vo.CrewStatus;
 import com.triagain.crew.port.in.GetCrewByInviteCodeUseCase.CrewInvitePreviewResult;
 import com.triagain.crew.port.in.GetCrewByInviteCodeUseCase.MemberSummary;
 import com.triagain.crew.port.out.UserPort;
 import com.triagain.crew.port.out.UserPort.UserProfile;
-
-import java.util.List;
-import java.util.Map;
 
 /** 크루 미리보기 응답 조립 — 초대코드/크루ID 미리보기에서 공통으로 사용 */
 class CrewPreviewAssembler {

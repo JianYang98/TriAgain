@@ -1,8 +1,20 @@
 package com.triagain.verification.application;
 
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.triagain.common.domain.DeadlinePolicy;
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
-import com.triagain.common.domain.DeadlinePolicy;
+import com.triagain.common.port.out.StoragePort;
+import com.triagain.verification.application.event.ChallengeSuccessEvent;
+import com.triagain.verification.application.event.CrewFirstVerificationEvent;
 import com.triagain.verification.domain.model.UploadSession;
 import com.triagain.verification.domain.model.Verification;
 import com.triagain.verification.port.in.CreateVerificationUseCase;
@@ -10,20 +22,10 @@ import com.triagain.verification.port.out.ChallengePort;
 import com.triagain.verification.port.out.ChallengePort.ChallengeInfo;
 import com.triagain.verification.port.out.CrewPort;
 import com.triagain.verification.port.out.CrewPort.CrewVerificationWindowInfo;
-import com.triagain.common.port.out.StoragePort;
-import com.triagain.verification.application.event.ChallengeSuccessEvent;
-import com.triagain.verification.application.event.CrewFirstVerificationEvent;
 import com.triagain.verification.port.out.UploadSessionRepositoryPort;
 import com.triagain.verification.port.out.VerificationRepositoryPort;
-import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor

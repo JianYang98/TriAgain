@@ -1,8 +1,7 @@
 package com.triagain.common.infra;
 
-import com.triagain.common.domain.DeadLetter;
-import com.triagain.common.domain.DeadLetterStatus;
-import com.triagain.common.domain.DeadLetterTaskType;
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -10,7 +9,9 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import java.time.LocalDateTime;
+import com.triagain.common.domain.DeadLetter;
+import com.triagain.common.domain.DeadLetterStatus;
+import com.triagain.common.domain.DeadLetterTaskType;
 
 @Entity
 @Table(name = "dead_letters")

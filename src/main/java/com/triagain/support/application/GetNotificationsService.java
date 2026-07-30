@@ -1,15 +1,15 @@
 package com.triagain.support.application;
 
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.triagain.support.port.in.GetNotificationsUseCase;
 import com.triagain.support.port.out.NotificationRepositoryPort;
 import com.triagain.support.port.out.NotificationRepositoryPort.NotificationSlice;
 
 import lombok.RequiredArgsConstructor;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor

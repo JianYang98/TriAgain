@@ -1,5 +1,8 @@
 package com.triagain.user.application;
 
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.triagain.common.auth.JwtProvider;
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
@@ -8,9 +11,8 @@ import com.triagain.user.port.in.SignupUseCase;
 import com.triagain.user.port.out.KakaoApiPort;
 import com.triagain.user.port.out.KakaoApiPort.KakaoUserInfo;
 import com.triagain.user.port.out.UserRepositoryPort;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor

@@ -1,14 +1,13 @@
 package com.triagain.verification.domain.model;
 
-import com.triagain.common.exception.BusinessException;
-import com.triagain.common.exception.ErrorCode;
-import com.triagain.verification.domain.vo.ReviewStatus;
-import com.triagain.verification.domain.vo.VerificationStatus;
-
-import com.triagain.common.util.IdGenerator;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+
+import com.triagain.common.exception.BusinessException;
+import com.triagain.common.exception.ErrorCode;
+import com.triagain.common.util.IdGenerator;
+import com.triagain.verification.domain.vo.ReviewStatus;
+import com.triagain.verification.domain.vo.VerificationStatus;
 
 public class Verification {
 

@@ -1,7 +1,7 @@
 package com.triagain.verification.infra;
 
-import com.triagain.verification.domain.model.UploadSession;
-import com.triagain.verification.domain.vo.UploadSessionStatus;
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -11,7 +11,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import java.time.LocalDateTime;
+import com.triagain.verification.domain.model.UploadSession;
+import com.triagain.verification.domain.vo.UploadSessionStatus;
 
 @Entity
 @Table(name = "upload_session")

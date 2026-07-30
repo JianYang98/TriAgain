@@ -1,5 +1,16 @@
 package com.triagain.user.api;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.triagain.common.response.ApiResponse;
 import com.triagain.user.port.in.AppleLoginUseCase;
 import com.triagain.user.port.in.AppleLoginUseCase.AppleLoginCommand;
@@ -16,16 +27,8 @@ import com.triagain.user.port.in.RefreshTokenUseCase.RefreshResult;
 import com.triagain.user.port.in.SignupUseCase;
 import com.triagain.user.port.in.SignupUseCase.SignupCommand;
 import com.triagain.user.port.in.SignupUseCase.SignupResult;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/auth")

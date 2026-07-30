@@ -1,11 +1,10 @@
 package com.triagain.moderation.domain.model;
 
-import com.triagain.moderation.domain.vo.ReviewDecision;
-import com.triagain.moderation.domain.vo.ReviewerType;
+import java.time.LocalDateTime;
 
 import com.triagain.common.util.IdGenerator;
-
-import java.time.LocalDateTime;
+import com.triagain.moderation.domain.vo.ReviewDecision;
+import com.triagain.moderation.domain.vo.ReviewerType;
 
 public class Review {
 

@@ -1,12 +1,14 @@
 package com.triagain.verification.infra;
 
+import java.util.Optional;
+
+import org.springframework.stereotype.Component;
+
 import com.triagain.crew.port.in.ChallengeQueryUseCase;
 import com.triagain.crew.port.in.ChallengeQueryUseCase.ChallengeInfoDto;
 import com.triagain.verification.port.out.ChallengePort;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
 
-import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor

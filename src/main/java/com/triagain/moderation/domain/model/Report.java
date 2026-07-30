@@ -1,13 +1,12 @@
 package com.triagain.moderation.domain.model;
 
+import java.time.LocalDateTime;
+
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
+import com.triagain.common.util.IdGenerator;
 import com.triagain.moderation.domain.vo.ReportReason;
 import com.triagain.moderation.domain.vo.ReportStatus;
-
-import com.triagain.common.util.IdGenerator;
-
-import java.time.LocalDateTime;
 
 public class Report {
 

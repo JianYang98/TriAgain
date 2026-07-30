@@ -1,10 +1,10 @@
 package com.triagain.crew.infra;
 
-import com.triagain.crew.domain.model.Crew;
-import com.triagain.crew.domain.vo.CrewCategory;
-import com.triagain.crew.domain.vo.CrewStatus;
-import com.triagain.crew.domain.vo.CrewVisibility;
-import com.triagain.crew.domain.vo.VerificationType;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.Collections;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -12,10 +12,11 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.Collections;
+import com.triagain.crew.domain.model.Crew;
+import com.triagain.crew.domain.vo.CrewCategory;
+import com.triagain.crew.domain.vo.CrewStatus;
+import com.triagain.crew.domain.vo.CrewVisibility;
+import com.triagain.crew.domain.vo.VerificationType;
 
 @Entity
 @Table(name = "crews")

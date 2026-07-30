@@ -1,15 +1,17 @@
 package com.triagain.crew.infra;
 
-import com.triagain.crew.port.out.VerificationQueryPort;
-import com.triagain.verification.port.in.CheckTodayVerificationUseCase;
-import com.triagain.verification.port.in.CountApprovedDaysUseCase;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import org.springframework.stereotype.Component;
+
+import com.triagain.crew.port.out.VerificationQueryPort;
+import com.triagain.verification.port.in.CheckTodayVerificationUseCase;
+import com.triagain.verification.port.in.CountApprovedDaysUseCase;
+
+import lombok.RequiredArgsConstructor;
 
 /** Crew → Verification 컨텍스트 간 어댑터 — CheckTodayVerificationUseCase/CountApprovedDaysUseCase에 위임 */
 @Component

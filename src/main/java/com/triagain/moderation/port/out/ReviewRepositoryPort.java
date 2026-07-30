@@ -1,8 +1,8 @@
 package com.triagain.moderation.port.out;
 
-import com.triagain.moderation.domain.model.Review;
-
 import java.util.Optional;
+
+import com.triagain.moderation.domain.model.Review;
 
 public interface ReviewRepositoryPort {
 

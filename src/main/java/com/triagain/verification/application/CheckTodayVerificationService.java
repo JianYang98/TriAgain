@@ -1,14 +1,16 @@
 package com.triagain.verification.application;
 
-import com.triagain.verification.port.in.CheckTodayVerificationUseCase;
-import com.triagain.verification.port.out.VerificationRepositoryPort;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.triagain.verification.port.in.CheckTodayVerificationUseCase;
+import com.triagain.verification.port.out.VerificationRepositoryPort;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor

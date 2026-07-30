@@ -1,20 +1,23 @@
 package com.triagain.crew.infra;
 
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+import jakarta.persistence.EntityManager;
+
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
+import org.springframework.stereotype.Repository;
+
 import com.triagain.crew.domain.model.Crew;
 import com.triagain.crew.domain.model.CrewMember;
 import com.triagain.crew.domain.vo.CrewCategory;
 import com.triagain.crew.domain.vo.CrewStatus;
 import com.triagain.crew.domain.vo.CrewVisibility;
 import com.triagain.crew.port.out.CrewRepositoryPort;
-import jakarta.persistence.EntityManager;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Slice;
-import org.springframework.stereotype.Repository;
 
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 
 @Repository
 @RequiredArgsConstructor

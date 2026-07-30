@@ -1,11 +1,10 @@
 package com.triagain.support.domain.model;
 
+import java.time.LocalDateTime;
+
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
-
 import com.triagain.common.util.IdGenerator;
-
-import java.time.LocalDateTime;
 
 public class Reaction {
 

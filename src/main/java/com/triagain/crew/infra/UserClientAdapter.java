@@ -1,14 +1,16 @@
 package com.triagain.crew.infra;
 
-import com.triagain.crew.port.out.UserPort;
-import com.triagain.user.port.in.UserProfileQueryUseCase;
-import com.triagain.user.port.in.UserProfileQueryUseCase.UserProfileDto;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Component;
+
+import com.triagain.crew.port.out.UserPort;
+import com.triagain.user.port.in.UserProfileQueryUseCase;
+import com.triagain.user.port.in.UserProfileQueryUseCase.UserProfileDto;
+
+import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor

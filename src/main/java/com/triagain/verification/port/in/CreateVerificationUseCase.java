@@ -1,10 +1,10 @@
 package com.triagain.verification.port.in;
 
-import com.triagain.verification.domain.vo.ReviewStatus;
-import com.triagain.verification.domain.vo.VerificationStatus;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+
+import com.triagain.verification.domain.vo.ReviewStatus;
+import com.triagain.verification.domain.vo.VerificationStatus;
 
 public interface CreateVerificationUseCase {
 

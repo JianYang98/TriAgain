@@ -1,14 +1,16 @@
 package com.triagain.user.application;
 
-import com.triagain.user.port.in.UserProfileQueryUseCase;
-import com.triagain.user.port.out.UserRepositoryPort;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.triagain.user.port.in.UserProfileQueryUseCase;
+import com.triagain.user.port.out.UserRepositoryPort;
+
+import lombok.RequiredArgsConstructor;
 
 /** 타 Context 전용 유저 프로필 조회 서비스 */
 @Service

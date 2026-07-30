@@ -1,14 +1,15 @@
 package com.triagain.common.scheduler;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.support.TransactionTemplate;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
+
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /** 제네릭 청크 처리 엔진 — 배치 스케줄러에서 청크 단위 트랜잭션 실행에 사용 */
 @Slf4j

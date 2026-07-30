@@ -1,10 +1,10 @@
 package com.triagain.user.domain.model;
 
-import com.triagain.common.exception.BusinessException;
-import com.triagain.common.exception.ErrorCode;
-
 import java.time.LocalDateTime;
 import java.util.regex.Pattern;
+
+import com.triagain.common.exception.BusinessException;
+import com.triagain.common.exception.ErrorCode;
 
 public class User {
 

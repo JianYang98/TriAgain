@@ -1,16 +1,18 @@
 package com.triagain.user.application;
 
+import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.triagain.common.auth.JwtProvider;
 import com.triagain.user.domain.model.User;
 import com.triagain.user.port.in.KakaoLoginUseCase;
 import com.triagain.user.port.out.KakaoApiPort;
 import com.triagain.user.port.out.KakaoApiPort.KakaoUserInfo;
 import com.triagain.user.port.out.UserRepositoryPort;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor

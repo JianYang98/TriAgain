@@ -1,16 +1,17 @@
 package com.triagain.crew.api;
 
-import com.triagain.crew.domain.vo.CrewCategory;
-import com.triagain.crew.domain.vo.CrewVisibility;
-import com.triagain.crew.domain.vo.VerificationType;
+import java.time.LocalDate;
+import java.time.LocalTime;
+
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
+import com.triagain.crew.domain.vo.CrewCategory;
+import com.triagain.crew.domain.vo.CrewVisibility;
+import com.triagain.crew.domain.vo.VerificationType;
 
 public record CreateCrewRequest(
 		@NotBlank @Size(max = 50) String name,

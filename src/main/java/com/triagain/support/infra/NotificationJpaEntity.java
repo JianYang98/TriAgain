@@ -1,8 +1,7 @@
 package com.triagain.support.infra;
 
-import com.triagain.support.domain.model.Notification;
-import com.triagain.support.domain.vo.NotificationTargetType;
-import com.triagain.support.domain.vo.NotificationType;
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -10,7 +9,9 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import java.time.LocalDateTime;
+import com.triagain.support.domain.model.Notification;
+import com.triagain.support.domain.vo.NotificationTargetType;
+import com.triagain.support.domain.vo.NotificationType;
 
 @Entity
 @Table(name = "notifications")

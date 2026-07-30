@@ -1,8 +1,8 @@
 package com.triagain.moderation.port.out;
 
-import com.triagain.moderation.domain.model.Report;
-
 import java.util.Optional;
+
+import com.triagain.moderation.domain.model.Report;
 
 public interface ReportRepositoryPort {
 

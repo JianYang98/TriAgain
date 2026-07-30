@@ -1,8 +1,8 @@
 package com.triagain.crew.infra;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.util.List;
+
+import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CrewMemberJpaRepository extends JpaRepository<CrewMemberJpaEntity, String> {
 

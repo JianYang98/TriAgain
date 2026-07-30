@@ -1,5 +1,13 @@
 package com.triagain.user.application;
 
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
 import com.triagain.user.domain.model.User;
@@ -8,13 +16,6 @@ import com.triagain.user.port.out.AppleOAuthPort;
 import com.triagain.user.port.out.CrewMembershipPort;
 import com.triagain.user.port.out.CrewMembershipPort.MembershipInfo;
 import com.triagain.user.port.out.UserRepositoryPort;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 public class WithdrawUserService implements WithdrawUserUseCase {

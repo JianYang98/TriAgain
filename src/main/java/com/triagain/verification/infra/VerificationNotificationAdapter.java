@@ -1,5 +1,13 @@
 package com.triagain.verification.infra;
 
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.stereotype.Component;
+
 import com.triagain.crew.port.in.CrewMembershipQueryUseCase;
 import com.triagain.support.domain.model.Notification;
 import com.triagain.support.domain.vo.NotificationMessageTemplate;
@@ -14,15 +22,9 @@ import com.triagain.support.port.out.NotificationTargetQueryPort.CrewFirstVerifi
 import com.triagain.user.domain.model.User;
 import com.triagain.user.port.out.UserRepositoryPort;
 import com.triagain.verification.port.out.VerificationNotificationPort;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-
-import java.time.Clock;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.List;
-import java.util.Map;
 
 /** Verification → Support 컨텍스트 간 알림 어댑터 — 챌린지 성공 및 첫 인증 알림 */
 @Slf4j

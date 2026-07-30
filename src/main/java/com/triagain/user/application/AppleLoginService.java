@@ -1,5 +1,13 @@
 package com.triagain.user.application;
 
+import java.util.Optional;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.triagain.common.auth.JwtProvider;
 import com.triagain.user.domain.model.User;
 import com.triagain.user.port.in.AppleLoginUseCase;
@@ -7,13 +15,6 @@ import com.triagain.user.port.out.AppleOAuthPort;
 import com.triagain.user.port.out.AppleTokenVerifierPort;
 import com.triagain.user.port.out.AppleTokenVerifierPort.AppleUserInfo;
 import com.triagain.user.port.out.UserRepositoryPort;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Optional;
 
 @Service
 public class AppleLoginService implements AppleLoginUseCase {

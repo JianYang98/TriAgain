@@ -1,12 +1,12 @@
 package com.triagain.verification.port.out;
 
-import com.triagain.verification.domain.model.Verification;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+
+import com.triagain.verification.domain.model.Verification;
 
 public interface VerificationRepositoryPort {
 

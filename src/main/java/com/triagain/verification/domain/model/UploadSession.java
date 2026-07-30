@@ -1,10 +1,10 @@
 package com.triagain.verification.domain.model;
 
+import java.time.LocalDateTime;
+
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
 import com.triagain.verification.domain.vo.UploadSessionStatus;
-
-import java.time.LocalDateTime;
 
 public class UploadSession {
 

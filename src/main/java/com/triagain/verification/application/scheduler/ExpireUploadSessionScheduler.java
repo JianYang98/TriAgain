@@ -1,5 +1,11 @@
 package com.triagain.verification.application.scheduler;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
 import com.triagain.common.domain.DeadLetter;
 import com.triagain.common.domain.DeadLetterTaskType;
 import com.triagain.common.port.out.DeadLetterRepositoryPort;
@@ -8,13 +14,9 @@ import com.triagain.common.scheduler.ChunkProcessor;
 import com.triagain.common.scheduler.FailedItem;
 import com.triagain.verification.domain.model.UploadSession;
 import com.triagain.verification.port.out.UploadSessionRepositoryPort;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
-
-import java.time.LocalDateTime;
-import java.util.List;
 
 @Slf4j
 @Component
