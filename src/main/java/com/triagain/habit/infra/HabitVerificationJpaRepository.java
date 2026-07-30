@@ -15,5 +15,7 @@ public interface HabitVerificationJpaRepository extends JpaRepository<HabitVerif
 	/** 습관 묶음 중 특정 날짜에 인증된 습관 ID 배치 조회 — 홈 목록 todayVerified N+1 방지 */
 	@Query("SELECT v.habitId FROM HabitVerificationJpaEntity v "
 			+ "WHERE v.habitId IN :habitIds AND v.targetDate = :targetDate")
-	List<String> findVerifiedHabitIds(@Param("habitIds") List<String> habitIds, @Param("targetDate") LocalDate targetDate);
+	List<String> findVerifiedHabitIds(
+			@Param("habitIds") List<String> habitIds,
+			@Param("targetDate") LocalDate targetDate);
 }

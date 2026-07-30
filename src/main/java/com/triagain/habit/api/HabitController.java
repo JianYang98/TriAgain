@@ -2,6 +2,8 @@ package com.triagain.habit.api;
 
 import java.util.List;
 
+import jakarta.validation.Valid;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,7 +26,6 @@ import com.triagain.habit.port.in.ResumeHabitUseCase;
 import com.triagain.habit.port.in.UpdateHabitNameUseCase;
 import com.triagain.habit.port.in.UpdateHabitNameUseCase.UpdateHabitNameCommand;
 
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 /** 습관 CRUD + 멈춤/재개 + 지난기록 API — 사이클/인증은 HabitCycleController·HabitVerificationController로 분리 */

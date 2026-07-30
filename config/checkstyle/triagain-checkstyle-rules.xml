@@ -109,10 +109,17 @@ The following rules in the Naver coding convention cannot be checked by this con
 
 		<!-- Start of Declarations chapter -->
 
-		<!-- [1-top-level-class] -->
-		<module name="OneTopLevelClass"/>
-		<message key="name.invalidPattern"
-				 value="[1-top-level-class] one.top.level.class=Top-level class {0} has to reside in its own source file."/>
+		<!--
+			[1-top-level-class]
+			<message> 는 반드시 <module> 태그 "안"에 자식으로 있어야 적용된다.
+			모듈 태그를 self-closing(/>)으로 닫으면 뒤따르는 <message>는 밖으로 떨어져 나가
+			무시된다 — XML 문법은 유효해서 에러도 안 난다. key 값도 checkstyle 내부 이름
+			(one.top.level.class)과 정확히 일치해야 하며, 다른 값이면 마찬가지로 조용히 무시된다.
+		-->
+		<module name="OneTopLevelClass">
+			<message key="one.top.level.class"
+					 value="[1-top-level-class] Top-level class {0} has to reside in its own source file."/>
+		</module>
 
 		<!-- [avoid-star-import] -->
 		<module name="AvoidStarImport">
@@ -137,9 +144,14 @@ The following rules in the Naver coding convention cannot be checked by this con
 					 value="[newline-after-annotation] Annotation ''{0}'' should be alone on line."/>
 		</module>
 
-		<!-- [1-state-per-line] -->
+		<!--
+			[1-state-per-line]
+			key 는 이 모듈이 실제로 던지는 이름(multiple.statements.line)과 정확히 일치해야
+			한다. 다른 모듈의 key(예: NeedBraces 의 needBraces)를 복붙하면 문법 에러 없이
+			조용히 무시되고, 위반 시 이 커스텀 문구 대신 checkstyle 기본 문구가 나온다.
+		-->
 		<module name="OneStatementPerLine">
-			<message key="needBraces"
+			<message key="multiple.statements.line"
 					 value="[1-state-per-line] Only one statement per line allowed."/>
 		</module>
 
@@ -162,11 +174,17 @@ The following rules in the Naver coding convention cannot be checked by this con
 			<message key="upperEll" value="[long-value-suffix] Should use uppercase ''L''."/>
 		</module>
 
-		<!-- [special-escape] -->
+		<!--
+			[special-escape]
+			이 message 는 checkstyle key 매칭과 무관하게 항상 정상 발화한다 — 다만 앞의
+			[xxx] 태그는 프로젝트 자체 규칙 그룹표시(로그 grep용)일 뿐 checkstyle이 검증해주지
+			않는다. 다른 규칙 태그를 복붙하면 위반은 잡히지만 로그상 엉뚱한 규칙으로 보인다.
+			새 규칙 추가 시 태그명이 근처 규칙(예: array-square-after-type)과 안 겹치는지 직접 확인.
+		-->
 		<module name="IllegalTokenText">
 			<property name="tokens" value="STRING_LITERAL, CHAR_LITERAL"/>
 			<property name="format" value="\\u00(08|09|0(a|A)|0(c|C)|0(d|D)|22|27|5(C|c))|\\(0(10|11|12|14|15|42|47)|134)"/>
-			<property name="message" value="[array-square-after-type]  Avoid using corresponding octal or Unicode escape."/>
+			<property name="message" value="[special-escape] Avoid using corresponding octal or Unicode escape."/>
 		</module>
 
 		<!-- End of Declarations chapter -->
@@ -187,12 +205,16 @@ The following rules in the Naver coding convention cannot be checked by this con
 
 		<!-- Start of Braces chapter -->
 
-		<!-- [braces-knr-style]-->
+		<!--
+			[braces-knr-style]
+			<message> 는 모듈의 option 으로 걸러진다 — 도달 못 하는 키를 적어도 checkstyle 은
+			조용히 무시하므로, option 을 바꿀 때만 키를 함께 늘린다.
+			LeftCurly(option=eol 기본): line.previous / line.break.after 만 발화 (line.new 는 NL 전용)
+			RightCurly(option=alone): line.alone 만 발화 (line.break.before / line.same 은 SAME 전용)
+		-->
 		<module name="LeftCurly">
 			<message key="line.break.after"
 					 value="[braces-knr-style] ''{0}'' at column {1} should have line break after."/>
-			<message key="line.new"
-					 value="[braces-knr-style] ''{0}'' at column {1} should be on a new line."/>
 			<message key="line.previous"
 					 value="[braces-knr-style] ''{0}'' at column {1} should be on the previous line."/>
 		</module>
@@ -201,10 +223,6 @@ The following rules in the Naver coding convention cannot be checked by this con
 			<property name="tokens" value="CLASS_DEF, METHOD_DEF, CTOR_DEF, LITERAL_FOR, LITERAL_WHILE, STATIC_INIT, INSTANCE_INIT"/>
 			<message key="line.alone"
 					 value="[braces-knr-style] ''{0}'' at column {1} should be alone on a line."/>
-			<message key="line.break.before"
-					 value="[braces-knr-style] =''{0}'' at column {1} should have line break before."/>
-			<message key="line.new"
-					 value="[braces-knr-style] ''{0}'' at column {1} should be on a new line."/>
 		</module>
 
 		<!-- [sub-flow-after-brace] -->
@@ -283,7 +301,7 @@ The following rules in the Naver coding convention cannot be checked by this con
 
 		<!-- [import-grouping] -->
 		<module name="ImportOrder">
-			<property name="groups" value="java., javax., org., net., /com\.(?!nhncorp|navercorp|naver)/, /(?!java\.|javax\.|com\.|org\.|net\.)/, com.nhncorp., com.navercorp., com.naver."/>
+			<property name="groups" value="java., javax., jakarta., org., net., /com\.(?!nhncorp|navercorp|naver)/, /(?!java\.|javax\.|jakarta\.|com\.|org\.|net\.)/, com.nhncorp., com.navercorp., com.naver."/>
 			<property name="ordered" value="true"/>
 			<property name="separated" value="true"/>
 			<property name="option" value="top"/>

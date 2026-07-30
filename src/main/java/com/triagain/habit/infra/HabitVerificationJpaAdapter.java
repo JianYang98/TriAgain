@@ -5,11 +5,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.springframework.stereotype.Repository;
+
 import com.triagain.habit.domain.model.HabitVerification;
 import com.triagain.habit.port.out.HabitVerificationRepositoryPort;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Repository;
 
 @Repository
 @RequiredArgsConstructor
