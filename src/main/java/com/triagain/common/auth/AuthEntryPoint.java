@@ -21,7 +21,7 @@ public class AuthEntryPoint implements AuthenticationEntryPoint {
 	/** 인증 실패 시 JSON 401 응답 */
 	@Override
 	public void commence(HttpServletRequest request, HttpServletResponse response,
-						 AuthenticationException authException) throws IOException {
+						AuthenticationException authException) throws IOException {
 		response.setContentType("application/json;charset=UTF-8");
 		response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 

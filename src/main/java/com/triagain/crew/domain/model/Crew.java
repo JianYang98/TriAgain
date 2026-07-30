@@ -43,14 +43,14 @@ public class Crew {
 	private final List<CrewMember> members;
 
 	private Crew(String id, String creatorId, String name, String goal,
-				 String verificationContent,
-				 VerificationType verificationType, int maxMembers,
-				 int currentMembers, CrewStatus status, LocalDate startDate,
-				 LocalDate endDate, boolean allowLateJoin,
-				 String inviteCode, LocalDateTime createdAt,
-				 LocalTime deadlineTime, CrewCategory category,
-				 CrewVisibility visibility, Long version,
-				 List<CrewMember> members) {
+				String verificationContent,
+				VerificationType verificationType, int maxMembers,
+				int currentMembers, CrewStatus status, LocalDate startDate,
+				LocalDate endDate, boolean allowLateJoin,
+				String inviteCode, LocalDateTime createdAt,
+				LocalTime deadlineTime, CrewCategory category,
+				CrewVisibility visibility, Long version,
+				List<CrewMember> members) {
 		this.id = id;
 		this.creatorId = creatorId;
 		this.name = name;
@@ -74,12 +74,12 @@ public class Crew {
 
 	/** 새 크루 생성 — 크루장 ID와 설정값으로 초기화 */
 	public static Crew create(String creatorId, String name, String goal,
-							  String verificationContent,
-							  VerificationType verificationType,
-							  int maxMembers,
-							  LocalDate startDate, LocalDate endDate,
-							  boolean allowLateJoin, LocalTime deadlineTime,
-							  CrewCategory category, CrewVisibility visibility) {
+							String verificationContent,
+							VerificationType verificationType,
+							int maxMembers,
+							LocalDate startDate, LocalDate endDate,
+							boolean allowLateJoin, LocalTime deadlineTime,
+							CrewCategory category, CrewVisibility visibility) {
 		Objects.requireNonNull(category, "category must not be null");
 		validateMaxMembers(maxMembers);
 		validateDates(startDate, endDate);
@@ -112,14 +112,14 @@ public class Crew {
 
 	/** 영속 데이터로 크루 복원 — DB 조회 결과를 도메인 객체로 변환 */
 	public static Crew of(String id, String creatorId, String name, String goal,
-						  String verificationContent,
-						  VerificationType verificationType, int maxMembers,
-						  int currentMembers, CrewStatus status, LocalDate startDate,
-						  LocalDate endDate, boolean allowLateJoin,
-						  String inviteCode, LocalDateTime createdAt,
-						  LocalTime deadlineTime, CrewCategory category,
-						  CrewVisibility visibility, Long version,
-						  List<CrewMember> members) {
+						String verificationContent,
+						VerificationType verificationType, int maxMembers,
+						int currentMembers, CrewStatus status, LocalDate startDate,
+						LocalDate endDate, boolean allowLateJoin,
+						String inviteCode, LocalDateTime createdAt,
+						LocalTime deadlineTime, CrewCategory category,
+						CrewVisibility visibility, Long version,
+						List<CrewMember> members) {
 		return new Crew(id, creatorId, name, goal, verificationContent, verificationType,
 				maxMembers, currentMembers, status, startDate,
 				endDate, allowLateJoin, inviteCode, createdAt,
@@ -169,7 +169,7 @@ public class Crew {
 
 	/** 크루 정보 수정 — RECRUITING 상태에서 LEADER만 호출 */
 	public void update(String name, String goal, String verificationContent,
-					   CrewCategory category, CrewVisibility visibility) {
+					CrewCategory category, CrewVisibility visibility) {
 		if (this.status != CrewStatus.RECRUITING) {
 			throw new BusinessException(ErrorCode.CREW_NOT_RECRUITING);
 		}

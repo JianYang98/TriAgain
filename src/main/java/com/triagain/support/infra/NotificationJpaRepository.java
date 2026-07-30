@@ -50,7 +50,7 @@ public interface NotificationJpaRepository extends JpaRepository<NotificationJpa
             """)
 	// @checkstyle:on RegexpSinglelineJava
 	boolean existsByTypeAndTargetIdInDay(@Param("type") NotificationType type,
-										 @Param("crewId") String crewId,
-										 @Param("dayStart") LocalDateTime dayStart,
-										 @Param("dayEnd") LocalDateTime dayEnd);
+										@Param("crewId") String crewId,
+										@Param("dayStart") LocalDateTime dayStart,
+										@Param("dayEnd") LocalDateTime dayEnd);
 }

@@ -19,8 +19,8 @@ public class DeadLetter {
 	private LocalDateTime updatedAt;
 
 	private DeadLetter(String id, DeadLetterTaskType taskType, String targetId, String errorMessage,
-					   DeadLetterStatus status, int retryCount, int maxRetries,
-					   LocalDateTime nextRetryAt, LocalDateTime createdAt, LocalDateTime updatedAt) {
+					DeadLetterStatus status, int retryCount, int maxRetries,
+					LocalDateTime nextRetryAt, LocalDateTime createdAt, LocalDateTime updatedAt) {
 		this.id = id;
 		this.taskType = taskType;
 		this.targetId = targetId;
@@ -52,8 +52,8 @@ public class DeadLetter {
 
 	/** DB에서 복원 시 사용 */
 	public static DeadLetter restore(String id, DeadLetterTaskType taskType, String targetId, String errorMessage,
-									 DeadLetterStatus status, int retryCount, int maxRetries,
-									 LocalDateTime nextRetryAt, LocalDateTime createdAt, LocalDateTime updatedAt) {
+									DeadLetterStatus status, int retryCount, int maxRetries,
+									LocalDateTime nextRetryAt, LocalDateTime createdAt, LocalDateTime updatedAt) {
 		return new DeadLetter(id, taskType, targetId, errorMessage, status, retryCount, maxRetries,
 				nextRetryAt, createdAt, updatedAt);
 	}

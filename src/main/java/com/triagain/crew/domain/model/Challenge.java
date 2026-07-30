@@ -25,8 +25,8 @@ public class Challenge {
 	private final LocalDateTime createdAt;
 
 	private Challenge(String id, String userId, String crewId, int cycleNumber,
-					  int targetDays, int completedDays, ChallengeStatus status,
-					  LocalDate startDate, LocalDateTime deadline, LocalDateTime createdAt) {
+					int targetDays, int completedDays, ChallengeStatus status,
+					LocalDate startDate, LocalDateTime deadline, LocalDateTime createdAt) {
 		this.id = id;
 		this.userId = userId;
 		this.crewId = crewId;
@@ -57,7 +57,7 @@ public class Challenge {
 
 	/** 다음 사이클 챌린지 생성 — 이전 사이클 완료 후 연속 도전 시 사용 */
 	public static Challenge createNext(String userId, String crewId, int previousCycleNumber,
-									   LocalDate startDate, LocalDateTime deadline) {
+									LocalDate startDate, LocalDateTime deadline) {
 		return new Challenge(
 				IdGenerator.generate("CHAL"),
 				userId,
@@ -74,8 +74,8 @@ public class Challenge {
 
 	/** 영속 데이터로 챌린지 복원 — DB 조회 결과를 도메인 객체로 변환 */
 	public static Challenge of(String id, String userId, String crewId, int cycleNumber,
-							   int targetDays, int completedDays, ChallengeStatus status,
-							   LocalDate startDate, LocalDateTime deadline, LocalDateTime createdAt) {
+							int targetDays, int completedDays, ChallengeStatus status,
+							LocalDate startDate, LocalDateTime deadline, LocalDateTime createdAt) {
 		return new Challenge(id, userId, crewId, cycleNumber, targetDays,
 				completedDays, status, startDate, deadline, createdAt);
 	}

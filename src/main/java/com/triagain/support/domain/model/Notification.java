@@ -20,9 +20,9 @@ public class Notification {
 	private final LocalDateTime createdAt;
 
 	private Notification(String id, String userId, NotificationType type,
-						 String title, String content, boolean isRead,
-						 NotificationTargetType targetType, String targetId,
-						 LocalDateTime createdAt) {
+						String title, String content, boolean isRead,
+						NotificationTargetType targetType, String targetId,
+						LocalDateTime createdAt) {
 		this.id = id;
 		this.userId = userId;
 		this.type = type;
@@ -36,7 +36,7 @@ public class Notification {
 
 	/** 타겟 없는 알림 생성 — 일반 알림용 */
 	public static Notification create(String userId, NotificationType type,
-									  String title, String content) {
+									String title, String content) {
 		return new Notification(
 				IdGenerator.generate("NTFY"),
 				userId,
@@ -52,8 +52,8 @@ public class Notification {
 
 	/** 타겟이 있는 알림 생성 — 크루/인증/챌린지 연결 알림용 */
 	public static Notification create(String userId, NotificationType type,
-									  String title, String content,
-									  NotificationTargetType targetType, String targetId) {
+									String title, String content,
+									NotificationTargetType targetType, String targetId) {
 		return new Notification(
 				IdGenerator.generate("NTFY"),
 				userId,
@@ -69,9 +69,9 @@ public class Notification {
 
 	/** JPA 엔티티 → 도메인 모델 복원용 */
 	public static Notification of(String id, String userId, NotificationType type,
-								  String title, String content, boolean isRead,
-								  NotificationTargetType targetType, String targetId,
-								  LocalDateTime createdAt) {
+								String title, String content, boolean isRead,
+								NotificationTargetType targetType, String targetId,
+								LocalDateTime createdAt) {
 		return new Notification(id, userId, type, title, content, isRead,
 				targetType, targetId, createdAt);
 	}

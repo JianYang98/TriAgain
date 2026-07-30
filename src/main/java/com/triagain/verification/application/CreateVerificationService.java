@@ -177,7 +177,7 @@ public class CreateVerificationService implements CreateVerificationUseCase {
 
 	/** 슬롯 유효 상한 검증 — min(슬롯 일일마감, 사이클 마감) + grace period 초과 시 거부 */
 	private void validateDeadline(ChallengeInfo challenge, LocalTime deadlineTime,
-								   LocalDate slot, LocalDateTime anchor) {
+								LocalDate slot, LocalDateTime anchor) {
 		LocalDateTime effective = DeadlinePolicy.effectiveSlotDeadline(slot, deadlineTime, challenge.deadline());
 		if (!DeadlinePolicy.isWithinDeadline(anchor, effective)) {
 			throw new BusinessException(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
@@ -186,10 +186,10 @@ public class CreateVerificationService implements CreateVerificationUseCase {
 
 	/** 사진 인증 생성 — 선조회된 session을 재사용하여 중복 DB 조회 방지 */
 	private Verification createPhotoVerification(UploadSession session,
-												  CreateVerificationCommand command,
-												  ChallengeInfo challenge,
-												  LocalDate targetDate,
-												  int slotAttempt) {
+												CreateVerificationCommand command,
+												ChallengeInfo challenge,
+												LocalDate targetDate,
+												int slotAttempt) {
 		// session.crewId와 challenge.crewId 일치 검증 — command.crewId() 제공 여부와 무관
 		if (session.getCrewId() != null && !session.getCrewId().equals(challenge.crewId())) {
 			throw new BusinessException(ErrorCode.UPLOAD_SESSION_CREW_MISMATCH);
@@ -218,9 +218,9 @@ public class CreateVerificationService implements CreateVerificationUseCase {
 	}
 
 	private Verification createTextVerification(CreateVerificationCommand command,
-												 ChallengeInfo challenge,
-												 LocalDate targetDate,
-												 int slotAttempt) {
+												ChallengeInfo challenge,
+												LocalDate targetDate,
+												int slotAttempt) {
 		return Verification.createText(
 				challenge.id(),
 				command.userId(),

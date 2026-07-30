@@ -6,11 +6,11 @@ public interface AppleSignupUseCase {
 	AppleSignupResult signup(AppleSignupCommand command);
 
 	record AppleSignupCommand(String identityToken, String appleId, String nickname, boolean termsAgreed,
-							  String authorizationCode) {
+							String authorizationCode) {
 	}
 
 	record AppleSignupResult(String accessToken, String refreshToken, long accessTokenExpiresIn,
-							 AppleSignupUserInfo user) {
+							AppleSignupUserInfo user) {
 	}
 
 	record AppleSignupUserInfo(String id, String nickname, String profileImageUrl) {

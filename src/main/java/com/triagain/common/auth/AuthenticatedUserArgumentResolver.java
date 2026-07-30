@@ -20,7 +20,7 @@ public class AuthenticatedUserArgumentResolver implements HandlerMethodArgumentR
 
 	@Override
 	public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
-								  NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
+								NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
 		// SecurityContext에서 꺼내기
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		if (authentication == null || !authentication.isAuthenticated()) {

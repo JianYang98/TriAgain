@@ -28,10 +28,10 @@ public class Verification {
 	private final LocalDateTime createdAt;
 
 	private Verification(String id, String challengeId, String userId, String crewId,
-						 Long uploadSessionId, String imageUrl, String textContent,
-						 VerificationStatus status, int reportCount, LocalDate targetDate,
-						 int attemptNumber, int slotAttempt, ReviewStatus reviewStatus,
-						 LocalDateTime createdAt) {
+						Long uploadSessionId, String imageUrl, String textContent,
+						VerificationStatus status, int reportCount, LocalDate targetDate,
+						int attemptNumber, int slotAttempt, ReviewStatus reviewStatus,
+						LocalDateTime createdAt) {
 		this.id = id;
 		this.challengeId = challengeId;
 		this.userId = userId;
@@ -49,8 +49,8 @@ public class Verification {
 	}
 
 	public static Verification createText(String challengeId, String userId, String crewId,
-										  String textContent, LocalDate targetDate, int attemptNumber,
-										  int slotAttempt) {
+										String textContent, LocalDate targetDate, int attemptNumber,
+										int slotAttempt) {
 		if (textContent == null || textContent.isBlank()) {
 			throw new BusinessException(ErrorCode.TEXT_CONTENT_REQUIRED);
 		}
@@ -66,8 +66,8 @@ public class Verification {
 	}
 
 	public static Verification createPhoto(String challengeId, String userId, String crewId,
-										   Long uploadSessionId, String imageUrl, String textContent,
-										   LocalDate targetDate, int attemptNumber, int slotAttempt) {
+										Long uploadSessionId, String imageUrl, String textContent,
+										LocalDate targetDate, int attemptNumber, int slotAttempt) {
 		if (imageUrl == null || imageUrl.isBlank()) {
 			throw new BusinessException(ErrorCode.IMAGE_URL_REQUIRED);
 		}
@@ -83,10 +83,10 @@ public class Verification {
 	}
 
 	public static Verification of(String id, String challengeId, String userId, String crewId,
-								  Long uploadSessionId, String imageUrl, String textContent,
-								  VerificationStatus status, int reportCount, LocalDate targetDate,
-								  int attemptNumber, int slotAttempt, ReviewStatus reviewStatus,
-								  LocalDateTime createdAt) {
+								Long uploadSessionId, String imageUrl, String textContent,
+								VerificationStatus status, int reportCount, LocalDate targetDate,
+								int attemptNumber, int slotAttempt, ReviewStatus reviewStatus,
+								LocalDateTime createdAt) {
 		return new Verification(id, challengeId, userId, crewId, uploadSessionId,
 				imageUrl, textContent, status, reportCount, targetDate,
 				attemptNumber, slotAttempt, reviewStatus, createdAt);

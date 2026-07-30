@@ -16,7 +16,7 @@ public class Reaction {
 	private final LocalDateTime createdAt;
 
 	private Reaction(String id, String verificationId, String userId,
-					 String emoji, LocalDateTime createdAt) {
+					String emoji, LocalDateTime createdAt) {
 		this.id = id;
 		this.verificationId = verificationId;
 		this.userId = userId;
@@ -38,7 +38,7 @@ public class Reaction {
 	}
 
 	public static Reaction of(String id, String verificationId, String userId,
-							  String emoji, LocalDateTime createdAt) {
+							String emoji, LocalDateTime createdAt) {
 		return new Reaction(id, verificationId, userId, emoji, createdAt);
 	}
 

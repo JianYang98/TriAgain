@@ -20,8 +20,8 @@ public class Report {
 	private final LocalDateTime createdAt;
 
 	private Report(String id, String verificationId, String reporterId,
-				   ReportReason reason, ReportStatus status, String description,
-				   LocalDateTime createdAt) {
+				ReportReason reason, ReportStatus status, String description,
+				LocalDateTime createdAt) {
 		this.id = id;
 		this.verificationId = verificationId;
 		this.reporterId = reporterId;

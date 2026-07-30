@@ -19,7 +19,7 @@ public class UploadSession {
 	private final LocalDateTime createdAt;
 
 	private UploadSession(Long id, String userId, String crewId, String habitId, String imageKey, String contentType,
-						  UploadSessionStatus status, LocalDateTime requestedAt, LocalDateTime createdAt) {
+						UploadSessionStatus status, LocalDateTime requestedAt, LocalDateTime createdAt) {
 		this.id = id;
 		this.userId = userId;
 		this.crewId = crewId;
@@ -38,7 +38,7 @@ public class UploadSession {
 
 	/** 크루/솔로 세션 생성 — crewId·habitId 중 발급 컨텍스트에 해당하는 쪽만 채워짐(XOR, step2 §9) */
 	public static UploadSession create(String userId, String crewId, String habitId,
-									   String imageKey, String contentType) {
+									String imageKey, String contentType) {
 		if (userId == null || userId.isBlank()) {
 			throw new BusinessException(ErrorCode.USER_ID_REQUIRED);
 		}
@@ -52,13 +52,13 @@ public class UploadSession {
 
 	/** 레거시 8-arg 복원 팩토리 — habitId 없는 기존 크루 전용 호출부 하위 호환(habitId=null) */
 	public static UploadSession of(Long id, String userId, String crewId, String imageKey, String contentType,
-								   UploadSessionStatus status, LocalDateTime requestedAt, LocalDateTime createdAt) {
+								UploadSessionStatus status, LocalDateTime requestedAt, LocalDateTime createdAt) {
 		return of(id, userId, crewId, null, imageKey, contentType, status, requestedAt, createdAt);
 	}
 
 	public static UploadSession of(Long id, String userId, String crewId, String habitId,
-								   String imageKey, String contentType,
-								   UploadSessionStatus status, LocalDateTime requestedAt, LocalDateTime createdAt) {
+								String imageKey, String contentType,
+								UploadSessionStatus status, LocalDateTime requestedAt, LocalDateTime createdAt) {
 		return new UploadSession(id, userId, crewId, habitId, imageKey, contentType, status, requestedAt, createdAt);
 	}
 

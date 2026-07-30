@@ -22,7 +22,7 @@ public interface KakaoLoginUseCase {
 	) {
 		/** 기존 유저 로그인 성공 */
 		public static KakaoLoginResult existingUser(String accessToken, String refreshToken,
-													 long accessTokenExpiresIn, LoginUserInfo user) {
+													long accessTokenExpiresIn, LoginUserInfo user) {
 			return new KakaoLoginResult(false, accessToken, refreshToken, accessTokenExpiresIn, user, null, null);
 		}
 

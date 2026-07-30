@@ -22,7 +22,7 @@ public interface AppleLoginUseCase {
 	) {
 		/** 기존 유저 로그인 성공 */
 		public static AppleLoginResult existingUser(String accessToken, String refreshToken,
-													 long accessTokenExpiresIn, LoginUserInfo user) {
+													long accessTokenExpiresIn, LoginUserInfo user) {
 			return new AppleLoginResult(false, accessToken, refreshToken, accessTokenExpiresIn, user, null, null);
 		}
 

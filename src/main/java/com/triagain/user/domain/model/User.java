@@ -23,9 +23,9 @@ public class User {
 	private int tokenVersion;
 
 	private User(String id, String provider, String email, String nickname,
-				 String profileImageUrl, String fcmToken, String appleRefreshToken,
-				 LocalDateTime createdAt, LocalDateTime termsAgreedAt,
-				 LocalDateTime deletedAt, int tokenVersion) {
+				String profileImageUrl, String fcmToken, String appleRefreshToken,
+				LocalDateTime createdAt, LocalDateTime termsAgreedAt,
+				LocalDateTime deletedAt, int tokenVersion) {
 		this.id = id;
 		this.provider = provider;
 		this.email = email;
@@ -59,9 +59,9 @@ public class User {
 
 	/** DB 조회 결과 → 도메인 객체 복원 */
 	public static User of(String id, String provider, String email, String nickname,
-						  String profileImageUrl, String fcmToken, String appleRefreshToken,
-						  LocalDateTime createdAt, LocalDateTime termsAgreedAt,
-						  LocalDateTime deletedAt, int tokenVersion) {
+						String profileImageUrl, String fcmToken, String appleRefreshToken,
+						LocalDateTime createdAt, LocalDateTime termsAgreedAt,
+						LocalDateTime deletedAt, int tokenVersion) {
 		return new User(id, provider, email, nickname, profileImageUrl, fcmToken, appleRefreshToken,
 				createdAt, termsAgreedAt, deletedAt, tokenVersion);
 	}

@@ -18,8 +18,8 @@ public class Review {
 	private final LocalDateTime createdAt;
 
 	private Review(String id, String reportId, String reviewerId,
-				   ReviewerType reviewerType, ReviewDecision decision,
-				   String comment, LocalDateTime createdAt) {
+				ReviewerType reviewerType, ReviewDecision decision,
+				String comment, LocalDateTime createdAt) {
 		this.id = id;
 		this.reportId = reportId;
 		this.reviewerId = reviewerId;
