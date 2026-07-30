@@ -10,7 +10,7 @@ import java.util.List;
 public interface FeedJpaRepository extends JpaRepository<VerificationJpaEntity, String> {
 
 	/** 크루 피드 조회 — APPROVED 인증만 최신순, 유저 정보 JOIN */
-	// @checkstyle:off — 텍스트 블록 내부 인덴트는 문자열 내용이다. 탭 변환 금지.
+	// @checkstyle:off RegexpSinglelineJava — 텍스트 블록 인덴트는 문자열 내용 (rules.xml Suppression 주석 참조)
 	@Query(value = """
             SELECT v.id, v.user_id AS userId, u.nickname, u.profile_image_url AS profileImageUrl,
                    v.image_url AS imageUrl, v.text_content AS textContent,
@@ -21,7 +21,7 @@ public interface FeedJpaRepository extends JpaRepository<VerificationJpaEntity, 
             ORDER BY v.created_at DESC
             LIMIT :limit OFFSET :offset
             """, nativeQuery = true)
-	// @checkstyle:on
+	// @checkstyle:on RegexpSinglelineJava
 	List<FeedQueryPort.FeedVerificationRow> findFeedByCrewId(
 			@Param("crewId") String crewId,
 			@Param("offset") int offset,

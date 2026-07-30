@@ -42,13 +42,13 @@ public interface NotificationJpaRepository extends JpaRepository<NotificationJpa
 	void markAllAsReadByUserId(@Param("userId") String userId);
 
 	/** 같은 크루·같은 날 첫인증 알림 존재 여부 — created_at 일자 범위 검사로 멱등 가드 */
-	// @checkstyle:off — 텍스트 블록 내부 인덴트는 문자열 내용이다. 탭 변환 금지.
+	// @checkstyle:off RegexpSinglelineJava — 텍스트 블록 인덴트는 문자열 내용 (rules.xml Suppression 주석 참조)
 	@Query("""
             SELECT COUNT(n) > 0 FROM NotificationJpaEntity n
             WHERE n.type = :type AND n.targetId = :crewId
               AND n.createdAt >= :dayStart AND n.createdAt < :dayEnd
             """)
-	// @checkstyle:on
+	// @checkstyle:on RegexpSinglelineJava
 	boolean existsByTypeAndTargetIdInDay(@Param("type") NotificationType type,
 										 @Param("crewId") String crewId,
 										 @Param("dayStart") LocalDateTime dayStart,

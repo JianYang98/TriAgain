@@ -29,8 +29,8 @@ public class UserCrewMembershipAdapter implements CrewMembershipPort {
 
 	@Override
 	public List<MembershipInfo> findAllByUserId(String userId) {
+		// @checkstyle:off RegexpSinglelineJava — 텍스트 블록 인덴트는 문자열 내용 (rules.xml Suppression 주석 참조)
 		@SuppressWarnings("unchecked")
-		// @checkstyle:off — 텍스트 블록 내부 인덴트는 문자열 내용이다. 탭 변환 금지.
 		List<Object[]> rows = entityManager.createNativeQuery("""
                 SELECT cm.crew_id,
                        cm.role,
@@ -40,7 +40,7 @@ public class UserCrewMembershipAdapter implements CrewMembershipPort {
                 JOIN crews c ON c.id = cm.crew_id
                 WHERE cm.user_id = :userId
                 """)
-		// @checkstyle:on
+		// @checkstyle:on RegexpSinglelineJava
 				.setParameter("userId", userId)
 				.getResultList();
 
@@ -105,8 +105,8 @@ public class UserCrewMembershipAdapter implements CrewMembershipPort {
 	@Override
 	public void transferLeaderToOldestMember(String crewId, String currentLeaderId) {
 		// 1) 가장 오래된 멤버 조회 (joined_at ASC, 탈퇴자 제외)
+		// @checkstyle:off RegexpSinglelineJava — 텍스트 블록 인덴트는 문자열 내용 (rules.xml Suppression 주석 참조)
 		@SuppressWarnings("unchecked")
-		// @checkstyle:off — 텍스트 블록 내부 인덴트는 문자열 내용이다. 탭 변환 금지.
 		List<String> candidates = entityManager.createNativeQuery("""
                 SELECT cm.user_id
                 FROM crew_members cm
@@ -115,7 +115,7 @@ public class UserCrewMembershipAdapter implements CrewMembershipPort {
                 ORDER BY cm.joined_at ASC
                 LIMIT 1
                 """)
-		// @checkstyle:on
+		// @checkstyle:on RegexpSinglelineJava
 				.setParameter("crewId", crewId)
 				.setParameter("currentLeaderId", currentLeaderId)
 				.getResultList();

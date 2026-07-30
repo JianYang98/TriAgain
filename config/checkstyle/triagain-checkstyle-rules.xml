@@ -433,10 +433,28 @@ The following rules in the Naver coding convention cannot be checked by this con
 				value="[method-length-30] Method length is {0,number,integer} lines (max allowed is {1,number,integer})."/>
 		</module>
 
-		<!--- Suppression -->
+		<!---
+			Suppression
+
+			마커에 검사 이름을 **반드시** 적는다: `// @checkstyle:off RegexpSinglelineJava`
+			$1 이 checkFormat 으로 들어가 그 검사 하나만 꺼진다. 이름 없이 `@checkstyle:off`
+			만 쓰면 정규식이 매칭되지 않아 **아무것도 억제되지 않는다**(위반은 그대로 보고되므로
+			조용히 새지 않는다). 예전엔 checkFormat 이 없어 기본값 `.*` 로 동작했고,
+			마커 한 쌍이 그 구간의 TreeWalker 검사를 전부 껐다.
+
+			⚠️ 한계: 이 필터는 TreeWalker 안에 있어 Checker 레벨 모듈(LineLength,
+			RegexpSingleline 등)은 억제하지 못한다. 텍스트 블록 안에 120자 초과 줄이
+			생기면 마커로는 못 막으니 줄을 접어야 한다.
+
+			[indentation-tab] 을 끄는 유일한 정당한 사유는 **Java 텍스트 블록**이다.
+			블록 내부의 선행 공백은 문자열 값의 일부고, 닫는 구분자 줄의 들여쓰기까지
+			incidental-whitespace 계산에 참여한다(JLS 3.10.6). 탭으로 바꾸면 SQL 이 조용히
+			바뀐다. 그래서 규칙이 아니라 구간을 끈다.
+		-->
 		<module name="SuppressionCommentFilter">
-			<property name="offCommentFormat" value="@checkstyle:off"/>
-			<property name="onCommentFormat" value="@checkstyle:on"/>
+			<property name="offCommentFormat" value="@checkstyle:off (\w+)"/>
+			<property name="onCommentFormat" value="@checkstyle:on (\w+)"/>
+			<property name="checkFormat" value="$1"/>
 		</module>
 		<module name="SuppressWithNearbyCommentFilter">
 			<property name="commentFormat" value="@checkstyle:ignore"/>

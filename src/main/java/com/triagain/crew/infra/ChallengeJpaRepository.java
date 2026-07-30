@@ -24,7 +24,7 @@ public interface ChallengeJpaRepository extends JpaRepository<ChallengeJpaEntity
 	List<Object[]> countSuccessGroupByUserId(@Param("crewId") String crewId);
 
 	/** 마감 초과 + 미인증 IN_PROGRESS 챌린지 조회 — 실패 판정 스케줄러에서 사용 */
-	// @checkstyle:off — 텍스트 블록 내부 인덴트는 문자열 내용이다. 탭 변환 금지.
+	// @checkstyle:off RegexpSinglelineJava — 텍스트 블록 인덴트는 문자열 내용 (rules.xml Suppression 주석 참조)
 	@Query(nativeQuery = true, value = """
             SELECT c.* FROM challenges c
             JOIN crews cr ON c.crew_id = cr.id
@@ -40,7 +40,7 @@ public interface ChallengeJpaRepository extends JpaRepository<ChallengeJpaEntity
                     AND v.status <> 'CANCELLED'
               )
             """)
-	// @checkstyle:on
+	// @checkstyle:on RegexpSinglelineJava
 	List<ChallengeJpaEntity> findExpiredWithoutVerification();
 
 	/** 비관적 락으로 유저·크루·상태 기준 챌린지 조회 — 동시 챌린지 생성 방지 */

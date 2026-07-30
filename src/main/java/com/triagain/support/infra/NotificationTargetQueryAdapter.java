@@ -22,7 +22,7 @@ public class NotificationTargetQueryAdapter implements NotificationTargetQueryPo
 		// CANCELLED 행은 "인증함"이 아니다 — ON 절(WHERE 아님)에서 걸러야 LEFT JOIN이 아예 안 붙어
 		// v.id IS NULL이 살고 취소자가 리마인더 대상에 남는다. D14-a(ChallengeJpaRepository
 		// findExpiredWithoutVerification)와 동일 처방(Codex 리뷰, 2026-07-24).
-		// @checkstyle:off — 텍스트 블록 내부 인덴트는 문자열 내용이다. 탭 변환 금지.
+		// @checkstyle:off RegexpSinglelineJava — 텍스트 블록 인덴트는 문자열 내용 (rules.xml Suppression 주석 참조)
 		String sql = """
                 SELECT DISTINCT
                        cm.user_id,
@@ -47,7 +47,7 @@ public class NotificationTargetQueryAdapter implements NotificationTargetQueryPo
                       )
                   AND v.id IS NULL
                 """;
-		// @checkstyle:on
+		// @checkstyle:on RegexpSinglelineJava
 
 		List<Object[]> rows = entityManager.createNativeQuery(sql)
 				.setParameter("targetDate", targetDate)
@@ -69,7 +69,7 @@ public class NotificationTargetQueryAdapter implements NotificationTargetQueryPo
 	@Override
 	@SuppressWarnings("unchecked")
 	public List<CrewStartTarget> findCrewStartTargets(LocalDate startDate) {
-		// @checkstyle:off — 텍스트 블록 내부 인덴트는 문자열 내용이다. 탭 변환 금지.
+		// @checkstyle:off RegexpSinglelineJava — 텍스트 블록 인덴트는 문자열 내용 (rules.xml Suppression 주석 참조)
 		String sql = """
                 SELECT cm.user_id,
                        u.fcm_token,
@@ -83,7 +83,7 @@ public class NotificationTargetQueryAdapter implements NotificationTargetQueryPo
                 WHERE c.status = 'ACTIVE'
                   AND c.start_date = :startDate
                 """;
-		// @checkstyle:on
+		// @checkstyle:on RegexpSinglelineJava
 
 		List<Object[]> rows = entityManager.createNativeQuery(sql)
 				.setParameter("startDate", startDate)
@@ -103,7 +103,7 @@ public class NotificationTargetQueryAdapter implements NotificationTargetQueryPo
 	@Override
 	@SuppressWarnings("unchecked")
 	public List<CrewFirstVerificationTarget> findCrewFirstVerificationTargets(String crewId, String excludeUserId) {
-		// @checkstyle:off — 텍스트 블록 내부 인덴트는 문자열 내용이다. 탭 변환 금지.
+		// @checkstyle:off RegexpSinglelineJava — 텍스트 블록 인덴트는 문자열 내용 (rules.xml Suppression 주석 참조)
 		String sql = """
                 SELECT cm.user_id,
                        u.fcm_token,
@@ -118,7 +118,7 @@ public class NotificationTargetQueryAdapter implements NotificationTargetQueryPo
                   AND c.status = 'ACTIVE'
                   AND cm.user_id <> :excludeUserId
                 """;
-		// @checkstyle:on
+		// @checkstyle:on RegexpSinglelineJava
 
 		List<Object[]> rows = entityManager.createNativeQuery(sql)
 				.setParameter("crewId", crewId)
