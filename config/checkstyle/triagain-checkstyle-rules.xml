@@ -188,12 +188,16 @@ The following rules in the Naver coding convention cannot be checked by this con
 
 		<!-- Start of Braces chapter -->
 
-		<!-- [braces-knr-style]-->
+		<!--
+			[braces-knr-style]
+			<message> 는 모듈의 option 으로 걸러진다 — 도달 못 하는 키를 적어도 checkstyle 은
+			조용히 무시하므로, option 을 바꿀 때만 키를 함께 늘린다.
+			LeftCurly(option=eol 기본): line.previous / line.break.after 만 발화 (line.new 는 NL 전용)
+			RightCurly(option=alone): line.alone 만 발화 (line.break.before / line.same 은 SAME 전용)
+		-->
 		<module name="LeftCurly">
 			<message key="line.break.after"
 					 value="[braces-knr-style] ''{0}'' at column {1} should have line break after."/>
-			<message key="line.new"
-					 value="[braces-knr-style] ''{0}'' at column {1} should be on a new line."/>
 			<message key="line.previous"
 					 value="[braces-knr-style] ''{0}'' at column {1} should be on the previous line."/>
 		</module>
@@ -202,10 +206,6 @@ The following rules in the Naver coding convention cannot be checked by this con
 			<property name="tokens" value="CLASS_DEF, METHOD_DEF, CTOR_DEF, LITERAL_FOR, LITERAL_WHILE, STATIC_INIT, INSTANCE_INIT"/>
 			<message key="line.alone"
 					 value="[braces-knr-style] ''{0}'' at column {1} should be alone on a line."/>
-			<message key="line.break.before"
-					 value="[braces-knr-style] =''{0}'' at column {1} should have line break before."/>
-			<message key="line.new"
-					 value="[braces-knr-style] ''{0}'' at column {1} should be on a new line."/>
 		</module>
 
 		<!-- [sub-flow-after-brace] -->

@@ -9,6 +9,14 @@
         통째로 면제된다. 실제로 2026-07-29 이전까지 habit 컨텍스트 8개 파일(HabitVerification.java 등)이
         "Verification\.java$" 같은 패턴에 걸려 아무도 선언한 적 없이 checkstyle 검사를 벗어나 있었다.
         (의도적 와일드카드인 아래 .*Test / .*Steps 두 줄은 예외)
+
+        새 항목은 가급적 패키지 경로까지 쓴다. '/' 앵커는 구멍을 줄일 뿐 닫지 않는다 —
+        basename 이 겹치면 한 줄이 두 파일을 덮는다. 실례: /CrewPort\.java$ 가
+        verification/port/out 과 moderation/port/out 을 동시에 면제한다.
+
+        ⚠️ 이 패턴들은 경로 구분자가 '/' 인 환경(Linux·macOS)을 전제한다. Windows 는 '\' 라
+        전부 매칭 실패하고 maxWarnings=0 이라 빌드가 깨진다. CI(ubuntu)·개발(macOS) 뿐이라
+        현재는 무해. [/\\] 로의 전환은 서프레션 축소 작업에서 함께 처리한다.
     -->
 
     <!-- 테스트 파일: 메서드 길이 제한 면제 -->
