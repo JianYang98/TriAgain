@@ -327,6 +327,7 @@ The following rules in the Naver coding convention cannot be checked by this con
 
 		<!-- [space-around-brace] -->
 		<module name="WhitespaceAround">
+			<property name="allowEmptyTypes" value="true"/>  <!-- [permit-concise-empty-block] record Foo(...) {} -->
 			<property name="allowEmptyConstructors" value="true"/> <!-- [permit-concise-empty-block] -->
 			<property name="allowEmptyMethods" value="true"/>  <!-- [permit-concise-empty-block] -->
 			<property name="allowEmptyLoops" value="true"/>  <!-- [permit-concise-empty-block] -->
