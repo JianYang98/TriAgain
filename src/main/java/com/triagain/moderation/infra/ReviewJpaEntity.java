@@ -1,8 +1,7 @@
 package com.triagain.moderation.infra;
 
-import com.triagain.moderation.domain.model.Review;
-import com.triagain.moderation.domain.vo.ReviewDecision;
-import com.triagain.moderation.domain.vo.ReviewerType;
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -10,52 +9,54 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import java.time.LocalDateTime;
+import com.triagain.moderation.domain.model.Review;
+import com.triagain.moderation.domain.vo.ReviewDecision;
+import com.triagain.moderation.domain.vo.ReviewerType;
 
 @Entity
 @Table(name = "reviews")
 public class ReviewJpaEntity {
 
-    @Id
-    @Column(length = 36)
-    private String id;
+	@Id
+	@Column(length = 36)
+	private String id;
 
-    @Column(name = "report_id", nullable = false, length = 36)
-    private String reportId;
+	@Column(name = "report_id", nullable = false, length = 36)
+	private String reportId;
 
-    @Column(name = "reviewer_id", nullable = false, length = 64)
-    private String reviewerId;
+	@Column(name = "reviewer_id", nullable = false, length = 64)
+	private String reviewerId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "reviewer_type", nullable = false)
-    private ReviewerType reviewerType;
+	@Enumerated(EnumType.STRING)
+	@Column(name = "reviewer_type", nullable = false)
+	private ReviewerType reviewerType;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private ReviewDecision decision;
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false)
+	private ReviewDecision decision;
 
-    @Column
-    private String comment;
+	@Column
+	private String comment;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+	@Column(name = "created_at", nullable = false, updatable = false)
+	private LocalDateTime createdAt;
 
-    protected ReviewJpaEntity() {
-    }
+	protected ReviewJpaEntity() {
+	}
 
-    public Review toDomain() {
-        return Review.of(id, reportId, reviewerId, reviewerType, decision, comment, createdAt);
-    }
+	public Review toDomain() {
+		return Review.of(id, reportId, reviewerId, reviewerType, decision, comment, createdAt);
+	}
 
-    public static ReviewJpaEntity fromDomain(Review review) {
-        ReviewJpaEntity entity = new ReviewJpaEntity();
-        entity.id = review.getId();
-        entity.reportId = review.getReportId();
-        entity.reviewerId = review.getReviewerId();
-        entity.reviewerType = review.getReviewerType();
-        entity.decision = review.getDecision();
-        entity.comment = review.getComment();
-        entity.createdAt = review.getCreatedAt();
-        return entity;
-    }
+	public static ReviewJpaEntity fromDomain(Review review) {
+		ReviewJpaEntity entity = new ReviewJpaEntity();
+		entity.id = review.getId();
+		entity.reportId = review.getReportId();
+		entity.reviewerId = review.getReviewerId();
+		entity.reviewerType = review.getReviewerType();
+		entity.decision = review.getDecision();
+		entity.comment = review.getComment();
+		entity.createdAt = review.getCreatedAt();
+		return entity;
+	}
 }

@@ -1,7 +1,7 @@
 package com.triagain.verification.infra;
 
-import com.triagain.verification.domain.model.UploadSession;
-import com.triagain.verification.domain.vo.UploadSessionStatus;
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -11,59 +11,60 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import java.time.LocalDateTime;
+import com.triagain.verification.domain.model.UploadSession;
+import com.triagain.verification.domain.vo.UploadSessionStatus;
 
 @Entity
 @Table(name = "upload_session")
 public class UploadSessionJpaEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    @Column(name = "user_id", nullable = false, length = 64)
-    private String userId;
+	@Column(name = "user_id", nullable = false, length = 64)
+	private String userId;
 
-    @Column(name = "crew_id", length = 36)
-    private String crewId;
+	@Column(name = "crew_id", length = 36)
+	private String crewId;
 
-    @Column(name = "habit_id", length = 36)
-    private String habitId;
+	@Column(name = "habit_id", length = 36)
+	private String habitId;
 
-    @Column(name = "image_key", nullable = false)
-    private String imageKey;
+	@Column(name = "image_key", nullable = false)
+	private String imageKey;
 
-    @Column(name = "content_type")
-    private String contentType;
+	@Column(name = "content_type")
+	private String contentType;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private UploadSessionStatus status;
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false)
+	private UploadSessionStatus status;
 
-    @Column(name = "requested_at", nullable = false)
-    private LocalDateTime requestedAt;
+	@Column(name = "requested_at", nullable = false)
+	private LocalDateTime requestedAt;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+	@Column(name = "created_at", nullable = false, updatable = false)
+	private LocalDateTime createdAt;
 
-    protected UploadSessionJpaEntity() {
-    }
+	protected UploadSessionJpaEntity() {
+	}
 
-    public UploadSession toDomain() {
-        return UploadSession.of(id, userId, crewId, habitId, imageKey, contentType, status, requestedAt, createdAt);
-    }
+	public UploadSession toDomain() {
+		return UploadSession.of(id, userId, crewId, habitId, imageKey, contentType, status, requestedAt, createdAt);
+	}
 
-    public static UploadSessionJpaEntity fromDomain(UploadSession session) {
-        UploadSessionJpaEntity entity = new UploadSessionJpaEntity();
-        entity.id = session.getId();
-        entity.userId = session.getUserId();
-        entity.crewId = session.getCrewId();
-        entity.habitId = session.getHabitId();
-        entity.imageKey = session.getImageKey();
-        entity.contentType = session.getContentType();
-        entity.status = session.getStatus();
-        entity.requestedAt = session.getRequestedAt();
-        entity.createdAt = session.getCreatedAt();
-        return entity;
-    }
+	public static UploadSessionJpaEntity fromDomain(UploadSession session) {
+		UploadSessionJpaEntity entity = new UploadSessionJpaEntity();
+		entity.id = session.getId();
+		entity.userId = session.getUserId();
+		entity.crewId = session.getCrewId();
+		entity.habitId = session.getHabitId();
+		entity.imageKey = session.getImageKey();
+		entity.contentType = session.getContentType();
+		entity.status = session.getStatus();
+		entity.requestedAt = session.getRequestedAt();
+		entity.createdAt = session.getCreatedAt();
+		return entity;
+	}
 }

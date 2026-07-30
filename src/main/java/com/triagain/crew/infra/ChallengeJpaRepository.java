@@ -1,30 +1,34 @@
 package com.triagain.crew.infra;
 
-import com.triagain.crew.domain.vo.ChallengeStatus;
+import java.util.List;
+import java.util.Optional;
+
 import jakarta.persistence.LockModeType;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
-import java.util.Optional;
+import com.triagain.crew.domain.vo.ChallengeStatus;
 
 public interface ChallengeJpaRepository extends JpaRepository<ChallengeJpaEntity, String> {
 
-    /** 유저·크루·상태로 챌린지 조회 */
-    Optional<ChallengeJpaEntity> findByUserIdAndCrewIdAndStatus(String userId, String crewId, ChallengeStatus status);
+	/** 유저·크루·상태로 챌린지 조회 */
+	Optional<ChallengeJpaEntity> findByUserIdAndCrewIdAndStatus(String userId, String crewId, ChallengeStatus status);
 
-    /** 크루의 특정 상태 챌린지 목록 조회 */
-    List<ChallengeJpaEntity> findAllByCrewIdAndStatus(String crewId, ChallengeStatus status);
+	/** 크루의 특정 상태 챌린지 목록 조회 */
+	List<ChallengeJpaEntity> findAllByCrewIdAndStatus(String crewId, ChallengeStatus status);
 
-    /** 크루 멤버별 SUCCESS 챌린지 수 집계 */
-    @Query("SELECT c.userId, COUNT(c) FROM ChallengeJpaEntity c WHERE c.crewId = :crewId AND c.status = 'SUCCESS' GROUP BY c.userId")
-    List<Object[]> countSuccessGroupByUserId(@Param("crewId") String crewId);
+	/** 크루 멤버별 SUCCESS 챌린지 수 집계 */
+	@Query("SELECT c.userId, COUNT(c) FROM ChallengeJpaEntity c "
+			+ "WHERE c.crewId = :crewId AND c.status = 'SUCCESS' GROUP BY c.userId")
+	List<Object[]> countSuccessGroupByUserId(@Param("crewId") String crewId);
 
-    /** 마감 초과 + 미인증 IN_PROGRESS 챌린지 조회 — 실패 판정 스케줄러에서 사용 */
-    @Query(nativeQuery = true, value = """
+	/** 마감 초과 + 미인증 IN_PROGRESS 챌린지 조회 — 실패 판정 스케줄러에서 사용 */
+	// @checkstyle:off RegexpSinglelineJava — 텍스트 블록 인덴트는 문자열 내용 (rules.xml Suppression 주석 참조)
+	@Query(nativeQuery = true, value = """
             SELECT c.* FROM challenges c
             JOIN crews cr ON c.crew_id = cr.id
             WHERE c.status = 'IN_PROGRESS'
@@ -39,58 +43,61 @@ public interface ChallengeJpaRepository extends JpaRepository<ChallengeJpaEntity
                     AND v.status <> 'CANCELLED'
               )
             """)
-    List<ChallengeJpaEntity> findExpiredWithoutVerification();
+	// @checkstyle:on RegexpSinglelineJava
+	List<ChallengeJpaEntity> findExpiredWithoutVerification();
 
-    /** 비관적 락으로 유저·크루·상태 기준 챌린지 조회 — 동시 챌린지 생성 방지 */
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT c FROM ChallengeJpaEntity c WHERE c.userId = :userId AND c.crewId = :crewId AND c.status = :status")
-    Optional<ChallengeJpaEntity> findByUserIdAndCrewIdAndStatusWithLock(
-            @Param("userId") String userId,
-            @Param("crewId") String crewId,
-            @Param("status") ChallengeStatus status);
+	/** 비관적 락으로 유저·크루·상태 기준 챌린지 조회 — 동시 챌린지 생성 방지 */
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("SELECT c FROM ChallengeJpaEntity c WHERE c.userId = :userId AND c.crewId = :crewId AND c.status = :status")
+	Optional<ChallengeJpaEntity> findByUserIdAndCrewIdAndStatusWithLock(
+			@Param("userId") String userId,
+			@Param("crewId") String crewId,
+			@Param("status") ChallengeStatus status);
 
-    /** 유저·크루의 최대 사이클 번호 조회 — 다음 사이클 번호 결정 */
-    @Query("SELECT COALESCE(MAX(c.cycleNumber), 0) FROM ChallengeJpaEntity c WHERE c.userId = :userId AND c.crewId = :crewId")
-    int findMaxCycleNumber(@Param("userId") String userId, @Param("crewId") String crewId);
+	/** 유저·크루의 최대 사이클 번호 조회 — 다음 사이클 번호 결정 */
+	@Query("SELECT COALESCE(MAX(c.cycleNumber), 0) FROM ChallengeJpaEntity c "
+			+ "WHERE c.userId = :userId AND c.crewId = :crewId")
+	int findMaxCycleNumber(@Param("userId") String userId, @Param("crewId") String crewId);
 
-    /** 유저·크루의 SUCCESS 챌린지 수 조회 — 작심삼일 달성 횟수 */
-    @Query("SELECT COUNT(c) FROM ChallengeJpaEntity c WHERE c.userId = :userId AND c.crewId = :crewId AND c.status = 'SUCCESS'")
-    int countSuccessByUserIdAndCrewId(@Param("userId") String userId, @Param("crewId") String crewId);
+	/** 유저·크루의 SUCCESS 챌린지 수 조회 — 작심삼일 달성 횟수 */
+	@Query("SELECT COUNT(c) FROM ChallengeJpaEntity c "
+			+ "WHERE c.userId = :userId AND c.crewId = :crewId AND c.status = 'SUCCESS'")
+	int countSuccessByUserIdAndCrewId(@Param("userId") String userId, @Param("crewId") String crewId);
 
-    /** 유저·크루의 챌린지 존재 여부 확인 — ACTIVE 크루 탈퇴 시 챌린지 시작 여부 판단 */
-    boolean existsByUserIdAndCrewId(String userId, String crewId);
+	/** 유저·크루의 챌린지 존재 여부 확인 — ACTIVE 크루 탈퇴 시 챌린지 시작 여부 판단 */
+	boolean existsByUserIdAndCrewId(String userId, String crewId);
 
-    /** 크루의 챌린지 존재 여부 확인 — 크루 삭제 시 인증 시작 여부 판단 (crew_id 기준) */
-    boolean existsByCrewId(String crewId);
+	/** 크루의 챌린지 존재 여부 확인 — 크루 삭제 시 인증 시작 여부 판단 (crew_id 기준) */
+	boolean existsByCrewId(String crewId);
 
-    /** 유저·크루 묶음별 SUCCESS 챌린지 수 집계 — crewId→count Map 반환 */
-    @Query("SELECT c.crewId, COUNT(c) FROM ChallengeJpaEntity c "
-            + "WHERE c.userId = :userId AND c.crewId IN :crewIds AND c.status = 'SUCCESS' "
-            + "GROUP BY c.crewId")
-    List<Object[]> countSuccessGroupByCrewId(
-            @Param("userId") String userId,
-            @Param("crewIds") List<String> crewIds);
+	/** 유저·크루 묶음별 SUCCESS 챌린지 수 집계 — crewId→count Map 반환 */
+	@Query("SELECT c.crewId, COUNT(c) FROM ChallengeJpaEntity c "
+			+ "WHERE c.userId = :userId AND c.crewId IN :crewIds AND c.status = 'SUCCESS' "
+			+ "GROUP BY c.crewId")
+	List<Object[]> countSuccessGroupByCrewId(
+			@Param("userId") String userId,
+			@Param("crewIds") List<String> crewIds);
 
-    /** 유저·크루 묶음별 특정 상태 챌린지 목록 조회 — 홈 목록 챌린지 진행도 배치 조회 */
-    List<ChallengeJpaEntity> findAllByUserIdAndCrewIdInAndStatus(
-            String userId, List<String> crewIds, ChallengeStatus status);
+	/** 유저·크루 묶음별 특정 상태 챌린지 목록 조회 — 홈 목록 챌린지 진행도 배치 조회 */
+	List<ChallengeJpaEntity> findAllByUserIdAndCrewIdInAndStatus(
+			String userId, List<String> crewIds, ChallengeStatus status);
 
-    /** 조건부 원자적 실패 전환 — status·completed_days가 스냅샷과 같을 때만 FAILED (스케줄러 lost update 방지) */
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query(value = "UPDATE challenges SET status = 'FAILED' "
-            + "WHERE id = :id AND status = 'IN_PROGRESS' AND completed_days = :expectedCompletedDays",
-            nativeQuery = true)
-    int failIfUnchanged(@Param("id") String id, @Param("expectedCompletedDays") int expectedCompletedDays);
+	/** 조건부 원자적 실패 전환 — status·completed_days가 스냅샷과 같을 때만 FAILED (스케줄러 lost update 방지) */
+	@Modifying(clearAutomatically = true, flushAutomatically = true)
+	@Query(value = "UPDATE challenges SET status = 'FAILED' "
+			+ "WHERE id = :id AND status = 'IN_PROGRESS' AND completed_days = :expectedCompletedDays",
+			nativeQuery = true)
+	int failIfUnchanged(@Param("id") String id, @Param("expectedCompletedDays") int expectedCompletedDays);
 
-    /**
-     * 조건부 원자적 역연산 — completed_days가 스냅샷과 같을 때만 1 감소(0 하한, I3) + IN_PROGRESS 복귀.
-     * 인증 취소 lost update 방지(D-C13 G-3, D14-b failIfUnchanged와 대칭 패턴).
-     */
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query(value = "UPDATE challenges SET completed_days = GREATEST(completed_days - 1, 0), status = 'IN_PROGRESS' "
-            + "WHERE id = :id AND completed_days = :expectedCompletedDays "
-            + "AND status IN ('IN_PROGRESS', 'SUCCESS')",
-            nativeQuery = true)
-    int revertCompletionIfUnchanged(
-            @Param("id") String id, @Param("expectedCompletedDays") int expectedCompletedDays);
+	/**
+	 * 조건부 원자적 역연산 — completed_days가 스냅샷과 같을 때만 1 감소(0 하한, I3) + IN_PROGRESS 복귀.
+	 * 인증 취소 lost update 방지(D-C13 G-3, D14-b failIfUnchanged와 대칭 패턴).
+	 */
+	@Modifying(clearAutomatically = true, flushAutomatically = true)
+	@Query(value = "UPDATE challenges SET completed_days = GREATEST(completed_days - 1, 0), status = 'IN_PROGRESS' "
+			+ "WHERE id = :id AND completed_days = :expectedCompletedDays "
+			+ "AND status IN ('IN_PROGRESS', 'SUCCESS')",
+			nativeQuery = true)
+	int revertCompletionIfUnchanged(
+			@Param("id") String id, @Param("expectedCompletedDays") int expectedCompletedDays);
 }

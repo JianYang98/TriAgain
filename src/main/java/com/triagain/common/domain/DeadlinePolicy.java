@@ -35,7 +35,8 @@ public class DeadlinePolicy {
 	}
 
 	/** 슬롯 유효 상한 = min(슬롯 일일마감, 사이클 마감) — endDate 캡 보존 */
-	public static LocalDateTime effectiveSlotDeadline(LocalDate slot, LocalTime deadlineTime, LocalDateTime cycleDeadline) {
+	public static LocalDateTime effectiveSlotDeadline(
+			LocalDate slot, LocalTime deadlineTime, LocalDateTime cycleDeadline) {
 		LocalDateTime slotDeadline = deadlineFor(slot, deadlineTime);
 		return slotDeadline.isBefore(cycleDeadline) ? slotDeadline : cycleDeadline;
 	}
