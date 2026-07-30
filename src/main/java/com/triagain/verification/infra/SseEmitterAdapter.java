@@ -22,9 +22,11 @@ public class SseEmitterAdapter implements SsePort, SubscribeUploadSessionUseCase
 	public Object subscribe(Long uploadSessionId) {
 		SseEmitter emitter = new SseEmitter(60_000L);
 		emitters.put(uploadSessionId, emitter);
-		emitter.onCompletion(() -> emitters.remove(uploadSessionId));
-		emitter.onTimeout(() -> emitters.remove(uploadSessionId));
-		emitter.onError(e -> emitters.remove(uploadSessionId));
+		// 키만으로 지우면 안 된다 — 재구독으로 교체된 뒤 버려진 emitter 의 콜백이 뒤늦게 발화하면
+		// 살아있는 새 emitter 를 지워버리고, 이후 send() 가 조용히 return 해 업로드 완료가 배달되지 않는다.
+		emitter.onCompletion(() -> emitters.remove(uploadSessionId, emitter));
+		emitter.onTimeout(() -> emitters.remove(uploadSessionId, emitter));
+		emitter.onError(e -> emitters.remove(uploadSessionId, emitter));
 		return emitter;
 	}
 
