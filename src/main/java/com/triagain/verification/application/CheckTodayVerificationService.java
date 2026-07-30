@@ -14,12 +14,12 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class CheckTodayVerificationService implements CheckTodayVerificationUseCase {
 
-    private final VerificationRepositoryPort verificationRepositoryPort;
+	private final VerificationRepositoryPort verificationRepositoryPort;
 
-    /** 오늘 인증 완료한 크루 ID 배치 조회 */
-    @Override
-    @Transactional(readOnly = true)
-    public Set<String> findVerifiedCrewIds(String userId, List<String> crewIds, LocalDate targetDate) {
-        return verificationRepositoryPort.findVerifiedCrewIds(userId, crewIds, targetDate);
-    }
+	/** 오늘 인증 완료한 크루 ID 배치 조회 */
+	@Override
+	@Transactional(readOnly = true)
+	public Set<String> findVerifiedCrewIds(String userId, List<String> crewIds, LocalDate targetDate) {
+		return verificationRepositoryPort.findVerifiedCrewIds(userId, crewIds, targetDate);
+	}
 }

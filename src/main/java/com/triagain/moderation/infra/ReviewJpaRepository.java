@@ -6,5 +6,5 @@ import java.util.Optional;
 
 public interface ReviewJpaRepository extends JpaRepository<ReviewJpaEntity, String> {
 
-    Optional<ReviewJpaEntity> findByReportId(String reportId);
+	Optional<ReviewJpaEntity> findByReportId(String reportId);
 }

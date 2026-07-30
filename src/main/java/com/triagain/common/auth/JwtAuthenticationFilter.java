@@ -19,42 +19,42 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final String AUTHORIZATION_HEADER = "Authorization";
-    private static final String BEARER_PREFIX = "Bearer ";
+	private static final String AUTHORIZATION_HEADER = "Authorization";
+	private static final String BEARER_PREFIX = "Bearer ";
 
-    private final JwtProvider jwtProvider;
-    private final UserRepositoryPort userRepositoryPort;
+	private final JwtProvider jwtProvider;
+	private final UserRepositoryPort userRepositoryPort;
 
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
-        // 1) Authorization 헤더에서 토큰 꺼냄
-        String token = resolveToken(request);
+	@Override
+	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+									FilterChain filterChain) throws ServletException, IOException {
+		// 1) Authorization 헤더에서 토큰 꺼냄
+		String token = resolveToken(request);
 
-        if (token != null && jwtProvider.validateToken(token)
-                && "access".equals(jwtProvider.getTokenType(token))) {
-            // 2) 토큰 검증 + userId 추출
-            String userId = jwtProvider.getUserId(token);
+		if (token != null && jwtProvider.validateToken(token)
+				&& "access".equals(jwtProvider.getTokenType(token))) {
+			// 2) 토큰 검증 + userId 추출
+			String userId = jwtProvider.getUserId(token);
 
-            // 3) tokenVersion 검증 — DB와 불일치 시 인증 거부 (탈퇴/로그아웃 즉시 반영)
-            int tokenVersion = jwtProvider.getTokenVersion(token);
-            Optional<Integer> dbVersion = userRepositoryPort.findTokenVersionById(userId);
-            if (dbVersion.isPresent() && dbVersion.get() == tokenVersion) {
-                // 4) SecurityContext에 저장
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(userId, null, List.of());
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-            }
-        }
-        // 5) 다음 필터로 넘기기
-        filterChain.doFilter(request, response);
-    }
+			// 3) tokenVersion 검증 — DB와 불일치 시 인증 거부 (탈퇴/로그아웃 즉시 반영)
+			int tokenVersion = jwtProvider.getTokenVersion(token);
+			Optional<Integer> dbVersion = userRepositoryPort.findTokenVersionById(userId);
+			if (dbVersion.isPresent() && dbVersion.get() == tokenVersion) {
+				// 4) SecurityContext에 저장
+				UsernamePasswordAuthenticationToken authentication =
+						new UsernamePasswordAuthenticationToken(userId, null, List.of());
+				SecurityContextHolder.getContext().setAuthentication(authentication);
+			}
+		}
+		// 5) 다음 필터로 넘기기
+		filterChain.doFilter(request, response);
+	}
 
-    private String resolveToken(HttpServletRequest request) {
-        String bearer = request.getHeader(AUTHORIZATION_HEADER);
-        if (bearer != null && bearer.startsWith(BEARER_PREFIX)) {
-            return bearer.substring(BEARER_PREFIX.length());
-        }
-        return null;
-    }
+	private String resolveToken(HttpServletRequest request) {
+		String bearer = request.getHeader(AUTHORIZATION_HEADER);
+		if (bearer != null && bearer.startsWith(BEARER_PREFIX)) {
+			return bearer.substring(BEARER_PREFIX.length());
+		}
+		return null;
+	}
 }

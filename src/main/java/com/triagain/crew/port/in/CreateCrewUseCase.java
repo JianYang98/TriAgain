@@ -11,43 +11,43 @@ import java.time.LocalTime;
 
 public interface CreateCrewUseCase {
 
-    /** 크루 생성 — 크루장을 리더 멤버로 자동 등록 */
-    CreateCrewResult createCrew(CreateCrewCommand command);
+	/** 크루 생성 — 크루장을 리더 멤버로 자동 등록 */
+	CreateCrewResult createCrew(CreateCrewCommand command);
 
-    record CreateCrewCommand(
-            String creatorId,
-            String name,
-            String goal,
-            String verificationContent,
-            VerificationType verificationType,
-            int maxMembers,
-            LocalDate startDate,
-            LocalDate endDate,
-            boolean allowLateJoin,
-            LocalTime deadlineTime,
-            CrewCategory category,
-            CrewVisibility visibility
-    ) {
-    }
+	record CreateCrewCommand(
+			String creatorId,
+			String name,
+			String goal,
+			String verificationContent,
+			VerificationType verificationType,
+			int maxMembers,
+			LocalDate startDate,
+			LocalDate endDate,
+			boolean allowLateJoin,
+			LocalTime deadlineTime,
+			CrewCategory category,
+			CrewVisibility visibility
+	) {
+	}
 
-    record CreateCrewResult(
-            String crewId,
-            String creatorId,
-            String name,
-            String goal,
-            String verificationContent,
-            VerificationType verificationType,
-            int maxMembers,
-            int currentMembers,
-            CrewStatus status,
-            LocalDate startDate,
-            LocalDate endDate,
-            boolean allowLateJoin,
-            String inviteCode,
-            LocalDateTime createdAt,
-            LocalTime deadlineTime,
-            CrewCategory category,
-            CrewVisibility visibility
-    ) {
-    }
+	record CreateCrewResult(
+			String crewId,
+			String creatorId,
+			String name,
+			String goal,
+			String verificationContent,
+			VerificationType verificationType,
+			int maxMembers,
+			int currentMembers,
+			CrewStatus status,
+			LocalDate startDate,
+			LocalDate endDate,
+			boolean allowLateJoin,
+			String inviteCode,
+			LocalDateTime createdAt,
+			LocalTime deadlineTime,
+			CrewCategory category,
+			CrewVisibility visibility
+	) {
+	}
 }

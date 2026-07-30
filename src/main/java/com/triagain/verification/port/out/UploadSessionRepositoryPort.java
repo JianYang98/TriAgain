@@ -8,15 +8,15 @@ import java.util.Optional;
 
 public interface UploadSessionRepositoryPort {
 
-    UploadSession save(UploadSession uploadSession);
+	UploadSession save(UploadSession uploadSession);
 
-    Optional<UploadSession> findById(Long id);
+	Optional<UploadSession> findById(Long id);
 
-    Optional<UploadSession> findByIdAndUserId(Long id, String userId);
+	Optional<UploadSession> findByIdAndUserId(Long id, String userId);
 
-    /** imageKey로 업로드 세션 조회 — Lambda 콜백 시 사용 */
-    Optional<UploadSession> findByImageKey(String imageKey);
+	/** imageKey로 업로드 세션 조회 — Lambda 콜백 시 사용 */
+	Optional<UploadSession> findByImageKey(String imageKey);
 
-    /** PENDING 상태이고 생성 시각이 threshold 이전인 세션 목록 조회 — 만료 처리용 */
-    List<UploadSession> findPendingSessionsBefore(LocalDateTime threshold);
+	/** PENDING 상태이고 생성 시각이 threshold 이전인 세션 목록 조회 — 만료 처리용 */
+	List<UploadSession> findPendingSessionsBefore(LocalDateTime threshold);
 }

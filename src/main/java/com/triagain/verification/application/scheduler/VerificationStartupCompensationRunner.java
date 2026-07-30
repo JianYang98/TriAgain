@@ -13,19 +13,19 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class VerificationStartupCompensationRunner {
 
-    private final ExpireUploadSessionScheduler expireSessionScheduler;
+	private final ExpireUploadSessionScheduler expireSessionScheduler;
 
-    @EventListener(ApplicationReadyEvent.class)
-    @Order(2)
-    public void compensateMissedSchedulerJobs() {
-        log.info("[Verification Startup Compensation] 밀린 스케줄러 작업 보정 시작");
+	@EventListener(ApplicationReadyEvent.class)
+	@Order(2)
+	public void compensateMissedSchedulerJobs() {
+		log.info("[Verification Startup Compensation] 밀린 스케줄러 작업 보정 시작");
 
-        try {
-            expireSessionScheduler.expirePendingSessions();
-        } catch (Exception e) {
-            log.error("[Verification Startup Compensation] 업로드 세션 만료 보정 실패", e);
-        }
+		try {
+			expireSessionScheduler.expirePendingSessions();
+		} catch (Exception e) {
+			log.error("[Verification Startup Compensation] 업로드 세션 만료 보정 실패", e);
+		}
 
-        log.info("[Verification Startup Compensation] 보정 완료");
-    }
+		log.info("[Verification Startup Compensation] 보정 완료");
+	}
 }

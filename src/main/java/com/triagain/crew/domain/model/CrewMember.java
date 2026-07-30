@@ -7,69 +7,69 @@ import java.time.LocalDateTime;
 
 public class CrewMember {
 
-    private final String id;
-    private final String userId;
-    private final String crewId;
-    private final CrewRole role;
-    private final LocalDateTime joinedAt;
+	private final String id;
+	private final String userId;
+	private final String crewId;
+	private final CrewRole role;
+	private final LocalDateTime joinedAt;
 
-    private CrewMember(String id, String userId, String crewId, CrewRole role, LocalDateTime joinedAt) {
-        this.id = id;
-        this.userId = userId;
-        this.crewId = crewId;
-        this.role = role;
-        this.joinedAt = joinedAt;
-    }
+	private CrewMember(String id, String userId, String crewId, CrewRole role, LocalDateTime joinedAt) {
+		this.id = id;
+		this.userId = userId;
+		this.crewId = crewId;
+		this.role = role;
+		this.joinedAt = joinedAt;
+	}
 
-    /** 크루장 멤버 생성 — 크루 최초 생성 시 사용 */
-    public static CrewMember createLeader(String userId, String crewId) {
-        return new CrewMember(
-                IdGenerator.generate("CRMB"),
-                userId,
-                crewId,
-                CrewRole.LEADER,
-                LocalDateTime.now()
-        );
-    }
+	/** 크루장 멤버 생성 — 크루 최초 생성 시 사용 */
+	public static CrewMember createLeader(String userId, String crewId) {
+		return new CrewMember(
+				IdGenerator.generate("CRMB"),
+				userId,
+				crewId,
+				CrewRole.LEADER,
+				LocalDateTime.now()
+		);
+	}
 
-    /** 일반 멤버 생성 — 크루 참여 시 사용 */
-    public static CrewMember createMember(String userId, String crewId) {
-        return new CrewMember(
-                IdGenerator.generate("CRMB"),
-                userId,
-                crewId,
-                CrewRole.MEMBER,
-                LocalDateTime.now()
-        );
-    }
+	/** 일반 멤버 생성 — 크루 참여 시 사용 */
+	public static CrewMember createMember(String userId, String crewId) {
+		return new CrewMember(
+				IdGenerator.generate("CRMB"),
+				userId,
+				crewId,
+				CrewRole.MEMBER,
+				LocalDateTime.now()
+		);
+	}
 
-    /** 영속 데이터로 멤버 복원 — DB 조회 결과를 도메인 객체로 변환 */
-    public static CrewMember of(String id, String userId, String crewId, CrewRole role, LocalDateTime joinedAt) {
-        return new CrewMember(id, userId, crewId, role, joinedAt);
-    }
+	/** 영속 데이터로 멤버 복원 — DB 조회 결과를 도메인 객체로 변환 */
+	public static CrewMember of(String id, String userId, String crewId, CrewRole role, LocalDateTime joinedAt) {
+		return new CrewMember(id, userId, crewId, role, joinedAt);
+	}
 
-    /** 크루장 여부 확인 — 권한 검증에 사용 */
-    public boolean isLeader() {
-        return this.role == CrewRole.LEADER;
-    }
+	/** 크루장 여부 확인 — 권한 검증에 사용 */
+	public boolean isLeader() {
+		return this.role == CrewRole.LEADER;
+	}
 
-    public String getId() {
-        return id;
-    }
+	public String getId() {
+		return id;
+	}
 
-    public String getUserId() {
-        return userId;
-    }
+	public String getUserId() {
+		return userId;
+	}
 
-    public String getCrewId() {
-        return crewId;
-    }
+	public String getCrewId() {
+		return crewId;
+	}
 
-    public CrewRole getRole() {
-        return role;
-    }
+	public CrewRole getRole() {
+		return role;
+	}
 
-    public LocalDateTime getJoinedAt() {
-        return joinedAt;
-    }
+	public LocalDateTime getJoinedAt() {
+		return joinedAt;
+	}
 }

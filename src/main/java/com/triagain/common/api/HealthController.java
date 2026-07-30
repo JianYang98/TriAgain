@@ -13,19 +13,19 @@ import java.sql.Connection;
 @RequiredArgsConstructor
 public class HealthController {
 
-    private final DataSource dataSource;
+	private final DataSource dataSource;
 
-    @GetMapping("/health")
-    public ResponseEntity<ApiResponse<HealthResponse>> health() {
-        String dbStatus = checkDatabase();
-        return ResponseEntity.ok(ApiResponse.ok(new HealthResponse("UP", dbStatus)));
-    }
+	@GetMapping("/health")
+	public ResponseEntity<ApiResponse<HealthResponse>> health() {
+		String dbStatus = checkDatabase();
+		return ResponseEntity.ok(ApiResponse.ok(new HealthResponse("UP", dbStatus)));
+	}
 
-    private String checkDatabase() {
-        try (Connection connection = dataSource.getConnection()) {
-            return connection.isValid(1) ? "UP" : "DOWN";
-        } catch (Exception e) {
-            return "DOWN";
-        }
-    }
+	private String checkDatabase() {
+		try (Connection connection = dataSource.getConnection()) {
+			return connection.isValid(1) ? "UP" : "DOWN";
+		} catch (Exception e) {
+			return "DOWN";
+		}
+	}
 }

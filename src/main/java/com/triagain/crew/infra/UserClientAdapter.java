@@ -14,15 +14,15 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class UserClientAdapter implements UserPort {
 
-    private final UserProfileQueryUseCase userProfileQueryUseCase;
+	private final UserProfileQueryUseCase userProfileQueryUseCase;
 
-    /** 유저 ID 목록으로 프로필 정보 일괄 조회 */
-    @Override
-    public Map<String, UserProfile> findProfilesByIds(List<String> userIds) {
-        return userProfileQueryUseCase.findProfilesByIds(userIds).entrySet().stream()
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        e -> new UserProfile(e.getValue().nickname(), e.getValue().profileImageUrl())
-                ));
-    }
+	/** 유저 ID 목록으로 프로필 정보 일괄 조회 */
+	@Override
+	public Map<String, UserProfile> findProfilesByIds(List<String> userIds) {
+		return userProfileQueryUseCase.findProfilesByIds(userIds).entrySet().stream()
+				.collect(Collectors.toMap(
+						Map.Entry::getKey,
+						e -> new UserProfile(e.getValue().nickname(), e.getValue().profileImageUrl())
+				));
+	}
 }

@@ -14,20 +14,20 @@ import java.util.List;
 /** 개발/테스트용 인증 필터 — X-User-Id 헤더로 SecurityContext 설정 */
 public class XUserIdAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final String USER_ID_HEADER = "X-User-Id";
+	private static final String USER_ID_HEADER = "X-User-Id";
 
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
-        String userId = request.getHeader(USER_ID_HEADER);
+	@Override
+	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+									FilterChain filterChain) throws ServletException, IOException {
+		String userId = request.getHeader(USER_ID_HEADER);
 
-        if (userId != null && !userId.isBlank()
-                && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(userId, null, List.of());
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-        }
+		if (userId != null && !userId.isBlank()
+				&& SecurityContextHolder.getContext().getAuthentication() == null) {
+			UsernamePasswordAuthenticationToken authentication =
+					new UsernamePasswordAuthenticationToken(userId, null, List.of());
+			SecurityContextHolder.getContext().setAuthentication(authentication);
+		}
 
-        filterChain.doFilter(request, response);
-    }
+		filterChain.doFilter(request, response);
+	}
 }

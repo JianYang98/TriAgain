@@ -21,44 +21,44 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ActivateRecruitingCrewsScheduler {
 
-    private static final int CHUNK_SIZE = 50;
+	private static final int CHUNK_SIZE = 50;
 
-    private final CrewRepositoryPort crewRepositoryPort;
-    private final ChunkProcessor chunkProcessor;
-    private final DeadLetterRepositoryPort deadLetterRepositoryPort;
+	private final CrewRepositoryPort crewRepositoryPort;
+	private final ChunkProcessor chunkProcessor;
+	private final DeadLetterRepositoryPort deadLetterRepositoryPort;
 
-    /** 시작일 도래한 RECRUITING 크루 활성화 — 매일 00:00에 RECRUITING → ACTIVE 전환 */
-    @Scheduled(cron = "0 0 0 * * *")
-    public void activateRecruitingCrews() {
-        List<Crew> crews = crewRepositoryPort
-                .findRecruitingCrewsStartedOnOrBefore(LocalDate.now());
-        processCrews(crews);
-    }
+	/** 시작일 도래한 RECRUITING 크루 활성화 — 매일 00:00에 RECRUITING → ACTIVE 전환 */
+	@Scheduled(cron = "0 0 0 * * *")
+	public void activateRecruitingCrews() {
+		List<Crew> crews = crewRepositoryPort
+				.findRecruitingCrewsStartedOnOrBefore(LocalDate.now());
+		processCrews(crews);
+	}
 
-    /** 서버 시작 보정용 — 전체 미처리 건 조회 */
-    public void compensateAllRecruitingCrews() {
-        List<Crew> crews = crewRepositoryPort
-                .findRecruitingCrewsStartedOnOrBefore(LocalDate.now());
-        processCrews(crews);
-    }
+	/** 서버 시작 보정용 — 전체 미처리 건 조회 */
+	public void compensateAllRecruitingCrews() {
+		List<Crew> crews = crewRepositoryPort
+				.findRecruitingCrewsStartedOnOrBefore(LocalDate.now());
+		processCrews(crews);
+	}
 
-    private void processCrews(List<Crew> crews) {
-        if (crews.isEmpty()) return;
+	private void processCrews(List<Crew> crews) {
+		if (crews.isEmpty()) return;
 
-        ChunkProcessingResult<Crew> result = chunkProcessor.execute(crews, CHUNK_SIZE, crew -> {
-            crew.activate();
-            crewRepositoryPort.save(crew);
-        }, stale -> crewRepositoryPort.findById(stale.getId()).orElseThrow());
+		ChunkProcessingResult<Crew> result = chunkProcessor.execute(crews, CHUNK_SIZE, crew -> {
+			crew.activate();
+			crewRepositoryPort.save(crew);
+		}, stale -> crewRepositoryPort.findById(stale.getId()).orElseThrow());
 
-        for (FailedItem<Crew> failed : result.failedItems()) {
-            deadLetterRepositoryPort.save(DeadLetter.of(
-                    DeadLetterTaskType.CREW_ACTIVATE,
-                    failed.item().getId(),
-                    failed.errorMessage()
-            ));
-        }
+		for (FailedItem<Crew> failed : result.failedItems()) {
+			deadLetterRepositoryPort.save(DeadLetter.of(
+					DeadLetterTaskType.CREW_ACTIVATE,
+					failed.item().getId(),
+					failed.errorMessage()
+			));
+		}
 
-        log.info("크루 활성화 처리: 전체 {}건, 성공 {}건, 실패 {}건",
-                crews.size(), result.successCount(), result.failedCount());
-    }
+		log.info("크루 활성화 처리: 전체 {}건, 성공 {}건, 실패 {}건",
+				crews.size(), result.successCount(), result.failedCount());
+	}
 }

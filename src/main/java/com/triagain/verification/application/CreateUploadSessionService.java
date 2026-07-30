@@ -27,107 +27,107 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class CreateUploadSessionService implements CreateUploadSessionUseCase {
 
-    private static final Set<String> ALLOWED_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
-    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-    private static final int PRESIGNED_URL_EXPIRY_MINUTES = 15;
+	private static final Set<String> ALLOWED_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
+	private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+	private static final int PRESIGNED_URL_EXPIRY_MINUTES = 15;
 
-    private final UploadSessionRepositoryPort uploadSessionRepositoryPort;
-    private final StoragePort storagePort;
-    private final ChallengePort challengePort;
-    private final CrewPort crewPort;
-    private final HabitPort habitPort;
-    private final Clock clock;
+	private final UploadSessionRepositoryPort uploadSessionRepositoryPort;
+	private final StoragePort storagePort;
+	private final ChallengePort challengePort;
+	private final CrewPort crewPort;
+	private final HabitPort habitPort;
+	private final Clock clock;
 
-    @Override
-    @Transactional
-    public UploadSessionResult createUploadSession(CreateUploadSessionCommand command) {
-        validateCrewIdHabitIdXor(command.crewId(), command.habitId());
-        if (command.crewId() != null) {
-            validateCrewAndDeadline(command.crewId(), command.userId());
-        } else {
-            habitPort.validateHabitAndDeadline(command.habitId(), command.userId());
-        }
-        validateFileType(command.fileType());
-        validateFileSize(command.fileSize());
+	@Override
+	@Transactional
+	public UploadSessionResult createUploadSession(CreateUploadSessionCommand command) {
+		validateCrewIdHabitIdXor(command.crewId(), command.habitId());
+		if (command.crewId() != null) {
+			validateCrewAndDeadline(command.crewId(), command.userId());
+		} else {
+			habitPort.validateHabitAndDeadline(command.habitId(), command.userId());
+		}
+		validateFileType(command.fileType());
+		validateFileSize(command.fileSize());
 
-        String imageKey = storagePort.generateImageKey(command.userId(), command.fileType());
+		String imageKey = storagePort.generateImageKey(command.userId(), command.fileType());
 
-        UploadSession session = UploadSession.create(
-                command.userId(), command.crewId(), command.habitId(), imageKey, command.fileType());
-        UploadSession saved = uploadSessionRepositoryPort.save(session);
+		UploadSession session = UploadSession.create(
+				command.userId(), command.crewId(), command.habitId(), imageKey, command.fileType());
+		UploadSession saved = uploadSessionRepositoryPort.save(session);
 
-        String presignedUrl = storagePort.generatePresignedUrl(imageKey, command.fileType(), command.fileSize());
-        String imageUrl = storagePort.getImageUrl(imageKey);
+		String presignedUrl = storagePort.generatePresignedUrl(imageKey, command.fileType(), command.fileSize());
+		String imageUrl = storagePort.getImageUrl(imageKey);
 
-        return new UploadSessionResult(
-                saved.getId(),
-                presignedUrl,
-                imageUrl,
-                LocalDateTime.now(clock).plusMinutes(PRESIGNED_URL_EXPIRY_MINUTES),
-                MAX_FILE_SIZE,
-                List.copyOf(ALLOWED_TYPES)
-        );
-    }
+		return new UploadSessionResult(
+				saved.getId(),
+				presignedUrl,
+				imageUrl,
+				LocalDateTime.now(clock).plusMinutes(PRESIGNED_URL_EXPIRY_MINUTES),
+				MAX_FILE_SIZE,
+				List.copyOf(ALLOWED_TYPES)
+		);
+	}
 
-    /** crewId/habitId XOR 검증 — 둘 다 없거나 둘 다 있으면 C001(step2 §9) */
-    private void validateCrewIdHabitIdXor(String crewId, String habitId) {
-        boolean hasCrewId = crewId != null;
-        boolean hasHabitId = habitId != null;
-        if (hasCrewId == hasHabitId) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT);
-        }
-    }
+	/** crewId/habitId XOR 검증 — 둘 다 없거나 둘 다 있으면 C001(step2 §9) */
+	private void validateCrewIdHabitIdXor(String crewId, String habitId) {
+		boolean hasCrewId = crewId != null;
+		boolean hasHabitId = habitId != null;
+		if (hasCrewId == hasHabitId) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT);
+		}
+	}
 
-    /** 크루 상태 + 마감 시간 검증 — 크루 기반으로 업로드 세션 생성 가능 여부 판단 (거동 불변, G1) */
-    private void validateCrewAndDeadline(String crewId, String userId) {
-        crewPort.validateMembership(crewId, userId);
+	/** 크루 상태 + 마감 시간 검증 — 크루 기반으로 업로드 세션 생성 가능 여부 판단 (거동 불변, G1) */
+	private void validateCrewAndDeadline(String crewId, String userId) {
+		crewPort.validateMembership(crewId, userId);
 
-        CrewVerificationWindowInfo crewInfo = crewPort.getCrewVerificationWindowInfo(crewId);
+		CrewVerificationWindowInfo crewInfo = crewPort.getCrewVerificationWindowInfo(crewId);
 
-        if ("TEXT".equals(crewInfo.verificationType())) {
-            throw new BusinessException(ErrorCode.UPLOAD_SESSION_NOT_REQUIRED);
-        }
+		if ("TEXT".equals(crewInfo.verificationType())) {
+			throw new BusinessException(ErrorCode.UPLOAD_SESSION_NOT_REQUIRED);
+		}
 
-        if (!"ACTIVE".equals(crewInfo.status())) {
-            throw new BusinessException(ErrorCode.CREW_NOT_ACTIVE);
-        }
+		if (!"ACTIVE".equals(crewInfo.status())) {
+			throw new BusinessException(ErrorCode.CREW_NOT_ACTIVE);
+		}
 
-        LocalDate today = LocalDate.now(clock);
-        if (today.isBefore(crewInfo.startDate())) {
-            throw new BusinessException(ErrorCode.CREW_NOT_STARTED);
-        }
-        if (today.isAfter(crewInfo.endDate())) {
-            throw new BusinessException(ErrorCode.CREW_PERIOD_ENDED);
-        }
+		LocalDate today = LocalDate.now(clock);
+		if (today.isBefore(crewInfo.startDate())) {
+			throw new BusinessException(ErrorCode.CREW_NOT_STARTED);
+		}
+		if (today.isAfter(crewInfo.endDate())) {
+			throw new BusinessException(ErrorCode.CREW_PERIOD_ENDED);
+		}
 
-        Optional<ActiveChallengeInfo> active = challengePort
-                .findActiveByUserIdAndCrewId(userId, crewId);
+		Optional<ActiveChallengeInfo> active = challengePort
+				.findActiveByUserIdAndCrewId(userId, crewId);
 
-        if (active.isPresent()) {
-            // [신규] 상한 = min(슬롯 일일마감, 사이클 마감) — endDate 캡 보존(step1 §3-2). 하한(V003)은 발급에 미적용
-            LocalDate slot = DeadlinePolicy.slotFor(active.get().startDate(), active.get().completedDays());
-            LocalDateTime effective = DeadlinePolicy.effectiveSlotDeadline(
-                    slot, crewInfo.deadlineTime(), active.get().deadline());
-            if (!DeadlinePolicy.isWithinDeadline(LocalDateTime.now(clock), effective)) {
-                throw new BusinessException(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
-            }
-        } else {
-            LocalDateTime todayDeadline = DeadlinePolicy.todayDeadline(crewInfo.deadlineTime(), clock);
-            if (!DeadlinePolicy.isWithinDeadline(LocalDateTime.now(clock), todayDeadline)) {
-                throw new BusinessException(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
-            }
-        }
-    }
+		if (active.isPresent()) {
+			// [신규] 상한 = min(슬롯 일일마감, 사이클 마감) — endDate 캡 보존(step1 §3-2). 하한(V003)은 발급에 미적용
+			LocalDate slot = DeadlinePolicy.slotFor(active.get().startDate(), active.get().completedDays());
+			LocalDateTime effective = DeadlinePolicy.effectiveSlotDeadline(
+					slot, crewInfo.deadlineTime(), active.get().deadline());
+			if (!DeadlinePolicy.isWithinDeadline(LocalDateTime.now(clock), effective)) {
+				throw new BusinessException(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
+			}
+		} else {
+			LocalDateTime todayDeadline = DeadlinePolicy.todayDeadline(crewInfo.deadlineTime(), clock);
+			if (!DeadlinePolicy.isWithinDeadline(LocalDateTime.now(clock), todayDeadline)) {
+				throw new BusinessException(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
+			}
+		}
+	}
 
-    private void validateFileType(String fileType) {
-        if (!ALLOWED_TYPES.contains(fileType)) {
-            throw new BusinessException(ErrorCode.INVALID_FILE_TYPE);
-        }
-    }
+	private void validateFileType(String fileType) {
+		if (!ALLOWED_TYPES.contains(fileType)) {
+			throw new BusinessException(ErrorCode.INVALID_FILE_TYPE);
+		}
+	}
 
-    private void validateFileSize(long fileSize) {
-        if (fileSize <= 0 || fileSize > MAX_FILE_SIZE) {
-            throw new BusinessException(ErrorCode.FILE_TOO_LARGE);
-        }
-    }
+	private void validateFileSize(long fileSize) {
+		if (fileSize <= 0 || fileSize > MAX_FILE_SIZE) {
+			throw new BusinessException(ErrorCode.FILE_TOO_LARGE);
+		}
+	}
 }

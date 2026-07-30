@@ -22,31 +22,31 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RequiredArgsConstructor
 public class UploadSessionController {
 
-    private final CreateUploadSessionUseCase createUploadSessionUseCase;
-    private final SubscribeUploadSessionUseCase subscribeUploadSessionUseCase;
+	private final CreateUploadSessionUseCase createUploadSessionUseCase;
+	private final SubscribeUploadSessionUseCase subscribeUploadSessionUseCase;
 
-    @PostMapping("/upload-sessions")
-    public ResponseEntity<ApiResponse<UploadSessionResult>> createUploadSession(
-            @AuthenticatedUser String userId,
-            @Valid @RequestBody CreateUploadSessionRequest request
-    ) {
-        CreateUploadSessionCommand command = new CreateUploadSessionCommand(
-                userId,
-                request.crewId(),
-                request.habitId(),
-                request.fileName(),
-                request.fileType(),
-                request.fileSize()
-        );
+	@PostMapping("/upload-sessions")
+	public ResponseEntity<ApiResponse<UploadSessionResult>> createUploadSession(
+			@AuthenticatedUser String userId,
+			@Valid @RequestBody CreateUploadSessionRequest request
+	) {
+		CreateUploadSessionCommand command = new CreateUploadSessionCommand(
+				userId,
+				request.crewId(),
+				request.habitId(),
+				request.fileName(),
+				request.fileType(),
+				request.fileSize()
+		);
 
-        UploadSessionResult result = createUploadSessionUseCase.createUploadSession(command);
+		UploadSessionResult result = createUploadSessionUseCase.createUploadSession(command);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(result));
-    }
+		return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(result));
+	}
 
-    /** SSE 구독 — 클라이언트가 업로드 완료 이벤트를 실시간 수신 */
-    @GetMapping(value = "/upload-sessions/{id}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter subscribe(@PathVariable Long id) {
-        return (SseEmitter) subscribeUploadSessionUseCase.subscribe(id);
-    }
+	/** SSE 구독 — 클라이언트가 업로드 완료 이벤트를 실시간 수신 */
+	@GetMapping(value = "/upload-sessions/{id}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+	public SseEmitter subscribe(@PathVariable Long id) {
+		return (SseEmitter) subscribeUploadSessionUseCase.subscribe(id);
+	}
 }

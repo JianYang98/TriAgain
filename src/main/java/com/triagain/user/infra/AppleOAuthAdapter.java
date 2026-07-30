@@ -37,170 +37,170 @@ import java.util.Map;
 @Component
 public class AppleOAuthAdapter implements AppleOAuthPort {
 
-    private static final Logger log = LoggerFactory.getLogger(AppleOAuthAdapter.class);
-    private static final String APPLE_AUDIENCE = "https://appleid.apple.com";
-    private static final String APPLE_TOKEN_URL = "https://appleid.apple.com/auth/token";
-    private static final String APPLE_REVOKE_URL = "https://appleid.apple.com/auth/revoke";
-    private static final long CLIENT_SECRET_EXPIRATION_SECONDS = 300L; // 5분
+	private static final Logger log = LoggerFactory.getLogger(AppleOAuthAdapter.class);
+	private static final String APPLE_AUDIENCE = "https://appleid.apple.com";
+	private static final String APPLE_TOKEN_URL = "https://appleid.apple.com/auth/token";
+	private static final String APPLE_REVOKE_URL = "https://appleid.apple.com/auth/revoke";
+	private static final long CLIENT_SECRET_EXPIRATION_SECONDS = 300L; // 5분
 
-    private final RestClient restClient;
-    private final String clientId;
-    private final String teamId;
-    private final String keyId;
-    private final String privateKeyPem;
+	private final RestClient restClient;
+	private final String clientId;
+	private final String teamId;
+	private final String keyId;
+	private final String privateKeyPem;
 
-    private ECPrivateKey privateKey;
-    private boolean enabled;
+	private ECPrivateKey privateKey;
+	private boolean enabled;
 
-    public AppleOAuthAdapter(
-            RestClient restClient,
-            @Value("${apple.client-id}") String clientId,
-            @Value("${apple.team-id:}") String teamId,
-            @Value("${apple.key-id:}") String keyId,
-            @Value("${apple.private-key:}") String privateKeyPem
-    ) {
-        this.restClient = restClient;
-        this.clientId = clientId;
-        this.teamId = teamId;
-        this.keyId = keyId;
-        this.privateKeyPem = privateKeyPem;
-    }
+	public AppleOAuthAdapter(
+			RestClient restClient,
+			@Value("${apple.client-id}") String clientId,
+			@Value("${apple.team-id:}") String teamId,
+			@Value("${apple.key-id:}") String keyId,
+			@Value("${apple.private-key:}") String privateKeyPem
+	) {
+		this.restClient = restClient;
+		this.clientId = clientId;
+		this.teamId = teamId;
+		this.keyId = keyId;
+		this.privateKeyPem = privateKeyPem;
+	}
 
-    /** 빈 초기화 시 환경변수와 .p8 키 파싱을 검증 — fail-fast로 부팅 단계에서 잘못된 설정을 잡는다 */
-    @PostConstruct
-    void initialize() {
-        boolean allBlank = isBlank(teamId) && isBlank(keyId) && isBlank(privateKeyPem);
-        boolean anyBlank = isBlank(teamId) || isBlank(keyId) || isBlank(privateKeyPem);
+	/** 빈 초기화 시 환경변수와 .p8 키 파싱을 검증 — fail-fast로 부팅 단계에서 잘못된 설정을 잡는다 */
+	@PostConstruct
+	void initialize() {
+		boolean allBlank = isBlank(teamId) && isBlank(keyId) && isBlank(privateKeyPem);
+		boolean anyBlank = isBlank(teamId) || isBlank(keyId) || isBlank(privateKeyPem);
 
-        if (allBlank) {
-            this.enabled = false;
-            log.warn("Apple OAuth disabled — APPLE_TEAM_ID/APPLE_KEY_ID/APPLE_PRIVATE_KEY 미설정. 회원가입 시 APPLE_TOKEN_EXCHANGE_ERROR 발생, 탈퇴 시 revoke 미호출");
-            return;
-        }
-        if (anyBlank) {
-            throw new IllegalStateException(
-                    "Apple OAuth 설정 누락 — APPLE_TEAM_ID/APPLE_KEY_ID/APPLE_PRIVATE_KEY 중 일부만 채워져 있다. 셋 다 설정하거나 셋 다 비워야 한다");
-        }
+		if (allBlank) {
+			this.enabled = false;
+			log.warn("Apple OAuth disabled — APPLE_TEAM_ID/APPLE_KEY_ID/APPLE_PRIVATE_KEY 미설정. 회원가입 시 APPLE_TOKEN_EXCHANGE_ERROR 발생, 탈퇴 시 revoke 미호출");
+			return;
+		}
+		if (anyBlank) {
+			throw new IllegalStateException(
+					"Apple OAuth 설정 누락 — APPLE_TEAM_ID/APPLE_KEY_ID/APPLE_PRIVATE_KEY 중 일부만 채워져 있다. 셋 다 설정하거나 셋 다 비워야 한다");
+		}
 
-        try {
-            this.privateKey = parsePrivateKey(privateKeyPem);
-        } catch (Exception e) {
-            throw new IllegalStateException("Apple OAuth .p8 private key 파싱 실패", e);
-        }
-        this.enabled = true;
-        log.info("Apple OAuth enabled — teamId={}, keyId={}, clientId={}", teamId, keyId, clientId);
-    }
+		try {
+			this.privateKey = parsePrivateKey(privateKeyPem);
+		} catch (Exception e) {
+			throw new IllegalStateException("Apple OAuth .p8 private key 파싱 실패", e);
+		}
+		this.enabled = true;
+		log.info("Apple OAuth enabled — teamId={}, keyId={}, clientId={}", teamId, keyId, clientId);
+	}
 
-    @Override
-    public boolean isEnabled() {
-        return enabled;
-    }
+	@Override
+	public boolean isEnabled() {
+		return enabled;
+	}
 
-    /** authorizationCode → refresh_token 교환 (회원가입 차단형). disabled면 예외 */
-    @Override
-    public String exchangeAuthorizationCode(String authorizationCode) {
-        if (!enabled) {
-            log.warn("Apple OAuth disabled 상태에서 exchangeAuthorizationCode 호출됨");
-            throw new BusinessException(ErrorCode.APPLE_TOKEN_EXCHANGE_ERROR);
-        }
+	/** authorizationCode → refresh_token 교환 (회원가입 차단형). disabled면 예외 */
+	@Override
+	public String exchangeAuthorizationCode(String authorizationCode) {
+		if (!enabled) {
+			log.warn("Apple OAuth disabled 상태에서 exchangeAuthorizationCode 호출됨");
+			throw new BusinessException(ErrorCode.APPLE_TOKEN_EXCHANGE_ERROR);
+		}
 
-        try {
-            String clientSecret = generateClientSecret();
-            MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
-            form.add("client_id", clientId);
-            form.add("client_secret", clientSecret);
-            form.add("code", authorizationCode);
-            form.add("grant_type", "authorization_code");
+		try {
+			String clientSecret = generateClientSecret();
+			MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+			form.add("client_id", clientId);
+			form.add("client_secret", clientSecret);
+			form.add("code", authorizationCode);
+			form.add("grant_type", "authorization_code");
 
-            @SuppressWarnings("unchecked")
-            Map<String, Object> response = restClient.post()
-                    .uri(APPLE_TOKEN_URL)
-                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                    .body(form)
-                    .retrieve()
-                    .body(Map.class);
+			@SuppressWarnings("unchecked")
+			Map<String, Object> response = restClient.post()
+					.uri(APPLE_TOKEN_URL)
+					.contentType(MediaType.APPLICATION_FORM_URLENCODED)
+					.body(form)
+					.retrieve()
+					.body(Map.class);
 
-            if (response == null) {
-                log.error("Apple /auth/token 응답이 null");
-                throw new BusinessException(ErrorCode.APPLE_TOKEN_EXCHANGE_ERROR);
-            }
-            Object refreshToken = response.get("refresh_token");
-            if (refreshToken == null) {
-                log.error("Apple /auth/token 응답에 refresh_token 없음: keys={}", response.keySet());
-                throw new BusinessException(ErrorCode.APPLE_TOKEN_EXCHANGE_ERROR);
-            }
-            return refreshToken.toString();
-        } catch (BusinessException e) {
-            throw e;
-        } catch (RestClientException e) {
-            log.error("Apple /auth/token 호출 실패: {}", e.getMessage());
-            throw new BusinessException(ErrorCode.APPLE_TOKEN_EXCHANGE_ERROR);
-        } catch (Exception e) {
-            log.error("Apple /auth/token 처리 중 오류: {}", e.getMessage(), e);
-            throw new BusinessException(ErrorCode.APPLE_TOKEN_EXCHANGE_ERROR);
-        }
-    }
+			if (response == null) {
+				log.error("Apple /auth/token 응답이 null");
+				throw new BusinessException(ErrorCode.APPLE_TOKEN_EXCHANGE_ERROR);
+			}
+			Object refreshToken = response.get("refresh_token");
+			if (refreshToken == null) {
+				log.error("Apple /auth/token 응답에 refresh_token 없음: keys={}", response.keySet());
+				throw new BusinessException(ErrorCode.APPLE_TOKEN_EXCHANGE_ERROR);
+			}
+			return refreshToken.toString();
+		} catch (BusinessException e) {
+			throw e;
+		} catch (RestClientException e) {
+			log.error("Apple /auth/token 호출 실패: {}", e.getMessage());
+			throw new BusinessException(ErrorCode.APPLE_TOKEN_EXCHANGE_ERROR);
+		} catch (Exception e) {
+			log.error("Apple /auth/token 처리 중 오류: {}", e.getMessage(), e);
+			throw new BusinessException(ErrorCode.APPLE_TOKEN_EXCHANGE_ERROR);
+		}
+	}
 
-    /** Apple refresh_token 무효화 — 회원탈퇴 시. 실패해도 탈퇴는 graceful 진행. App Store 5.1.1(v) */
-    @Override
-    public void revokeRefreshToken(String refreshToken) {
-        if (!enabled) {
-            log.warn("Apple OAuth disabled 상태 — revoke 미호출");
-            return;
-        }
-        if (refreshToken == null || refreshToken.isBlank()) {
-            log.warn("Apple refresh_token이 비어 있음 — revoke 미호출");
-            return;
-        }
+	/** Apple refresh_token 무효화 — 회원탈퇴 시. 실패해도 탈퇴는 graceful 진행. App Store 5.1.1(v) */
+	@Override
+	public void revokeRefreshToken(String refreshToken) {
+		if (!enabled) {
+			log.warn("Apple OAuth disabled 상태 — revoke 미호출");
+			return;
+		}
+		if (refreshToken == null || refreshToken.isBlank()) {
+			log.warn("Apple refresh_token이 비어 있음 — revoke 미호출");
+			return;
+		}
 
-        try {
-            String clientSecret = generateClientSecret();
-            MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
-            form.add("client_id", clientId);
-            form.add("client_secret", clientSecret);
-            form.add("token", refreshToken);
-            form.add("token_type_hint", "refresh_token");
+		try {
+			String clientSecret = generateClientSecret();
+			MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+			form.add("client_id", clientId);
+			form.add("client_secret", clientSecret);
+			form.add("token", refreshToken);
+			form.add("token_type_hint", "refresh_token");
 
-            restClient.post()
-                    .uri(APPLE_REVOKE_URL)
-                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                    .body(form)
-                    .retrieve()
-                    .toBodilessEntity();
+			restClient.post()
+					.uri(APPLE_REVOKE_URL)
+					.contentType(MediaType.APPLICATION_FORM_URLENCODED)
+					.body(form)
+					.retrieve()
+					.toBodilessEntity();
 
-            log.info("Apple refresh_token revoke 성공");
-        } catch (Exception e) {
-            log.warn("Apple refresh_token revoke 실패 (탈퇴는 계속 진행): {}", e.getMessage());
-        }
-    }
+			log.info("Apple refresh_token revoke 성공");
+		} catch (Exception e) {
+			log.warn("Apple refresh_token revoke 실패 (탈퇴는 계속 진행): {}", e.getMessage());
+		}
+	}
 
-    /** Apple Client Secret JWT 생성 — ES256, exp = now + 5분, 매 호출마다 즉석 생성 */
-    private String generateClientSecret() {
-        Instant now = Instant.now();
-        return Jwts.builder()
-                .header().keyId(keyId).and()
-                .issuer(teamId)
-                .audience().add(APPLE_AUDIENCE).and()
-                .subject(clientId)
-                .issuedAt(Date.from(now))
-                .expiration(Date.from(now.plusSeconds(CLIENT_SECRET_EXPIRATION_SECONDS)))
-                .signWith(privateKey, Jwts.SIG.ES256)
-                .compact();
-    }
+	/** Apple Client Secret JWT 생성 — ES256, exp = now + 5분, 매 호출마다 즉석 생성 */
+	private String generateClientSecret() {
+		Instant now = Instant.now();
+		return Jwts.builder()
+				.header().keyId(keyId).and()
+				.issuer(teamId)
+				.audience().add(APPLE_AUDIENCE).and()
+				.subject(clientId)
+				.issuedAt(Date.from(now))
+				.expiration(Date.from(now.plusSeconds(CLIENT_SECRET_EXPIRATION_SECONDS)))
+				.signWith(privateKey, Jwts.SIG.ES256)
+				.compact();
+	}
 
-    /** .p8 PEM 문자열 → ECPrivateKey 객체 (환경변수의 \n 이스케이프 처리 포함) */
-    private static ECPrivateKey parsePrivateKey(String pem) throws Exception {
-        String normalized = pem
-                .replace("\\n", "\n")
-                .replace("-----BEGIN PRIVATE KEY-----", "")
-                .replace("-----END PRIVATE KEY-----", "")
-                .replaceAll("\\s+", "");
-        byte[] decoded = Base64.getDecoder().decode(normalized);
-        PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(decoded);
-        return (ECPrivateKey) KeyFactory.getInstance("EC").generatePrivate(spec);
-    }
+	/** .p8 PEM 문자열 → ECPrivateKey 객체 (환경변수의 \n 이스케이프 처리 포함) */
+	private static ECPrivateKey parsePrivateKey(String pem) throws Exception {
+		String normalized = pem
+				.replace("\\n", "\n")
+				.replace("-----BEGIN PRIVATE KEY-----", "")
+				.replace("-----END PRIVATE KEY-----", "")
+				.replaceAll("\\s+", "");
+		byte[] decoded = Base64.getDecoder().decode(normalized);
+		PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(decoded);
+		return (ECPrivateKey) KeyFactory.getInstance("EC").generatePrivate(spec);
+	}
 
-    private static boolean isBlank(String s) {
-        return s == null || s.isBlank();
-    }
+	private static boolean isBlank(String s) {
+		return s == null || s.isBlank();
+	}
 }

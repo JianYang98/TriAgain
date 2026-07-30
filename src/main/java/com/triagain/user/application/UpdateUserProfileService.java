@@ -18,55 +18,55 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class UpdateUserProfileService implements UpdateUserProfileUseCase {
 
-    private final UserRepositoryPort userRepositoryPort;
-    private final StoragePort storagePort;
+	private final UserRepositoryPort userRepositoryPort;
+	private final StoragePort storagePort;
 
-    @Override
-    @Transactional
-    public UpdateProfileResult updateProfile(UpdateProfileCommand command) {
-        User user = userRepositoryPort.findById(command.userId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+	@Override
+	@Transactional
+	public UpdateProfileResult updateProfile(UpdateProfileCommand command) {
+		User user = userRepositoryPort.findById(command.userId())
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        user.updateProfile(command.nickname(), command.profileImageUrl());
-        User saved = userRepositoryPort.save(user);
+		user.updateProfile(command.nickname(), command.profileImageUrl());
+		User saved = userRepositoryPort.save(user);
 
-        return toResult(saved);
-    }
+		return toResult(saved);
+	}
 
-    /** 프로필 이미지 변경 — null이면 기본 이미지로 리셋, 값이면 S3 경로 검증 후 업데이트 */
-    @Override
-    @Transactional
-    public UpdateProfileResult updateProfileImage(String userId, String imageUrl) {
-        if (imageUrl != null) {
-            validateImageUrl(imageUrl, userId);
-        }
+	/** 프로필 이미지 변경 — null이면 기본 이미지로 리셋, 값이면 S3 경로 검증 후 업데이트 */
+	@Override
+	@Transactional
+	public UpdateProfileResult updateProfileImage(String userId, String imageUrl) {
+		if (imageUrl != null) {
+			validateImageUrl(imageUrl, userId);
+		}
 
-        User user = userRepositoryPort.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+		User user = userRepositoryPort.findById(userId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        user.updateProfileImage(imageUrl);
-        User saved = userRepositoryPort.save(user);
+		user.updateProfileImage(imageUrl);
+		User saved = userRepositoryPort.save(user);
 
-        return toResult(saved);
-    }
+		return toResult(saved);
+	}
 
-    /** 이미지 URL 검증 — S3 버킷 도메인 + profiles/{userId}/ + UUID + 확장자 정규식 확인 */
-    private void validateImageUrl(String imageUrl, String userId) {
-        String bucketDomain = storagePort.getBucketDomain();
-        String expectedPrefix = bucketDomain + StoragePort.PROFILE_PREFIX + "/" + userId + "/";
-        String regex = "^" + Pattern.quote(expectedPrefix) + "[a-f0-9\\-]+\\.(jpg|png|webp)$";
-        if (!imageUrl.matches(regex)) {
-            throw new BusinessException(ErrorCode.INVALID_IMAGE_URL);
-        }
-    }
+	/** 이미지 URL 검증 — S3 버킷 도메인 + profiles/{userId}/ + UUID + 확장자 정규식 확인 */
+	private void validateImageUrl(String imageUrl, String userId) {
+		String bucketDomain = storagePort.getBucketDomain();
+		String expectedPrefix = bucketDomain + StoragePort.PROFILE_PREFIX + "/" + userId + "/";
+		String regex = "^" + Pattern.quote(expectedPrefix) + "[a-f0-9\\-]+\\.(jpg|png|webp)$";
+		if (!imageUrl.matches(regex)) {
+			throw new BusinessException(ErrorCode.INVALID_IMAGE_URL);
+		}
+	}
 
-    private UpdateProfileResult toResult(User user) {
-        return new UpdateProfileResult(
-                user.getId(),
-                user.getEmail(),
-                user.getNickname(),
-                user.getProfileImageUrl(),
-                user.getCreatedAt()
-        );
-    }
+	private UpdateProfileResult toResult(User user) {
+		return new UpdateProfileResult(
+				user.getId(),
+				user.getEmail(),
+				user.getNickname(),
+				user.getProfileImageUrl(),
+				user.getCreatedAt()
+		);
+	}
 }

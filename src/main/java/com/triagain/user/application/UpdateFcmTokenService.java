@@ -13,15 +13,15 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class UpdateFcmTokenService implements UpdateFcmTokenUseCase {
 
-    private final UserRepositoryPort userRepositoryPort;
+	private final UserRepositoryPort userRepositoryPort;
 
-    /** FCM 토큰 갱신 — 앱 실행/로그인 시 클라이언트가 호출 */
-    @Override
-    @Transactional
-    public void updateFcmToken(String userId, String fcmToken) {
-        User user = userRepositoryPort.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        user.updateFcmToken(fcmToken);
-        userRepositoryPort.save(user);
-    }
+	/** FCM 토큰 갱신 — 앱 실행/로그인 시 클라이언트가 호출 */
+	@Override
+	@Transactional
+	public void updateFcmToken(String userId, String fcmToken) {
+		User user = userRepositoryPort.findById(userId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+		user.updateFcmToken(fcmToken);
+		userRepositoryPort.save(user);
+	}
 }

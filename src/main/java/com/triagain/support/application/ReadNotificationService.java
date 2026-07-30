@@ -15,20 +15,20 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ReadNotificationService implements ReadNotificationUseCase {
 
-    private final NotificationRepositoryPort notificationRepositoryPort;
+	private final NotificationRepositoryPort notificationRepositoryPort;
 
-    /** 알림 읽음 처리 — 소유권 검증 후 읽음 상태 변경 */
-    @Override
-    @Transactional
-    public void markAsRead(String notificationId, String userId) {
-        Notification notification = notificationRepositoryPort.findById(notificationId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOTIFICATION_NOT_FOUND));
+	/** 알림 읽음 처리 — 소유권 검증 후 읽음 상태 변경 */
+	@Override
+	@Transactional
+	public void markAsRead(String notificationId, String userId) {
+		Notification notification = notificationRepositoryPort.findById(notificationId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.NOTIFICATION_NOT_FOUND));
 
-        if (!notification.getUserId().equals(userId)) {
-            throw new BusinessException(ErrorCode.NOTIFICATION_NOT_FOUND);
-        }
+		if (!notification.getUserId().equals(userId)) {
+			throw new BusinessException(ErrorCode.NOTIFICATION_NOT_FOUND);
+		}
 
-        notification.markAsRead();
-        notificationRepositoryPort.save(notification);
-    }
+		notification.markAsRead();
+		notificationRepositoryPort.save(notification);
+	}
 }

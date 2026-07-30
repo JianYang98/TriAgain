@@ -11,23 +11,23 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ReviewJpaAdapter implements ReviewRepositoryPort {
 
-    private final ReviewJpaRepository reviewJpaRepository;
+	private final ReviewJpaRepository reviewJpaRepository;
 
-    @Override
-    public Review save(Review review) {
-        ReviewJpaEntity entity = ReviewJpaEntity.fromDomain(review);
-        return reviewJpaRepository.save(entity).toDomain();
-    }
+	@Override
+	public Review save(Review review) {
+		ReviewJpaEntity entity = ReviewJpaEntity.fromDomain(review);
+		return reviewJpaRepository.save(entity).toDomain();
+	}
 
-    @Override
-    public Optional<Review> findById(String id) {
-        return reviewJpaRepository.findById(id)
-                .map(ReviewJpaEntity::toDomain);
-    }
+	@Override
+	public Optional<Review> findById(String id) {
+		return reviewJpaRepository.findById(id)
+				.map(ReviewJpaEntity::toDomain);
+	}
 
-    @Override
-    public Optional<Review> findByReportId(String reportId) {
-        return reviewJpaRepository.findByReportId(reportId)
-                .map(ReviewJpaEntity::toDomain);
-    }
+	@Override
+	public Optional<Review> findByReportId(String reportId) {
+		return reviewJpaRepository.findByReportId(reportId)
+				.map(ReviewJpaEntity::toDomain);
+	}
 }

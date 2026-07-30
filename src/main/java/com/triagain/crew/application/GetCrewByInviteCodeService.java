@@ -14,15 +14,15 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class GetCrewByInviteCodeService implements GetCrewByInviteCodeUseCase {
 
-    private final CrewRepositoryPort crewRepositoryPort;
-    private final UserPort userPort;
+	private final CrewRepositoryPort crewRepositoryPort;
+	private final UserPort userPort;
 
-    /** 초대코드로 크루 미리보기 — 비멤버가 가입 전 크루 정보를 확인할 때 사용 */
-    @Override
-    @Transactional(readOnly = true)
-    public CrewInvitePreviewResult getByInviteCode(String inviteCode, String userId) {
-        Crew crew = crewRepositoryPort.findByInviteCode(inviteCode)
-                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INVITE_CODE));
-        return CrewPreviewAssembler.toPreviewResult(crew, userId, userPort);
-    }
+	/** 초대코드로 크루 미리보기 — 비멤버가 가입 전 크루 정보를 확인할 때 사용 */
+	@Override
+	@Transactional(readOnly = true)
+	public CrewInvitePreviewResult getByInviteCode(String inviteCode, String userId) {
+		Crew crew = crewRepositoryPort.findByInviteCode(inviteCode)
+				.orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INVITE_CODE));
+		return CrewPreviewAssembler.toPreviewResult(crew, userId, userPort);
+	}
 }

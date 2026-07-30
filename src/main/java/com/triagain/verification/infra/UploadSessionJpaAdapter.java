@@ -14,38 +14,38 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UploadSessionJpaAdapter implements UploadSessionRepositoryPort {
 
-    private final UploadSessionJpaRepository uploadSessionJpaRepository;
+	private final UploadSessionJpaRepository uploadSessionJpaRepository;
 
-    @Override
-    public UploadSession save(UploadSession uploadSession) {
-        UploadSessionJpaEntity entity = UploadSessionJpaEntity.fromDomain(uploadSession);
-        return uploadSessionJpaRepository.save(entity).toDomain();
-    }
+	@Override
+	public UploadSession save(UploadSession uploadSession) {
+		UploadSessionJpaEntity entity = UploadSessionJpaEntity.fromDomain(uploadSession);
+		return uploadSessionJpaRepository.save(entity).toDomain();
+	}
 
-    @Override
-    public Optional<UploadSession> findById(Long id) {
-        return uploadSessionJpaRepository.findById(id)
-                .map(UploadSessionJpaEntity::toDomain);
-    }
+	@Override
+	public Optional<UploadSession> findById(Long id) {
+		return uploadSessionJpaRepository.findById(id)
+				.map(UploadSessionJpaEntity::toDomain);
+	}
 
-    @Override
-    public Optional<UploadSession> findByIdAndUserId(Long id, String userId) {
-        return uploadSessionJpaRepository.findByIdAndUserId(id, userId)
-                .map(UploadSessionJpaEntity::toDomain);
-    }
+	@Override
+	public Optional<UploadSession> findByIdAndUserId(Long id, String userId) {
+		return uploadSessionJpaRepository.findByIdAndUserId(id, userId)
+				.map(UploadSessionJpaEntity::toDomain);
+	}
 
-    @Override
-    public Optional<UploadSession> findByImageKey(String imageKey) {
-        return uploadSessionJpaRepository.findByImageKey(imageKey)
-                .map(UploadSessionJpaEntity::toDomain);
-    }
+	@Override
+	public Optional<UploadSession> findByImageKey(String imageKey) {
+		return uploadSessionJpaRepository.findByImageKey(imageKey)
+				.map(UploadSessionJpaEntity::toDomain);
+	}
 
-    @Override
-    public List<UploadSession> findPendingSessionsBefore(LocalDateTime threshold) {
-        return uploadSessionJpaRepository
-                .findByStatusAndCreatedAtBefore(UploadSessionStatus.PENDING, threshold)
-                .stream()
-                .map(UploadSessionJpaEntity::toDomain)
-                .toList();
-    }
+	@Override
+	public List<UploadSession> findPendingSessionsBefore(LocalDateTime threshold) {
+		return uploadSessionJpaRepository
+				.findByStatusAndCreatedAtBefore(UploadSessionStatus.PENDING, threshold)
+				.stream()
+				.map(UploadSessionJpaEntity::toDomain)
+				.toList();
+	}
 }

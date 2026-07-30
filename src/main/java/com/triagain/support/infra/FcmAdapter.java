@@ -23,50 +23,50 @@ import java.util.Map;
 @Slf4j
 public class FcmAdapter implements NotificationSendPort {
 
-    private final FirebaseMessaging firebaseMessaging;
+	private final FirebaseMessaging firebaseMessaging;
 
-    /** FCM 푸시 알림 전송 — prod 환경에서만 활성화, 실패 시 3회 재시도. false 반환 시 토큰 영구 무효 */
-    @Retryable(
-            retryFor = {BusinessException.class},
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 1000, multiplier = 2)
-    )
-    @Override
-    public boolean send(String fcmToken, String title, String body, Map<String, String> data) {
-        Message message = Message.builder()
-                .setToken(fcmToken)
-                .setNotification(com.google.firebase.messaging.Notification.builder()
-                        .setTitle(title)
-                        .setBody(body)
-                        .build())
-                .putAllData(data)
-                .build();
+	/** FCM 푸시 알림 전송 — prod 환경에서만 활성화, 실패 시 3회 재시도. false 반환 시 토큰 영구 무효 */
+	@Retryable(
+			retryFor = {BusinessException.class},
+			maxAttempts = 3,
+			backoff = @Backoff(delay = 1000, multiplier = 2)
+	)
+	@Override
+	public boolean send(String fcmToken, String title, String body, Map<String, String> data) {
+		Message message = Message.builder()
+				.setToken(fcmToken)
+				.setNotification(com.google.firebase.messaging.Notification.builder()
+						.setTitle(title)
+						.setBody(body)
+						.build())
+				.putAllData(data)
+				.build();
 
-        try {
-            String messageId = firebaseMessaging.send(message);
-            log.info("FCM 발송 성공: messageId={}", messageId);
-            return true;
-        } catch (FirebaseMessagingException e) {
-            MessagingErrorCode errorCode = e.getMessagingErrorCode();
-            if (errorCode == MessagingErrorCode.UNREGISTERED
-                    || errorCode == MessagingErrorCode.INVALID_ARGUMENT) {
-                log.warn("FCM 영구 오류 (토큰 무효): token={}, errorCode={}", maskToken(fcmToken), errorCode);
-                return false;
-            }
-            log.warn("FCM 발송 실패, 재시도 예정: token={}, error={}", maskToken(fcmToken), e.getMessage());
-            throw new BusinessException(ErrorCode.FCM_SEND_FAILED);
-        }
-    }
+		try {
+			String messageId = firebaseMessaging.send(message);
+			log.info("FCM 발송 성공: messageId={}", messageId);
+			return true;
+		} catch (FirebaseMessagingException e) {
+			MessagingErrorCode errorCode = e.getMessagingErrorCode();
+			if (errorCode == MessagingErrorCode.UNREGISTERED
+					|| errorCode == MessagingErrorCode.INVALID_ARGUMENT) {
+				log.warn("FCM 영구 오류 (토큰 무효): token={}, errorCode={}", maskToken(fcmToken), errorCode);
+				return false;
+			}
+			log.warn("FCM 발송 실패, 재시도 예정: token={}, error={}", maskToken(fcmToken), e.getMessage());
+			throw new BusinessException(ErrorCode.FCM_SEND_FAILED);
+		}
+	}
 
-    /** FCM 발송 최종 실패 핸들러 — 3회 재시도 후 호출 */
-    @Recover
-    public boolean recoverSend(BusinessException e, String fcmToken, String title, String body, Map<String, String> data) {
-        log.error("FCM 발송 최종 실패 (3회 재시도 후): token={}", maskToken(fcmToken), e);
-        throw e;
-    }
+	/** FCM 발송 최종 실패 핸들러 — 3회 재시도 후 호출 */
+	@Recover
+	public boolean recoverSend(BusinessException e, String fcmToken, String title, String body, Map<String, String> data) {
+		log.error("FCM 발송 최종 실패 (3회 재시도 후): token={}", maskToken(fcmToken), e);
+		throw e;
+	}
 
-    private String maskToken(String token) {
-        if (token == null || token.length() <= 10) return "***";
-        return token.substring(0, 10) + "***";
-    }
+	private String maskToken(String token) {
+		if (token == null || token.length() <= 10) return "***";
+		return token.substring(0, 10) + "***";
+	}
 }

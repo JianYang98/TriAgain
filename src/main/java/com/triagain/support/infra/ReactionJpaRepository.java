@@ -6,7 +6,7 @@ import java.util.Optional;
 
 public interface ReactionJpaRepository extends JpaRepository<ReactionJpaEntity, String> {
 
-    Optional<ReactionJpaEntity> findByVerificationIdAndUserId(String verificationId, String userId);
+	Optional<ReactionJpaEntity> findByVerificationIdAndUserId(String verificationId, String userId);
 
-    long countByVerificationId(String verificationId);
+	long countByVerificationId(String verificationId);
 }

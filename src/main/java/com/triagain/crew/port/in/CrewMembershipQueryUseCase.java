@@ -6,32 +6,32 @@ import java.util.Optional;
 
 public interface CrewMembershipQueryUseCase {
 
-    /** 크루 멤버십 검증 — 미참여 시 BusinessException(CREW_ACCESS_DENIED) */
-    void validateMembership(String crewId, String userId);
+	/** 크루 멤버십 검증 — 미참여 시 BusinessException(CREW_ACCESS_DENIED) */
+	void validateMembership(String crewId, String userId);
 
-    /** 크루장 ID 조회 — 신고/검토 시 크루장 확인에 사용 */
-    Optional<String> findCrewLeaderId(String crewId);
+	/** 크루장 ID 조회 — 신고/검토 시 크루장 확인에 사용 */
+	Optional<String> findCrewLeaderId(String crewId);
 
-    /** 크루 멤버 여부 확인 — 신고 권한 검증에 사용 */
-    boolean isCrewMember(String crewId, String userId);
+	/** 크루 멤버 여부 확인 — 신고 권한 검증에 사용 */
+	boolean isCrewMember(String crewId, String userId);
 
-    /** 크루 이름 조회 — 알림 메시지에 사용 */
-    String getCrewName(String crewId);
+	/** 크루 이름 조회 — 알림 메시지에 사용 */
+	String getCrewName(String crewId);
 
-    /** 크루 기간 조회 — 인증 날짜 범위 제한에 사용 */
-    CrewPeriodDto getCrewPeriod(String crewId);
+	/** 크루 기간 조회 — 인증 날짜 범위 제한에 사용 */
+	CrewPeriodDto getCrewPeriod(String crewId);
 
-    /** 크루 인증 윈도우 정보 조회 — 업로드 세션 발급 가능 여부 판단에 사용 */
-    CrewVerificationWindowDto getCrewVerificationWindowInfo(String crewId);
+	/** 크루 인증 윈도우 정보 조회 — 업로드 세션 발급 가능 여부 판단에 사용 */
+	CrewVerificationWindowDto getCrewVerificationWindowInfo(String crewId);
 
-    record CrewPeriodDto(LocalDate startDate, LocalDate endDate) {}
+	record CrewPeriodDto(LocalDate startDate, LocalDate endDate) {}
 
-    record CrewVerificationWindowDto(
-            String verificationType,
-            String status,
-            LocalDate startDate,
-            LocalDate endDate,
-            boolean allowLateJoin,
-            LocalTime deadlineTime
-    ) {}
+	record CrewVerificationWindowDto(
+			String verificationType,
+			String status,
+			LocalDate startDate,
+			LocalDate endDate,
+			boolean allowLateJoin,
+			LocalTime deadlineTime
+	) {}
 }

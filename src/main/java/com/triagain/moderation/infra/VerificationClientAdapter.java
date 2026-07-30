@@ -12,42 +12,42 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class VerificationClientAdapter implements VerificationPort {
 
-    private final VerificationModerationUseCase verificationModerationUseCase;
+	private final VerificationModerationUseCase verificationModerationUseCase;
 
-    @Override
-    public void hideVerification(String verificationId) {
-        verificationModerationUseCase.hideVerification(verificationId);
-    }
+	@Override
+	public void hideVerification(String verificationId) {
+		verificationModerationUseCase.hideVerification(verificationId);
+	}
 
-    @Override
-    public void rejectVerification(String verificationId) {
-        verificationModerationUseCase.rejectVerification(verificationId);
-    }
+	@Override
+	public void rejectVerification(String verificationId) {
+		verificationModerationUseCase.rejectVerification(verificationId);
+	}
 
-    @Override
-    public void approveVerification(String verificationId) {
-        verificationModerationUseCase.approveVerification(verificationId);
-    }
+	@Override
+	public void approveVerification(String verificationId) {
+		verificationModerationUseCase.approveVerification(verificationId);
+	}
 
-    @Override
-    public int incrementReportCount(String verificationId) {
-        return verificationModerationUseCase.incrementReportCount(verificationId);
-    }
+	@Override
+	public int incrementReportCount(String verificationId) {
+		return verificationModerationUseCase.incrementReportCount(verificationId);
+	}
 
-    @Override
-    public Optional<VerificationInfo> findVerificationById(String verificationId) {
-        return verificationModerationUseCase.findById(verificationId)
-                .map(this::toVerificationInfo);
-    }
+	@Override
+	public Optional<VerificationInfo> findVerificationById(String verificationId) {
+		return verificationModerationUseCase.findById(verificationId)
+				.map(this::toVerificationInfo);
+	}
 
-    private VerificationInfo toVerificationInfo(VerificationInfoDto dto) {
-        return new VerificationInfo(
-                dto.id(),
-                dto.challengeId(),
-                dto.userId(),
-                dto.crewId(),
-                dto.reportCount(),
-                dto.targetDate()
-        );
-    }
+	private VerificationInfo toVerificationInfo(VerificationInfoDto dto) {
+		return new VerificationInfo(
+				dto.id(),
+				dto.challengeId(),
+				dto.userId(),
+				dto.crewId(),
+				dto.reportCount(),
+				dto.targetDate()
+		);
+	}
 }

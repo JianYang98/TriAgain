@@ -16,16 +16,16 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class VerificationQueryAdapter implements VerificationQueryPort {
 
-    private final CheckTodayVerificationUseCase checkTodayVerificationUseCase;
-    private final CountApprovedDaysUseCase countApprovedDaysUseCase;
+	private final CheckTodayVerificationUseCase checkTodayVerificationUseCase;
+	private final CountApprovedDaysUseCase countApprovedDaysUseCase;
 
-    @Override
-    public Set<String> findVerifiedCrewIds(String userId, List<String> crewIds, LocalDate targetDate) {
-        return checkTodayVerificationUseCase.findVerifiedCrewIds(userId, crewIds, targetDate);
-    }
+	@Override
+	public Set<String> findVerifiedCrewIds(String userId, List<String> crewIds, LocalDate targetDate) {
+		return checkTodayVerificationUseCase.findVerifiedCrewIds(userId, crewIds, targetDate);
+	}
 
-    @Override
-    public Map<String, Integer> findApprovedDayCountsByCrewIds(String userId, List<String> crewIds) {
-        return countApprovedDaysUseCase.countApprovedDaysByCrewIds(userId, crewIds);
-    }
+	@Override
+	public Map<String, Integer> findApprovedDayCountsByCrewIds(String userId, List<String> crewIds) {
+		return countApprovedDaysUseCase.countApprovedDaysByCrewIds(userId, crewIds);
+	}
 }

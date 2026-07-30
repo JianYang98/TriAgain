@@ -16,16 +16,16 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class AuthEntryPoint implements AuthenticationEntryPoint {
 
-    private final ObjectMapper objectMapper;
+	private final ObjectMapper objectMapper;
 
-    /** 인증 실패 시 JSON 401 응답 */
-    @Override
-    public void commence(HttpServletRequest request, HttpServletResponse response,
-                         AuthenticationException authException) throws IOException {
-        response.setContentType("application/json;charset=UTF-8");
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+	/** 인증 실패 시 JSON 401 응답 */
+	@Override
+	public void commence(HttpServletRequest request, HttpServletResponse response,
+						 AuthenticationException authException) throws IOException {
+		response.setContentType("application/json;charset=UTF-8");
+		response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 
-        ApiResponse<Void> body = ApiResponse.fail(ErrorCode.UNAUTHORIZED, "인증이 필요합니다.");
-        response.getWriter().write(objectMapper.writeValueAsString(body));
-    }
+		ApiResponse<Void> body = ApiResponse.fail(ErrorCode.UNAUTHORIZED, "인증이 필요합니다.");
+		response.getWriter().write(objectMapper.writeValueAsString(body));
+	}
 }

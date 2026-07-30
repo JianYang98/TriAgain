@@ -12,7 +12,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @ConfigurationPropertiesScan
 public class TriAgainApplication {
 
-    public static void main(String[] args) {
-        SpringApplication.run(TriAgainApplication.class, args);
-    }
+	public static void main(String[] args) {
+		SpringApplication.run(TriAgainApplication.class, args);
+	}
 }

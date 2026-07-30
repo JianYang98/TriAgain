@@ -13,46 +13,46 @@ import java.util.List;
 
 public interface GetCrewUseCase {
 
-    /** 크루 상세 조회 — 크루 멤버가 상세 화면을 볼 때 사용 */
-    CrewDetailResult getCrew(String crewId, String userId);
+	/** 크루 상세 조회 — 크루 멤버가 상세 화면을 볼 때 사용 */
+	CrewDetailResult getCrew(String crewId, String userId);
 
-    record CrewDetailResult(
-            String id,
-            String creatorId,
-            String name,
-            String goal,
-            String verificationContent,
-            VerificationType verificationType,
-            int maxMembers,
-            int currentMembers,
-            CrewStatus status,
-            LocalDate startDate,
-            LocalDate endDate,
-            boolean allowLateJoin,
-            String inviteCode,
-            LocalDateTime createdAt,
-            LocalTime deadlineTime,
-            CrewCategory category,
-            CrewVisibility visibility,
-            List<MemberResult> members
-    ) {
-    }
+	record CrewDetailResult(
+			String id,
+			String creatorId,
+			String name,
+			String goal,
+			String verificationContent,
+			VerificationType verificationType,
+			int maxMembers,
+			int currentMembers,
+			CrewStatus status,
+			LocalDate startDate,
+			LocalDate endDate,
+			boolean allowLateJoin,
+			String inviteCode,
+			LocalDateTime createdAt,
+			LocalTime deadlineTime,
+			CrewCategory category,
+			CrewVisibility visibility,
+			List<MemberResult> members
+	) {
+	}
 
-    record MemberResult(
-            String userId,
-            String nickname,
-            String profileImageUrl,
-            CrewRole role,
-            LocalDateTime joinedAt,
-            int successCount,
-            ChallengeProgress challengeProgress
-    ) {
-    }
+	record MemberResult(
+			String userId,
+			String nickname,
+			String profileImageUrl,
+			CrewRole role,
+			LocalDateTime joinedAt,
+			int successCount,
+			ChallengeProgress challengeProgress
+	) {
+	}
 
-    record ChallengeProgress(
-            String challengeStatus,
-            int completedDays,
-            int targetDays
-    ) {
-    }
+	record ChallengeProgress(
+			String challengeStatus,
+			int completedDays,
+			int targetDays
+	) {
+	}
 }

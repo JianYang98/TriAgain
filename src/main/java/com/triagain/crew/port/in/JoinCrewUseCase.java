@@ -6,13 +6,13 @@ import java.time.LocalDateTime;
 
 public interface JoinCrewUseCase {
 
-    /** 크루 가입  */
-    JoinCrewResult joinCrew(JoinCrewCommand command);
+	/** 크루 가입  */
+	JoinCrewResult joinCrew(JoinCrewCommand command);
 
-    record JoinCrewCommand(String userId, String crewId) {
-    }
+	record JoinCrewCommand(String userId, String crewId) {
+	}
 
-    record JoinCrewResult(String userId, String crewId, CrewRole role, int currentMembers, LocalDateTime joinedAt) {
-    }
+	record JoinCrewResult(String userId, String crewId, CrewRole role, int currentMembers, LocalDateTime joinedAt) {
+	}
 }
 

@@ -6,11 +6,11 @@ import java.util.Optional;
 
 public interface ReactionRepositoryPort {
 
-    Reaction save(Reaction reaction);
+	Reaction save(Reaction reaction);
 
-    void deleteById(String id);
+	void deleteById(String id);
 
-    Optional<Reaction> findByVerificationIdAndUserId(String verificationId, String userId);
+	Optional<Reaction> findByVerificationIdAndUserId(String verificationId, String userId);
 
-    long countByVerificationId(String verificationId);
+	long countByVerificationId(String verificationId);
 }

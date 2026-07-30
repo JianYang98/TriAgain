@@ -6,9 +6,9 @@ import java.util.Optional;
 
 public interface ReviewRepositoryPort {
 
-    Review save(Review review);
+	Review save(Review review);
 
-    Optional<Review> findById(String id);
+	Optional<Review> findById(String id);
 
-    Optional<Review> findByReportId(String reportId);
+	Optional<Review> findByReportId(String reportId);
 }

@@ -18,30 +18,30 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final AuthEntryPoint authEntryPoint;
+	private final JwtAuthenticationFilter jwtAuthenticationFilter;
+	private final AuthEntryPoint authEntryPoint;
 
-    @Value("${internal.api-key}")
-    private String internalApiKey;
+	@Value("${internal.api-key}")
+	private String internalApiKey;
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        return http
-                .csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .exceptionHandling(exception -> exception.authenticationEntryPoint(authEntryPoint))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers("/health", "/actuator/health").permitAll()
-                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        .requestMatchers("/internal/**").permitAll()
-                        .requestMatchers("/upload-sessions/*/events").permitAll()
-                        .requestMatchers("/crews/search").permitAll()
-                        .requestMatchers("/invite/**", "/images/**", "/css/**", "/feedback").permitAll()
-                        .anyRequest().authenticated()
-                )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(new InternalApiKeyFilter(internalApiKey), UsernamePasswordAuthenticationFilter.class)
-                .build();
-    }
+	@Bean
+	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+		return http
+				.csrf(csrf -> csrf.disable())
+				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+				.exceptionHandling(exception -> exception.authenticationEntryPoint(authEntryPoint))
+				.authorizeHttpRequests(auth -> auth
+						.requestMatchers("/auth/**").permitAll()
+						.requestMatchers("/health", "/actuator/health").permitAll()
+						.requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+						.requestMatchers("/internal/**").permitAll()
+						.requestMatchers("/upload-sessions/*/events").permitAll()
+						.requestMatchers("/crews/search").permitAll()
+						.requestMatchers("/invite/**", "/images/**", "/css/**", "/feedback").permitAll()
+						.anyRequest().authenticated()
+				)
+				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+				.addFilterBefore(new InternalApiKeyFilter(internalApiKey), UsernamePasswordAuthenticationFilter.class)
+				.build();
+	}
 }

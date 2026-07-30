@@ -48,161 +48,161 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CrewController {
 
-    private final CreateCrewUseCase createCrewUseCase;
-    private final EditCrewUseCase editCrewUseCase;
-    private final DeleteCrewUseCase deleteCrewUseCase;
-    private final LeaveCrewUseCase leaveCrewUseCase;
-    private final JoinCrewByInviteCodeUseCase joinCrewByInviteCodeUseCase;
-    private final GetMyCrewsUseCase getMyCrewsUseCase;
-    private final GetCrewUseCase getCrewUseCase;
-    private final GetCrewByInviteCodeUseCase getCrewByInviteCodeUseCase;
-    private final GetCrewPreviewUseCase getCrewPreviewUseCase;
-    private final SearchCrewsUseCase searchCrewsUseCase;
-    private final JoinCrewUseCase joinCrewUseCase;
+	private final CreateCrewUseCase createCrewUseCase;
+	private final EditCrewUseCase editCrewUseCase;
+	private final DeleteCrewUseCase deleteCrewUseCase;
+	private final LeaveCrewUseCase leaveCrewUseCase;
+	private final JoinCrewByInviteCodeUseCase joinCrewByInviteCodeUseCase;
+	private final GetMyCrewsUseCase getMyCrewsUseCase;
+	private final GetCrewUseCase getCrewUseCase;
+	private final GetCrewByInviteCodeUseCase getCrewByInviteCodeUseCase;
+	private final GetCrewPreviewUseCase getCrewPreviewUseCase;
+	private final SearchCrewsUseCase searchCrewsUseCase;
+	private final JoinCrewUseCase joinCrewUseCase;
 
-    /** 크루 생성 API — POST /api/crews */
-    @PostMapping
-    public ResponseEntity<ApiResponse<CreateCrewResult>> createCrew(
-            @AuthenticatedUser String userId,
-            @Valid @RequestBody CreateCrewRequest request
-    ) {
+	/** 크루 생성 API — POST /api/crews */
+	@PostMapping
+	public ResponseEntity<ApiResponse<CreateCrewResult>> createCrew(
+			@AuthenticatedUser String userId,
+			@Valid @RequestBody CreateCrewRequest request
+	) {
 
-        CreateCrewCommand command = new CreateCrewCommand(
-                userId,
-                request.name(),
-                request.goal(),
-                request.verificationContent(),
-                request.verificationType(),
-                request.maxMembers(),
-                request.startDate(),
-                request.endDate(),
-                request.allowLateJoin(),
-                request.deadlineTime(),
-                request.category(),
-                request.visibility()
-        );
+		CreateCrewCommand command = new CreateCrewCommand(
+				userId,
+				request.name(),
+				request.goal(),
+				request.verificationContent(),
+				request.verificationType(),
+				request.maxMembers(),
+				request.startDate(),
+				request.endDate(),
+				request.allowLateJoin(),
+				request.deadlineTime(),
+				request.category(),
+				request.visibility()
+		);
 
-        CreateCrewResult result = createCrewUseCase.createCrew(command);
+		CreateCrewResult result = createCrewUseCase.createCrew(command);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(result));
-    }
+		return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(result));
+	}
 
-    /** 초대코드로 크루 참여 API — POST /api/crews/join */
-    @PostMapping("/join")
-    public ResponseEntity<ApiResponse<JoinByInviteCodeResult>> joinByInviteCode(
-            @AuthenticatedUser String userId,
-            @Valid @RequestBody JoinCrewRequest request
-    ) {
-        JoinByInviteCodeCommand command = new JoinByInviteCodeCommand(userId, request.inviteCode());
+	/** 초대코드로 크루 참여 API — POST /api/crews/join */
+	@PostMapping("/join")
+	public ResponseEntity<ApiResponse<JoinByInviteCodeResult>> joinByInviteCode(
+			@AuthenticatedUser String userId,
+			@Valid @RequestBody JoinCrewRequest request
+	) {
+		JoinByInviteCodeCommand command = new JoinByInviteCodeCommand(userId, request.inviteCode());
 
-        JoinByInviteCodeResult result = joinCrewByInviteCodeUseCase.joinByInviteCode(command);
+		JoinByInviteCodeResult result = joinCrewByInviteCodeUseCase.joinByInviteCode(command);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(result));
-    }
+		return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(result));
+	}
 
-    /** 내 크루 목록 조회 API — GET /api/crews */
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<CrewSummaryResult>>> getMyCrews(
-            @AuthenticatedUser String userId
-    ) {
-        List<CrewSummaryResult> result = getMyCrewsUseCase.getMyCrews(userId);
+	/** 내 크루 목록 조회 API — GET /api/crews */
+	@GetMapping
+	public ResponseEntity<ApiResponse<List<CrewSummaryResult>>> getMyCrews(
+			@AuthenticatedUser String userId
+	) {
+		List<CrewSummaryResult> result = getMyCrewsUseCase.getMyCrews(userId);
 
-        return ResponseEntity.ok(ApiResponse.ok(result));
-    }
+		return ResponseEntity.ok(ApiResponse.ok(result));
+	}
 
-    /** 초대코드로 크루 미리보기 API — GET /api/crews/invite/{inviteCode} */
-    @GetMapping("/invite/{inviteCode}")
-    public ResponseEntity<ApiResponse<CrewInvitePreviewResult>> getCrewByInviteCode(
-            @AuthenticatedUser String userId,
-            @PathVariable String inviteCode
-    ) {
-        CrewInvitePreviewResult result = getCrewByInviteCodeUseCase.getByInviteCode(inviteCode, userId);
+	/** 초대코드로 크루 미리보기 API — GET /api/crews/invite/{inviteCode} */
+	@GetMapping("/invite/{inviteCode}")
+	public ResponseEntity<ApiResponse<CrewInvitePreviewResult>> getCrewByInviteCode(
+			@AuthenticatedUser String userId,
+			@PathVariable String inviteCode
+	) {
+		CrewInvitePreviewResult result = getCrewByInviteCodeUseCase.getByInviteCode(inviteCode, userId);
 
-        return ResponseEntity.ok(ApiResponse.ok(result));
-    }
+		return ResponseEntity.ok(ApiResponse.ok(result));
+	}
 
-    /** 공개 크루 미리보기 API — GET /api/crews/{crewId}/preview */
-    @GetMapping("/{crewId}/preview")
-    public ResponseEntity<ApiResponse<CrewInvitePreviewResult>> getCrewPreview(
-            @AuthenticatedUser String userId,
-            @PathVariable String crewId
-    ) {
-        CrewInvitePreviewResult result = getCrewPreviewUseCase.getCrewPreview(crewId, userId);
-        return ResponseEntity.ok(ApiResponse.ok(result));
-    }
+	/** 공개 크루 미리보기 API — GET /api/crews/{crewId}/preview */
+	@GetMapping("/{crewId}/preview")
+	public ResponseEntity<ApiResponse<CrewInvitePreviewResult>> getCrewPreview(
+			@AuthenticatedUser String userId,
+			@PathVariable String crewId
+	) {
+		CrewInvitePreviewResult result = getCrewPreviewUseCase.getCrewPreview(crewId, userId);
+		return ResponseEntity.ok(ApiResponse.ok(result));
+	}
 
-    /** 크루 상세 조회 API — GET /api/crews/{crewId} */
-    @GetMapping("/{crewId}")
-    public ResponseEntity<ApiResponse<CrewDetailResult>> getCrew(
-            @AuthenticatedUser String userId,
-            @PathVariable String crewId
-    ) {
-        CrewDetailResult result = getCrewUseCase.getCrew(crewId, userId);
+	/** 크루 상세 조회 API — GET /api/crews/{crewId} */
+	@GetMapping("/{crewId}")
+	public ResponseEntity<ApiResponse<CrewDetailResult>> getCrew(
+			@AuthenticatedUser String userId,
+			@PathVariable String crewId
+	) {
+		CrewDetailResult result = getCrewUseCase.getCrew(crewId, userId);
 
-        return ResponseEntity.ok(ApiResponse.ok(result));
-    }
+		return ResponseEntity.ok(ApiResponse.ok(result));
+	}
 
-    /** 크루 수정 API — PATCH /api/crews/{crewId} */
-    @PatchMapping("/{crewId}")
-    public ResponseEntity<ApiResponse<EditCrewResult>> editCrew(
-            @AuthenticatedUser String userId,
-            @PathVariable String crewId,
-            @Valid @RequestBody EditCrewRequest request
-    ) {
-        EditCrewCommand command = new EditCrewCommand(
-                userId, crewId, request.name(), request.goal(), request.verificationContent(),
-                request.category(), request.visibility()
-        );
+	/** 크루 수정 API — PATCH /api/crews/{crewId} */
+	@PatchMapping("/{crewId}")
+	public ResponseEntity<ApiResponse<EditCrewResult>> editCrew(
+			@AuthenticatedUser String userId,
+			@PathVariable String crewId,
+			@Valid @RequestBody EditCrewRequest request
+	) {
+		EditCrewCommand command = new EditCrewCommand(
+				userId, crewId, request.name(), request.goal(), request.verificationContent(),
+				request.category(), request.visibility()
+		);
 
-        EditCrewResult result = editCrewUseCase.editCrew(command);
+		EditCrewResult result = editCrewUseCase.editCrew(command);
 
-        return ResponseEntity.ok(ApiResponse.ok(result));
-    }
+		return ResponseEntity.ok(ApiResponse.ok(result));
+	}
 
-    /** 크루 검색 API — GET /api/crews/search (permitAll) */
-    @GetMapping("/search")
-    public ResponseEntity<ApiResponse<SearchCrewsResult>> searchCrews(
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) CrewCategory category,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
-    ) {
-        SearchCrewsQuery query = new SearchCrewsQuery(keyword, category, page, size);
-        SearchCrewsResult result = searchCrewsUseCase.searchCrews(query);
+	/** 크루 검색 API — GET /api/crews/search (permitAll) */
+	@GetMapping("/search")
+	public ResponseEntity<ApiResponse<SearchCrewsResult>> searchCrews(
+			@RequestParam(required = false) String keyword,
+			@RequestParam(required = false) CrewCategory category,
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "20") int size
+	) {
+		SearchCrewsQuery query = new SearchCrewsQuery(keyword, category, page, size);
+		SearchCrewsResult result = searchCrewsUseCase.searchCrews(query);
 
-        return ResponseEntity.ok(ApiResponse.ok(result));
-    }
+		return ResponseEntity.ok(ApiResponse.ok(result));
+	}
 
-    /** 공개 크루 직접 가입 API — POST /api/crews/{crewId}/join */
-    @PostMapping("/{crewId}/join")
-    public ResponseEntity<ApiResponse<JoinCrewResult>> joinCrew(
-            @AuthenticatedUser String userId,
-            @PathVariable String crewId
-    ) {
-        JoinCrewResult result = joinCrewUseCase.joinCrew(new JoinCrewCommand(userId, crewId));
+	/** 공개 크루 직접 가입 API — POST /api/crews/{crewId}/join */
+	@PostMapping("/{crewId}/join")
+	public ResponseEntity<ApiResponse<JoinCrewResult>> joinCrew(
+			@AuthenticatedUser String userId,
+			@PathVariable String crewId
+	) {
+		JoinCrewResult result = joinCrewUseCase.joinCrew(new JoinCrewCommand(userId, crewId));
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(result));
-    }
+		return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(result));
+	}
 
-    /** 크루 삭제 API — DELETE /api/crews/{crewId} */
-    @DeleteMapping("/{crewId}")
-    public ResponseEntity<Void> deleteCrew(
-            @AuthenticatedUser String userId,
-            @PathVariable String crewId
-    ) {
-        deleteCrewUseCase.deleteCrew(crewId, userId);
+	/** 크루 삭제 API — DELETE /api/crews/{crewId} */
+	@DeleteMapping("/{crewId}")
+	public ResponseEntity<Void> deleteCrew(
+			@AuthenticatedUser String userId,
+			@PathVariable String crewId
+	) {
+		deleteCrewUseCase.deleteCrew(crewId, userId);
 
-        return ResponseEntity.noContent().build();
-    }
+		return ResponseEntity.noContent().build();
+	}
 
-    /** 크루 탈퇴 API — DELETE /api/crews/{crewId}/members/me */
-    @DeleteMapping("/{crewId}/members/me")
-    public ResponseEntity<Void> leaveCrew(
-            @AuthenticatedUser String userId,
-            @PathVariable String crewId
-    ) {
-        leaveCrewUseCase.leaveCrew(crewId, userId);
+	/** 크루 탈퇴 API — DELETE /api/crews/{crewId}/members/me */
+	@DeleteMapping("/{crewId}/members/me")
+	public ResponseEntity<Void> leaveCrew(
+			@AuthenticatedUser String userId,
+			@PathVariable String crewId
+	) {
+		leaveCrewUseCase.leaveCrew(crewId, userId);
 
-        return ResponseEntity.noContent().build();
-    }
+		return ResponseEntity.noContent().build();
+	}
 }

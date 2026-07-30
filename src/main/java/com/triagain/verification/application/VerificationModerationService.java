@@ -14,65 +14,65 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class VerificationModerationService implements VerificationModerationUseCase {
 
-    private final VerificationRepositoryPort verificationRepositoryPort;
+	private final VerificationRepositoryPort verificationRepositoryPort;
 
-    @Override
-    @Transactional
-    public void hideVerification(String verificationId) {
-        verificationRepositoryPort.findById(verificationId)
-                .ifPresent(verification -> {
-                    verification.hide();
-                    verificationRepositoryPort.save(verification);
-                });
-    }
+	@Override
+	@Transactional
+	public void hideVerification(String verificationId) {
+		verificationRepositoryPort.findById(verificationId)
+				.ifPresent(verification -> {
+					verification.hide();
+					verificationRepositoryPort.save(verification);
+				});
+	}
 
-    @Override
-    @Transactional
-    public void rejectVerification(String verificationId) {
-        verificationRepositoryPort.findById(verificationId)
-                .ifPresent(verification -> {
-                    verification.reject();
-                    verificationRepositoryPort.save(verification);
-                });
-    }
+	@Override
+	@Transactional
+	public void rejectVerification(String verificationId) {
+		verificationRepositoryPort.findById(verificationId)
+				.ifPresent(verification -> {
+					verification.reject();
+					verificationRepositoryPort.save(verification);
+				});
+	}
 
-    @Override
-    @Transactional
-    public void approveVerification(String verificationId) {
-        verificationRepositoryPort.findById(verificationId)
-                .ifPresent(verification -> {
-                    verification.approve();
-                    verificationRepositoryPort.save(verification);
-                });
-    }
+	@Override
+	@Transactional
+	public void approveVerification(String verificationId) {
+		verificationRepositoryPort.findById(verificationId)
+				.ifPresent(verification -> {
+					verification.approve();
+					verificationRepositoryPort.save(verification);
+				});
+	}
 
-    @Override
-    @Transactional
-    public int incrementReportCount(String verificationId) {
-        return verificationRepositoryPort.findById(verificationId)
-                .map(verification -> {
-                    verification.incrementReportCount();
-                    verificationRepositoryPort.save(verification);
-                    return verification.getReportCount();
-                })
-                .orElse(0);
-    }
+	@Override
+	@Transactional
+	public int incrementReportCount(String verificationId) {
+		return verificationRepositoryPort.findById(verificationId)
+				.map(verification -> {
+					verification.incrementReportCount();
+					verificationRepositoryPort.save(verification);
+					return verification.getReportCount();
+				})
+				.orElse(0);
+	}
 
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<VerificationInfoDto> findById(String verificationId) {
-        return verificationRepositoryPort.findById(verificationId)
-                .map(this::toDto);
-    }
+	@Override
+	@Transactional(readOnly = true)
+	public Optional<VerificationInfoDto> findById(String verificationId) {
+		return verificationRepositoryPort.findById(verificationId)
+				.map(this::toDto);
+	}
 
-    private VerificationInfoDto toDto(Verification verification) {
-        return new VerificationInfoDto(
-                verification.getId(),
-                verification.getChallengeId(),
-                verification.getUserId(),
-                verification.getCrewId(),
-                verification.getReportCount(),
-                verification.getTargetDate()
-        );
-    }
+	private VerificationInfoDto toDto(Verification verification) {
+		return new VerificationInfoDto(
+				verification.getId(),
+				verification.getChallengeId(),
+				verification.getUserId(),
+				verification.getCrewId(),
+				verification.getReportCount(),
+				verification.getTargetDate()
+		);
+	}
 }

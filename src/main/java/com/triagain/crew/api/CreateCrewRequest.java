@@ -13,16 +13,16 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 
 public record CreateCrewRequest(
-        @NotBlank @Size(max = 50) String name,
-        @NotBlank @Size(max = 500) String goal,
-        @NotBlank @Size(max = 50) String verificationContent,
-        @NotNull VerificationType verificationType,
-        @Min(1) @Max(10) int maxMembers,
-        @NotNull LocalDate startDate,
-        @NotNull LocalDate endDate,
-        boolean allowLateJoin,
-        LocalTime deadlineTime,
-        @NotNull CrewCategory category,
-        CrewVisibility visibility
+		@NotBlank @Size(max = 50) String name,
+		@NotBlank @Size(max = 500) String goal,
+		@NotBlank @Size(max = 50) String verificationContent,
+		@NotNull VerificationType verificationType,
+		@Min(1) @Max(10) int maxMembers,
+		@NotNull LocalDate startDate,
+		@NotNull LocalDate endDate,
+		boolean allowLateJoin,
+		LocalTime deadlineTime,
+		@NotNull CrewCategory category,
+		CrewVisibility visibility
 ) {
 }

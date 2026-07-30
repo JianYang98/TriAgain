@@ -20,191 +20,191 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class CrewJpaAdapter implements CrewRepositoryPort {
 
-    private final CrewJpaRepository crewJpaRepository;
-    private final CrewMemberJpaRepository crewMemberJpaRepository;
-    private final EntityManager entityManager;
+	private final CrewJpaRepository crewJpaRepository;
+	private final CrewMemberJpaRepository crewMemberJpaRepository;
+	private final EntityManager entityManager;
 
-    /** 크루 저장 — 생성·수정 시 사용 */
-    @Override
-    public Crew save(Crew crew) {
-        CrewJpaEntity crewEntity = CrewJpaEntity.fromDomain(crew);
-        crewJpaRepository.save(crewEntity);
+	/** 크루 저장 — 생성·수정 시 사용 */
+	@Override
+	public Crew save(Crew crew) {
+		CrewJpaEntity crewEntity = CrewJpaEntity.fromDomain(crew);
+		crewJpaRepository.save(crewEntity);
 
-        List<CrewMemberJpaEntity> members = crewMemberJpaRepository.findByCrewId(crew.getId());
-        return crewEntity.toDomainWithMembers(members);
-    }
+		List<CrewMemberJpaEntity> members = crewMemberJpaRepository.findByCrewId(crew.getId());
+		return crewEntity.toDomainWithMembers(members);
+	}
 
-    /** 크루 멤버 저장 — 가입·역할 변경 시 사용 */
-    @Override
-    public CrewMember saveMember(CrewMember member) {
-        CrewMemberJpaEntity entity = CrewMemberJpaEntity.fromDomain(member);
-        crewMemberJpaRepository.save(entity);
-        return entity.toDomain();
-    }
+	/** 크루 멤버 저장 — 가입·역할 변경 시 사용 */
+	@Override
+	public CrewMember saveMember(CrewMember member) {
+		CrewMemberJpaEntity entity = CrewMemberJpaEntity.fromDomain(member);
+		crewMemberJpaRepository.save(entity);
+		return entity.toDomain();
+	}
 
-    /** 조건부 원자적 멤버 수 증가 — current_members < max_members일 때만 +1 */
-    @Override
-    public int incrementMembersIfNotFull(String id) {
-        return crewJpaRepository.incrementMembersIfNotFull(id);
-    }
+	/** 조건부 원자적 멤버 수 증가 — current_members < max_members일 때만 +1 */
+	@Override
+	public int incrementMembersIfNotFull(String id) {
+		return crewJpaRepository.incrementMembersIfNotFull(id);
+	}
 
-    /** 멤버 저장 + 즉시 flush — 조건부 전략의 유니크 위반을 이 시점에 DataIntegrityViolationException으로 발생 */
-    @Override
-    public CrewMember saveMemberAndFlush(CrewMember member) {
-        CrewMemberJpaEntity entity = CrewMemberJpaEntity.fromDomain(member);
-        crewMemberJpaRepository.saveAndFlush(entity);
-        return entity.toDomain();
-    }
+	/** 멤버 저장 + 즉시 flush — 조건부 전략의 유니크 위반을 이 시점에 DataIntegrityViolationException으로 발생 */
+	@Override
+	public CrewMember saveMemberAndFlush(CrewMember member) {
+		CrewMemberJpaEntity entity = CrewMemberJpaEntity.fromDomain(member);
+		crewMemberJpaRepository.saveAndFlush(entity);
+		return entity.toDomain();
+	}
 
-    /** ID로 크루 조회 — 크루 상세·수정 시 사용 */
-    @Override
-    public Optional<Crew> findById(String id) {
-        return crewJpaRepository.findById(id)
-                .map(entity -> {
-                    List<CrewMemberJpaEntity> members = crewMemberJpaRepository.findByCrewId(id);
-                    return entity.toDomainWithMembers(members);
-                });
-    }
+	/** ID로 크루 조회 — 크루 상세·수정 시 사용 */
+	@Override
+	public Optional<Crew> findById(String id) {
+		return crewJpaRepository.findById(id)
+				.map(entity -> {
+					List<CrewMemberJpaEntity> members = crewMemberJpaRepository.findByCrewId(id);
+					return entity.toDomainWithMembers(members);
+				});
+	}
 
-    /** 낙관적 락으로 멤버 수 갱신 — version 불일치 시 0 반환 */
-    @Override
-    public int updateCurrentMembersWithVersion(String id, int currentMembers, Long version) {
-        return crewJpaRepository.updateCurrentMembersWithVersion(id, currentMembers, version);
-    }
+	/** 낙관적 락으로 멤버 수 갱신 — version 불일치 시 0 반환 */
+	@Override
+	public int updateCurrentMembersWithVersion(String id, int currentMembers, Long version) {
+		return crewJpaRepository.updateCurrentMembersWithVersion(id, currentMembers, version);
+	}
 
-    /** 비관적 락으로 크루 조회 — 동시 참여 시 정원 초과 방지 */
-    @Override
-    public Optional<Crew> findByIdWithLock(String id) {
-        return crewJpaRepository.findByIdWithLock(id)
-                .map(entity -> {
-                    List<CrewMemberJpaEntity> members = crewMemberJpaRepository.findByCrewId(id);
-                    return entity.toDomainWithMembers(members);
-                });
-    }
+	/** 비관적 락으로 크루 조회 — 동시 참여 시 정원 초과 방지 */
+	@Override
+	public Optional<Crew> findByIdWithLock(String id) {
+		return crewJpaRepository.findByIdWithLock(id)
+				.map(entity -> {
+					List<CrewMemberJpaEntity> members = crewMemberJpaRepository.findByCrewId(id);
+					return entity.toDomainWithMembers(members);
+				});
+	}
 
-    /** 초대코드로 크루 조회 — 크루 참여 시 사용 */
-    @Override
-    public Optional<Crew> findByInviteCode(String inviteCode) {
-        return crewJpaRepository.findByInviteCode(inviteCode)
-                .map(entity -> {
-                    List<CrewMemberJpaEntity> members = crewMemberJpaRepository.findByCrewId(entity.getId());
-                    return entity.toDomainWithMembers(members);
-                });
-    }
+	/** 초대코드로 크루 조회 — 크루 참여 시 사용 */
+	@Override
+	public Optional<Crew> findByInviteCode(String inviteCode) {
+		return crewJpaRepository.findByInviteCode(inviteCode)
+				.map(entity -> {
+					List<CrewMemberJpaEntity> members = crewMemberJpaRepository.findByCrewId(entity.getId());
+					return entity.toDomainWithMembers(members);
+				});
+	}
 
-    /** 유저의 크루 목록 조회 — 홈 화면 크루 리스트에 사용 */
-    @Override
-    public List<Crew> findAllByUserId(String userId) {
-        List<String> crewIds = crewMemberJpaRepository.findByUserId(userId).stream()
-                .map(m -> m.toDomain().getCrewId())
-                .toList();
+	/** 유저의 크루 목록 조회 — 홈 화면 크루 리스트에 사용 */
+	@Override
+	public List<Crew> findAllByUserId(String userId) {
+		List<String> crewIds = crewMemberJpaRepository.findByUserId(userId).stream()
+				.map(m -> m.toDomain().getCrewId())
+				.toList();
 
-        if (crewIds.isEmpty()) {
-            return List.of();
-        }
+		if (crewIds.isEmpty()) {
+			return List.of();
+		}
 
-        return crewJpaRepository.findAllById(crewIds).stream()
-                .map(CrewJpaEntity::toDomain)
-                .toList();
-    }
+		return crewJpaRepository.findAllById(crewIds).stream()
+				.map(CrewJpaEntity::toDomain)
+				.toList();
+	}
 
-    /** 여러 크루 ID로 일괄 조회 — 스케줄러 배치 처리에 사용 */
-    @Override
-    public List<Crew> findAllByIds(List<String> ids) {
-        return crewJpaRepository.findAllById(ids).stream()
-                .map(CrewJpaEntity::toDomain)
-                .toList();
-    }
+	/** 여러 크루 ID로 일괄 조회 — 스케줄러 배치 처리에 사용 */
+	@Override
+	public List<Crew> findAllByIds(List<String> ids) {
+		return crewJpaRepository.findAllById(ids).stream()
+				.map(CrewJpaEntity::toDomain)
+				.toList();
+	}
 
-    /** 기간 만료된 ACTIVE 크루 조회 — 크루 종료 스케줄러에서 사용 */
-    @Override
-    public List<Crew> findActiveCrewsEndedBefore(LocalDate date) {
-        return crewJpaRepository.findAllByStatusAndEndDateBefore(CrewStatus.ACTIVE, date).stream()
-                .map(CrewJpaEntity::toDomain)
-                .toList();
-    }
+	/** 기간 만료된 ACTIVE 크루 조회 — 크루 종료 스케줄러에서 사용 */
+	@Override
+	public List<Crew> findActiveCrewsEndedBefore(LocalDate date) {
+		return crewJpaRepository.findAllByStatusAndEndDateBefore(CrewStatus.ACTIVE, date).stream()
+				.map(CrewJpaEntity::toDomain)
+				.toList();
+	}
 
-    /** 시작일 도래한 RECRUITING 크루 조회 — 서버 시작 시 활성화 보정에 사용 */
-    @Override
-    public List<Crew> findRecruitingCrewsStartedOnOrBefore(LocalDate date) {
-        return crewJpaRepository.findAllByStatusAndStartDateLessThanEqual(CrewStatus.RECRUITING, date).stream()
-                .map(CrewJpaEntity::toDomain)
-                .toList();
-    }
+	/** 시작일 도래한 RECRUITING 크루 조회 — 서버 시작 시 활성화 보정에 사용 */
+	@Override
+	public List<Crew> findRecruitingCrewsStartedOnOrBefore(LocalDate date) {
+		return crewJpaRepository.findAllByStatusAndStartDateLessThanEqual(CrewStatus.RECRUITING, date).stream()
+				.map(CrewJpaEntity::toDomain)
+				.toList();
+	}
 
-    /** 크루 삭제 — 멤버 먼저 삭제 후 크루 삭제 */
-    @Override
-    public void deleteById(String crewId) {
-        crewMemberJpaRepository.deleteByCrewId(crewId);
-        crewJpaRepository.deleteById(crewId);
-    }
+	/** 크루 삭제 — 멤버 먼저 삭제 후 크루 삭제 */
+	@Override
+	public void deleteById(String crewId) {
+		crewMemberJpaRepository.deleteByCrewId(crewId);
+		crewJpaRepository.deleteById(crewId);
+	}
 
-    /** 특정 크루의 특정 멤버 삭제 — 크루 탈퇴 시 사용 */
-    @Override
-    public void deleteMemberByCrewIdAndUserId(String crewId, String userId) {
-        crewMemberJpaRepository.deleteByCrewIdAndUserId(crewId, userId);
-    }
+	/** 특정 크루의 특정 멤버 삭제 — 크루 탈퇴 시 사용 */
+	@Override
+	public void deleteMemberByCrewIdAndUserId(String crewId, String userId) {
+		crewMemberJpaRepository.deleteByCrewIdAndUserId(crewId, userId);
+	}
 
-    /** 크루 + 연관 데이터 FK-safe hard delete — leaf→root 순서로 완전 삭제 */
-    @Override
-    public void deleteCrewWithAssociations(String crewId) {
-        deleteVerificationRelated(crewId);
-        deleteCrewRelated(crewId);
-    }
+	/** 크루 + 연관 데이터 FK-safe hard delete — leaf→root 순서로 완전 삭제 */
+	@Override
+	public void deleteCrewWithAssociations(String crewId) {
+		deleteVerificationRelated(crewId);
+		deleteCrewRelated(crewId);
+	}
 
-    /** 인증 관련 연관 데이터 삭제 — reviews→reports→reactions→upload_session→verifications→challenges */
-    private void deleteVerificationRelated(String crewId) {
-        entityManager.createNativeQuery(
-                "DELETE FROM reviews WHERE report_id IN"
-                + " (SELECT id FROM reports WHERE verification_id IN"
-                + " (SELECT id FROM verifications WHERE crew_id = :crewId))")
-                .setParameter("crewId", crewId).executeUpdate();
-        entityManager.createNativeQuery(
-                "DELETE FROM reports WHERE verification_id IN"
-                + " (SELECT id FROM verifications WHERE crew_id = :crewId)")
-                .setParameter("crewId", crewId).executeUpdate();
-        entityManager.createNativeQuery(
-                "DELETE FROM reactions WHERE verification_id IN"
-                + " (SELECT id FROM verifications WHERE crew_id = :crewId)")
-                .setParameter("crewId", crewId).executeUpdate();
-        entityManager.createNativeQuery(
-                "UPDATE upload_session SET crew_id = NULL WHERE crew_id = :crewId")
-                .setParameter("crewId", crewId).executeUpdate();
-        entityManager.createNativeQuery(
-                "DELETE FROM verifications WHERE crew_id = :crewId")
-                .setParameter("crewId", crewId).executeUpdate();
-        entityManager.createNativeQuery(
-                "DELETE FROM challenges WHERE crew_id = :crewId")
-                .setParameter("crewId", crewId).executeUpdate();
-    }
+	/** 인증 관련 연관 데이터 삭제 — reviews→reports→reactions→upload_session→verifications→challenges */
+	private void deleteVerificationRelated(String crewId) {
+		entityManager.createNativeQuery(
+				"DELETE FROM reviews WHERE report_id IN"
+				+ " (SELECT id FROM reports WHERE verification_id IN"
+				+ " (SELECT id FROM verifications WHERE crew_id = :crewId))")
+				.setParameter("crewId", crewId).executeUpdate();
+		entityManager.createNativeQuery(
+				"DELETE FROM reports WHERE verification_id IN"
+				+ " (SELECT id FROM verifications WHERE crew_id = :crewId)")
+				.setParameter("crewId", crewId).executeUpdate();
+		entityManager.createNativeQuery(
+				"DELETE FROM reactions WHERE verification_id IN"
+				+ " (SELECT id FROM verifications WHERE crew_id = :crewId)")
+				.setParameter("crewId", crewId).executeUpdate();
+		entityManager.createNativeQuery(
+				"UPDATE upload_session SET crew_id = NULL WHERE crew_id = :crewId")
+				.setParameter("crewId", crewId).executeUpdate();
+		entityManager.createNativeQuery(
+				"DELETE FROM verifications WHERE crew_id = :crewId")
+				.setParameter("crewId", crewId).executeUpdate();
+		entityManager.createNativeQuery(
+				"DELETE FROM challenges WHERE crew_id = :crewId")
+				.setParameter("crewId", crewId).executeUpdate();
+	}
 
-    /** 크루 관련 데이터 삭제 — notifications→crew_members→crews */
-    private void deleteCrewRelated(String crewId) {
-        entityManager.createNativeQuery(
-                "DELETE FROM notifications WHERE target_type = 'CREW' AND target_id = :crewId")
-                .setParameter("crewId", crewId).executeUpdate();
-        crewMemberJpaRepository.deleteByCrewId(crewId);
-        crewJpaRepository.deleteById(crewId);
-    }
+	/** 크루 관련 데이터 삭제 — notifications→crew_members→crews */
+	private void deleteCrewRelated(String crewId) {
+		entityManager.createNativeQuery(
+				"DELETE FROM notifications WHERE target_type = 'CREW' AND target_id = :crewId")
+				.setParameter("crewId", crewId).executeUpdate();
+		crewMemberJpaRepository.deleteByCrewId(crewId);
+		crewJpaRepository.deleteById(crewId);
+	}
 
-    /** LIKE 패턴용 와일드카드 이스케이프 — %, _, \ 문자가 리터럴로 검색되도록 처리 */
-    private String escapeForLike(String keyword) {
-        return keyword.replace("\\", "\\\\")
-                .replace("%", "\\%")
-                .replace("_", "\\_");
-    }
+	/** LIKE 패턴용 와일드카드 이스케이프 — %, _, \ 문자가 리터럴로 검색되도록 처리 */
+	private String escapeForLike(String keyword) {
+		return keyword.replace("\\", "\\\\")
+				.replace("%", "\\%")
+				.replace("_", "\\_");
+	}
 
-    /** 공개 크루 검색 — 키워드/카테고리 필터 + 페이지네이션 (Slice 기반 hasNext 판별) */
-    @Override
-    public CrewSearchPage searchPublicCrews(String keyword, CrewCategory category,
-                                            LocalDate minEndDate, int page, int size) {
-        String keywordPattern = (keyword != null) ? "%" + escapeForLike(keyword.toLowerCase()) + "%" : null;
-        Slice<CrewJpaEntity> slice = crewJpaRepository.searchPublicCrews(
-                CrewVisibility.PUBLIC, keywordPattern, category, minEndDate,
-                PageRequest.of(page, size));
-        List<Crew> crews = slice.getContent().stream()
-                .map(CrewJpaEntity::toDomain)
-                .toList();
-        return new CrewSearchPage(crews, slice.hasNext());
-    }
+	/** 공개 크루 검색 — 키워드/카테고리 필터 + 페이지네이션 (Slice 기반 hasNext 판별) */
+	@Override
+	public CrewSearchPage searchPublicCrews(String keyword, CrewCategory category,
+											LocalDate minEndDate, int page, int size) {
+		String keywordPattern = (keyword != null) ? "%" + escapeForLike(keyword.toLowerCase()) + "%" : null;
+		Slice<CrewJpaEntity> slice = crewJpaRepository.searchPublicCrews(
+				CrewVisibility.PUBLIC, keywordPattern, category, minEndDate,
+				PageRequest.of(page, size));
+		List<Crew> crews = slice.getContent().stream()
+				.map(CrewJpaEntity::toDomain)
+				.toList();
+		return new CrewSearchPage(crews, slice.hasNext());
+	}
 }

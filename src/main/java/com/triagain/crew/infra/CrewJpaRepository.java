@@ -18,46 +18,46 @@ import java.util.Optional;
 
 public interface CrewJpaRepository extends JpaRepository<CrewJpaEntity, String> {
 
-    /** 비관적 락으로 크루 조회 — 동시 참여 시 정원 초과 방지 */
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT c FROM CrewJpaEntity c WHERE c.id = :id")
-    Optional<CrewJpaEntity> findByIdWithLock(@Param("id") String id);
+	/** 비관적 락으로 크루 조회 — 동시 참여 시 정원 초과 방지 */
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("SELECT c FROM CrewJpaEntity c WHERE c.id = :id")
+	Optional<CrewJpaEntity> findByIdWithLock(@Param("id") String id);
 
-    /** 초대코드로 크루 조회 */
-    Optional<CrewJpaEntity> findByInviteCode(String inviteCode);
+	/** 초대코드로 크루 조회 */
+	Optional<CrewJpaEntity> findByInviteCode(String inviteCode);
 
-    /** 기간 만료된 특정 상태 크루 조회 — 크루 종료 스케줄러에서 사용 */
-    List<CrewJpaEntity> findAllByStatusAndEndDateBefore(CrewStatus status, LocalDate date);
+	/** 기간 만료된 특정 상태 크루 조회 — 크루 종료 스케줄러에서 사용 */
+	List<CrewJpaEntity> findAllByStatusAndEndDateBefore(CrewStatus status, LocalDate date);
 
-    /** 시작일 도래한 특정 상태 크루 조회 — 서버 시작 시 활성화 보정에 사용 */
-    List<CrewJpaEntity> findAllByStatusAndStartDateLessThanEqual(CrewStatus status, LocalDate date);
+	/** 시작일 도래한 특정 상태 크루 조회 — 서버 시작 시 활성화 보정에 사용 */
+	List<CrewJpaEntity> findAllByStatusAndStartDateLessThanEqual(CrewStatus status, LocalDate date);
 
-    /** 낙관적 락 — version 일치 시만 current_members 갱신 + version 증가 */
-    @Modifying
-    @Query("UPDATE CrewJpaEntity c SET c.currentMembers = :currentMembers, c.version = c.version + 1 " +
-            "WHERE c.id = :id AND c.version = :version")
-    int updateCurrentMembersWithVersion(
-            @Param("id") String id,
-            @Param("currentMembers") int currentMembers,
-            @Param("version") Long version);
+	/** 낙관적 락 — version 일치 시만 current_members 갱신 + version 증가 */
+	@Modifying
+	@Query("UPDATE CrewJpaEntity c SET c.currentMembers = :currentMembers, c.version = c.version + 1 " +
+			"WHERE c.id = :id AND c.version = :version")
+	int updateCurrentMembersWithVersion(
+			@Param("id") String id,
+			@Param("currentMembers") int currentMembers,
+			@Param("version") Long version);
 
-    /** 조건부 원자적 멤버 수 증가 — current_members < max_members 조건부 +1 (전략 C 전용) */
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query(value = "UPDATE crews SET current_members = current_members + 1 "
-            + "WHERE id = :id AND current_members < max_members", nativeQuery = true)
-    int incrementMembersIfNotFull(@Param("id") String id);
+	/** 조건부 원자적 멤버 수 증가 — current_members < max_members 조건부 +1 (전략 C 전용) */
+	@Modifying(clearAutomatically = true, flushAutomatically = true)
+	@Query(value = "UPDATE crews SET current_members = current_members + 1 "
+			+ "WHERE id = :id AND current_members < max_members", nativeQuery = true)
+	int incrementMembersIfNotFull(@Param("id") String id);
 
-    /** 공개 크루 검색 — 키워드/카테고리 필터 + 상태 조건 */
-    @Query("SELECT c FROM CrewJpaEntity c WHERE c.visibility = :visibility " +
-            "AND (c.status = 'RECRUITING' OR (c.status = 'ACTIVE' AND c.allowLateJoin = true AND c.endDate >= :minEndDate)) " +
-            "AND (:keyword IS NULL OR LOWER(c.name) LIKE :keyword ESCAPE '\\' OR LOWER(c.goal) LIKE :keyword ESCAPE '\\') " +
-            "AND (:category IS NULL OR c.category = :category) " +
-            "ORDER BY c.createdAt DESC")
-    Slice<CrewJpaEntity> searchPublicCrews(
-            @Param("visibility") CrewVisibility visibility,
-            @Param("keyword") String keyword,
-            @Param("category") CrewCategory category,
-            @Param("minEndDate") LocalDate minEndDate,
-            Pageable pageable
-    );
+	/** 공개 크루 검색 — 키워드/카테고리 필터 + 상태 조건 */
+	@Query("SELECT c FROM CrewJpaEntity c WHERE c.visibility = :visibility " +
+			"AND (c.status = 'RECRUITING' OR (c.status = 'ACTIVE' AND c.allowLateJoin = true AND c.endDate >= :minEndDate)) " +
+			"AND (:keyword IS NULL OR LOWER(c.name) LIKE :keyword ESCAPE '\\' OR LOWER(c.goal) LIKE :keyword ESCAPE '\\') " +
+			"AND (:category IS NULL OR c.category = :category) " +
+			"ORDER BY c.createdAt DESC")
+	Slice<CrewJpaEntity> searchPublicCrews(
+			@Param("visibility") CrewVisibility visibility,
+			@Param("keyword") String keyword,
+			@Param("category") CrewCategory category,
+			@Param("minEndDate") LocalDate minEndDate,
+			Pageable pageable
+	);
 }

@@ -24,28 +24,28 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class TestLoginController {
 
-    private final UserRepositoryPort userRepositoryPort;
-    private final JwtProvider jwtProvider;
+	private final UserRepositoryPort userRepositoryPort;
+	private final JwtProvider jwtProvider;
 
-    /** 테스트 로그인 — userId로 JWT 발급 (dev/test 전용, prod에서는 빈 자체가 로드되지 않음) */
-    @PostMapping("/test-login")
-    public ResponseEntity<ApiResponse<KakaoLoginResult>> testLogin(
-            @Valid @RequestBody TestLoginRequest request) {
+	/** 테스트 로그인 — userId로 JWT 발급 (dev/test 전용, prod에서는 빈 자체가 로드되지 않음) */
+	@PostMapping("/test-login")
+	public ResponseEntity<ApiResponse<KakaoLoginResult>> testLogin(
+			@Valid @RequestBody TestLoginRequest request) {
 
-        User user = userRepositoryPort.findById(request.userId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+		User user = userRepositoryPort.findById(request.userId())
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        String accessToken = jwtProvider.createAccessToken(user.getId(), user.getProvider(), user.getTokenVersion());
-        String refreshToken = jwtProvider.createRefreshToken(user.getId(), user.getTokenVersion());
+		String accessToken = jwtProvider.createAccessToken(user.getId(), user.getProvider(), user.getTokenVersion());
+		String refreshToken = jwtProvider.createRefreshToken(user.getId(), user.getTokenVersion());
 
-        return ResponseEntity.ok(ApiResponse.ok(
-                KakaoLoginResult.existingUser(
-                        accessToken, refreshToken,
-                        jwtProvider.getAccessTokenExpirationSeconds(),
-                        new LoginUserInfo(user.getId(), user.getNickname(), user.getProfileImageUrl())
-                )
-        ));
-    }
+		return ResponseEntity.ok(ApiResponse.ok(
+				KakaoLoginResult.existingUser(
+						accessToken, refreshToken,
+						jwtProvider.getAccessTokenExpirationSeconds(),
+						new LoginUserInfo(user.getId(), user.getNickname(), user.getProfileImageUrl())
+				)
+		));
+	}
 
-    record TestLoginRequest(@NotBlank String userId) {}
+	record TestLoginRequest(@NotBlank String userId) {}
 }

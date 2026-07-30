@@ -16,65 +16,65 @@ import java.time.temporal.ChronoUnit;
 @RequiredArgsConstructor
 public class CreateCrewService implements CreateCrewUseCase {
 
-    private final CrewRepositoryPort crewRepositoryPort;
+	private final CrewRepositoryPort crewRepositoryPort;
 
-    @Value("${crew.max-duration-days:30}")
-    private int maxDurationDays;
+	@Value("${crew.max-duration-days:30}")
+	private int maxDurationDays;
 
-    /** 크루 생성 — 크루장을 리더 멤버로 자동 등록 */
-    @Override
-    @Transactional
-    public CreateCrewResult createCrew(CreateCrewCommand command) {
-        validateDuration(command);
+	/** 크루 생성 — 크루장을 리더 멤버로 자동 등록 */
+	@Override
+	@Transactional
+	public CreateCrewResult createCrew(CreateCrewCommand command) {
+		validateDuration(command);
 
-        // 크루 생성 및 리더 지정
-        Crew crew = Crew.create(
-                command.creatorId(),
-                command.name(),
-                command.goal(),
-                command.verificationContent(),
-                command.verificationType(),
-                command.maxMembers(),
-                command.startDate(),
-                command.endDate(),
-                command.allowLateJoin(),
-                command.deadlineTime(),
-                command.category(),
-                command.visibility()
-        );
+		// 크루 생성 및 리더 지정
+		Crew crew = Crew.create(
+				command.creatorId(),
+				command.name(),
+				command.goal(),
+				command.verificationContent(),
+				command.verificationType(),
+				command.maxMembers(),
+				command.startDate(),
+				command.endDate(),
+				command.allowLateJoin(),
+				command.deadlineTime(),
+				command.category(),
+				command.visibility()
+		);
 
-        Crew saved = crewRepositoryPort.save(crew);
-        crew.getMembers().forEach(crewRepositoryPort::saveMember); // 리더 멤버로 추가
+		Crew saved = crewRepositoryPort.save(crew);
+		crew.getMembers().forEach(crewRepositoryPort::saveMember); // 리더 멤버로 추가
 
-        return new CreateCrewResult(
-                saved.getId(),
-                saved.getCreatorId(),
-                saved.getName(),
-                saved.getGoal(),
-                saved.getVerificationContent(),
-                saved.getVerificationType(),
-                saved.getMaxMembers(),
-                saved.getCurrentMembers(),
-                saved.getStatus(),
-                saved.getStartDate(),
-                saved.getEndDate(),
-                saved.isAllowLateJoin(),
-                saved.getInviteCode(),
-                saved.getCreatedAt(),
-                saved.getDeadlineTime(),
-                saved.getCategory(),
-                saved.getVisibility()
-        );
-    }
+		return new CreateCrewResult(
+				saved.getId(),
+				saved.getCreatorId(),
+				saved.getName(),
+				saved.getGoal(),
+				saved.getVerificationContent(),
+				saved.getVerificationType(),
+				saved.getMaxMembers(),
+				saved.getCurrentMembers(),
+				saved.getStatus(),
+				saved.getStartDate(),
+				saved.getEndDate(),
+				saved.isAllowLateJoin(),
+				saved.getInviteCode(),
+				saved.getCreatedAt(),
+				saved.getDeadlineTime(),
+				saved.getCategory(),
+				saved.getVisibility()
+		);
+	}
 
-    /** 크루 기간 검증 — 최소 7일(=days≥6) / 최대 기간 초과 시 예외 */
-    private void validateDuration(CreateCrewCommand command) {
-        long days = ChronoUnit.DAYS.between(command.startDate(), command.endDate());
-        if (days < 6) {
-            throw new BusinessException(ErrorCode.CREW_DURATION_TOO_SHORT);
-        }
-        if (days > maxDurationDays) {
-            throw new BusinessException(ErrorCode.CREW_DURATION_TOO_LONG, maxDurationDays);
-        }
-    }
+	/** 크루 기간 검증 — 최소 7일(=days≥6) / 최대 기간 초과 시 예외 */
+	private void validateDuration(CreateCrewCommand command) {
+		long days = ChronoUnit.DAYS.between(command.startDate(), command.endDate());
+		if (days < 6) {
+			throw new BusinessException(ErrorCode.CREW_DURATION_TOO_SHORT);
+		}
+		if (days > maxDurationDays) {
+			throw new BusinessException(ErrorCode.CREW_DURATION_TOO_LONG, maxDurationDays);
+		}
+	}
 }

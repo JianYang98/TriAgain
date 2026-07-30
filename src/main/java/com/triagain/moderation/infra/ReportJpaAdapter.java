@@ -11,22 +11,22 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ReportJpaAdapter implements ReportRepositoryPort {
 
-    private final ReportJpaRepository reportJpaRepository;
+	private final ReportJpaRepository reportJpaRepository;
 
-    @Override
-    public Report save(Report report) {
-        ReportJpaEntity entity = ReportJpaEntity.fromDomain(report);
-        return reportJpaRepository.save(entity).toDomain();
-    }
+	@Override
+	public Report save(Report report) {
+		ReportJpaEntity entity = ReportJpaEntity.fromDomain(report);
+		return reportJpaRepository.save(entity).toDomain();
+	}
 
-    @Override
-    public Optional<Report> findById(String id) {
-        return reportJpaRepository.findById(id)
-                .map(ReportJpaEntity::toDomain);
-    }
+	@Override
+	public Optional<Report> findById(String id) {
+		return reportJpaRepository.findById(id)
+				.map(ReportJpaEntity::toDomain);
+	}
 
-    @Override
-    public boolean existsByVerificationIdAndReporterId(String verificationId, String reporterId) {
-        return reportJpaRepository.existsByVerificationIdAndReporterId(verificationId, reporterId);
-    }
+	@Override
+	public boolean existsByVerificationIdAndReporterId(String verificationId, String reporterId) {
+		return reportJpaRepository.existsByVerificationIdAndReporterId(verificationId, reporterId);
+	}
 }

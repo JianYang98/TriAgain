@@ -16,20 +16,20 @@ import java.io.IOException;
 @ConditionalOnProperty(name = "firebase.enabled", havingValue = "true")
 public class FirebaseConfig {
 
-    @Value("${firebase.service-account-path}")
-    private String serviceAccountPath;
+	@Value("${firebase.service-account-path}")
+	private String serviceAccountPath;
 
-    /** FirebaseMessaging 빈 — FCM 푸시 발송에 사용 */
-    @Bean
-    public FirebaseMessaging firebaseMessaging() throws IOException {
-        GoogleCredentials credentials = GoogleCredentials
-                .fromStream(new FileInputStream(serviceAccountPath));
+	/** FirebaseMessaging 빈 — FCM 푸시 발송에 사용 */
+	@Bean
+	public FirebaseMessaging firebaseMessaging() throws IOException {
+		GoogleCredentials credentials = GoogleCredentials
+				.fromStream(new FileInputStream(serviceAccountPath));
 
-        FirebaseOptions options = FirebaseOptions.builder()
-                .setCredentials(credentials)
-                .build();
+		FirebaseOptions options = FirebaseOptions.builder()
+				.setCredentials(credentials)
+				.build();
 
-        FirebaseApp app = FirebaseApp.initializeApp(options);
-        return FirebaseMessaging.getInstance(app);
-    }
+		FirebaseApp app = FirebaseApp.initializeApp(options);
+		return FirebaseMessaging.getInstance(app);
+	}
 }

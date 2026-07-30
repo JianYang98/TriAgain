@@ -13,21 +13,21 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class GetUserService implements GetUserUseCase {
 
-    private final UserRepositoryPort userRepositoryPort;
+	private final UserRepositoryPort userRepositoryPort;
 
-    @Override
-    @Transactional(readOnly = true)
-    public UserResult getUser(String userId) {
-        User user = userRepositoryPort.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+	@Override
+	@Transactional(readOnly = true)
+	public UserResult getUser(String userId) {
+		User user = userRepositoryPort.findById(userId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        return new UserResult(
-                user.getId(),
-                user.getProvider(),
-                user.getEmail(),
-                user.getNickname(),
-                user.getProfileImageUrl(),
-                user.getCreatedAt()
-        );
-    }
+		return new UserResult(
+				user.getId(),
+				user.getProvider(),
+				user.getEmail(),
+				user.getNickname(),
+				user.getProfileImageUrl(),
+				user.getCreatedAt()
+		);
+	}
 }

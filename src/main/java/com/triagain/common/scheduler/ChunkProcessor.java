@@ -16,49 +16,49 @@ import java.util.function.Function;
 @RequiredArgsConstructor
 public class ChunkProcessor {
 
-    private final TransactionTemplate transactionTemplate;
+	private final TransactionTemplate transactionTemplate;
 
-    /** 리스트를 청크 단위로 트랜잭션 처리, 청크 실패 시 건별 분리 재시도 (도메인 변이 없는 경우) */
-    public <T> ChunkProcessingResult<T> execute(List<T> items, int chunkSize, Consumer<T> processor) {
-        return execute(items, chunkSize, processor, Function.identity());
-    }
+	/** 리스트를 청크 단위로 트랜잭션 처리, 청크 실패 시 건별 분리 재시도 (도메인 변이 없는 경우) */
+	public <T> ChunkProcessingResult<T> execute(List<T> items, int chunkSize, Consumer<T> processor) {
+		return execute(items, chunkSize, processor, Function.identity());
+	}
 
-    /** 리스트를 청크 단위로 트랜잭션 처리, 청크 실패 시 rehydrator로 fresh 인스턴스 재조회 후 건별 재시도 */
-    public <T> ChunkProcessingResult<T> execute(List<T> items, int chunkSize, Consumer<T> processor, Function<T, T> rehydrator) {
-        int successCount = 0;
-        List<FailedItem<T>> failedItems = new ArrayList<>();
-        List<T> successItems = new ArrayList<>();
+	/** 리스트를 청크 단위로 트랜잭션 처리, 청크 실패 시 rehydrator로 fresh 인스턴스 재조회 후 건별 재시도 */
+	public <T> ChunkProcessingResult<T> execute(List<T> items, int chunkSize, Consumer<T> processor, Function<T, T> rehydrator) {
+		int successCount = 0;
+		List<FailedItem<T>> failedItems = new ArrayList<>();
+		List<T> successItems = new ArrayList<>();
 
-        for (int i = 0; i < items.size(); i += chunkSize) {
-            List<T> chunk = items.subList(i, Math.min(i + chunkSize, items.size()));
+		for (int i = 0; i < items.size(); i += chunkSize) {
+			List<T> chunk = items.subList(i, Math.min(i + chunkSize, items.size()));
 
-            try {
-                transactionTemplate.executeWithoutResult(status -> {
-                    for (T item : chunk) {
-                        processor.accept(item);
-                    }
-                });
-                successCount += chunk.size();
-                successItems.addAll(chunk);
-            } catch (Exception e) {
-                log.warn("청크 처리 실패 ({}~{}건), 건별 분리 재시도", i, i + chunk.size() - 1, e);
+			try {
+				transactionTemplate.executeWithoutResult(status -> {
+					for (T item : chunk) {
+						processor.accept(item);
+					}
+				});
+				successCount += chunk.size();
+				successItems.addAll(chunk);
+			} catch (Exception e) {
+				log.warn("청크 처리 실패 ({}~{}건), 건별 분리 재시도", i, i + chunk.size() - 1, e);
 
-                for (T item : chunk) {
-                    try {
-                        T fresh = transactionTemplate.execute(status -> {
-                            T rehydrated = rehydrator.apply(item);
-                            processor.accept(rehydrated);
-                            return rehydrated;
-                        });
-                        successCount++;
-                        successItems.add(fresh);
-                    } catch (Exception itemEx) {
-                        failedItems.add(new FailedItem<>(item, itemEx.getMessage()));
-                    }
-                }
-            }
-        }
+				for (T item : chunk) {
+					try {
+						T fresh = transactionTemplate.execute(status -> {
+							T rehydrated = rehydrator.apply(item);
+							processor.accept(rehydrated);
+							return rehydrated;
+						});
+						successCount++;
+						successItems.add(fresh);
+					} catch (Exception itemEx) {
+						failedItems.add(new FailedItem<>(item, itemEx.getMessage()));
+					}
+				}
+			}
+		}
 
-        return new ChunkProcessingResult<>(successCount, failedItems.size(), failedItems, successItems);
-    }
+		return new ChunkProcessingResult<>(successCount, failedItems.size(), failedItems, successItems);
+	}
 }

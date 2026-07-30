@@ -16,40 +16,40 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class KakaoLoginService implements KakaoLoginUseCase {
 
-    private final KakaoApiPort kakaoApiPort;
-    private final UserRepositoryPort userRepositoryPort;
-    private final JwtProvider jwtProvider;
+	private final KakaoApiPort kakaoApiPort;
+	private final UserRepositoryPort userRepositoryPort;
+	private final JwtProvider jwtProvider;
 
-    /** 카카오 로그인 — 기존 유저면 JWT 발급, 신규 유저면 카카오 프로필만 반환 */
-    @Override
-    @Transactional
-    public KakaoLoginResult login(KakaoLoginCommand command) {
+	/** 카카오 로그인 — 기존 유저면 JWT 발급, 신규 유저면 카카오 프로필만 반환 */
+	@Override
+	@Transactional
+	public KakaoLoginResult login(KakaoLoginCommand command) {
 
-        // KAKAO 사용자 정보 조회
-        KakaoUserInfo kakaoUser = kakaoApiPort.getUserInfo(command.kakaoAccessToken());
+		// KAKAO 사용자 정보 조회
+		KakaoUserInfo kakaoUser = kakaoApiPort.getUserInfo(command.kakaoAccessToken());
 
-        // 서비스 사용자 조회
-        Optional<User> existing = userRepositoryPort.findById(kakaoUser.id());
+		// 서비스 사용자 조회
+		Optional<User> existing = userRepositoryPort.findById(kakaoUser.id());
 
-        // 신규 유저 라면 토큰 발급 x
-        if (existing.isEmpty()) {
-            return KakaoLoginResult.newUser(
-                    kakaoUser.id(),
-                    new KakaoProfile(kakaoUser.nickname(), kakaoUser.email(), kakaoUser.profileImageUrl())
-            );
-        }
+		// 신규 유저 라면 토큰 발급 x
+		if (existing.isEmpty()) {
+			return KakaoLoginResult.newUser(
+					kakaoUser.id(),
+					new KakaoProfile(kakaoUser.nickname(), kakaoUser.email(), kakaoUser.profileImageUrl())
+			);
+		}
 
-        // 기존 유저라면 액세스토큰/리프레쉬 토큰 발급 (email/프로필 동기화하지 않음 — 최초 가입 시에만 저장)
-        User user = existing.get();
+		// 기존 유저라면 액세스토큰/리프레쉬 토큰 발급 (email/프로필 동기화하지 않음 — 최초 가입 시에만 저장)
+		User user = existing.get();
 
-        String accessToken = jwtProvider.createAccessToken(user.getId(), user.getProvider(), user.getTokenVersion());
-        String refreshToken = jwtProvider.createRefreshToken(user.getId(), user.getTokenVersion());
+		String accessToken = jwtProvider.createAccessToken(user.getId(), user.getProvider(), user.getTokenVersion());
+		String refreshToken = jwtProvider.createRefreshToken(user.getId(), user.getTokenVersion());
 
-        return KakaoLoginResult.existingUser(
-                accessToken,
-                refreshToken,
-                jwtProvider.getAccessTokenExpirationSeconds(),
-                new LoginUserInfo(user.getId(), user.getNickname(), user.getProfileImageUrl())
-        );
-    }
+		return KakaoLoginResult.existingUser(
+				accessToken,
+				refreshToken,
+				jwtProvider.getAccessTokenExpirationSeconds(),
+				new LoginUserInfo(user.getId(), user.getNickname(), user.getProfileImageUrl())
+		);
+	}
 }

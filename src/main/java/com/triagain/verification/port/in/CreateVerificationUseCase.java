@@ -8,30 +8,30 @@ import java.time.LocalDateTime;
 
 public interface CreateVerificationUseCase {
 
-    VerificationResult createVerification(CreateVerificationCommand command);
+	VerificationResult createVerification(CreateVerificationCommand command);
 
-    record CreateVerificationCommand(
-            String userId,
-            String challengeId,
-            String crewId,
-            Long uploadSessionId,
-            String textContent
-    ) {
-    }
+	record CreateVerificationCommand(
+			String userId,
+			String challengeId,
+			String crewId,
+			Long uploadSessionId,
+			String textContent
+	) {
+	}
 
-    record VerificationResult(
-            String verificationId,
-            String challengeId,
-            String userId,
-            String crewId,
-            String imageUrl,
-            String textContent,
-            VerificationStatus status,
-            ReviewStatus reviewStatus,
-            int reportCount,
-            LocalDate targetDate,
-            int slotAttempt,
-            LocalDateTime createdAt
-    ) {
-    }
+	record VerificationResult(
+			String verificationId,
+			String challengeId,
+			String userId,
+			String crewId,
+			String imageUrl,
+			String textContent,
+			VerificationStatus status,
+			ReviewStatus reviewStatus,
+			int reportCount,
+			LocalDate targetDate,
+			int slotAttempt,
+			LocalDateTime createdAt
+	) {
+	}
 }

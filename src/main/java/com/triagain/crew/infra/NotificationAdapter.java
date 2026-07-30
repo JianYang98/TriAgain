@@ -23,42 +23,42 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class NotificationAdapter implements NotificationPort {
 
-    private final NotificationRepositoryPort notificationRepositoryPort;
-    private final NotificationSendPort notificationSendPort;
-    private final FcmTokenCleanupPort fcmTokenCleanupPort;
-    private final UserRepositoryPort userRepositoryPort;
+	private final NotificationRepositoryPort notificationRepositoryPort;
+	private final NotificationSendPort notificationSendPort;
+	private final FcmTokenCleanupPort fcmTokenCleanupPort;
+	private final UserRepositoryPort userRepositoryPort;
 
-    @Override
-    public void sendChallengeFailedNotifications(List<ChallengeFailedInfo> infos) {
-        for (ChallengeFailedInfo info : infos) {
-            try {
-                NotificationMessage msg = NotificationMessageTemplate.challengeFailed(info.crewName());
-                Notification notification = Notification.create(
-                        info.userId(), NotificationType.CHALLENGE_FAILED,
-                        msg.title(), msg.content(),
-                        NotificationTargetType.CREW, info.crewId()
-                );
-                notificationRepositoryPort.save(notification);
+	@Override
+	public void sendChallengeFailedNotifications(List<ChallengeFailedInfo> infos) {
+		for (ChallengeFailedInfo info : infos) {
+			try {
+				NotificationMessage msg = NotificationMessageTemplate.challengeFailed(info.crewName());
+				Notification notification = Notification.create(
+						info.userId(), NotificationType.CHALLENGE_FAILED,
+						msg.title(), msg.content(),
+						NotificationTargetType.CREW, info.crewId()
+				);
+				notificationRepositoryPort.save(notification);
 
-                // FCM best-effort 발송
-                userRepositoryPort.findById(info.userId()).ifPresent(user -> {
-                    if (user.getFcmToken() != null) {
-                        try {
-                            boolean tokenValid = notificationSendPort.send(
-                                    user.getFcmToken(), msg.title(), msg.content(),
-                                    Map.of("type", "CHALLENGE_FAILED", "crewId", info.crewId()));
-                            if (!tokenValid) {
-                                fcmTokenCleanupPort.clearFcmToken(info.userId());
-                            }
-                        } catch (Exception e) {
-                            log.warn("챌린지 실패 FCM 발송 실패 [userId={}]: {}", info.userId(), e.getMessage());
-                        }
-                    }
-                });
-            } catch (Exception e) {
-                log.error("챌린지 실패 알림 저장 실패 [userId={}, crewId={}]: {}",
-                        info.userId(), info.crewId(), e.getMessage());
-            }
-        }
-    }
+				// FCM best-effort 발송
+				userRepositoryPort.findById(info.userId()).ifPresent(user -> {
+					if (user.getFcmToken() != null) {
+						try {
+							boolean tokenValid = notificationSendPort.send(
+									user.getFcmToken(), msg.title(), msg.content(),
+									Map.of("type", "CHALLENGE_FAILED", "crewId", info.crewId()));
+							if (!tokenValid) {
+								fcmTokenCleanupPort.clearFcmToken(info.userId());
+							}
+						} catch (Exception e) {
+							log.warn("챌린지 실패 FCM 발송 실패 [userId={}]: {}", info.userId(), e.getMessage());
+						}
+					}
+				});
+			} catch (Exception e) {
+				log.error("챌린지 실패 알림 저장 실패 [userId={}, crewId={}]: {}",
+						info.userId(), info.crewId(), e.getMessage());
+			}
+		}
+	}
 }

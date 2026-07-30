@@ -15,15 +15,15 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class UserProfileQueryService implements UserProfileQueryUseCase {
 
-    private final UserRepositoryPort userRepositoryPort;
+	private final UserRepositoryPort userRepositoryPort;
 
-    @Override
-    @Transactional(readOnly = true)
-    public Map<String, UserProfileDto> findProfilesByIds(List<String> userIds) {
-        return userRepositoryPort.findAllByIds(userIds).stream()
-                .collect(Collectors.toMap(
-                        user -> user.getId(),
-                        user -> new UserProfileDto(user.getNickname(), user.getProfileImageUrl())
-                ));
-    }
+	@Override
+	@Transactional(readOnly = true)
+	public Map<String, UserProfileDto> findProfilesByIds(List<String> userIds) {
+		return userRepositoryPort.findAllByIds(userIds).stream()
+				.collect(Collectors.toMap(
+						user -> user.getId(),
+						user -> new UserProfileDto(user.getNickname(), user.getProfileImageUrl())
+				));
+	}
 }

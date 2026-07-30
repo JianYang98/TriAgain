@@ -16,27 +16,27 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @RequiredArgsConstructor
 public class CompleteUploadSessionService implements CompleteUploadSessionUseCase {
 
-    private final UploadSessionRepositoryPort uploadSessionRepositoryPort;
-    private final SsePort ssePort;
+	private final UploadSessionRepositoryPort uploadSessionRepositoryPort;
+	private final SsePort ssePort;
 
-    /** 업로드 세션 완료 + SSE 알림 — Lambda가 S3 업로드 성공 감지 시 imageKey로 호출 */
-    @Override
-    @Transactional
-    public void complete(String imageKey) {
-        UploadSession session = uploadSessionRepositoryPort.findByImageKey(imageKey)
-                .orElseThrow(() -> new BusinessException(ErrorCode.UPLOAD_SESSION_NOT_FOUND));
+	/** 업로드 세션 완료 + SSE 알림 — Lambda가 S3 업로드 성공 감지 시 imageKey로 호출 */
+	@Override
+	@Transactional
+	public void complete(String imageKey) {
+		UploadSession session = uploadSessionRepositoryPort.findByImageKey(imageKey)
+				.orElseThrow(() -> new BusinessException(ErrorCode.UPLOAD_SESSION_NOT_FOUND));
 
-        session.complete();
-        uploadSessionRepositoryPort.save(session);
+		session.complete();
+		uploadSessionRepositoryPort.save(session);
 
-        Long sessionId = session.getId();
-        TransactionSynchronizationManager.registerSynchronization(
-                new TransactionSynchronization() {
-                    @Override
-                    public void afterCommit() {
-                        ssePort.send(sessionId, "COMPLETED");
-                    }
-                }
-        );
-    }
+		Long sessionId = session.getId();
+		TransactionSynchronizationManager.registerSynchronization(
+				new TransactionSynchronization() {
+					@Override
+					public void afterCommit() {
+						ssePort.send(sessionId, "COMPLETED");
+					}
+				}
+		);
+	}
 }
