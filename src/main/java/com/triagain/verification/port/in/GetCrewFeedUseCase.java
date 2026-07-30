@@ -11,8 +11,12 @@ public interface GetCrewFeedUseCase {
 
 	record FeedQuery(String crewId, String userId, int page, int size) {
 		public FeedQuery {
-			if (page < 0) page = 0;
-			if (size <= 0 || size > 50) size = 20;
+			if (page < 0) {
+				page = 0;
+			}
+			if (size <= 0 || size > 50) {
+				size = 20;
+			}
 		}
 
 		public int offset() {

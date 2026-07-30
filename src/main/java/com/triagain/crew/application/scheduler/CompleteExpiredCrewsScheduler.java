@@ -49,7 +49,9 @@ public class CompleteExpiredCrewsScheduler {
 	}
 
 	private void processCrews(List<Crew> expiredCrews) {
-		if (expiredCrews.isEmpty()) return;
+		if (expiredCrews.isEmpty()) {
+			return;
+		}
 
 		ChunkProcessingResult<Crew> result = chunkProcessor.execute(expiredCrews, CHUNK_SIZE, crew -> {
 			List<Challenge> remaining = challengeRepositoryPort

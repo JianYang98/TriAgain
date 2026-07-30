@@ -21,8 +21,12 @@ public class GetNotificationsService implements GetNotificationsUseCase {
 	@Override
 	@Transactional(readOnly = true)
 	public NotificationListResult getNotifications(String userId, Boolean isRead, int page, int size) {
-		if (page < 0) page = 0;
-		if (size <= 0 || size > 50) size = 20;
+		if (page < 0) {
+			page = 0;
+		}
+		if (size <= 0 || size > 50) {
+			size = 20;
+		}
 
 		NotificationSlice slice = notificationRepositoryPort.findByUserId(userId, isRead, page, size);
 		List<NotificationItem> items = slice.notifications().stream()

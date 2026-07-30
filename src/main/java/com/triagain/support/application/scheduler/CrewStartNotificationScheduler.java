@@ -45,7 +45,9 @@ public class CrewStartNotificationScheduler {
 	@Scheduled(cron = "0 0 9 * * *")
 	public void sendCrewStartNotifications() {
 		List<CrewStartTarget> targets = notificationTargetQueryPort.findCrewStartTargets(LocalDate.now());
-		if (targets.isEmpty()) return;
+		if (targets.isEmpty()) {
+			return;
+		}
 
 		ChunkProcessingResult<CrewStartTarget> result = chunkProcessor.execute(targets, CHUNK_SIZE, target -> {
 			NotificationMessage msg = NotificationMessageTemplate.crewStarted(target.crewName());
@@ -78,7 +80,9 @@ public class CrewStartNotificationScheduler {
 				.map(FailedItem::item).toList();
 
 		for (CrewStartTarget target : targets) {
-			if (failedTargets.contains(target) || target.fcmToken() == null) continue;
+			if (failedTargets.contains(target) || target.fcmToken() == null) {
+				continue;
+			}
 			try {
 				NotificationMessage msg = NotificationMessageTemplate.crewStarted(target.crewName());
 				boolean tokenValid = notificationSendPort.send(target.fcmToken(), msg.title(), msg.content(),

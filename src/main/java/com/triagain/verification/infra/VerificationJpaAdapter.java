@@ -73,7 +73,9 @@ public class VerificationJpaAdapter implements VerificationRepositoryPort {
 
 	@Override
 	public Set<String> findVerifiedCrewIds(String userId, List<String> crewIds, LocalDate targetDate) {
-		if (crewIds.isEmpty()) return Set.of();
+		if (crewIds.isEmpty()) {
+			return Set.of();
+		}
 		return new HashSet<>(verificationJpaRepository.findVerifiedCrewIds(userId, crewIds, targetDate));
 	}
 

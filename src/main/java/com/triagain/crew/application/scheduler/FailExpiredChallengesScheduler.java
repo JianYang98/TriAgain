@@ -48,7 +48,9 @@ public class FailExpiredChallengesScheduler {
 	}
 
 	private void processExpired(List<Challenge> expired) {
-		if (expired.isEmpty()) return;
+		if (expired.isEmpty()) {
+			return;
+		}
 
 		// 기대치는 "트랜잭션 밖 원본 스냅샷"에서 미리 고정한다 (재시도 경로에서 무효화되지 않도록)
 		Map<String, Integer> snapshotDays = expired.stream()
@@ -110,7 +112,9 @@ public class FailExpiredChallengesScheduler {
 
 	/** 챌린지 실패 알림 발송 — 크루명 배치 조회 후 NotificationPort에 위임 */
 	private void sendFailedNotifications(List<Challenge> failedChallenges) {
-		if (failedChallenges.isEmpty()) return;
+		if (failedChallenges.isEmpty()) {
+			return;
+		}
 
 		try {
 			List<String> crewIds = failedChallenges.stream()

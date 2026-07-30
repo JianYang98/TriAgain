@@ -20,9 +20,15 @@ public interface SearchCrewsUseCase {
 			int size
 	) {
 		public SearchCrewsQuery {
-			if (page < 0) page = 0;
-			if (size <= 0) size = 20;
-			if (size > 50) size = 50;
+			if (page < 0) {
+				page = 0;
+			}
+			if (size <= 0) {
+				size = 20;
+			}
+			if (size > 50) {
+				size = 50;
+			}
 		}
 	}
 

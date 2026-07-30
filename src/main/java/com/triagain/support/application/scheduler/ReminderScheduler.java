@@ -51,7 +51,9 @@ public class ReminderScheduler {
 		LocalDate today = LocalDate.now();
 
 		List<ReminderTarget> targets = notificationTargetQueryPort.findReminderTargets(from, to, today);
-		if (targets.isEmpty()) return;
+		if (targets.isEmpty()) {
+			return;
+		}
 
 		ChunkProcessingResult<ReminderTarget> result = chunkProcessor.execute(targets, CHUNK_SIZE, target -> {
 			NotificationMessage msg = NotificationMessageTemplate.reminder(target.crewName());
@@ -84,7 +86,9 @@ public class ReminderScheduler {
 				.map(FailedItem::item).toList();
 
 		for (ReminderTarget target : targets) {
-			if (failedTargets.contains(target) || target.fcmToken() == null) continue;
+			if (failedTargets.contains(target) || target.fcmToken() == null) {
+				continue;
+			}
 			try {
 				NotificationMessage msg = NotificationMessageTemplate.reminder(target.crewName());
 				boolean tokenValid = notificationSendPort.send(target.fcmToken(), msg.title(), msg.content(),

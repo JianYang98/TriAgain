@@ -45,7 +45,9 @@ public class ActivateRecruitingCrewsScheduler {
 	}
 
 	private void processCrews(List<Crew> crews) {
-		if (crews.isEmpty()) return;
+		if (crews.isEmpty()) {
+			return;
+		}
 
 		ChunkProcessingResult<Crew> result = chunkProcessor.execute(crews, CHUNK_SIZE, crew -> {
 			crew.activate();

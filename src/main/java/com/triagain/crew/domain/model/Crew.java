@@ -172,11 +172,21 @@ public class Crew {
 		if (this.status != CrewStatus.RECRUITING) {
 			throw new BusinessException(ErrorCode.CREW_NOT_RECRUITING);
 		}
-		if (name != null) this.name = name;
-		if (goal != null) this.goal = goal;
-		if (verificationContent != null) this.verificationContent = verificationContent;
-		if (category != null) this.category = category;
-		if (visibility != null) this.visibility = visibility;
+		if (name != null) {
+			this.name = name;
+		}
+		if (goal != null) {
+			this.goal = goal;
+		}
+		if (verificationContent != null) {
+			this.verificationContent = verificationContent;
+		}
+		if (category != null) {
+			this.category = category;
+		}
+		if (visibility != null) {
+			this.visibility = visibility;
+		}
 	}
 
 	/** 멤버 제거 — RECRUITING은 무조건, ACTIVE는 챌린지 미시작 멤버만 탈퇴 가능 */

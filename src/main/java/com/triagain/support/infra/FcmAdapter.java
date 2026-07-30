@@ -68,7 +68,9 @@ public class FcmAdapter implements NotificationSendPort {
 	}
 
 	private String maskToken(String token) {
-		if (token == null || token.length() <= 10) return "***";
+		if (token == null || token.length() <= 10) {
+			return "***";
+		}
 		return token.substring(0, 10) + "***";
 	}
 }

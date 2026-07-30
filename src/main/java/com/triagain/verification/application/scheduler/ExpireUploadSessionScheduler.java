@@ -44,7 +44,9 @@ public class ExpireUploadSessionScheduler {
 	}
 
 	private void processSessions(List<UploadSession> sessions) {
-		if (sessions.isEmpty()) return;
+		if (sessions.isEmpty()) {
+			return;
+		}
 
 		ChunkProcessingResult<UploadSession> result = chunkProcessor.execute(sessions, CHUNK_SIZE, session -> {
 			session.expire();
