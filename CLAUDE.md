@@ -76,7 +76,8 @@ Phase B 구현 중 문서에 없는 결정이 필요하면 멈추고 문서부�
 
 ### Checkstyle (필수)
 - 네이버 Java 코딩 컨벤션 기반 (`config/checkstyle/triagain-checkstyle-rules.xml`)
-- 메소드 길이: 최대 30줄 (빈 줄 제외)
+- 메소드 길이: 최대 30줄 — 여는 중괄호 줄부터 닫는 중괄호 줄까지, 빈 줄·주석 줄 제외
+  (그래서 여러 줄 시그니처는 안 세어진다). 정본은 checkstyle `MethodLength`.
 - .java 파일 수정 시 Claude Code Hook이 자동으로 Checkstyle 실행
 - 위반 발견 시 반드시 수정 후 다음 작업 진행
 
