@@ -100,9 +100,9 @@ class CancelVerificationIntegrationTest {
 
 	private Verification createApprovedVerification(String challengeId, String userId, String crewId,
 			int attemptNumber, int slotAttempt) {
-		Verification v = Verification.createText(
+		Verification verification = Verification.createText(
 				challengeId, userId, crewId, "인증 완료", LocalDate.now(), attemptNumber, slotAttempt);
-		return verificationRepositoryPort.save(v);
+		return verificationRepositoryPort.save(verification);
 	}
 
 	/** crews.invite_code는 VARCHAR(6) — 6자 랜덤 코드 생성(E2eTestBase.generateInviteCode와 동일 패턴) */
@@ -123,17 +123,17 @@ class CancelVerificationIntegrationTest {
 		String crewId = IdGenerator.generate("CREW");
 		createActiveCrew(crewId, userId);
 		Challenge challenge = createChallenge(userId, crewId, 3, ChallengeStatus.SUCCESS);
-		Verification v = createApprovedVerification(challenge.getId(), userId, crewId, 3, 1);
+		Verification verification = createApprovedVerification(challenge.getId(), userId, crewId, 3, 1);
 
 		// When
-		CancelResult result = cancelVerificationUseCase.cancelVerification(v.getId(), userId);
+		CancelResult result = cancelVerificationUseCase.cancelVerification(verification.getId(), userId);
 
 		// Then
 		assertThat(result.status()).isEqualTo(VerificationStatus.CANCELLED);
 		assertThat(result.challengeProgress().completedDays()).isEqualTo(2);
 		assertThat(result.challengeProgress().status()).isEqualTo("IN_PROGRESS");
 
-		Verification savedV = verificationRepositoryPort.findById(v.getId()).orElseThrow();
+		Verification savedV = verificationRepositoryPort.findById(verification.getId()).orElseThrow();
 		assertThat(savedV.getStatus()).isEqualTo(VerificationStatus.CANCELLED);
 
 		Challenge savedChallenge = challengeRepositoryPort.findById(challenge.getId()).orElseThrow();
@@ -149,7 +149,7 @@ class CancelVerificationIntegrationTest {
 		String crewId = IdGenerator.generate("CREW");
 		createActiveCrew(crewId, userId);
 		Challenge challenge = createChallenge(userId, crewId, 2, ChallengeStatus.IN_PROGRESS);
-		Verification v = createApprovedVerification(challenge.getId(), userId, crewId, 2, 1);
+		Verification verification = createApprovedVerification(challenge.getId(), userId, crewId, 2, 1);
 
 		ExecutorService executor = Executors.newFixedThreadPool(2);
 		CountDownLatch ready = new CountDownLatch(2);
@@ -158,7 +158,7 @@ class CancelVerificationIntegrationTest {
 		Callable<CancelResult> task = () -> {
 			ready.countDown();
 			start.await();
-			return cancelVerificationUseCase.cancelVerification(v.getId(), userId);
+			return cancelVerificationUseCase.cancelVerification(verification.getId(), userId);
 		};
 
 		// When — 두 스레드가 거의 동시에 취소 요청
@@ -229,8 +229,8 @@ class CancelVerificationIntegrationTest {
 				3, 0, ChallengeStatus.IN_PROGRESS, slot, expiredDeadline, LocalDateTime.now());
 		challengeRepositoryPort.save(challenge);
 
-		Verification v = Verification.createText(challenge.getId(), userId, crewId, "취소될 인증", slot, 1, 1);
-		Verification saved = verificationRepositoryPort.save(v);
+		Verification verification = Verification.createText(challenge.getId(), userId, crewId, "취소될 인증", slot, 1, 1);
+		Verification saved = verificationRepositoryPort.save(verification);
 		int affected = verificationRepositoryPort.cancelIfApproved(saved.getId());
 		assertThat(affected).isEqualTo(1);
 		assertThat(verificationRepositoryPort.findById(saved.getId()).orElseThrow().getStatus())
@@ -253,10 +253,10 @@ class CancelVerificationIntegrationTest {
 		String crewId = IdGenerator.generate("CREW");
 		createActiveCrew(crewId, userId);
 		Challenge challenge = createChallenge(userId, crewId, 1, ChallengeStatus.IN_PROGRESS);
-		Verification v = createApprovedVerification(challenge.getId(), userId, crewId, 1, 1);
+		Verification verification = createApprovedVerification(challenge.getId(), userId, crewId, 1, 1);
 
 		// When
-		CancelResult result = cancelVerificationUseCase.cancelVerification(v.getId(), userId);
+		CancelResult result = cancelVerificationUseCase.cancelVerification(verification.getId(), userId);
 
 		// Then
 		assertThat(result.challengeProgress().completedDays()).isZero();
@@ -275,11 +275,11 @@ class CancelVerificationIntegrationTest {
 		String crewId = IdGenerator.generate("CREW");
 		createActiveCrew(crewId, userId);
 		Challenge challenge = createChallenge(userId, crewId, 1, ChallengeStatus.IN_PROGRESS);
-		Verification v = createApprovedVerification(challenge.getId(), userId, crewId, 1, 1);
+		Verification verification = createApprovedVerification(challenge.getId(), userId, crewId, 1, 1);
 
 		// When — 순차 2회 호출
-		CancelResult first = cancelVerificationUseCase.cancelVerification(v.getId(), userId);
-		CancelResult second = cancelVerificationUseCase.cancelVerification(v.getId(), userId);
+		CancelResult first = cancelVerificationUseCase.cancelVerification(verification.getId(), userId);
+		CancelResult second = cancelVerificationUseCase.cancelVerification(verification.getId(), userId);
 
 		// Then — 🔴 두 번째 요청도 예외(V022) 없이 200으로 CANCELLED를 반환해야 한다 (G-1)
 		assertThat(first.status()).isEqualTo(VerificationStatus.CANCELLED);
