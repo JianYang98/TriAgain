@@ -82,8 +82,7 @@ class ExpireUploadSessionSchedulerTest {
 	@DisplayName("PENDING 세션이 EXPIRED로 전환된다")
 	void pendingSession_expiredSuccessfully() {
 		// Given
-		UploadSession session = UploadSession.of(1L, "user-1", "crew-1", "key-1", "image/jpeg",
-				UploadSessionStatus.PENDING, LocalDateTime.now().minusMinutes(20), LocalDateTime.now().minusMinutes(20));
+		UploadSession session = pendingSession(1L);
 
 		given(uploadSessionRepositoryPort.findPendingSessionsBefore(any(LocalDateTime.class)))
 				.willReturn(List.of(session));
@@ -101,10 +100,8 @@ class ExpireUploadSessionSchedulerTest {
 	@DisplayName("여러 세션 동시 만료 처리")
 	void multipleSessions_allExpired() {
 		// Given
-		UploadSession session1 = UploadSession.of(1L, "user-1", "crew-1", "key-1", "image/jpeg",
-				UploadSessionStatus.PENDING, LocalDateTime.now().minusMinutes(20), LocalDateTime.now().minusMinutes(20));
-		UploadSession session2 = UploadSession.of(2L, "user-2", "crew-2", "key-2", "image/png",
-				UploadSessionStatus.PENDING, LocalDateTime.now().minusMinutes(30), LocalDateTime.now().minusMinutes(30));
+		UploadSession session1 = pendingSession(1L);
+		UploadSession session2 = pendingSession(2L);
 
 		given(uploadSessionRepositoryPort.findPendingSessionsBefore(any(LocalDateTime.class)))
 				.willReturn(List.of(session1, session2));
@@ -123,16 +120,12 @@ class ExpireUploadSessionSchedulerTest {
 	@DisplayName("청크 저장이 실패해도 개별 재시도가 성공하면 Dead Letter는 기록되지 않는다")
 	void chunkFails_retrySucceeds_noDeadLetter() {
 		// Given
-		UploadSession session1 = UploadSession.of(1L, "user-1", "crew-1", "key-1", "image/jpeg",
-				UploadSessionStatus.PENDING, LocalDateTime.now().minusMinutes(20), LocalDateTime.now().minusMinutes(20));
-		UploadSession session2 = UploadSession.of(2L, "user-2", "crew-2", "key-2", "image/png",
-				UploadSessionStatus.PENDING, LocalDateTime.now().minusMinutes(30), LocalDateTime.now().minusMinutes(30));
+		UploadSession session1 = pendingSession(1L);
+		UploadSession session2 = pendingSession(2L);
 
 		// rehydrator용 fresh 인스턴스
-		UploadSession freshSession1 = UploadSession.of(1L, "user-1", "crew-1", "key-1", "image/jpeg",
-				UploadSessionStatus.PENDING, LocalDateTime.now().minusMinutes(20), LocalDateTime.now().minusMinutes(20));
-		UploadSession freshSession2 = UploadSession.of(2L, "user-2", "crew-2", "key-2", "image/png",
-				UploadSessionStatus.PENDING, LocalDateTime.now().minusMinutes(30), LocalDateTime.now().minusMinutes(30));
+		UploadSession freshSession1 = pendingSession(1L);
+		UploadSession freshSession2 = pendingSession(2L);
 
 		given(uploadSessionRepositoryPort.findPendingSessionsBefore(any(LocalDateTime.class)))
 				.willReturn(List.of(session1, session2));
@@ -160,16 +153,12 @@ class ExpireUploadSessionSchedulerTest {
 	void retryAlsoFails_savesDeadLetterWithTaskTypeAndTarget() {
 		// Given — 2건 중 2번 세션만 재시도까지 실패한다
 		LocalDateTime past = LocalDateTime.now().minusMinutes(20);
-		UploadSession session1 = UploadSession.of(1L, "user-1", "crew-1", "key-1", "image/jpeg",
-				UploadSessionStatus.PENDING, past, past);
-		UploadSession session2 = UploadSession.of(2L, "user-2", "crew-2", "key-2", "image/png",
-				UploadSessionStatus.PENDING, past, past);
+		UploadSession session1 = pendingSession(1L);
+		UploadSession session2 = pendingSession(2L);
 
 		// rehydrator용 fresh 인스턴스
-		UploadSession freshSession1 = UploadSession.of(1L, "user-1", "crew-1", "key-1", "image/jpeg",
-				UploadSessionStatus.PENDING, past, past);
-		UploadSession freshSession2 = UploadSession.of(2L, "user-2", "crew-2", "key-2", "image/png",
-				UploadSessionStatus.PENDING, past, past);
+		UploadSession freshSession1 = pendingSession(1L);
+		UploadSession freshSession2 = pendingSession(2L);
 
 		given(uploadSessionRepositoryPort.findPendingSessionsBefore(any(LocalDateTime.class)))
 				.willReturn(List.of(session1, session2));
@@ -197,4 +186,14 @@ class ExpireUploadSessionSchedulerTest {
 		assertThat(saved.getErrorMessage()).isEqualTo("재시도 실패");
 	}
 
+	// ─────────────────────────────────────────────────────────────
+	// 테스트 헬퍼
+	// ─────────────────────────────────────────────────────────────
+
+	/** 만료 대상 PENDING 세션. 컨텐츠타입·시각은 어느 단언에도 쓰이지 않아 고정값이다 */
+	private UploadSession pendingSession(long id) {
+		LocalDateTime past = LocalDateTime.now().minusMinutes(20);
+		return UploadSession.of(id, "user-" + id, "crew-" + id, "key-" + id, "image/jpeg",
+				UploadSessionStatus.PENDING, past, past);
+	}
 }
