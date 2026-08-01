@@ -170,7 +170,8 @@ public class MyVerificationsSteps {
 				crew.getCurrentMembers(), crew.getStatus(),
 				LocalDate.now().minusDays(daysNeeded), crew.getEndDate(),
 				crew.isAllowLateJoin(), crew.getInviteCode(),
-				crew.getCreatedAt(), crew.getDeadlineTime(), crew.getCategory(), crew.getVisibility(), 0L, crew.getMembers()
+				crew.getCreatedAt(), crew.getDeadlineTime(), crew.getCategory(), crew.getVisibility(), 0L,
+						crew.getMembers()
 		);
 		crewRepositoryPort.save(updated);
 	}

@@ -132,7 +132,8 @@ class CreateVerificationServiceTest {
 				USER_ID, CHALLENGE_ID, null, SESSION_ID, "오늘도 완료!");
 
 		given(challengePort.findChallengeById(CHALLENGE_ID)).willReturn(Optional.of(challenge));
-		given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("PHOTO", LocalTime.of(23, 59, 59)));
+		given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("PHOTO", LocalTime.of(23, 59,
+				59)));
 		given(uploadSessionRepositoryPort.findByIdAndUserId(SESSION_ID, USER_ID))
 				.willReturn(Optional.of(session));
 		given(storagePort.getImageUrl("images/test.jpg")).willReturn("https://cdn.example.com/images/test.jpg");
@@ -298,7 +299,8 @@ class CreateVerificationServiceTest {
 		given(challengePort.findChallengeById(CHALLENGE_ID)).willReturn(Optional.of(challenge));
 		given(verificationRepositoryPort.existsActiveByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, LocalDate.now()))
 				.willReturn(false);
-		given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("PHOTO", LocalTime.of(23, 59, 59)));
+		given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("PHOTO", LocalTime.of(23, 59,
+				59)));
 
 		// When & Then
 		assertThatThrownBy(() -> createVerificationService.createVerification(command))
@@ -412,7 +414,8 @@ class CreateVerificationServiceTest {
 
 		given(challengePort.findChallengeById(CHALLENGE_ID)).willReturn(Optional.of(challenge));
 		given(uploadSessionRepositoryPort.findByIdAndUserId(SESSION_ID, USER_ID)).willReturn(Optional.of(session));
-		given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("PHOTO", LocalTime.of(23, 59, 59)));
+		given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("PHOTO", LocalTime.of(23, 59,
+				59)));
 		given(verificationRepositoryPort.existsActiveByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, D))
 				.willReturn(false);
 		given(storagePort.getImageUrl("images/test.jpg")).willReturn("https://cdn.example.com/images/test.jpg");
@@ -529,7 +532,8 @@ class CreateVerificationServiceTest {
 				USER_ID, CHALLENGE_ID, null, null, "텍스트 인증");
 
 		given(challengePort.findChallengeById(CHALLENGE_ID)).willReturn(Optional.of(challenge));
-		given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("PHOTO", LocalTime.of(23, 59, 59)));
+		given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("PHOTO", LocalTime.of(23, 59,
+				59)));
 
 		// When & Then
 		assertThatThrownBy(() -> serviceAt(D.atTime(20, 0)).createVerification(command))
@@ -549,7 +553,8 @@ class CreateVerificationServiceTest {
 				USER_ID, CHALLENGE_ID, null, SESSION_ID, "사진 인증");
 
 		given(challengePort.findChallengeById(CHALLENGE_ID)).willReturn(Optional.of(challenge));
-		given(uploadSessionRepositoryPort.findByIdAndUserId(SESSION_ID, USER_ID)).willReturn(Optional.of(expiredSession));
+		given(uploadSessionRepositoryPort.findByIdAndUserId(SESSION_ID,
+				USER_ID)).willReturn(Optional.of(expiredSession));
 		given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("PHOTO", LocalTime.of(21, 0, 0)));
 		given(verificationRepositoryPort.existsActiveByUserIdAndCrewIdAndTargetDate(USER_ID, CREW_ID, D))
 				.willReturn(false);

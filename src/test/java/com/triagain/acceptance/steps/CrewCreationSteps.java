@@ -112,7 +112,8 @@ public class CrewCreationSteps {
 	public void 최대인원으로_크루_생성을_요청한다(int maxMembers) {
 		CreateCrewRequest request = new CreateCrewRequest(
 				"테스트 크루", "테스트 목표", "인증 내용", VerificationType.TEXT,
-				maxMembers, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true, null, CrewCategory.ETC, null
+				maxMembers, LocalDate.now().plusDays(1), LocalDate.now().plusDays(14), true, null, CrewCategory.ETC,
+						null
 		);
 		ExtractableResponse<Response> response = crewAdapter.createCrew(scenarioContext.getUserId(), request);
 		scenarioContext.setResponse(response);

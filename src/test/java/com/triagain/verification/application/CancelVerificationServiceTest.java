@@ -76,7 +76,8 @@ class CancelVerificationServiceTest {
 	}
 
 	private static CrewVerificationWindowInfo windowInfo(LocalTime deadlineTime) {
-		return new CrewVerificationWindowInfo("TEXT", "ACTIVE", SLOT.minusDays(30), SLOT.plusDays(30), false, deadlineTime);
+		return new CrewVerificationWindowInfo("TEXT", "ACTIVE", SLOT.minusDays(30), SLOT.plusDays(30), false,
+				deadlineTime);
 	}
 
 	@Test

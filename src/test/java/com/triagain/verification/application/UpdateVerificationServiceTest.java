@@ -90,11 +90,13 @@ class UpdateVerificationServiceTest {
 	}
 
 	private static ChallengeInfo challengeInfo(int completedDays, LocalDateTime deadline) {
-		return new ChallengeInfo(CHALLENGE_ID, USER_ID, CREW_ID, completedDays, 3, "IN_PROGRESS", SLOT.minusDays(2), deadline);
+		return new ChallengeInfo(CHALLENGE_ID, USER_ID, CREW_ID, completedDays, 3, "IN_PROGRESS", SLOT.minusDays(2),
+				deadline);
 	}
 
 	private static CrewVerificationWindowInfo windowInfo(String type, LocalTime deadlineTime) {
-		return new CrewVerificationWindowInfo(type, "ACTIVE", SLOT.minusDays(30), SLOT.plusDays(30), false, deadlineTime);
+		return new CrewVerificationWindowInfo(type, "ACTIVE", SLOT.minusDays(30), SLOT.plusDays(30), false,
+				deadlineTime);
 	}
 
 	@Test
@@ -216,7 +218,8 @@ class UpdateVerificationServiceTest {
 		given(verificationRepositoryPort.findById(OLD_ID)).willReturn(Optional.of(old));
 		given(challengePort.findChallengeById(CHALLENGE_ID))
 				.willReturn(Optional.of(challengeInfo(1, SLOT.plusDays(3).atTime(23, 59, 59))));
-		given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("PHOTO", LocalTime.of(23, 59, 59)));
+		given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("PHOTO", LocalTime.of(23, 59,
+				59)));
 		given(verificationRepositoryPort.findMaxSlotAttempt(USER_ID, CREW_ID, SLOT)).willReturn(1);
 		given(verificationRepositoryPort.cancelIfApproved(OLD_ID)).willReturn(1);
 		given(verificationRepositoryPort.saveAndFlush(any(Verification.class)))
@@ -272,7 +275,8 @@ class UpdateVerificationServiceTest {
 		given(verificationRepositoryPort.findById(OLD_ID)).willReturn(Optional.of(old));
 		given(challengePort.findChallengeById(CHALLENGE_ID))
 				.willReturn(Optional.of(challengeInfo(1, SLOT.plusDays(3).atTime(23, 59, 59))));
-		given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("PHOTO", LocalTime.of(23, 59, 59)));
+		given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("PHOTO", LocalTime.of(23, 59,
+				59)));
 		given(verificationRepositoryPort.findMaxSlotAttempt(USER_ID, CREW_ID, SLOT)).willReturn(1);
 		given(uploadSessionRepositoryPort.findByIdAndUserId(SESSION_ID, USER_ID)).willReturn(Optional.empty());
 
@@ -297,7 +301,8 @@ class UpdateVerificationServiceTest {
 		given(verificationRepositoryPort.findById(OLD_ID)).willReturn(Optional.of(old));
 		given(challengePort.findChallengeById(CHALLENGE_ID))
 				.willReturn(Optional.of(challengeInfo(1, SLOT.plusDays(3).atTime(23, 59, 59))));
-		given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("PHOTO", LocalTime.of(23, 59, 59)));
+		given(crewPort.getCrewVerificationWindowInfo(CREW_ID)).willReturn(windowInfo("PHOTO", LocalTime.of(23, 59,
+				59)));
 		given(verificationRepositoryPort.findMaxSlotAttempt(USER_ID, CREW_ID, SLOT)).willReturn(1);
 		given(uploadSessionRepositoryPort.findByIdAndUserId(SESSION_ID, USER_ID)).willReturn(Optional.of(newSession));
 		given(storagePort.getImageUrl("images/new.jpg")).willReturn("https://cdn.example.com/new.jpg");

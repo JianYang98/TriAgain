@@ -88,7 +88,8 @@ class ReminderSchedulerTest {
 				new ReminderTarget("user-1", "token-1", "crew-1", "운동 크루"),
 				new ReminderTarget("user-2", "token-2", "crew-1", "운동 크루")
 		);
-		given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class), any(LocalDate.class)))
+		given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class),
+				any(LocalDate.class)))
 				.willReturn(targets);
 		given(notificationSendPort.send(anyString(), anyString(), anyString(), anyMap()))
 				.willReturn(true);
@@ -109,7 +110,8 @@ class ReminderSchedulerTest {
 		List<ReminderTarget> targets = List.of(
 				new ReminderTarget("user-1", null, "crew-1", "운동 크루")
 		);
-		given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class), any(LocalDate.class)))
+		given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class),
+				any(LocalDate.class)))
 				.willReturn(targets);
 
 		// when
@@ -124,7 +126,8 @@ class ReminderSchedulerTest {
 	@Test
 	void sendReminders_noTargets_doesNothing() {
 		// given
-		given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class), any(LocalDate.class)))
+		given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class),
+				any(LocalDate.class)))
 				.willReturn(Collections.emptyList());
 
 		// when
@@ -142,7 +145,8 @@ class ReminderSchedulerTest {
 		List<ReminderTarget> targets = List.of(
 				new ReminderTarget("user-1", "token-1", "crew-1", "운동 크루")
 		);
-		given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class), any(LocalDate.class)))
+		given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class),
+				any(LocalDate.class)))
 				.willReturn(targets);
 		given(notificationSendPort.send(anyString(), anyString(), anyString(), anyMap()))
 				.willReturn(false);
@@ -163,7 +167,8 @@ class ReminderSchedulerTest {
 				new ReminderTarget("user-1", "token-1", "crew-1", "운동 크루"),
 				new ReminderTarget("user-2", "token-2", "crew-1", "운동 크루")
 		);
-		given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class), any(LocalDate.class)))
+		given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class),
+				any(LocalDate.class)))
 				.willReturn(targets);
 		given(notificationSendPort.send(anyString(), anyString(), anyString(), anyMap()))
 				.willReturn(true);

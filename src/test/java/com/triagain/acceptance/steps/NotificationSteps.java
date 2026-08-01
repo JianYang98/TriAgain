@@ -83,7 +83,8 @@ public class NotificationSteps {
 
 	@만일("{string}이 {string}의 알림을 읽음 처리한다")
 	public void 사용자가_타인의_알림을_읽음_처리한다(String userId, String otherUserId) {
-		ExtractableResponse<Response> response = notificationAdapter.markAsRead(userId, scenarioContext.getNotificationId());
+		ExtractableResponse<Response> response = notificationAdapter.markAsRead(userId,
+				scenarioContext.getNotificationId());
 		scenarioContext.setResponse(response);
 	}
 
