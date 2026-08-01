@@ -23,6 +23,7 @@ class AppleOAuthAdapterTest {
 	private static final String KEY_ID = "KEY1234567";
 
 	/** 테스트용 ES256 PKCS8 형식 .p8 — Apple Developer가 발급하는 형태와 동일 */
+	// @checkstyle:off RegexpSinglelineJava — 텍스트 블록 인덴트는 문자열 내용 (rules.xml Suppression 주석 참조)
 	private static final String VALID_P8 = """
             -----BEGIN PRIVATE KEY-----
             MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgevZzL1gdAFr88hb2
@@ -30,6 +31,7 @@ class AppleOAuthAdapterTest {
             1RTwjmYSi9R/zpBnuQ4EiMnCqfMPWiZqB4QdbAd0E7oH50VpuZ1P087G
             -----END PRIVATE KEY-----
             """;
+	// @checkstyle:on RegexpSinglelineJava
 
 	private final RestClient restClient = RestClient.create();
 
