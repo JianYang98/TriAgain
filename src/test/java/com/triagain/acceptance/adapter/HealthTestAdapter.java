@@ -5,11 +5,11 @@ import io.restassured.response.Response;
 
 public class HealthTestAdapter extends BaseTestAdapter {
 
-    public HealthTestAdapter(int port) {
-        super(port);
-    }
+	public HealthTestAdapter(int port) {
+		super(port);
+	}
 
-    public ExtractableResponse<Response> getHealth() {
-        return get("/health");
-    }
+	public ExtractableResponse<Response> getHealth() {
+		return get("/health");
+	}
 }

@@ -18,9 +18,8 @@ end_of_line = lf
 insert_final_newline = true
 trim_trailing_whitespace = true
 
-# checkstyle 이 탭을 강제한다. src/test 는 아직 스페이스(89파일)라 당분간 한 파일 안에
-# 두 방식이 섞일 수 있는데, 4번 작업(테스트 코드 정리)에서 탭으로 전환하며 해소된다.
-# 새 코드는 최종 형태로 쓰는 편이 그때 옮길 양이 적다.
+# checkstyle 이 탭을 강제한다. src/main·src/test 모두 탭이다(src/test 는 2026-08-01 에 전환).
+# 예외는 텍스트 블록(""") 안쪽뿐 — 거기 선행 공백은 문자열 값이라 탭으로 바꾸면 내용이 바뀐다.
 [*.java]
 indent_style = tab
 indent_size = 4

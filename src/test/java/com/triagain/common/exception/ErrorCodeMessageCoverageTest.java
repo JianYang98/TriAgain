@@ -1,5 +1,7 @@
 package com.triagain.common.exception;
 
+import static org.assertj.core.api.Assertions.assertThatCode;
+
 import java.util.Locale;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -7,8 +9,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.MessageSource;
 import org.springframework.context.support.ResourceBundleMessageSource;
-
-import static org.assertj.core.api.Assertions.assertThatCode;
 
 /**
  * 모든 {@link ErrorCode}가 error-messages.properties에 메시지를 갖는지 전수 검증 — M2 (step4 §8-5, impl-guards G-7).
