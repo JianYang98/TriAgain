@@ -1,5 +1,17 @@
 package com.triagain.verification.application;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
 import com.triagain.common.util.IdGenerator;
@@ -13,17 +25,6 @@ import com.triagain.crew.domain.vo.VerificationType;
 import com.triagain.e2e.E2eTestBase;
 import com.triagain.verification.port.in.CreateVerificationUseCase;
 import com.triagain.verification.port.in.CreateVerificationUseCase.CreateVerificationCommand;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * T-I2: endDate 캡 사이클의 min(슬롯 일일마감, 사이클 마감) 정합 테스트 — 실제 PostgreSQL(Testcontainers) +

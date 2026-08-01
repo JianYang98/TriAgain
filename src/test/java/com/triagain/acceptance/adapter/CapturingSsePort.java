@@ -1,14 +1,15 @@
 package com.triagain.acceptance.adapter;
 
-import com.triagain.verification.port.in.SubscribeUploadSessionUseCase;
-import com.triagain.verification.port.out.SsePort;
-import org.springframework.context.annotation.Primary;
-import org.springframework.stereotype.Component;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import org.springframework.context.annotation.Primary;
+import org.springframework.stereotype.Component;
+
+import com.triagain.verification.port.in.SubscribeUploadSessionUseCase;
+import com.triagain.verification.port.out.SsePort;
 
 /** SSE 이벤트 캡처용 테스트 빈 — SseEmitterAdapter를 대체하여 이벤트를 메모리에 저장 */
 @Component

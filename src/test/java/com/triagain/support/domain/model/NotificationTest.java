@@ -1,11 +1,12 @@
 package com.triagain.support.domain.model;
 
-import com.triagain.support.domain.vo.NotificationTargetType;
-import com.triagain.support.domain.vo.NotificationType;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import com.triagain.support.domain.vo.NotificationTargetType;
+import com.triagain.support.domain.vo.NotificationType;
 
 class NotificationTest {
 

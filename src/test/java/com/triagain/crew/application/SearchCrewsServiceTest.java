@@ -1,14 +1,17 @@
 package com.triagain.crew.application;
 
-import com.triagain.crew.domain.model.Crew;
-import com.triagain.crew.domain.vo.CrewCategory;
-import com.triagain.crew.domain.vo.CrewStatus;
-import com.triagain.crew.domain.vo.CrewVisibility;
-import com.triagain.crew.domain.vo.VerificationType;
-import com.triagain.crew.port.in.SearchCrewsUseCase.SearchCrewsQuery;
-import com.triagain.crew.port.in.SearchCrewsUseCase.SearchCrewsResult;
-import com.triagain.crew.port.out.CrewRepositoryPort;
-import com.triagain.crew.port.out.CrewRepositoryPort.CrewSearchPage;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.Collections;
+import java.util.List;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -18,17 +21,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.Collections;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
+import com.triagain.crew.domain.model.Crew;
+import com.triagain.crew.domain.vo.CrewCategory;
+import com.triagain.crew.domain.vo.CrewStatus;
+import com.triagain.crew.domain.vo.CrewVisibility;
+import com.triagain.crew.domain.vo.VerificationType;
+import com.triagain.crew.port.in.SearchCrewsUseCase.SearchCrewsQuery;
+import com.triagain.crew.port.in.SearchCrewsUseCase.SearchCrewsResult;
+import com.triagain.crew.port.out.CrewRepositoryPort;
+import com.triagain.crew.port.out.CrewRepositoryPort.CrewSearchPage;
 
 @ExtendWith(MockitoExtension.class)
 class SearchCrewsServiceTest {

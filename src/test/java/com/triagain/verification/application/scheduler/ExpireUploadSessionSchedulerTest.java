@@ -1,10 +1,20 @@
 package com.triagain.verification.application.scheduler;
 
-import com.triagain.common.port.out.DeadLetterRepositoryPort;
-import com.triagain.common.scheduler.ChunkProcessor;
-import com.triagain.verification.domain.model.UploadSession;
-import com.triagain.verification.domain.vo.UploadSessionStatus;
-import com.triagain.verification.port.out.UploadSessionRepositoryPort;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
+import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.function.Consumer;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,20 +24,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.function.Consumer;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
+import com.triagain.common.port.out.DeadLetterRepositoryPort;
+import com.triagain.common.scheduler.ChunkProcessor;
+import com.triagain.verification.domain.model.UploadSession;
+import com.triagain.verification.domain.vo.UploadSessionStatus;
+import com.triagain.verification.port.out.UploadSessionRepositoryPort;
 
 
 @ExtendWith(MockitoExtension.class)

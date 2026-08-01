@@ -1,24 +1,26 @@
 package com.triagain.crew.infra;
 
-import com.triagain.common.util.IdGenerator;
-import com.triagain.crew.domain.model.Crew;
-import com.triagain.crew.port.out.CrewRepositoryPort;
-import com.triagain.support.domain.model.Notification;
-import com.triagain.support.domain.vo.NotificationTargetType;
-import com.triagain.support.domain.vo.NotificationType;
-import com.triagain.support.port.out.NotificationRepositoryPort;
-import com.triagain.verification.domain.model.UploadSession;
-import com.triagain.verification.port.out.UploadSessionRepositoryPort;
-import com.triagain.e2e.E2eTestBase;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import com.triagain.common.util.IdGenerator;
+import com.triagain.crew.domain.model.Crew;
+import com.triagain.crew.port.out.CrewRepositoryPort;
+import com.triagain.e2e.E2eTestBase;
+import com.triagain.support.domain.model.Notification;
+import com.triagain.support.domain.vo.NotificationTargetType;
+import com.triagain.support.domain.vo.NotificationType;
+import com.triagain.support.port.out.NotificationRepositoryPort;
+import com.triagain.verification.domain.model.UploadSession;
+import com.triagain.verification.port.out.UploadSessionRepositoryPort;
 
 /**
  * FK-safe 크루 삭제 고아 레코드 0건 통합 테스트 — 실제 PostgreSQL(Testcontainers) 사용.

@@ -1,14 +1,15 @@
 package com.triagain.user.infra;
 
-import com.triagain.common.exception.BusinessException;
-import com.triagain.common.exception.ErrorCode;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestClient;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import com.triagain.common.exception.BusinessException;
+import com.triagain.common.exception.ErrorCode;
 
 /**
  * AppleOAuthAdapter 단위 테스트 — @PostConstruct fail-fast 동작 검증.

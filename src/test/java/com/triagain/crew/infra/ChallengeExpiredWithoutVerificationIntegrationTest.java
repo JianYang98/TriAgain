@@ -1,5 +1,16 @@
 package com.triagain.crew.infra;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import com.triagain.common.util.IdGenerator;
 import com.triagain.crew.domain.model.Challenge;
 import com.triagain.crew.domain.model.Crew;
@@ -8,16 +19,6 @@ import com.triagain.crew.port.out.ChallengeRepositoryPort;
 import com.triagain.e2e.E2eTestBase;
 import com.triagain.verification.domain.model.Verification;
 import com.triagain.verification.port.out.VerificationRepositoryPort;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * T-I1: 실패 판정 스케줄러의 슬롯(target_date = start_date + completed_days) NOT EXISTS 정합 회귀 테스트 —

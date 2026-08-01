@@ -1,5 +1,10 @@
 package com.triagain.user.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -15,11 +20,6 @@ import com.triagain.common.exception.ErrorCode;
 import com.triagain.common.port.out.StoragePort;
 import com.triagain.user.domain.model.User;
 import com.triagain.user.port.out.UserRepositoryPort;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
 class UpdateUserProfileServiceTest {

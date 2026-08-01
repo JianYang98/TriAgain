@@ -1,15 +1,17 @@
 package com.triagain.acceptance.steps;
 
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.web.server.LocalServerPort;
+
 import com.triagain.acceptance.ScenarioContext;
 import com.triagain.acceptance.adapter.NotificationTestAdapter;
+
 import io.cucumber.java.Before;
 import io.cucumber.java.ko.만일;
 import io.restassured.response.ExtractableResponse;
 import io.restassured.response.Response;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.web.server.LocalServerPort;
-
-import java.util.Map;
 
 public class FcmTokenSteps {
 

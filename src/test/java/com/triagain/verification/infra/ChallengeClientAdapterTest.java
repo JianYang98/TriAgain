@@ -1,9 +1,13 @@
 package com.triagain.verification.infra;
 
-import com.triagain.crew.port.in.ChallengeQueryUseCase;
-import com.triagain.crew.port.in.ChallengeQueryUseCase.ChallengeInfoDto;
-import com.triagain.verification.port.out.ChallengePort.ActiveChallengeInfo;
-import com.triagain.verification.port.out.ChallengePort.ChallengeInfo;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Optional;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,13 +15,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
+import com.triagain.crew.port.in.ChallengeQueryUseCase;
+import com.triagain.crew.port.in.ChallengeQueryUseCase.ChallengeInfoDto;
+import com.triagain.verification.port.out.ChallengePort.ActiveChallengeInfo;
+import com.triagain.verification.port.out.ChallengePort.ChallengeInfo;
 
 @ExtendWith(MockitoExtension.class)
 class ChallengeClientAdapterTest {

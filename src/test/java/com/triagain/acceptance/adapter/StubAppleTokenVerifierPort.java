@@ -1,8 +1,9 @@
 package com.triagain.acceptance.adapter;
 
-import com.triagain.user.port.out.AppleTokenVerifierPort;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
+
+import com.triagain.user.port.out.AppleTokenVerifierPort;
 
 /** Apple 토큰 검증 스텁 — 테스트에서 실제 Apple JWKS 호출 없이 고정 사용자 정보 반환 */
 @Component

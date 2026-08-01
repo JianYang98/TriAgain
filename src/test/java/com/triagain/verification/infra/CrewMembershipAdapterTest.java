@@ -1,10 +1,12 @@
 package com.triagain.verification.infra;
 
-import com.triagain.crew.port.in.CrewMembershipQueryUseCase;
-import com.triagain.crew.port.in.CrewMembershipQueryUseCase.CrewPeriodDto;
-import com.triagain.crew.port.in.CrewMembershipQueryUseCase.CrewVerificationWindowDto;
-import com.triagain.verification.port.out.CrewPort.CrewPeriod;
-import com.triagain.verification.port.out.CrewPort.CrewVerificationWindowInfo;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,12 +14,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
+import com.triagain.crew.port.in.CrewMembershipQueryUseCase;
+import com.triagain.crew.port.in.CrewMembershipQueryUseCase.CrewPeriodDto;
+import com.triagain.crew.port.in.CrewMembershipQueryUseCase.CrewVerificationWindowDto;
+import com.triagain.verification.port.out.CrewPort.CrewPeriod;
+import com.triagain.verification.port.out.CrewPort.CrewVerificationWindowInfo;
 
 @ExtendWith(MockitoExtension.class)
 class CrewMembershipAdapterTest {

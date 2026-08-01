@@ -1,15 +1,16 @@
 package com.triagain.verification.application;
 
-import com.triagain.verification.application.event.CrewFirstVerificationEvent;
-import com.triagain.verification.domain.model.Verification;
-import com.triagain.verification.port.in.CreateVerificationUseCase.CreateVerificationCommand;
-import com.triagain.verification.port.out.ChallengePort;
-import com.triagain.verification.port.out.ChallengePort.ChallengeInfo;
-import com.triagain.verification.port.out.CrewPort;
-import com.triagain.verification.port.out.CrewPort.CrewVerificationWindowInfo;
-import com.triagain.common.port.out.StoragePort;
-import com.triagain.verification.port.out.UploadSessionRepositoryPort;
-import com.triagain.verification.port.out.VerificationRepositoryPort;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,16 +21,16 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
-import java.time.Clock;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
+import com.triagain.common.port.out.StoragePort;
+import com.triagain.verification.application.event.CrewFirstVerificationEvent;
+import com.triagain.verification.domain.model.Verification;
+import com.triagain.verification.port.in.CreateVerificationUseCase.CreateVerificationCommand;
+import com.triagain.verification.port.out.ChallengePort;
+import com.triagain.verification.port.out.ChallengePort.ChallengeInfo;
+import com.triagain.verification.port.out.CrewPort;
+import com.triagain.verification.port.out.CrewPort.CrewVerificationWindowInfo;
+import com.triagain.verification.port.out.UploadSessionRepositoryPort;
+import com.triagain.verification.port.out.VerificationRepositoryPort;
 
 /** T1: count==1 경계 — 첫 인증 시 CrewFirstVerificationEvent 1회 발행, 두 번째 미발행 */
 @ExtendWith(MockitoExtension.class)

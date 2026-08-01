@@ -1,16 +1,18 @@
 package com.triagain.acceptance.steps;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.web.server.LocalServerPort;
+
 import com.triagain.acceptance.ScenarioContext;
 import com.triagain.acceptance.adapter.AuthTestAdapter;
 import com.triagain.acceptance.adapter.StubAppleTokenVerifierPort;
+
 import io.cucumber.java.Before;
 import io.cucumber.java.ko.그리고;
 import io.cucumber.java.ko.만일;
 import io.cucumber.java.ko.조건;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.web.server.LocalServerPort;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class AppleLoginSteps {
 

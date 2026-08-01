@@ -1,19 +1,6 @@
 package com.triagain.e2e;
 
-import com.triagain.common.util.IdGenerator;
-import com.triagain.crew.domain.model.Crew;
-import com.triagain.crew.domain.model.CrewMember;
-import com.triagain.crew.domain.vo.CrewStatus;
-import com.triagain.crew.domain.vo.CrewVisibility;
-import com.triagain.crew.domain.vo.VerificationType;
-import io.restassured.response.ExtractableResponse;
-import io.restassured.response.Response;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -26,7 +13,23 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+
+import com.triagain.common.util.IdGenerator;
+import com.triagain.crew.domain.model.Crew;
+import com.triagain.crew.domain.model.CrewMember;
+import com.triagain.crew.domain.vo.CrewStatus;
+import com.triagain.crew.domain.vo.CrewVisibility;
+import com.triagain.crew.domain.vo.VerificationType;
+
+import io.restassured.response.ExtractableResponse;
+import io.restassured.response.Response;
 
 /**
  * CONDITIONAL 전략 실DB 동시성 테스트 — Tier 3 머지 안전선.

@@ -1,9 +1,9 @@
 package com.triagain.acceptance.adapter;
 
+import java.util.Map;
+
 import io.restassured.response.ExtractableResponse;
 import io.restassured.response.Response;
-
-import java.util.Map;
 
 public class AuthTestAdapter extends BaseTestAdapter {
 

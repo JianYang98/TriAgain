@@ -1,36 +1,38 @@
 package com.triagain.acceptance.steps;
 
-import com.triagain.acceptance.ScenarioContext;
-import com.triagain.acceptance.adapter.CrewTestAdapter;
-import com.triagain.common.util.IdGenerator;
-import com.triagain.crew.api.CreateCrewRequest;
-import com.triagain.crew.domain.vo.CrewCategory;
-import com.triagain.crew.domain.vo.CrewVisibility;
-import com.triagain.crew.domain.model.Crew;
-import com.triagain.crew.domain.model.CrewMember;
-import com.triagain.crew.domain.vo.ChallengeStatus;
-import com.triagain.crew.domain.vo.CrewStatus;
-import com.triagain.crew.domain.vo.VerificationType;
-import com.triagain.crew.port.in.ActivateCrewUseCase;
-import com.triagain.crew.port.out.ChallengeRepositoryPort;
-import com.triagain.crew.port.out.CrewRepositoryPort;
-import com.triagain.user.domain.model.User;
-import com.triagain.user.port.out.UserRepositoryPort;
-import io.cucumber.java.Before;
-import io.cucumber.java.ko.그리고;
-import io.cucumber.java.ko.만일;
-import io.cucumber.java.ko.조건;
-import io.restassured.response.ExtractableResponse;
-import io.restassured.response.Response;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.web.server.LocalServerPort;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.web.server.LocalServerPort;
+
+import com.triagain.acceptance.ScenarioContext;
+import com.triagain.acceptance.adapter.CrewTestAdapter;
+import com.triagain.common.util.IdGenerator;
+import com.triagain.crew.api.CreateCrewRequest;
+import com.triagain.crew.domain.model.Crew;
+import com.triagain.crew.domain.model.CrewMember;
+import com.triagain.crew.domain.vo.ChallengeStatus;
+import com.triagain.crew.domain.vo.CrewCategory;
+import com.triagain.crew.domain.vo.CrewStatus;
+import com.triagain.crew.domain.vo.CrewVisibility;
+import com.triagain.crew.domain.vo.VerificationType;
+import com.triagain.crew.port.in.ActivateCrewUseCase;
+import com.triagain.crew.port.out.ChallengeRepositoryPort;
+import com.triagain.crew.port.out.CrewRepositoryPort;
+import com.triagain.user.domain.model.User;
+import com.triagain.user.port.out.UserRepositoryPort;
+
+import io.cucumber.java.Before;
+import io.cucumber.java.ko.그리고;
+import io.cucumber.java.ko.만일;
+import io.cucumber.java.ko.조건;
+import io.restassured.response.ExtractableResponse;
+import io.restassured.response.Response;
 
 public class CrewJoinSteps {
 

@@ -1,5 +1,13 @@
 package com.triagain.acceptance.steps;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.time.LocalDate;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.web.server.LocalServerPort;
+
 import com.triagain.acceptance.ScenarioContext;
 import com.triagain.acceptance.adapter.CrewTestAdapter;
 import com.triagain.crew.api.CreateCrewRequest;
@@ -7,19 +15,13 @@ import com.triagain.crew.domain.vo.CrewCategory;
 import com.triagain.crew.domain.vo.VerificationType;
 import com.triagain.user.domain.model.User;
 import com.triagain.user.port.out.UserRepositoryPort;
+
 import io.cucumber.java.Before;
 import io.cucumber.java.ko.그리고;
 import io.cucumber.java.ko.만일;
 import io.cucumber.java.ko.조건;
 import io.restassured.response.ExtractableResponse;
 import io.restassured.response.Response;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.web.server.LocalServerPort;
-
-import java.time.LocalDate;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class CrewListSteps {
 

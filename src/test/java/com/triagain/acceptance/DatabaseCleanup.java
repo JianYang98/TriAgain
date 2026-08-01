@@ -1,11 +1,12 @@
 package com.triagain.acceptance;
 
+import java.util.List;
+
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 /** 시나리오 간 DB 초기화 — 매 Cucumber 시나리오 전에 모든 테이블 TRUNCATE */
 @Component

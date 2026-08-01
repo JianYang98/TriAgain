@@ -1,17 +1,19 @@
 package com.triagain.acceptance.steps;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.springframework.beans.factory.annotation.Autowired;
+
 import com.triagain.acceptance.DatabaseCleanup;
 import com.triagain.acceptance.ScenarioContext;
 import com.triagain.common.exception.ErrorCode;
 import com.triagain.user.domain.model.User;
 import com.triagain.user.port.out.UserRepositoryPort;
+
 import io.cucumber.java.Before;
 import io.cucumber.java.ko.그러면;
 import io.cucumber.java.ko.그리고;
 import io.cucumber.java.ko.조건;
-import org.springframework.beans.factory.annotation.Autowired;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class CommonSteps {
 

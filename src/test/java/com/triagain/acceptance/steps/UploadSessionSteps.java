@@ -1,5 +1,15 @@
 package com.triagain.acceptance.steps;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.web.server.LocalServerPort;
+
 import com.triagain.acceptance.ScenarioContext;
 import com.triagain.acceptance.adapter.CapturingSsePort;
 import com.triagain.acceptance.adapter.UploadSessionTestAdapter;
@@ -7,20 +17,12 @@ import com.triagain.verification.application.scheduler.ExpireUploadSessionSchedu
 import com.triagain.verification.domain.model.UploadSession;
 import com.triagain.verification.domain.vo.UploadSessionStatus;
 import com.triagain.verification.port.out.UploadSessionRepositoryPort;
+
 import io.cucumber.datatable.DataTable;
 import io.cucumber.java.Before;
 import io.cucumber.java.ko.그리고;
 import io.cucumber.java.ko.만일;
 import io.cucumber.java.ko.조건;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.web.server.LocalServerPort;
-
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class UploadSessionSteps {
 

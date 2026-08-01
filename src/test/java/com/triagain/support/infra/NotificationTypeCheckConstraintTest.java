@@ -1,5 +1,7 @@
 package com.triagain.support.infra;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.time.LocalDate;
 
 import org.junit.jupiter.api.DisplayName;
@@ -18,8 +20,6 @@ import com.triagain.support.domain.model.Notification;
 import com.triagain.support.domain.vo.NotificationTargetType;
 import com.triagain.support.domain.vo.NotificationType;
 import com.triagain.support.port.out.NotificationRepositoryPort;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * T8 (G2): V21 CHECK 제약 적용 검증 — 전용 TestContainers + Flyway ON

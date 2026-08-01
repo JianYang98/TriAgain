@@ -1,16 +1,18 @@
 package com.triagain.e2e;
 
-import com.triagain.crew.domain.model.Challenge;
-import com.triagain.crew.domain.model.Crew;
-import io.restassured.response.ExtractableResponse;
-import io.restassured.response.Response;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.LocalDate;
 import java.util.Map;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import com.triagain.crew.domain.model.Challenge;
+import com.triagain.crew.domain.model.Crew;
+
+import io.restassured.response.ExtractableResponse;
+import io.restassured.response.Response;
 
 /** E2E 해피패스 테스트 — 핵심 유저 플로우 5개 검증 */
 class HappyPathE2eTest extends E2eTestBase {

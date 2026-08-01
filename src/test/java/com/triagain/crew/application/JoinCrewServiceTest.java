@@ -23,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -37,7 +38,6 @@ import com.triagain.crew.domain.vo.VerificationType;
 import com.triagain.crew.port.in.JoinCrewUseCase.JoinCrewCommand;
 import com.triagain.crew.port.in.JoinCrewUseCase.JoinCrewResult;
 import com.triagain.crew.port.out.CrewRepositoryPort;
-import org.springframework.dao.DataIntegrityViolationException;
 
 @ExtendWith(MockitoExtension.class)
 class JoinCrewServiceTest {

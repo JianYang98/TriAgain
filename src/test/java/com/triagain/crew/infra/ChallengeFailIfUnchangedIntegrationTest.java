@@ -1,5 +1,19 @@
 package com.triagain.crew.infra;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.mockito.AdditionalAnswers;
+import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.triagain.common.port.out.DeadLetterRepositoryPort;
 import com.triagain.common.scheduler.ChunkProcessor;
 import com.triagain.common.util.IdGenerator;
@@ -12,19 +26,6 @@ import com.triagain.crew.port.out.NotificationPort;
 import com.triagain.e2e.E2eTestBase;
 import com.triagain.verification.domain.model.Verification;
 import com.triagain.verification.port.out.VerificationRepositoryPort;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
-import org.mockito.AdditionalAnswers;
-import org.mockito.Mockito;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * D14-b: 만료 스케줄러 lost update 방지 회귀 테스트 — 실제 PostgreSQL(Testcontainers) 사용.

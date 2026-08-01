@@ -1,19 +1,21 @@
 package com.triagain.verification.application;
 
-import com.triagain.common.exception.BusinessException;
-import com.triagain.common.exception.ErrorCode;
-import com.triagain.verification.domain.model.UploadSession;
-import com.triagain.verification.domain.model.Verification;
-import com.triagain.verification.domain.vo.UploadSessionStatus;
-import com.triagain.verification.port.in.CreateVerificationUseCase.CreateVerificationCommand;
-import com.triagain.verification.port.out.ChallengePort;
-import com.triagain.verification.port.out.ChallengePort.ChallengeInfo;
-import com.triagain.verification.port.out.CrewPort;
-import com.triagain.verification.port.out.CrewPort.CrewVerificationWindowInfo;
-import com.triagain.common.port.out.StoragePort;
-import com.triagain.verification.application.event.ChallengeSuccessEvent;
-import com.triagain.verification.port.out.UploadSessionRepositoryPort;
-import com.triagain.verification.port.out.VerificationRepositoryPort;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.Optional;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,21 +27,20 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
-import java.time.Clock;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.willThrow;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
+import com.triagain.common.exception.BusinessException;
+import com.triagain.common.exception.ErrorCode;
+import com.triagain.common.port.out.StoragePort;
+import com.triagain.verification.application.event.ChallengeSuccessEvent;
+import com.triagain.verification.domain.model.UploadSession;
+import com.triagain.verification.domain.model.Verification;
+import com.triagain.verification.domain.vo.UploadSessionStatus;
+import com.triagain.verification.port.in.CreateVerificationUseCase.CreateVerificationCommand;
+import com.triagain.verification.port.out.ChallengePort;
+import com.triagain.verification.port.out.ChallengePort.ChallengeInfo;
+import com.triagain.verification.port.out.CrewPort;
+import com.triagain.verification.port.out.CrewPort.CrewVerificationWindowInfo;
+import com.triagain.verification.port.out.UploadSessionRepositoryPort;
+import com.triagain.verification.port.out.VerificationRepositoryPort;
 
 @ExtendWith(MockitoExtension.class)
 class CreateVerificationServiceTest {

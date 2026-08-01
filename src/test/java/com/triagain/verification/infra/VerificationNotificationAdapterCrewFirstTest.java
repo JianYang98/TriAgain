@@ -1,20 +1,13 @@
 package com.triagain.verification.infra;
 
-import com.triagain.crew.port.in.CrewMembershipQueryUseCase;
-import com.triagain.support.domain.model.Notification;
-import com.triagain.support.port.out.FcmTokenCleanupPort;
-import com.triagain.support.port.out.NotificationRepositoryPort;
-import com.triagain.support.port.out.NotificationSendPort;
-import com.triagain.support.port.out.NotificationTargetQueryPort;
-import com.triagain.support.port.out.NotificationTargetQueryPort.CrewFirstVerificationTarget;
-import com.triagain.user.domain.model.User;
-import com.triagain.user.port.out.UserRepositoryPort;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -25,14 +18,22 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.willThrow;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.triagain.crew.port.in.CrewMembershipQueryUseCase;
+import com.triagain.support.domain.model.Notification;
+import com.triagain.support.port.out.FcmTokenCleanupPort;
+import com.triagain.support.port.out.NotificationRepositoryPort;
+import com.triagain.support.port.out.NotificationSendPort;
+import com.triagain.support.port.out.NotificationTargetQueryPort;
+import com.triagain.support.port.out.NotificationTargetQueryPort.CrewFirstVerificationTarget;
+import com.triagain.user.domain.model.User;
+import com.triagain.user.port.out.UserRepositoryPort;
 
 /**
  * T2~T7: VerificationNotificationAdapter.sendCrewFirstVerificationNotification 단위 테스트

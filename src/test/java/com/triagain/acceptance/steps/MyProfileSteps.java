@@ -1,15 +1,17 @@
 package com.triagain.acceptance.steps;
 
-import com.triagain.acceptance.ScenarioContext;
-import com.triagain.acceptance.adapter.UserTestAdapter;
-import io.cucumber.java.Before;
-import io.cucumber.java.ko.만일;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.web.server.LocalServerPort;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.web.server.LocalServerPort;
+
+import com.triagain.acceptance.ScenarioContext;
+import com.triagain.acceptance.adapter.UserTestAdapter;
+
+import io.cucumber.java.Before;
+import io.cucumber.java.ko.만일;
 
 public class MyProfileSteps {
 

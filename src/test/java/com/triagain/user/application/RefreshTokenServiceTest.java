@@ -1,12 +1,12 @@
 package com.triagain.user.application;
 
-import com.triagain.common.auth.JwtProvider;
-import com.triagain.common.exception.BusinessException;
-import com.triagain.common.exception.ErrorCode;
-import com.triagain.user.domain.model.User;
-import com.triagain.user.port.in.RefreshTokenUseCase.RefreshCommand;
-import com.triagain.user.port.in.RefreshTokenUseCase.RefreshResult;
-import com.triagain.user.port.out.UserRepositoryPort;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.BDDMockito.given;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,12 +14,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.BDDMockito.given;
+import com.triagain.common.auth.JwtProvider;
+import com.triagain.common.exception.BusinessException;
+import com.triagain.common.exception.ErrorCode;
+import com.triagain.user.domain.model.User;
+import com.triagain.user.port.in.RefreshTokenUseCase.RefreshCommand;
+import com.triagain.user.port.in.RefreshTokenUseCase.RefreshResult;
+import com.triagain.user.port.out.UserRepositoryPort;
 
 @ExtendWith(MockitoExtension.class)
 class RefreshTokenServiceTest {
