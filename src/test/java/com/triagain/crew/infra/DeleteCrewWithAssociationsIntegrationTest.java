@@ -39,147 +39,147 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Tag("e2e")
 class DeleteCrewWithAssociationsIntegrationTest extends E2eTestBase {
 
-    @Autowired
-    private CrewRepositoryPort crewRepositoryPort;
+	@Autowired
+	private CrewRepositoryPort crewRepositoryPort;
 
-    @Autowired
-    private NotificationRepositoryPort notificationRepositoryPort;
+	@Autowired
+	private NotificationRepositoryPort notificationRepositoryPort;
 
-    @Autowired
-    private UploadSessionRepositoryPort uploadSessionRepositoryPort;
+	@Autowired
+	private UploadSessionRepositoryPort uploadSessionRepositoryPort;
 
-    @PersistenceContext
-    private EntityManager entityManager;
+	@PersistenceContext
+	private EntityManager entityManager;
 
-    @Test
-    @DisplayName("ACTIVE 솔로 크루 삭제 후 — crew_members/notifications(CREW)/crews 0건, upload_session crew_id IS NULL")
-    @Transactional
-    void deleteCrewWithAssociations_orphanRecordsAreZero() {
-        // Given — 유저 + ACTIVE 솔로 크루 생성
-        String userId = "integ-del-user-01";
-        createUser(userId);
-        Crew crew = createActiveCrew(userId);
-        String crewId = crew.getId();
+	@Test
+	@DisplayName("ACTIVE 솔로 크루 삭제 후 — crew_members/notifications(CREW)/crews 0건, upload_session crew_id IS NULL")
+	@Transactional
+	void deleteCrewWithAssociations_orphanRecordsAreZero() {
+		// Given — 유저 + ACTIVE 솔로 크루 생성
+		String userId = "integ-del-user-01";
+		createUser(userId);
+		Crew crew = createActiveCrew(userId);
+		String crewId = crew.getId();
 
-        // Given — CREW 타겟 알림 삽입
-        Notification crewNotification = Notification.create(
-                userId,
-                NotificationType.CREW_STARTED,
-                "크루 시작",
-                "크루가 시작되었습니다.",
-                NotificationTargetType.CREW,
-                crewId
-        );
-        notificationRepositoryPort.save(crewNotification);
+		// Given — CREW 타겟 알림 삽입
+		Notification crewNotification = Notification.create(
+				userId,
+				NotificationType.CREW_STARTED,
+				"크루 시작",
+				"크루가 시작되었습니다.",
+				NotificationTargetType.CREW,
+				crewId
+		);
+		notificationRepositoryPort.save(crewNotification);
 
-        // Given — upload_session (crew_id 연결) 삽입
-        UploadSession session = UploadSession.create(
-                userId, crewId,
-                "uploads/" + userId + "/integ-test.jpg",
-                "image/jpeg"
-        );
-        uploadSessionRepositoryPort.save(session);
+		// Given — upload_session (crew_id 연결) 삽입
+		UploadSession session = UploadSession.create(
+				userId, crewId,
+				"uploads/" + userId + "/integ-test.jpg",
+				"image/jpeg"
+		);
+		uploadSessionRepositoryPort.save(session);
 
-        // 삽입 확인 (사전 조건)
-        long membersBefore = countQuery("SELECT COUNT(*) FROM crew_members WHERE crew_id = :id", crewId);
-        long crewsBefore = countQuery("SELECT COUNT(*) FROM crews WHERE id = :id", crewId);
-        long notifsBefore = countQuery(
-                "SELECT COUNT(*) FROM notifications WHERE target_type = 'CREW' AND target_id = :id", crewId);
-        long sessionsBefore = countQuery("SELECT COUNT(*) FROM upload_session WHERE crew_id = :id", crewId);
+		// 삽입 확인 (사전 조건)
+		long membersBefore = countQuery("SELECT COUNT(*) FROM crew_members WHERE crew_id = :id", crewId);
+		long crewsBefore = countQuery("SELECT COUNT(*) FROM crews WHERE id = :id", crewId);
+		long notifsBefore = countQuery(
+				"SELECT COUNT(*) FROM notifications WHERE target_type = 'CREW' AND target_id = :id", crewId);
+		long sessionsBefore = countQuery("SELECT COUNT(*) FROM upload_session WHERE crew_id = :id", crewId);
 
-        assertThat(membersBefore).as("사전 조건: crew_members 1건").isEqualTo(1);
-        assertThat(crewsBefore).as("사전 조건: crews 1건").isEqualTo(1);
-        assertThat(notifsBefore).as("사전 조건: notifications(CREW) 1건").isEqualTo(1);
-        assertThat(sessionsBefore).as("사전 조건: upload_session 1건").isEqualTo(1);
+		assertThat(membersBefore).as("사전 조건: crew_members 1건").isEqualTo(1);
+		assertThat(crewsBefore).as("사전 조건: crews 1건").isEqualTo(1);
+		assertThat(notifsBefore).as("사전 조건: notifications(CREW) 1건").isEqualTo(1);
+		assertThat(sessionsBefore).as("사전 조건: upload_session 1건").isEqualTo(1);
 
-        entityManager.flush();
+		entityManager.flush();
 
-        // When — FK-safe 삭제 실행
-        crewRepositoryPort.deleteCrewWithAssociations(crewId);
-        entityManager.flush();
-        entityManager.clear();
+		// When — FK-safe 삭제 실행
+		crewRepositoryPort.deleteCrewWithAssociations(crewId);
+		entityManager.flush();
+		entityManager.clear();
 
-        // Then — crew_members 0건
-        long membersAfter = countQuery("SELECT COUNT(*) FROM crew_members WHERE crew_id = :id", crewId);
-        assertThat(membersAfter).as("crew_members 고아 레코드 0건").isZero();
+		// Then — crew_members 0건
+		long membersAfter = countQuery("SELECT COUNT(*) FROM crew_members WHERE crew_id = :id", crewId);
+		assertThat(membersAfter).as("crew_members 고아 레코드 0건").isZero();
 
-        // Then — crews 0건
-        long crewsAfter = countQuery("SELECT COUNT(*) FROM crews WHERE id = :id", crewId);
-        assertThat(crewsAfter).as("crews 삭제 확인 0건").isZero();
+		// Then — crews 0건
+		long crewsAfter = countQuery("SELECT COUNT(*) FROM crews WHERE id = :id", crewId);
+		assertThat(crewsAfter).as("crews 삭제 확인 0건").isZero();
 
-        // Then — notifications(target_type='CREW') 0건
-        long notifsAfter = countQuery(
-                "SELECT COUNT(*) FROM notifications WHERE target_type = 'CREW' AND target_id = :id", crewId);
-        assertThat(notifsAfter).as("notifications(CREW) 고아 레코드 0건").isZero();
+		// Then — notifications(target_type='CREW') 0건
+		long notifsAfter = countQuery(
+				"SELECT COUNT(*) FROM notifications WHERE target_type = 'CREW' AND target_id = :id", crewId);
+		assertThat(notifsAfter).as("notifications(CREW) 고아 레코드 0건").isZero();
 
-        // Then — upload_session 행은 남되 crew_id IS NULL (SET NULL)
-        long sessionsWithCrewId = countQuery(
-                "SELECT COUNT(*) FROM upload_session WHERE crew_id = :id", crewId);
-        assertThat(sessionsWithCrewId).as("upload_session crew_id는 NULL 처리(행 자체는 남음)").isZero();
+		// Then — upload_session 행은 남되 crew_id IS NULL (SET NULL)
+		long sessionsWithCrewId = countQuery(
+				"SELECT COUNT(*) FROM upload_session WHERE crew_id = :id", crewId);
+		assertThat(sessionsWithCrewId).as("upload_session crew_id는 NULL 처리(행 자체는 남음)").isZero();
 
-        long sessionsExist = countQueryNoParam(
-                "SELECT COUNT(*) FROM upload_session WHERE user_id = 'integ-del-user-01'");
-        assertThat(sessionsExist).as("upload_session 행 자체는 남아 있어야 함").isEqualTo(1);
+		long sessionsExist = countQueryNoParam(
+				"SELECT COUNT(*) FROM upload_session WHERE user_id = 'integ-del-user-01'");
+		assertThat(sessionsExist).as("upload_session 행 자체는 남아 있어야 함").isEqualTo(1);
 
-        Long crewIdInSession = (Long) entityManager
-                .createNativeQuery("SELECT crew_id FROM upload_session WHERE user_id = :uid")
-                .setParameter("uid", userId)
-                .getSingleResult();
-        assertThat(crewIdInSession).as("upload_session.crew_id는 NULL").isNull();
-    }
+		Long crewIdInSession = (Long) entityManager
+				.createNativeQuery("SELECT crew_id FROM upload_session WHERE user_id = :uid")
+				.setParameter("uid", userId)
+				.getSingleResult();
+		assertThat(crewIdInSession).as("upload_session.crew_id는 NULL").isNull();
+	}
 
-    @Test
-    @DisplayName("CREW 타겟이 아닌 알림(VERIFICATION/CHALLENGE)은 삭제 후에도 남아 있어야 한다")
-    @Transactional
-    void deleteCrewWithAssociations_nonCrewNotificationsArePreserved() {
-        // Given
-        String userId = "integ-del-user-02";
-        createUser(userId);
-        Crew crew = createActiveCrew(userId);
-        String crewId = crew.getId();
-        String otherVerificationId = IdGenerator.generate("VRF");
+	@Test
+	@DisplayName("CREW 타겟이 아닌 알림(VERIFICATION/CHALLENGE)은 삭제 후에도 남아 있어야 한다")
+	@Transactional
+	void deleteCrewWithAssociations_nonCrewNotificationsArePreserved() {
+		// Given
+		String userId = "integ-del-user-02";
+		createUser(userId);
+		Crew crew = createActiveCrew(userId);
+		String crewId = crew.getId();
+		String otherVerificationId = IdGenerator.generate("VRF");
 
-        // CREW 타겟 알림
-        notificationRepositoryPort.save(Notification.create(
-                userId, NotificationType.CREW_STARTED,
-                "크루 시작", "시작", NotificationTargetType.CREW, crewId));
+		// CREW 타겟 알림
+		notificationRepositoryPort.save(Notification.create(
+				userId, NotificationType.CREW_STARTED,
+				"크루 시작", "시작", NotificationTargetType.CREW, crewId));
 
-        // VERIFICATION 타겟 알림 (다른 대상 — 삭제 후 보존되어야 함)
-        notificationRepositoryPort.save(Notification.create(
-                userId, NotificationType.VERIFICATION_APPROVED,
-                "인증 승인", "승인", NotificationTargetType.VERIFICATION, otherVerificationId));
+		// VERIFICATION 타겟 알림 (다른 대상 — 삭제 후 보존되어야 함)
+		notificationRepositoryPort.save(Notification.create(
+				userId, NotificationType.VERIFICATION_APPROVED,
+				"인증 승인", "승인", NotificationTargetType.VERIFICATION, otherVerificationId));
 
-        entityManager.flush();
+		entityManager.flush();
 
-        // When
-        crewRepositoryPort.deleteCrewWithAssociations(crewId);
-        entityManager.flush();
-        entityManager.clear();
+		// When
+		crewRepositoryPort.deleteCrewWithAssociations(crewId);
+		entityManager.flush();
+		entityManager.clear();
 
-        // Then — CREW 알림만 삭제, VERIFICATION 알림은 보존
-        long crewNotifsAfter = countQuery(
-                "SELECT COUNT(*) FROM notifications WHERE target_type = 'CREW' AND target_id = :id", crewId);
-        assertThat(crewNotifsAfter).as("CREW 타겟 알림은 0건").isZero();
+		// Then — CREW 알림만 삭제, VERIFICATION 알림은 보존
+		long crewNotifsAfter = countQuery(
+				"SELECT COUNT(*) FROM notifications WHERE target_type = 'CREW' AND target_id = :id", crewId);
+		assertThat(crewNotifsAfter).as("CREW 타겟 알림은 0건").isZero();
 
-        long verificationNotifsAfter = countQuery(
-                "SELECT COUNT(*) FROM notifications WHERE target_type = 'VERIFICATION' AND target_id = :id",
-                otherVerificationId);
-        assertThat(verificationNotifsAfter).as("VERIFICATION 타겟 알림은 보존(1건)").isEqualTo(1);
-    }
+		long verificationNotifsAfter = countQuery(
+				"SELECT COUNT(*) FROM notifications WHERE target_type = 'VERIFICATION' AND target_id = :id",
+				otherVerificationId);
+		assertThat(verificationNotifsAfter).as("VERIFICATION 타겟 알림은 보존(1건)").isEqualTo(1);
+	}
 
-    // ===== 헬퍼 =====
+	// ===== 헬퍼 =====
 
-    /** 단일 :id 파라미터 COUNT 쿼리 */
-    private long countQuery(String sql, String id) {
-        Number count = (Number) entityManager.createNativeQuery(sql)
-                .setParameter("id", id)
-                .getSingleResult();
-        return count.longValue();
-    }
+	/** 단일 :id 파라미터 COUNT 쿼리 */
+	private long countQuery(String sql, String id) {
+		Number count = (Number) entityManager.createNativeQuery(sql)
+				.setParameter("id", id)
+				.getSingleResult();
+		return count.longValue();
+	}
 
-    /** 파라미터 없는 COUNT 쿼리 */
-    private long countQueryNoParam(String sql) {
-        Number count = (Number) entityManager.createNativeQuery(sql).getSingleResult();
-        return count.longValue();
-    }
+	/** 파라미터 없는 COUNT 쿼리 */
+	private long countQueryNoParam(String sql) {
+		Number count = (Number) entityManager.createNativeQuery(sql).getSingleResult();
+		return count.longValue();
+	}
 }

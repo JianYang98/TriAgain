@@ -11,23 +11,23 @@ import java.util.List;
 @Component
 public class DatabaseCleanup {
 
-    @PersistenceContext
-    private EntityManager entityManager;
+	@PersistenceContext
+	private EntityManager entityManager;
 
-    @SuppressWarnings("unchecked")
-    @Transactional
-    public void execute() {
-        entityManager.flush();
-        entityManager.clear();
+	@SuppressWarnings("unchecked")
+	@Transactional
+	public void execute() {
+		entityManager.flush();
+		entityManager.clear();
 
-        List<String> tableNames = entityManager.createNativeQuery(
-                "SELECT table_name FROM information_schema.tables " +
-                "WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
-        ).getResultList();
+		List<String> tableNames = entityManager.createNativeQuery(
+				"SELECT table_name FROM information_schema.tables " +
+				"WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
+		).getResultList();
 
-        entityManager.createNativeQuery("SET CONSTRAINTS ALL DEFERRED").executeUpdate();
-        for (String tableName : tableNames) {
-            entityManager.createNativeQuery("TRUNCATE TABLE \"" + tableName + "\" CASCADE").executeUpdate();
-        }
-    }
+		entityManager.createNativeQuery("SET CONSTRAINTS ALL DEFERRED").executeUpdate();
+		for (String tableName : tableNames) {
+			entityManager.createNativeQuery("TRUNCATE TABLE \"" + tableName + "\" CASCADE").executeUpdate();
+		}
+	}
 }

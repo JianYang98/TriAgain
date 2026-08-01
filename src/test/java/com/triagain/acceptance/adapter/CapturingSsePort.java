@@ -15,24 +15,24 @@ import java.util.concurrent.ConcurrentHashMap;
 @Primary
 public class CapturingSsePort implements SsePort, SubscribeUploadSessionUseCase {
 
-    private final Map<Long, List<String>> capturedEvents = new ConcurrentHashMap<>();
+	private final Map<Long, List<String>> capturedEvents = new ConcurrentHashMap<>();
 
-    @Override
-    public Object subscribe(Long uploadSessionId) {
-        // no-op — 테스트에서는 실제 SSE 스트림 불필요
-        return null;
-    }
+	@Override
+	public Object subscribe(Long uploadSessionId) {
+		// no-op — 테스트에서는 실제 SSE 스트림 불필요
+		return null;
+	}
 
-    @Override
-    public void send(Long uploadSessionId, String eventData) {
-        capturedEvents.computeIfAbsent(uploadSessionId, k -> new ArrayList<>()).add(eventData);
-    }
+	@Override
+	public void send(Long uploadSessionId, String eventData) {
+		capturedEvents.computeIfAbsent(uploadSessionId, k -> new ArrayList<>()).add(eventData);
+	}
 
-    public List<String> getCapturedEvents(Long uploadSessionId) {
-        return capturedEvents.getOrDefault(uploadSessionId, List.of());
-    }
+	public List<String> getCapturedEvents(Long uploadSessionId) {
+		return capturedEvents.getOrDefault(uploadSessionId, List.of());
+	}
 
-    public void clear() {
-        capturedEvents.clear();
-    }
+	public void clear() {
+		capturedEvents.clear();
+	}
 }

@@ -13,32 +13,32 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class HealthSteps {
 
-    @LocalServerPort
-    private int port;
+	@LocalServerPort
+	private int port;
 
-    @Autowired
-    private ScenarioContext scenarioContext;
+	@Autowired
+	private ScenarioContext scenarioContext;
 
-    private HealthTestAdapter healthAdapter;
+	private HealthTestAdapter healthAdapter;
 
-    @Before
-    public void setUp() {
-        healthAdapter = new HealthTestAdapter(port);
-    }
+	@Before
+	public void setUp() {
+		healthAdapter = new HealthTestAdapter(port);
+	}
 
-    @조건("서버가 실행 중이다")
-    public void 서버가_실행_중이다() {
-        // SpringBootTest가 서버를 시작하므로 별도 작업 불필요
-    }
+	@조건("서버가 실행 중이다")
+	public void 서버가_실행_중이다() {
+		// SpringBootTest가 서버를 시작하므로 별도 작업 불필요
+	}
 
-    @만일("헬스 체크 API를 호출하면")
-    public void 헬스_체크_API를_호출하면() {
-        scenarioContext.setResponse(healthAdapter.getHealth());
-    }
+	@만일("헬스 체크 API를 호출하면")
+	public void 헬스_체크_API를_호출하면() {
+		scenarioContext.setResponse(healthAdapter.getHealth());
+	}
 
-    @그리고("데이터베이스 상태는 {string}이다")
-    public void 데이터베이스_상태는_이다(String expectedStatus) {
-        String dbStatus = scenarioContext.getResponse().jsonPath().getString("data.database");
-        assertThat(dbStatus).isEqualTo(expectedStatus);
-    }
+	@그리고("데이터베이스 상태는 {string}이다")
+	public void 데이터베이스_상태는_이다(String expectedStatus) {
+		String dbStatus = scenarioContext.getResponse().jsonPath().getString("data.database");
+		assertThat(dbStatus).isEqualTo(expectedStatus);
+	}
 }

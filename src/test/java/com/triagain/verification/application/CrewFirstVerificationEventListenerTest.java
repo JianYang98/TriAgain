@@ -40,74 +40,74 @@ import static org.mockito.Mockito.verify;
 @TestPropertySource(properties = "notification.crew-first-verification.enabled=true")
 class CrewFirstVerificationEventListenerTest {
 
-    @Autowired
-    private ApplicationEventPublisher eventPublisher;
+	@Autowired
+	private ApplicationEventPublisher eventPublisher;
 
-    @Autowired
-    private VerificationNotificationPort verificationNotificationPort;
+	@Autowired
+	private VerificationNotificationPort verificationNotificationPort;
 
-    @TestConfiguration
-    static class MockConfig {
+	@TestConfiguration
+	static class MockConfig {
 
-        /** @Async 발화 동기화용 래치 — 각 테스트에서 직접 세팅 */
-        static CountDownLatch latch;
+		/** @Async 발화 동기화용 래치 — 각 테스트에서 직접 세팅 */
+		static CountDownLatch latch;
 
-        @Bean
-        @Primary
-        VerificationNotificationPort verificationNotificationPort() {
-            VerificationNotificationPort mock = mock(VerificationNotificationPort.class);
-            willAnswer(invocation -> {
-                if (latch != null) {
-                    latch.countDown();
-                }
-                return null;
-            }).given(mock).sendCrewFirstVerificationNotification(anyString(), anyString(), any(LocalDate.class));
-            return mock;
-        }
-    }
+		@Bean
+		@Primary
+		VerificationNotificationPort verificationNotificationPort() {
+			VerificationNotificationPort mock = mock(VerificationNotificationPort.class);
+			willAnswer(invocation -> {
+				if (latch != null) {
+					latch.countDown();
+				}
+				return null;
+			}).given(mock).sendCrewFirstVerificationNotification(anyString(), anyString(), any(LocalDate.class));
+			return mock;
+		}
+	}
 
-    @Test
-    @DisplayName("T6-commit: 트랜잭션 커밋 시 AFTER_COMMIT 리스너가 실행된다")
-    @Transactional(propagation = Propagation.REQUIRED)
-    void commit_triggerListener() throws InterruptedException {
-        // Given — 래치 세팅 후 커밋 플래그
-        CountDownLatch latch = new CountDownLatch(1);
-        MockConfig.latch = latch;
-        TestTransaction.flagForCommit();
+	@Test
+	@DisplayName("T6-commit: 트랜잭션 커밋 시 AFTER_COMMIT 리스너가 실행된다")
+	@Transactional(propagation = Propagation.REQUIRED)
+	void commit_triggerListener() throws InterruptedException {
+		// Given — 래치 세팅 후 커밋 플래그
+		CountDownLatch latch = new CountDownLatch(1);
+		MockConfig.latch = latch;
+		TestTransaction.flagForCommit();
 
-        // When
-        eventPublisher.publishEvent(
-                new CrewFirstVerificationEvent("user-1", "crew-1", LocalDate.now()));
+		// When
+		eventPublisher.publishEvent(
+				new CrewFirstVerificationEvent("user-1", "crew-1", LocalDate.now()));
 
-        // @Async + AFTER_COMMIT: 트랜잭션 종료(커밋) 후 별도 스레드에서 발화
-        // 트랜잭션은 @Transactional 테스트 메서드 종료 시 커밋됨 — 여기서는 아직 미발화
-        // → TestTransaction.end()로 트랜잭션을 명시적으로 종료해 AFTER_COMMIT 발화 유도
-        TestTransaction.end();
+		// @Async + AFTER_COMMIT: 트랜잭션 종료(커밋) 후 별도 스레드에서 발화
+		// 트랜잭션은 @Transactional 테스트 메서드 종료 시 커밋됨 — 여기서는 아직 미발화
+		// → TestTransaction.end()로 트랜잭션을 명시적으로 종료해 AFTER_COMMIT 발화 유도
+		TestTransaction.end();
 
-        // Then — 최대 5초 대기
-        boolean fired = latch.await(5, TimeUnit.SECONDS);
-        assertThat(fired).as("AFTER_COMMIT 리스너가 5초 내 발화되어야 함").isTrue();
-        verify(verificationNotificationPort)
-                .sendCrewFirstVerificationNotification(anyString(), anyString(), any(LocalDate.class));
-    }
+		// Then — 최대 5초 대기
+		boolean fired = latch.await(5, TimeUnit.SECONDS);
+		assertThat(fired).as("AFTER_COMMIT 리스너가 5초 내 발화되어야 함").isTrue();
+		verify(verificationNotificationPort)
+				.sendCrewFirstVerificationNotification(anyString(), anyString(), any(LocalDate.class));
+	}
 
-    @Test
-    @DisplayName("T6-rollback: 트랜잭션 롤백 시 AFTER_COMMIT 리스너가 실행되지 않는다")
-    @Transactional(propagation = Propagation.REQUIRED)
-    void rollback_doesNotTriggerListener() throws InterruptedException {
-        // Given — 롤백(기본값) — 래치 없이 미발화 확인
-        MockConfig.latch = null;
+	@Test
+	@DisplayName("T6-rollback: 트랜잭션 롤백 시 AFTER_COMMIT 리스너가 실행되지 않는다")
+	@Transactional(propagation = Propagation.REQUIRED)
+	void rollback_doesNotTriggerListener() throws InterruptedException {
+		// Given — 롤백(기본값) — 래치 없이 미발화 확인
+		MockConfig.latch = null;
 
-        // When
-        eventPublisher.publishEvent(
-                new CrewFirstVerificationEvent("user-1", "crew-1", LocalDate.now()));
+		// When
+		eventPublisher.publishEvent(
+				new CrewFirstVerificationEvent("user-1", "crew-1", LocalDate.now()));
 
-        // TestTransaction.end()로 롤백 트랜잭션 종료
-        TestTransaction.end();
+		// TestTransaction.end()로 롤백 트랜잭션 종료
+		TestTransaction.end();
 
-        // Then — 1초 대기 후 호출 없음 확인
-        Thread.sleep(1_000);
-        verify(verificationNotificationPort, never())
-                .sendCrewFirstVerificationNotification(anyString(), anyString(), any(LocalDate.class));
-    }
+		// Then — 1초 대기 후 호출 없음 확인
+		Thread.sleep(1_000);
+		verify(verificationNotificationPort, never())
+				.sendCrewFirstVerificationNotification(anyString(), anyString(), any(LocalDate.class));
+	}
 }

@@ -11,30 +11,30 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 
 public class CrewDeleteSteps {
 
-    @LocalServerPort
-    private int port;
+	@LocalServerPort
+	private int port;
 
-    @Autowired
-    private ScenarioContext scenarioContext;
+	@Autowired
+	private ScenarioContext scenarioContext;
 
-    private CrewTestAdapter crewAdapter;
+	private CrewTestAdapter crewAdapter;
 
-    @Before
-    public void setUp() {
-        crewAdapter = new CrewTestAdapter(port);
-    }
+	@Before
+	public void setUp() {
+		crewAdapter = new CrewTestAdapter(port);
+	}
 
-    @만일("크루를 삭제한다")
-    public void 크루를_삭제한다() {
-        ExtractableResponse<Response> response = crewAdapter.deleteCrew(
-                scenarioContext.getUserId(), scenarioContext.getCrewId());
-        scenarioContext.setResponse(response);
-    }
+	@만일("크루를 삭제한다")
+	public void 크루를_삭제한다() {
+		ExtractableResponse<Response> response = crewAdapter.deleteCrew(
+				scenarioContext.getUserId(), scenarioContext.getCrewId());
+		scenarioContext.setResponse(response);
+	}
 
-    @만일("사용자 {string}이/가 크루를 삭제한다")
-    public void 특정_사용자가_크루를_삭제한다(String userId) {
-        ExtractableResponse<Response> response = crewAdapter.deleteCrew(
-                userId, scenarioContext.getCrewId());
-        scenarioContext.setResponse(response);
-    }
+	@만일("사용자 {string}이/가 크루를 삭제한다")
+	public void 특정_사용자가_크루를_삭제한다(String userId) {
+		ExtractableResponse<Response> response = crewAdapter.deleteCrew(
+				userId, scenarioContext.getCrewId());
+		scenarioContext.setResponse(response);
+	}
 }

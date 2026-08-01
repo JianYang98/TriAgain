@@ -22,136 +22,136 @@ import static org.mockito.Mockito.verify;
 @ExtendWith(MockitoExtension.class)
 class ChallengeClientAdapterTest {
 
-    @Mock
-    private ChallengeQueryUseCase challengeQueryUseCase;
+	@Mock
+	private ChallengeQueryUseCase challengeQueryUseCase;
 
-    @InjectMocks
-    private ChallengeClientAdapter challengeClientAdapter;
+	@InjectMocks
+	private ChallengeClientAdapter challengeClientAdapter;
 
-    private static ChallengeInfoDto inProgressDto(String id) {
-        return new ChallengeInfoDto(id, "user-1", "crew-1", 1, 3, 1,
-                "IN_PROGRESS", LocalDate.now(),
-                LocalDateTime.now().plusDays(3), LocalDateTime.now());
-    }
+	private static ChallengeInfoDto inProgressDto(String id) {
+		return new ChallengeInfoDto(id, "user-1", "crew-1", 1, 3, 1,
+				"IN_PROGRESS", LocalDate.now(),
+				LocalDateTime.now().plusDays(3), LocalDateTime.now());
+	}
 
-    @Test
-    @DisplayName("recordCompletion 정상 — ChallengeQueryUseCase에 위임, boolean 반환")
-    void recordCompletion_success() {
-        // Given
-        String challengeId = "CHAL-001";
-        given(challengeQueryUseCase.recordCompletion(challengeId)).willReturn(true);
+	@Test
+	@DisplayName("recordCompletion 정상 — ChallengeQueryUseCase에 위임, boolean 반환")
+	void recordCompletion_success() {
+		// Given
+		String challengeId = "CHAL-001";
+		given(challengeQueryUseCase.recordCompletion(challengeId)).willReturn(true);
 
-        // When
-        boolean result = challengeClientAdapter.recordCompletion(challengeId);
+		// When
+		boolean result = challengeClientAdapter.recordCompletion(challengeId);
 
-        // Then
-        assertThat(result).isTrue();
-        verify(challengeQueryUseCase).recordCompletion(challengeId);
-    }
+		// Then
+		assertThat(result).isTrue();
+		verify(challengeQueryUseCase).recordCompletion(challengeId);
+	}
 
-    @Test
-    @DisplayName("findChallengeById 정상 — ChallengeInfo DTO 변환 확인")
-    void findChallengeById_success() {
-        // Given
-        String challengeId = "CHAL-001";
-        given(challengeQueryUseCase.findById(challengeId)).willReturn(Optional.of(inProgressDto(challengeId)));
+	@Test
+	@DisplayName("findChallengeById 정상 — ChallengeInfo DTO 변환 확인")
+	void findChallengeById_success() {
+		// Given
+		String challengeId = "CHAL-001";
+		given(challengeQueryUseCase.findById(challengeId)).willReturn(Optional.of(inProgressDto(challengeId)));
 
-        // When
-        Optional<ChallengeInfo> result = challengeClientAdapter.findChallengeById(challengeId);
+		// When
+		Optional<ChallengeInfo> result = challengeClientAdapter.findChallengeById(challengeId);
 
-        // Then
-        assertThat(result).isPresent();
-        ChallengeInfo info = result.get();
-        assertThat(info.id()).isEqualTo(challengeId);
-        assertThat(info.userId()).isEqualTo("user-1");
-        assertThat(info.crewId()).isEqualTo("crew-1");
-        assertThat(info.completedDays()).isEqualTo(1);
-        assertThat(info.targetDays()).isEqualTo(3);
-        assertThat(info.status()).isEqualTo("IN_PROGRESS");
-    }
+		// Then
+		assertThat(result).isPresent();
+		ChallengeInfo info = result.get();
+		assertThat(info.id()).isEqualTo(challengeId);
+		assertThat(info.userId()).isEqualTo("user-1");
+		assertThat(info.crewId()).isEqualTo("crew-1");
+		assertThat(info.completedDays()).isEqualTo(1);
+		assertThat(info.targetDays()).isEqualTo(3);
+		assertThat(info.status()).isEqualTo("IN_PROGRESS");
+	}
 
-    @Test
-    @DisplayName("findActiveByUserIdAndCrewId 활성 챌린지 존재 → ActiveChallengeInfo 반환")
-    void findActiveByUserIdAndCrewId_found() {
-        // Given
-        String userId = "user-1";
-        String crewId = "crew-1";
-        given(challengeQueryUseCase.findActiveByUserIdAndCrewId(userId, crewId))
-                .willReturn(Optional.of(inProgressDto("CHAL-001")));
+	@Test
+	@DisplayName("findActiveByUserIdAndCrewId 활성 챌린지 존재 → ActiveChallengeInfo 반환")
+	void findActiveByUserIdAndCrewId_found() {
+		// Given
+		String userId = "user-1";
+		String crewId = "crew-1";
+		given(challengeQueryUseCase.findActiveByUserIdAndCrewId(userId, crewId))
+				.willReturn(Optional.of(inProgressDto("CHAL-001")));
 
-        // When
-        Optional<ActiveChallengeInfo> result = challengeClientAdapter.findActiveByUserIdAndCrewId(userId, crewId);
+		// When
+		Optional<ActiveChallengeInfo> result = challengeClientAdapter.findActiveByUserIdAndCrewId(userId, crewId);
 
-        // Then
-        assertThat(result).isPresent();
-        ActiveChallengeInfo info = result.get();
-        assertThat(info.id()).isEqualTo("CHAL-001");
-        assertThat(info.status()).isEqualTo("IN_PROGRESS");
-        assertThat(info.completedDays()).isEqualTo(1);
-        assertThat(info.targetDays()).isEqualTo(3);
-        assertThat(info.deadline()).isNotNull();
-    }
+		// Then
+		assertThat(result).isPresent();
+		ActiveChallengeInfo info = result.get();
+		assertThat(info.id()).isEqualTo("CHAL-001");
+		assertThat(info.status()).isEqualTo("IN_PROGRESS");
+		assertThat(info.completedDays()).isEqualTo(1);
+		assertThat(info.targetDays()).isEqualTo(3);
+		assertThat(info.deadline()).isNotNull();
+	}
 
-    @Test
-    @DisplayName("findActiveByUserIdAndCrewId 활성 챌린지 없음 → empty 반환")
-    void findActiveByUserIdAndCrewId_notFound() {
-        // Given
-        String userId = "user-1";
-        String crewId = "crew-1";
-        given(challengeQueryUseCase.findActiveByUserIdAndCrewId(userId, crewId))
-                .willReturn(Optional.empty());
+	@Test
+	@DisplayName("findActiveByUserIdAndCrewId 활성 챌린지 없음 → empty 반환")
+	void findActiveByUserIdAndCrewId_notFound() {
+		// Given
+		String userId = "user-1";
+		String crewId = "crew-1";
+		given(challengeQueryUseCase.findActiveByUserIdAndCrewId(userId, crewId))
+				.willReturn(Optional.empty());
 
-        // When
-        Optional<ActiveChallengeInfo> result = challengeClientAdapter.findActiveByUserIdAndCrewId(userId, crewId);
+		// When
+		Optional<ActiveChallengeInfo> result = challengeClientAdapter.findActiveByUserIdAndCrewId(userId, crewId);
 
-        // Then
-        assertThat(result).isEmpty();
-    }
+		// Then
+		assertThat(result).isEmpty();
+	}
 
-    @Test
-    @DisplayName("findOrCreateActiveChallenge — ChallengeQueryUseCase에 위임")
-    void findOrCreateActiveChallenge_delegatesToUseCase() {
-        // Given
-        String userId = "user-1";
-        String crewId = "crew-1";
-        given(challengeQueryUseCase.findOrCreateActive(userId, crewId)).willReturn(inProgressDto("CHAL-001"));
+	@Test
+	@DisplayName("findOrCreateActiveChallenge — ChallengeQueryUseCase에 위임")
+	void findOrCreateActiveChallenge_delegatesToUseCase() {
+		// Given
+		String userId = "user-1";
+		String crewId = "crew-1";
+		given(challengeQueryUseCase.findOrCreateActive(userId, crewId)).willReturn(inProgressDto("CHAL-001"));
 
-        // When
-        ChallengeInfo result = challengeClientAdapter.findOrCreateActiveChallenge(userId, crewId);
+		// When
+		ChallengeInfo result = challengeClientAdapter.findOrCreateActiveChallenge(userId, crewId);
 
-        // Then
-        assertThat(result.id()).isEqualTo("CHAL-001");
-        assertThat(result.status()).isEqualTo("IN_PROGRESS");
-        verify(challengeQueryUseCase).findOrCreateActive(userId, crewId);
-    }
+		// Then
+		assertThat(result.id()).isEqualTo("CHAL-001");
+		assertThat(result.status()).isEqualTo("IN_PROGRESS");
+		verify(challengeQueryUseCase).findOrCreateActive(userId, crewId);
+	}
 
-    @Test
-    @DisplayName("revertCompletion — ChallengeQueryUseCase에 위임, 영향 행 수 그대로 반환")
-    void revertCompletion_delegatesToUseCase() {
-        // Given
-        String challengeId = "CHAL-001";
-        given(challengeQueryUseCase.revertCompletion(challengeId, 2)).willReturn(1);
+	@Test
+	@DisplayName("revertCompletion — ChallengeQueryUseCase에 위임, 영향 행 수 그대로 반환")
+	void revertCompletion_delegatesToUseCase() {
+		// Given
+		String challengeId = "CHAL-001";
+		given(challengeQueryUseCase.revertCompletion(challengeId, 2)).willReturn(1);
 
-        // When
-        int affected = challengeClientAdapter.revertCompletion(challengeId, 2);
+		// When
+		int affected = challengeClientAdapter.revertCompletion(challengeId, 2);
 
-        // Then
-        assertThat(affected).isEqualTo(1);
-        verify(challengeQueryUseCase).revertCompletion(challengeId, 2);
-    }
+		// Then
+		assertThat(affected).isEqualTo(1);
+		verify(challengeQueryUseCase).revertCompletion(challengeId, 2);
+	}
 
-    @Test
-    @DisplayName("countCompletedChallenges — ChallengeQueryUseCase에 위임")
-    void countCompletedChallenges_delegatesToUseCase() {
-        // Given
-        String userId = "user-1";
-        String crewId = "crew-1";
-        given(challengeQueryUseCase.countCompletedChallenges(userId, crewId)).willReturn(5);
+	@Test
+	@DisplayName("countCompletedChallenges — ChallengeQueryUseCase에 위임")
+	void countCompletedChallenges_delegatesToUseCase() {
+		// Given
+		String userId = "user-1";
+		String crewId = "crew-1";
+		given(challengeQueryUseCase.countCompletedChallenges(userId, crewId)).willReturn(5);
 
-        // When
-        int result = challengeClientAdapter.countCompletedChallenges(userId, crewId);
+		// When
+		int result = challengeClientAdapter.countCompletedChallenges(userId, crewId);
 
-        // Then
-        assertThat(result).isEqualTo(5);
-    }
+		// Then
+		assertThat(result).isEqualTo(5);
+	}
 }

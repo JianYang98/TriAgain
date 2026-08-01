@@ -21,42 +21,42 @@ import static org.mockito.Mockito.verify;
 @ExtendWith(MockitoExtension.class)
 class UpdateFcmTokenServiceTest {
 
-    @Mock
-    private UserRepositoryPort userRepositoryPort;
+	@Mock
+	private UserRepositoryPort userRepositoryPort;
 
-    @InjectMocks
-    private UpdateFcmTokenService updateFcmTokenService;
+	@InjectMocks
+	private UpdateFcmTokenService updateFcmTokenService;
 
-    private static final String USER_ID = "user-1";
+	private static final String USER_ID = "user-1";
 
-    @DisplayName("유저가 존재하면 FCM 토큰이 업데이트되고 save가 호출된다")
-    @Test
-    void updateFcmToken_success() {
-        // given
-        User user = User.of(USER_ID, "KAKAO", "test@test.com", "테스트유저",
-                null, null, null, null, null, null, 0);
-        given(userRepositoryPort.findById(USER_ID)).willReturn(Optional.of(user));
+	@DisplayName("유저가 존재하면 FCM 토큰이 업데이트되고 save가 호출된다")
+	@Test
+	void updateFcmToken_success() {
+		// given
+		User user = User.of(USER_ID, "KAKAO", "test@test.com", "테스트유저",
+				null, null, null, null, null, null, 0);
+		given(userRepositoryPort.findById(USER_ID)).willReturn(Optional.of(user));
 
-        String newToken = "new-fcm-token-123";
+		String newToken = "new-fcm-token-123";
 
-        // when
-        updateFcmTokenService.updateFcmToken(USER_ID, newToken);
+		// when
+		updateFcmTokenService.updateFcmToken(USER_ID, newToken);
 
-        // then
-        assertThat(user.getFcmToken()).isEqualTo(newToken);
-        verify(userRepositoryPort).save(user);
-    }
+		// then
+		assertThat(user.getFcmToken()).isEqualTo(newToken);
+		verify(userRepositoryPort).save(user);
+	}
 
-    @DisplayName("유저가 존재하지 않으면 USER_NOT_FOUND 예외가 발생한다")
-    @Test
-    void updateFcmToken_userNotFound_throwsException() {
-        // given
-        given(userRepositoryPort.findById(USER_ID)).willReturn(Optional.empty());
+	@DisplayName("유저가 존재하지 않으면 USER_NOT_FOUND 예외가 발생한다")
+	@Test
+	void updateFcmToken_userNotFound_throwsException() {
+		// given
+		given(userRepositoryPort.findById(USER_ID)).willReturn(Optional.empty());
 
-        // when & then
-        assertThatThrownBy(() -> updateFcmTokenService.updateFcmToken(USER_ID, "token"))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.USER_NOT_FOUND);
-    }
+		// when & then
+		assertThatThrownBy(() -> updateFcmTokenService.updateFcmToken(USER_ID, "token"))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.USER_NOT_FOUND);
+	}
 }

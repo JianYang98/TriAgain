@@ -9,19 +9,19 @@ import org.springframework.stereotype.Component;
 @Primary
 public class StubAppleTokenVerifierPort implements AppleTokenVerifierPort {
 
-    private static final String STUB_SUB = "001234.abcdef1234.5678";
-    private static final String STUB_EMAIL = "apple@privaterelay.appleid.com";
+	private static final String STUB_SUB = "001234.abcdef1234.5678";
+	private static final String STUB_EMAIL = "apple@privaterelay.appleid.com";
 
-    @Override
-    public AppleUserInfo verify(String identityToken) {
-        return new AppleUserInfo(STUB_SUB, STUB_EMAIL);
-    }
+	@Override
+	public AppleUserInfo verify(String identityToken) {
+		return new AppleUserInfo(STUB_SUB, STUB_EMAIL);
+	}
 
-    public String getStubSub() {
-        return STUB_SUB;
-    }
+	public String getStubSub() {
+		return STUB_SUB;
+	}
 
-    public String getStubEmail() {
-        return STUB_EMAIL;
-    }
+	public String getStubEmail() {
+		return STUB_EMAIL;
+	}
 }

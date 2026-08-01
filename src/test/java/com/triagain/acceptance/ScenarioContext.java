@@ -12,94 +12,94 @@ import java.util.Map;
 @ScenarioScope
 public class ScenarioContext {
 
-    private ExtractableResponse<Response> response;
-    private String userId;
-    private String crewId;
-    private String inviteCode;
-    private String creatorId;
-    private String challengeId;
-    private Long uploadSessionId;
-    private String imageKey;
-    private String notificationId;
-    private final Map<String, String> crewNameToId = new HashMap<>();
+	private ExtractableResponse<Response> response;
+	private String userId;
+	private String crewId;
+	private String inviteCode;
+	private String creatorId;
+	private String challengeId;
+	private Long uploadSessionId;
+	private String imageKey;
+	private String notificationId;
+	private final Map<String, String> crewNameToId = new HashMap<>();
 
-    public void setResponse(ExtractableResponse<Response> response) {
-        this.response = response;
-    }
+	public void setResponse(ExtractableResponse<Response> response) {
+		this.response = response;
+	}
 
-    public ExtractableResponse<Response> getResponse() {
-        return response;
-    }
+	public ExtractableResponse<Response> getResponse() {
+		return response;
+	}
 
-    public String getUserId() {
-        return userId;
-    }
+	public String getUserId() {
+		return userId;
+	}
 
-    public void setUserId(String userId) {
-        this.userId = userId;
-    }
+	public void setUserId(String userId) {
+		this.userId = userId;
+	}
 
-    public String getCrewId() {
-        return crewId;
-    }
+	public String getCrewId() {
+		return crewId;
+	}
 
-    public void setCrewId(String crewId) {
-        this.crewId = crewId;
-    }
+	public void setCrewId(String crewId) {
+		this.crewId = crewId;
+	}
 
-    public String getInviteCode() {
-        return inviteCode;
-    }
+	public String getInviteCode() {
+		return inviteCode;
+	}
 
-    public void setInviteCode(String inviteCode) {
-        this.inviteCode = inviteCode;
-    }
+	public void setInviteCode(String inviteCode) {
+		this.inviteCode = inviteCode;
+	}
 
-    public String getCreatorId() {
-        return creatorId;
-    }
+	public String getCreatorId() {
+		return creatorId;
+	}
 
-    public void setCreatorId(String creatorId) {
-        this.creatorId = creatorId;
-    }
+	public void setCreatorId(String creatorId) {
+		this.creatorId = creatorId;
+	}
 
-    public void putCrewId(String crewName, String crewId) {
-        this.crewNameToId.put(crewName, crewId);
-    }
+	public void putCrewId(String crewName, String crewId) {
+		this.crewNameToId.put(crewName, crewId);
+	}
 
-    public String getCrewIdByName(String crewName) {
-        return this.crewNameToId.get(crewName);
-    }
+	public String getCrewIdByName(String crewName) {
+		return this.crewNameToId.get(crewName);
+	}
 
-    public String getChallengeId() {
-        return challengeId;
-    }
+	public String getChallengeId() {
+		return challengeId;
+	}
 
-    public void setChallengeId(String challengeId) {
-        this.challengeId = challengeId;
-    }
+	public void setChallengeId(String challengeId) {
+		this.challengeId = challengeId;
+	}
 
-    public Long getUploadSessionId() {
-        return uploadSessionId;
-    }
+	public Long getUploadSessionId() {
+		return uploadSessionId;
+	}
 
-    public void setUploadSessionId(Long uploadSessionId) {
-        this.uploadSessionId = uploadSessionId;
-    }
+	public void setUploadSessionId(Long uploadSessionId) {
+		this.uploadSessionId = uploadSessionId;
+	}
 
-    public String getImageKey() {
-        return imageKey;
-    }
+	public String getImageKey() {
+		return imageKey;
+	}
 
-    public void setImageKey(String imageKey) {
-        this.imageKey = imageKey;
-    }
+	public void setImageKey(String imageKey) {
+		this.imageKey = imageKey;
+	}
 
-    public String getNotificationId() {
-        return notificationId;
-    }
+	public String getNotificationId() {
+		return notificationId;
+	}
 
-    public void setNotificationId(String notificationId) {
-        this.notificationId = notificationId;
-    }
+	public void setNotificationId(String notificationId) {
+		this.notificationId = notificationId;
+	}
 }

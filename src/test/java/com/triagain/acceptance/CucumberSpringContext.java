@@ -11,12 +11,12 @@ import org.springframework.test.context.DynamicPropertySource;
 @ActiveProfiles("integration")
 public class CucumberSpringContext {
 
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", TestContainers::getJdbcUrl);
-        registry.add("spring.datasource.username", TestContainers::getUsername);
-        registry.add("spring.datasource.password", TestContainers::getPassword);
-        registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
-    }
+	@DynamicPropertySource
+	static void configureProperties(DynamicPropertyRegistry registry) {
+		registry.add("spring.datasource.url", TestContainers::getJdbcUrl);
+		registry.add("spring.datasource.username", TestContainers::getUsername);
+		registry.add("spring.datasource.password", TestContainers::getPassword);
+		registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
+		registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
+	}
 }

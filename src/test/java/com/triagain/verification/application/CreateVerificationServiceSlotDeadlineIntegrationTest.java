@@ -39,44 +39,44 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @Tag("e2e")
 class CreateVerificationServiceSlotDeadlineIntegrationTest extends E2eTestBase {
 
-    @Autowired
-    private CreateVerificationUseCase createVerificationUseCase;
+	@Autowired
+	private CreateVerificationUseCase createVerificationUseCase;
 
-    @Test
-    @DisplayName("endDate=startDate 캡 사이클(1일차 마감으로 고정)에서 2일차 슬롯 제출 — 캡된 사이클 마감 초과로 V002")
-    void cappedCycleDeadline_slotWithinOwnDailyDeadline_stillThrowsV002() {
-        // Given — 1일 캡 크루(startDate=endDate=어제), deadlineTime=정오(자정 인접 플레이키니스 회피)
-        String userId = "integ-cap-user-01";
-        createUser(userId);
+	@Test
+	@DisplayName("endDate=startDate 캡 사이클(1일차 마감으로 고정)에서 2일차 슬롯 제출 — 캡된 사이클 마감 초과로 V002")
+	void cappedCycleDeadline_slotWithinOwnDailyDeadline_stillThrowsV002() {
+		// Given — 1일 캡 크루(startDate=endDate=어제), deadlineTime=정오(자정 인접 플레이키니스 회피)
+		String userId = "integ-cap-user-01";
+		createUser(userId);
 
-        LocalDate yesterday = LocalDate.now().minusDays(1);
-        LocalTime deadlineTime = LocalTime.of(12, 0, 0);
-        String crewId = IdGenerator.generate("CREW");
-        Crew crew = Crew.of(
-                crewId, userId, "캡 테스트 크루", "목표",
-                "인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
-                yesterday, yesterday, true,
-                generateInviteCode(), LocalDateTime.now(),
-                deadlineTime, null, CrewVisibility.PRIVATE, 0L, List.of()
-        );
-        crewRepositoryPort.save(crew);
-        crewRepositoryPort.saveMember(CrewMember.createLeader(userId, crewId));
+		LocalDate yesterday = LocalDate.now().minusDays(1);
+		LocalTime deadlineTime = LocalTime.of(12, 0, 0);
+		String crewId = IdGenerator.generate("CREW");
+		Crew crew = Crew.of(
+				crewId, userId, "캡 테스트 크루", "목표",
+				"인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
+				yesterday, yesterday, true,
+				generateInviteCode(), LocalDateTime.now(),
+				deadlineTime, null, CrewVisibility.PRIVATE, 0L, List.of()
+		);
+		crewRepositoryPort.save(crew);
+		crewRepositoryPort.saveMember(CrewMember.createLeader(userId, crewId));
 
-        // Given — 캡된 챌린지: deadline=어제(1일차) 정오로 고정, completedDays=1(2일차 슬롯=오늘)
-        Challenge challenge = Challenge.of(
-                IdGenerator.generate("CHAL"), userId, crewId, 1,
-                3, 1, ChallengeStatus.IN_PROGRESS,
-                yesterday, yesterday.atTime(deadlineTime), LocalDateTime.now());
-        Challenge saved = challengeRepositoryPort.save(challenge);
+		// Given — 캡된 챌린지: deadline=어제(1일차) 정오로 고정, completedDays=1(2일차 슬롯=오늘)
+		Challenge challenge = Challenge.of(
+				IdGenerator.generate("CHAL"), userId, crewId, 1,
+				3, 1, ChallengeStatus.IN_PROGRESS,
+				yesterday, yesterday.atTime(deadlineTime), LocalDateTime.now());
+		Challenge saved = challengeRepositoryPort.save(challenge);
 
-        CreateVerificationCommand command = new CreateVerificationCommand(
-                userId, saved.getId(), crewId, null, "텍스트 인증");
+		CreateVerificationCommand command = new CreateVerificationCommand(
+				userId, saved.getId(), crewId, null, "텍스트 인증");
 
-        // When & Then — 슬롯(오늘) 자체 일일마감(오늘 정오)은 아직 안 지났을 수 있지만,
-        // min(슬롯 일일마감, challenge.deadline=어제 정오)이 challenge.deadline을 택해 이미 초과 상태다
-        assertThatThrownBy(() -> createVerificationUseCase.createVerification(command))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
-    }
+		// When & Then — 슬롯(오늘) 자체 일일마감(오늘 정오)은 아직 안 지났을 수 있지만,
+		// min(슬롯 일일마감, challenge.deadline=어제 정오)이 challenge.deadline을 택해 이미 초과 상태다
+		assertThatThrownBy(() -> createVerificationUseCase.createVerification(command))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
+	}
 }

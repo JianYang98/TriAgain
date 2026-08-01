@@ -13,20 +13,20 @@ import org.springframework.stereotype.Component;
 @Primary
 public class StubAppleOAuthPort implements AppleOAuthPort {
 
-    public static final String STUB_REFRESH_TOKEN = "stub-apple-refresh-token";
+	public static final String STUB_REFRESH_TOKEN = "stub-apple-refresh-token";
 
-    @Override
-    public String exchangeAuthorizationCode(String authorizationCode) {
-        return STUB_REFRESH_TOKEN;
-    }
+	@Override
+	public String exchangeAuthorizationCode(String authorizationCode) {
+		return STUB_REFRESH_TOKEN;
+	}
 
-    @Override
-    public void revokeRefreshToken(String refreshToken) {
-        // no-op
-    }
+	@Override
+	public void revokeRefreshToken(String refreshToken) {
+		// no-op
+	}
 
-    @Override
-    public boolean isEnabled() {
-        return true;
-    }
+	@Override
+	public boolean isEnabled() {
+		return true;
+	}
 }

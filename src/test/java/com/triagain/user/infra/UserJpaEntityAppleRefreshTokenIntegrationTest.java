@@ -26,55 +26,55 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DirtiesContext
 class UserJpaEntityAppleRefreshTokenIntegrationTest {
 
-    @Autowired
-    private UserRepositoryPort userRepositoryPort;
+	@Autowired
+	private UserRepositoryPort userRepositoryPort;
 
-    @Autowired
-    private EntityManager entityManager;
+	@Autowired
+	private EntityManager entityManager;
 
-    @Test
-    @DisplayName("Apple refresh_token이 DB에는 v1: prefix 암호문으로 저장되고 도메인에는 평문으로 복원된다")
-    void appleRefreshToken_isEncryptedInDb_andDecryptedOnLoad() {
-        // Given
-        String userId = "apple-test-user-1";
-        String plainRefreshToken = "rt_apple_test_plaintext_xyz";
-        User user = User.of(userId, "APPLE", "apple@test.com", "애플유저", null, null,
-                plainRefreshToken, LocalDateTime.now(), LocalDateTime.now(), null, 0);
+	@Test
+	@DisplayName("Apple refresh_token이 DB에는 v1: prefix 암호문으로 저장되고 도메인에는 평문으로 복원된다")
+	void appleRefreshToken_isEncryptedInDb_andDecryptedOnLoad() {
+		// Given
+		String userId = "apple-test-user-1";
+		String plainRefreshToken = "rt_apple_test_plaintext_xyz";
+		User user = User.of(userId, "APPLE", "apple@test.com", "애플유저", null, null,
+				plainRefreshToken, LocalDateTime.now(), LocalDateTime.now(), null, 0);
 
-        // When — JPA save (Converter가 자동 암호화)
-        userRepositoryPort.save(user);
-        entityManager.flush();
-        entityManager.clear();
+		// When — JPA save (Converter가 자동 암호화)
+		userRepositoryPort.save(user);
+		entityManager.flush();
+		entityManager.clear();
 
-        // Then 1 — 도메인 객체로 다시 읽으면 평문이 복원된다
-        User loaded = userRepositoryPort.findById(userId).orElseThrow();
-        assertThat(loaded.getAppleRefreshToken()).isEqualTo(plainRefreshToken);
+		// Then 1 — 도메인 객체로 다시 읽으면 평문이 복원된다
+		User loaded = userRepositoryPort.findById(userId).orElseThrow();
+		assertThat(loaded.getAppleRefreshToken()).isEqualTo(plainRefreshToken);
 
-        // Then 2 — DB 컬럼은 v1: prefix 암호문이고 평문이 노출되지 않는다
-        Object rawValue = entityManager.createNativeQuery(
-                        "SELECT apple_refresh_token FROM users WHERE id = :id")
-                .setParameter("id", userId)
-                .getSingleResult();
-        String dbValue = (String) rawValue;
-        assertThat(dbValue).startsWith("v1:");
-        assertThat(dbValue).doesNotContain(plainRefreshToken);
-    }
+		// Then 2 — DB 컬럼은 v1: prefix 암호문이고 평문이 노출되지 않는다
+		Object rawValue = entityManager.createNativeQuery(
+						"SELECT apple_refresh_token FROM users WHERE id = :id")
+				.setParameter("id", userId)
+				.getSingleResult();
+		String dbValue = (String) rawValue;
+		assertThat(dbValue).startsWith("v1:");
+		assertThat(dbValue).doesNotContain(plainRefreshToken);
+	}
 
-    @Test
-    @DisplayName("apple_refresh_token이 null이면 DB에도 null로 저장된다 (Apple 외 사용자 호환)")
-    void nullAppleRefreshToken_isPersistedAsNull() {
-        // Given
-        String userId = "kakao-test-user-1";
-        User user = User.of(userId, "KAKAO", "k@test.com", "카카오", null, null, null,
-                LocalDateTime.now(), LocalDateTime.now(), null, 0);
+	@Test
+	@DisplayName("apple_refresh_token이 null이면 DB에도 null로 저장된다 (Apple 외 사용자 호환)")
+	void nullAppleRefreshToken_isPersistedAsNull() {
+		// Given
+		String userId = "kakao-test-user-1";
+		User user = User.of(userId, "KAKAO", "k@test.com", "카카오", null, null, null,
+				LocalDateTime.now(), LocalDateTime.now(), null, 0);
 
-        // When
-        userRepositoryPort.save(user);
-        entityManager.flush();
-        entityManager.clear();
+		// When
+		userRepositoryPort.save(user);
+		entityManager.flush();
+		entityManager.clear();
 
-        // Then
-        User loaded = userRepositoryPort.findById(userId).orElseThrow();
-        assertThat(loaded.getAppleRefreshToken()).isNull();
-    }
+		// Then
+		User loaded = userRepositoryPort.findById(userId).orElseThrow();
+		assertThat(loaded.getAppleRefreshToken()).isNull();
+	}
 }

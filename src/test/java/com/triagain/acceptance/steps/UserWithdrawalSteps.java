@@ -12,32 +12,32 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 
 public class UserWithdrawalSteps {
 
-    @LocalServerPort
-    private int port;
+	@LocalServerPort
+	private int port;
 
-    @Autowired
-    private ScenarioContext scenarioContext;
+	@Autowired
+	private ScenarioContext scenarioContext;
 
-    private UserTestAdapter userAdapter;
-    private CrewTestAdapter crewAdapter;
+	private UserTestAdapter userAdapter;
+	private CrewTestAdapter crewAdapter;
 
-    @Before
-    public void setUp() {
-        userAdapter = new UserTestAdapter(port);
-        crewAdapter = new CrewTestAdapter(port);
-    }
+	@Before
+	public void setUp() {
+		userAdapter = new UserTestAdapter(port);
+		crewAdapter = new CrewTestAdapter(port);
+	}
 
-    @만일("사용자 {string}이/가 회원탈퇴를 요청한다")
-    public void 사용자가_회원탈퇴를_요청한다(String userId) {
-        ExtractableResponse<Response> response =
-                userAdapter.withdraw(userId);
-        scenarioContext.setResponse(response);
-    }
+	@만일("사용자 {string}이/가 회원탈퇴를 요청한다")
+	public void 사용자가_회원탈퇴를_요청한다(String userId) {
+		ExtractableResponse<Response> response =
+				userAdapter.withdraw(userId);
+		scenarioContext.setResponse(response);
+	}
 
-    @만일("{string}가/이 해당 크루를 조회한다")
-    public void 해당_크루를_조회한다(String userId) {
-        ExtractableResponse<Response> response =
-                crewAdapter.getCrew(userId, scenarioContext.getCrewId());
-        scenarioContext.setResponse(response);
-    }
+	@만일("{string}가/이 해당 크루를 조회한다")
+	public void 해당_크루를_조회한다(String userId) {
+		ExtractableResponse<Response> response =
+				crewAdapter.getCrew(userId, scenarioContext.getCrewId());
+		scenarioContext.setResponse(response);
+	}
 }
