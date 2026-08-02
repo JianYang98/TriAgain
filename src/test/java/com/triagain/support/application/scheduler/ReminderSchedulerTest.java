@@ -17,6 +17,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.AbstractPlatformTransactionManager;
+import org.springframework.transaction.support.DefaultTransactionStatus;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.triagain.common.domain.DeadLetter;
@@ -52,15 +55,23 @@ class ReminderSchedulerTest {
 	@BeforeEach
 	void setUp() {
 		TransactionTemplate transactionTemplate = new TransactionTemplate();
-		transactionTemplate.setTransactionManager(new org.springframework.transaction.support.AbstractPlatformTransactionManager() {
+		transactionTemplate.setTransactionManager(new AbstractPlatformTransactionManager() {
 			@Override
-			protected Object doGetTransaction() { return new Object(); }
+			protected Object doGetTransaction() {
+				return new Object();
+			}
+
 			@Override
-			protected void doBegin(Object transaction, org.springframework.transaction.TransactionDefinition definition) {}
+			protected void doBegin(Object transaction, TransactionDefinition definition) {
+			}
+
 			@Override
-			protected void doCommit(org.springframework.transaction.support.DefaultTransactionStatus status) {}
+			protected void doCommit(DefaultTransactionStatus status) {
+			}
+
 			@Override
-			protected void doRollback(org.springframework.transaction.support.DefaultTransactionStatus status) {}
+			protected void doRollback(DefaultTransactionStatus status) {
+			}
 		});
 		ChunkProcessor chunkProcessor = new ChunkProcessor(transactionTemplate);
 
@@ -77,7 +88,8 @@ class ReminderSchedulerTest {
 				new ReminderTarget("user-1", "token-1", "crew-1", "운동 크루"),
 				new ReminderTarget("user-2", "token-2", "crew-1", "운동 크루")
 		);
-		given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class), any(LocalDate.class)))
+		given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class),
+				any(LocalDate.class)))
 				.willReturn(targets);
 		given(notificationSendPort.send(anyString(), anyString(), anyString(), anyMap()))
 				.willReturn(true);
@@ -98,7 +110,8 @@ class ReminderSchedulerTest {
 		List<ReminderTarget> targets = List.of(
 				new ReminderTarget("user-1", null, "crew-1", "운동 크루")
 		);
-		given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class), any(LocalDate.class)))
+		given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class),
+				any(LocalDate.class)))
 				.willReturn(targets);
 
 		// when
@@ -113,7 +126,8 @@ class ReminderSchedulerTest {
 	@Test
 	void sendReminders_noTargets_doesNothing() {
 		// given
-		given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class), any(LocalDate.class)))
+		given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class),
+				any(LocalDate.class)))
 				.willReturn(Collections.emptyList());
 
 		// when
@@ -131,7 +145,8 @@ class ReminderSchedulerTest {
 		List<ReminderTarget> targets = List.of(
 				new ReminderTarget("user-1", "token-1", "crew-1", "운동 크루")
 		);
-		given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class), any(LocalDate.class)))
+		given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class),
+				any(LocalDate.class)))
 				.willReturn(targets);
 		given(notificationSendPort.send(anyString(), anyString(), anyString(), anyMap()))
 				.willReturn(false);
@@ -152,7 +167,8 @@ class ReminderSchedulerTest {
 				new ReminderTarget("user-1", "token-1", "crew-1", "운동 크루"),
 				new ReminderTarget("user-2", "token-2", "crew-1", "운동 크루")
 		);
-		given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class), any(LocalDate.class)))
+		given(notificationTargetQueryPort.findReminderTargets(any(LocalTime.class), any(LocalTime.class),
+				any(LocalDate.class)))
 				.willReturn(targets);
 		given(notificationSendPort.send(anyString(), anyString(), anyString(), anyMap()))
 				.willReturn(true);

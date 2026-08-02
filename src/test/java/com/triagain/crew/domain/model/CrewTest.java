@@ -89,7 +89,8 @@ class CrewTest {
 		@DisplayName("시작일이 오늘이면 예외가 발생한다")
 		void startDateToday() {
 			assertThatThrownBy(() -> Crew.create("user1", "크루", "목표",
-					"인증 내용", VerificationType.TEXT, 5, LocalDate.now(), NEXT_WEEK, false, null, CrewCategory.EXERCISE, null))
+					"인증 내용", VerificationType.TEXT, 5, LocalDate.now(), NEXT_WEEK, false, null, CrewCategory.EXERCISE,
+							null))
 					.isInstanceOf(BusinessException.class)
 					.extracting("errorCode")
 					.isEqualTo(ErrorCode.INVALID_START_DATE);
@@ -99,7 +100,8 @@ class CrewTest {
 		@DisplayName("시작일이 과거면 예외가 발생한다")
 		void startDatePast() {
 			assertThatThrownBy(() -> Crew.create("user1", "크루", "목표",
-					"인증 내용", VerificationType.TEXT, 5, LocalDate.now().minusDays(1), NEXT_WEEK, false, null, CrewCategory.EXERCISE, null))
+					"인증 내용", VerificationType.TEXT, 5, LocalDate.now().minusDays(1), NEXT_WEEK, false, null,
+							CrewCategory.EXERCISE, null))
 					.isInstanceOf(BusinessException.class)
 					.extracting("errorCode")
 					.isEqualTo(ErrorCode.INVALID_START_DATE);
@@ -175,7 +177,8 @@ class CrewTest {
 		@DisplayName("visibility를 PUBLIC으로 지정하면 PUBLIC으로 생성된다")
 		void visibilityPublic() {
 			Crew crew = Crew.create("user1", "크루", "목표",
-					"인증 내용", VerificationType.TEXT, 5, TOMORROW, NEXT_WEEK, false, null, CrewCategory.STUDY, CrewVisibility.PUBLIC);
+					"인증 내용", VerificationType.TEXT, 5, TOMORROW, NEXT_WEEK, false, null, CrewCategory.STUDY,
+							CrewVisibility.PUBLIC);
 
 			assertThat(crew.getVisibility()).isEqualTo(CrewVisibility.PUBLIC);
 			assertThat(crew.isPublic()).isTrue();
@@ -829,7 +832,8 @@ class CrewTest {
 
 	private Crew crewWithStatus(CrewStatus status, int maxMembers, int currentMembers, boolean allowLateJoin) {
 		List<CrewMember> members = new ArrayList<>();
-		members.add(CrewMember.of("CRMB-1", "leader", "CREW-1", com.triagain.crew.domain.vo.CrewRole.LEADER, LocalDateTime.now()));
+		members.add(CrewMember.of("CRMB-1", "leader", "CREW-1", com.triagain.crew.domain.vo.CrewRole.LEADER,
+				LocalDateTime.now()));
 		for (int i = 1; i < currentMembers; i++) {
 			members.add(CrewMember.of("CRMB-" + (i + 1), "user" + (i + 1), "CREW-1",
 					com.triagain.crew.domain.vo.CrewRole.MEMBER, LocalDateTime.now()));

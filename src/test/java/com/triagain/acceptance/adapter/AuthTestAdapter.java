@@ -21,7 +21,7 @@ public class AuthTestAdapter extends BaseTestAdapter {
 
 	/** Apple 회원가입 — POST /auth/apple-signup. authorizationCode는 @NotBlank 필수 */
 	public ExtractableResponse<Response> appleSignup(String identityToken, String appleId,
-													  String nickname, boolean termsAgreed) {
+													String nickname, boolean termsAgreed) {
 		return givenRequest()
 				.body(Map.of(
 						"identityToken", identityToken,

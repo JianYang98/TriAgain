@@ -16,6 +16,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.AbstractPlatformTransactionManager;
+import org.springframework.transaction.support.DefaultTransactionStatus;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.triagain.common.domain.DeadLetter;
@@ -51,15 +54,23 @@ class CrewStartNotificationSchedulerTest {
 	@BeforeEach
 	void setUp() {
 		TransactionTemplate transactionTemplate = new TransactionTemplate();
-		transactionTemplate.setTransactionManager(new org.springframework.transaction.support.AbstractPlatformTransactionManager() {
+		transactionTemplate.setTransactionManager(new AbstractPlatformTransactionManager() {
 			@Override
-			protected Object doGetTransaction() { return new Object(); }
+			protected Object doGetTransaction() {
+				return new Object();
+			}
+
 			@Override
-			protected void doBegin(Object transaction, org.springframework.transaction.TransactionDefinition definition) {}
+			protected void doBegin(Object transaction, TransactionDefinition definition) {
+			}
+
 			@Override
-			protected void doCommit(org.springframework.transaction.support.DefaultTransactionStatus status) {}
+			protected void doCommit(DefaultTransactionStatus status) {
+			}
+
 			@Override
-			protected void doRollback(org.springframework.transaction.support.DefaultTransactionStatus status) {}
+			protected void doRollback(DefaultTransactionStatus status) {
+			}
 		});
 		ChunkProcessor chunkProcessor = new ChunkProcessor(transactionTemplate);
 

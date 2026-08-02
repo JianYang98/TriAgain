@@ -135,7 +135,7 @@ class ChunkProcessorTest {
 		// When
 		ChunkProcessingResult<String> result = chunkProcessor.execute(
 				List.of("a", "b", "c"), 50,
-				item -> {},
+				item -> { },
 				stale -> {
 					rehydrateCount.incrementAndGet();
 					return stale;

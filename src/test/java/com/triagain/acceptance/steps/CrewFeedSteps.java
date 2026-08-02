@@ -281,7 +281,8 @@ public class CrewFeedSteps {
 			return;
 		}
 		if (userRepositoryPort.findById(userId).isEmpty()) {
-			User user = User.of(userId, "KAKAO", userId + "@test.com", userId, null, null, null, LocalDateTime.now(), LocalDateTime.now(), null, 0);
+			User user = User.of(userId, "KAKAO", userId + "@test.com", userId, null, null, null, LocalDateTime.now(),
+					LocalDateTime.now(), null, 0);
 			userRepositoryPort.save(user);
 		}
 		savedUserIds.add(userId);
@@ -306,12 +307,12 @@ public class CrewFeedSteps {
 		Challenge challenge = challengeRepositoryPort.findByUserIdAndCrewIdAndStatus(
 				userId, crewId, ChallengeStatus.IN_PROGRESS)
 				.orElseGet(() -> {
-					Challenge c = Challenge.of(
+					Challenge newChallenge = Challenge.of(
 							IdGenerator.generate("CHAL"), userId, crewId, 1,
 							3, 0, ChallengeStatus.IN_PROGRESS,
 							LocalDate.now(), LocalDateTime.now().plusDays(3), LocalDateTime.now()
 					);
-					return challengeRepositoryPort.save(c);
+					return challengeRepositoryPort.save(newChallenge);
 				});
 		scenarioContext.setChallengeId(challenge.getId());
 	}

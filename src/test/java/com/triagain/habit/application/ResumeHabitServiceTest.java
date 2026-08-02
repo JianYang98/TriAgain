@@ -75,7 +75,8 @@ class ResumeHabitServiceTest {
 	void endedHabit_throws() {
 		// Given
 		Habit ended = Habit.of(HABIT_ID, USER_ID, "습관", HabitVerificationType.TEXT,
-				LocalTime.of(23, 59, 59), HabitStatus.ENDED, LocalDateTime.now().minusDays(5), LocalDateTime.now(), null);
+				LocalTime.of(23, 59, 59), HabitStatus.ENDED, LocalDateTime.now().minusDays(5), LocalDateTime.now(),
+						null);
 		given(habitRepositoryPort.findByIdForUpdate(HABIT_ID)).willReturn(Optional.of(ended));
 
 		// When & Then

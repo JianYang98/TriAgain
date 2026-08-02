@@ -70,7 +70,8 @@ class FailExpiredChallengesSchedulerTest {
 		}).when(transactionTemplate).execute(any());
 
 		ChunkProcessor chunkProcessor = new ChunkProcessor(transactionTemplate);
-		scheduler = new FailExpiredChallengesScheduler(challengeRepositoryPort, crewRepositoryPort, notificationPort, chunkProcessor, deadLetterRepositoryPort);
+		scheduler = new FailExpiredChallengesScheduler(challengeRepositoryPort, crewRepositoryPort, notificationPort,
+				chunkProcessor, deadLetterRepositoryPort);
 	}
 
 	@Test

@@ -68,7 +68,8 @@ class CompleteExpiredCrewsSchedulerTest {
 		}).when(transactionTemplate).execute(any());
 
 		ChunkProcessor chunkProcessor = new ChunkProcessor(transactionTemplate);
-		scheduler = new CompleteExpiredCrewsScheduler(crewRepositoryPort, challengeRepositoryPort, chunkProcessor, deadLetterRepositoryPort);
+		scheduler = new CompleteExpiredCrewsScheduler(crewRepositoryPort, challengeRepositoryPort, chunkProcessor,
+				deadLetterRepositoryPort);
 	}
 
 	@Test

@@ -75,7 +75,8 @@ class StartHabitCycleServiceTest {
 		given(habitCycleRepositoryPort.save(any())).willAnswer(inv -> inv.getArgument(0));
 
 		// When
-		StartCycleResult result = service.startCycle(new StartHabitCycleCommand(USER_ID, HABIT_ID, CycleStartOption.TODAY));
+		StartCycleResult result = service.startCycle(new StartHabitCycleCommand(USER_ID, HABIT_ID,
+				CycleStartOption.TODAY));
 
 		// Then
 		assertThat(result.created()).isTrue();
@@ -96,7 +97,8 @@ class StartHabitCycleServiceTest {
 		given(habitCycleRepositoryPort.save(any())).willAnswer(inv -> inv.getArgument(0));
 
 		// When
-		StartCycleResult result = service.startCycle(new StartHabitCycleCommand(USER_ID, HABIT_ID, CycleStartOption.TODAY));
+		StartCycleResult result = service.startCycle(new StartHabitCycleCommand(USER_ID, HABIT_ID,
+				CycleStartOption.TODAY));
 
 		// Then
 		assertThat(result.cycle().cycleNumber()).isEqualTo(3);

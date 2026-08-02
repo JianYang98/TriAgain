@@ -49,26 +49,12 @@ class ChallengeExpiredWithoutVerificationIntegrationTest extends E2eTestBase {
 		LocalDate slot = LocalDate.now().minusDays(10);
 		LocalDateTime cycleDeadline = slot.plusDays(3).atTime(23, 59, 59);
 
-		String verifiedUserId = "integ-exp-user-verified";
-		createUser(verifiedUserId);
-		Crew verifiedCrew = createActiveCrew(verifiedUserId);
-		Challenge verifiedChallenge = Challenge.of(
-				IdGenerator.generate("CHAL"), verifiedUserId, verifiedCrew.getId(), 1,
-				3, 0, ChallengeStatus.IN_PROGRESS,
-				slot, cycleDeadline, LocalDateTime.now());
-		challengeRepositoryPort.save(verifiedChallenge);
+		Challenge verifiedChallenge = createExpiredChallenge("integ-exp-user-verified", slot, cycleDeadline);
 		verificationRepositoryPort.save(Verification.createText(
-				verifiedChallenge.getId(), verifiedUserId, verifiedCrew.getId(),
+				verifiedChallenge.getId(), verifiedChallenge.getUserId(), verifiedChallenge.getCrewId(),
 				"완료", slot, 1, 1));
 
-		String unverifiedUserId = "integ-exp-user-unverified";
-		createUser(unverifiedUserId);
-		Crew unverifiedCrew = createActiveCrew(unverifiedUserId);
-		Challenge unverifiedChallenge = Challenge.of(
-				IdGenerator.generate("CHAL"), unverifiedUserId, unverifiedCrew.getId(), 1,
-				3, 0, ChallengeStatus.IN_PROGRESS,
-				slot, cycleDeadline, LocalDateTime.now());
-		challengeRepositoryPort.save(unverifiedChallenge);
+		Challenge unverifiedChallenge = createExpiredChallenge("integ-exp-user-unverified", slot, cycleDeadline);
 
 		// When
 		List<Challenge> expired = challengeRepositoryPort.findExpiredWithoutVerification();
@@ -81,5 +67,21 @@ class ChallengeExpiredWithoutVerificationIntegrationTest extends E2eTestBase {
 		assertThat(expiredIds)
 				.as("슬롯(D)에 인증이 없으면 NOT EXISTS가 참이 되어 만료 목록에 포함되어야 한다")
 				.contains(unverifiedChallenge.getId());
+	}
+
+	// ─────────────────────────────────────────────────────────────
+	// 테스트 헬퍼
+	// ─────────────────────────────────────────────────────────────
+
+	/** 유저·ACTIVE 크루와 함께, 마감(cycleDeadline)이 지난 슬롯의 IN_PROGRESS 챌린지를 만든다 */
+	private Challenge createExpiredChallenge(String userId, LocalDate slot, LocalDateTime cycleDeadline) {
+		createUser(userId);
+		Crew crew = createActiveCrew(userId);
+		Challenge challenge = Challenge.of(
+				IdGenerator.generate("CHAL"), userId, crew.getId(), 1,
+				3, 0, ChallengeStatus.IN_PROGRESS,
+				slot, cycleDeadline, LocalDateTime.now());
+		challengeRepositoryPort.save(challenge);   // 반환값이 아니라 원본을 돌려준다 — 추출 전과 동일하게
+		return challenge;
 	}
 }
