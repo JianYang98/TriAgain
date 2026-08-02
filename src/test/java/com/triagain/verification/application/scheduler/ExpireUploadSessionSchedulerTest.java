@@ -61,7 +61,8 @@ class ExpireUploadSessionSchedulerTest {
 		}).when(transactionTemplate).execute(any());
 
 		ChunkProcessor chunkProcessor = new ChunkProcessor(transactionTemplate);
-		scheduler = new ExpireUploadSessionScheduler(uploadSessionRepositoryPort, chunkProcessor, deadLetterRepositoryPort);
+		scheduler = new ExpireUploadSessionScheduler(
+				uploadSessionRepositoryPort, chunkProcessor, deadLetterRepositoryPort);
 	}
 
 	@Test
