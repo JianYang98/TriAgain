@@ -19,11 +19,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import com.triagain.common.domain.DeadLetter;
+import com.triagain.common.domain.DeadLetterTaskType;
 import com.triagain.common.port.out.DeadLetterRepositoryPort;
 import com.triagain.common.scheduler.ChunkProcessor;
 import com.triagain.verification.domain.model.UploadSession;
@@ -79,8 +82,7 @@ class ExpireUploadSessionSchedulerTest {
 	@DisplayName("PENDING 세션이 EXPIRED로 전환된다")
 	void pendingSession_expiredSuccessfully() {
 		// Given
-		UploadSession session = UploadSession.of(1L, "user-1", "crew-1", "key-1", "image/jpeg",
-				UploadSessionStatus.PENDING, LocalDateTime.now().minusMinutes(20), LocalDateTime.now().minusMinutes(20));
+		UploadSession session = pendingSession(1L);
 
 		given(uploadSessionRepositoryPort.findPendingSessionsBefore(any(LocalDateTime.class)))
 				.willReturn(List.of(session));
@@ -98,10 +100,8 @@ class ExpireUploadSessionSchedulerTest {
 	@DisplayName("여러 세션 동시 만료 처리")
 	void multipleSessions_allExpired() {
 		// Given
-		UploadSession session1 = UploadSession.of(1L, "user-1", "crew-1", "key-1", "image/jpeg",
-				UploadSessionStatus.PENDING, LocalDateTime.now().minusMinutes(20), LocalDateTime.now().minusMinutes(20));
-		UploadSession session2 = UploadSession.of(2L, "user-2", "crew-2", "key-2", "image/png",
-				UploadSessionStatus.PENDING, LocalDateTime.now().minusMinutes(30), LocalDateTime.now().minusMinutes(30));
+		UploadSession session1 = pendingSession(1L);
+		UploadSession session2 = pendingSession(2L);
 
 		given(uploadSessionRepositoryPort.findPendingSessionsBefore(any(LocalDateTime.class)))
 				.willReturn(List.of(session1, session2));
@@ -117,19 +117,15 @@ class ExpireUploadSessionSchedulerTest {
 	}
 
 	@Test
-	@DisplayName("1건 실패해도 나머지는 정상 처리되고 Dead Letter가 기록된다")
-	void oneFailure_doesNotAffectOthers_andDeadLetterSaved() {
+	@DisplayName("청크 저장이 실패해도 개별 재시도가 성공하면 Dead Letter는 기록되지 않는다")
+	void chunkFails_retrySucceeds_noDeadLetter() {
 		// Given
-		UploadSession session1 = UploadSession.of(1L, "user-1", "crew-1", "key-1", "image/jpeg",
-				UploadSessionStatus.PENDING, LocalDateTime.now().minusMinutes(20), LocalDateTime.now().minusMinutes(20));
-		UploadSession session2 = UploadSession.of(2L, "user-2", "crew-2", "key-2", "image/png",
-				UploadSessionStatus.PENDING, LocalDateTime.now().minusMinutes(30), LocalDateTime.now().minusMinutes(30));
+		UploadSession session1 = pendingSession(1L);
+		UploadSession session2 = pendingSession(2L);
 
 		// rehydrator용 fresh 인스턴스
-		UploadSession freshSession1 = UploadSession.of(1L, "user-1", "crew-1", "key-1", "image/jpeg",
-				UploadSessionStatus.PENDING, LocalDateTime.now().minusMinutes(20), LocalDateTime.now().minusMinutes(20));
-		UploadSession freshSession2 = UploadSession.of(2L, "user-2", "crew-2", "key-2", "image/png",
-				UploadSessionStatus.PENDING, LocalDateTime.now().minusMinutes(30), LocalDateTime.now().minusMinutes(30));
+		UploadSession freshSession1 = pendingSession(1L);
+		UploadSession freshSession2 = pendingSession(2L);
 
 		given(uploadSessionRepositoryPort.findPendingSessionsBefore(any(LocalDateTime.class)))
 				.willReturn(List.of(session1, session2));
@@ -152,4 +148,52 @@ class ExpireUploadSessionSchedulerTest {
 		verify(deadLetterRepositoryPort, never()).save(any());
 	}
 
+	@Test
+	@DisplayName("재시도까지 실패하면 그 건만 Dead Letter에 유형·대상·사유가 기록된다")
+	void retryAlsoFails_savesDeadLetterWithTaskTypeAndTarget() {
+		// Given — 2건 중 2번 세션만 재시도까지 실패한다
+		LocalDateTime past = LocalDateTime.now().minusMinutes(20);
+		UploadSession session1 = pendingSession(1L);
+		UploadSession session2 = pendingSession(2L);
+
+		// rehydrator용 fresh 인스턴스
+		UploadSession freshSession1 = pendingSession(1L);
+		UploadSession freshSession2 = pendingSession(2L);
+
+		given(uploadSessionRepositoryPort.findPendingSessionsBefore(any(LocalDateTime.class)))
+				.willReturn(List.of(session1, session2));
+		given(uploadSessionRepositoryPort.findById(1L)).willReturn(Optional.of(freshSession1));
+		given(uploadSessionRepositoryPort.findById(2L)).willReturn(Optional.of(freshSession2));
+		// 메시지를 나눠 둔다 — 기록되는 사유가 청크 예외가 아니라 재시도 예외임을 고정하기 위해서다
+		given(uploadSessionRepositoryPort.save(any()))
+				.willThrow(new RuntimeException("청크 저장 실패"))   // 청크 전체 시도
+				.willAnswer(inv -> inv.getArgument(0))             // 1번 세션 재시도 성공
+				.willThrow(new RuntimeException("재시도 실패"));     // 2번 세션 재시도 실패
+
+		// When & Then — 예외 전파 없음
+		assertThatCode(() -> scheduler.expirePendingSessions())
+				.doesNotThrowAnyException();
+
+		// 재시도가 성공한 건은 EXPIRED 로 남는다 — 부분 실패가 전체를 망치지 않는다
+		assertThat(freshSession1.getStatus()).isEqualTo(UploadSessionStatus.EXPIRED);
+
+		// 실패한 건만 Dead Letter 로 간다. 대상이 2번인지까지 봐야 id 오기록을 잡는다
+		ArgumentCaptor<DeadLetter> captor = ArgumentCaptor.forClass(DeadLetter.class);
+		verify(deadLetterRepositoryPort, times(1)).save(captor.capture());
+		DeadLetter saved = captor.getValue();
+		assertThat(saved.getTaskType()).isEqualTo(DeadLetterTaskType.SESSION_EXPIRE);
+		assertThat(saved.getTargetId()).isEqualTo("2");
+		assertThat(saved.getErrorMessage()).isEqualTo("재시도 실패");
+	}
+
+	// ─────────────────────────────────────────────────────────────
+	// 테스트 헬퍼
+	// ─────────────────────────────────────────────────────────────
+
+	/** 만료 대상 PENDING 세션. 컨텐츠타입·시각은 어느 단언에도 쓰이지 않아 고정값이다 */
+	private UploadSession pendingSession(long id) {
+		LocalDateTime past = LocalDateTime.now().minusMinutes(20);
+		return UploadSession.of(id, "user-" + id, "crew-" + id, "key-" + id, "image/jpeg",
+				UploadSessionStatus.PENDING, past, past);
+	}
 }
