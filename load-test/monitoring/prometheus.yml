@@ -1,0 +1,11 @@
+# Prometheus scrape config — TriAgain 부하테스트용
+# EC2_HOST_PLACEHOLDER는 start-monitoring.sh에서 실제 EC2 IP로 치환됨
+
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: 'triagain'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['EC2_HOST_PLACEHOLDER:8080']

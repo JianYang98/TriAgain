@@ -18,9 +18,24 @@ spring:
     deserialization:
       fail-on-unknown-properties: false
 
+  task:
+    scheduling:
+      pool:
+        size: 4
+      thread-name-prefix: sched-
+
   flyway:
     baseline-on-migrate: true
     baseline-version: 6
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,metrics
+  metrics:
+    tags:
+      application: triagain
 
 jwt:
   secret: ${JWT_SECRET:dGVzdC1zZWNyZXQta2V5LWZvci1sb2NhbC1kZXZlbG9wbWVudC1vbmx5LXRyaWFnYWlu}
