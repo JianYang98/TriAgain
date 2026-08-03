@@ -16,6 +16,10 @@ incidental-whitespace 계산에 참여하므로 닫는 줄까지 보존한다).
 통과하며 그 본문이 탭화된다 — 4스페이스가 1탭이 되어 상대 들여쓰기가
 압축되므로 문자열 **값 자체가 바뀐다**. 그래서 주석 안 \"\"\" 를 만나면
 고치지 않고 죽는다. 판별이 애매하면 사람을 부르는 게 이 스크립트의 방침이다.
+
+블록 주석 상태는 렉서 없이 `/*`·`*/` 의 마지막 위치로만 근사한다. 문자열
+리터럴 안의 `/*` 를 주석 시작으로 오해할 수 있는데, 그 방향의 실수는 멀쩡한
+파일에서 죽는 것이라 사람이 보게 된다 — 조용히 변조되는 반대 방향보다 낫다.
 """
 import argparse
 import pathlib
@@ -31,17 +35,23 @@ def tabify(line):
 
 
 def convert(text, path):
-    out, inside = [], False
+    out, inside, in_block = [], False, False
     for no, line in enumerate(text.split('\n'), 1):
         if line.count('"""') > 1:
             raise SystemExit(f'{path}:{no} — 한 줄에 """ 가 2회. 토글 판별 불가하니 수동 확인.')
         if '"""' in line:
             head = line.split('"""')[0]
-            if head.lstrip().startswith(('//', '/*', '*')) or '//' in head:
+            if in_block or '//' in head or '/*' in head:
                 raise SystemExit(f'{path}:{no} — 주석 안에 """ 가 있다. 토글이 뒤집히니 수동 확인.')
         out.append(line if inside else tabify(line))
         if '"""' in line:
             inside = not inside
+        if not inside:                       # 텍스트 블록 본문의 /* 는 주석이 아니다
+            opened, closed = line.rfind('/*'), line.rfind('*/')
+            if opened > closed:
+                in_block = True
+            elif closed > opened:
+                in_block = False
     if inside:
         raise SystemExit(f'{path} — 텍스트 블록이 닫히지 않았다.')
     return '\n'.join(out)
