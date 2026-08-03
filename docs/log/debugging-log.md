@@ -14,6 +14,21 @@
 
 ---
 
+[긴급] 사유: prod TLS 인증서 만료(api.triagain.kr, 13:34 KST 만료)로 전 유저 API 접속 불가·CloudWatch 무유입 | 생략: 티어판정(원래 Tier 3)·SDD·PR리뷰 | 조치: certbot 갱신+nginx reload(운영자 직접 실행) | 소급기한: 07-10 | 2026-07-08
+
+[긴급→소급] 원래 Tier: 3 (SSL/인프라 보안) | 사후검증: 코드 무변경(서버 설정만) — 실갱신 성공 + 로컬 openssl verify 0(ok) + /health 200(-k 없이) + certbot-renew.timer enable로 갱신 경로 확보 | 2026-07-08
+
+---
+
+### [2026-07-08] prod TLS 인증서 만료 장애 — certbot-renew.timer disabled가 근본 원인
+
+- 상황: 13:34 KST에 api.triagain.kr의 Let's Encrypt 인증서 만료(4/9 발급 + 정확히 90일). 모든 클라이언트가 TLS 핸드셰이크에서 거부되어 요청이 앱까지 도달 못함 → CloudWatch 무유입이 "서버 다운"처럼 보였고, 앱 재기동 3회(14:54/15:00/15:50)는 무효과. 시뮬레이터에서는 `CERTIFICATE_VERIFY_FAILED: application verification failure`
+- 내 판단: (1) 로컬 openssl 실측으로 만료 확정 + `curl -k` health 200으로 "서버·앱은 정상, TLS 계층만 잠김"을 분리 진단 — 재배포 중단하고 인증서 갱신으로 직행. (2) 긴급 프로토콜 발동(실유저 영향 진행 중, 원래 Tier 3), 서버 조치는 운영자 직접 실행. (3) 복구는 `sudo certbot renew` 1회로 완료 — authenticator=nginx라 리로드까지 자동. (4) 근본 원인은 certbot-renew.timer가 설치만 되고 **disabled** 상태였던 것 → `systemctl enable --now certbot-renew.timer`로 재발 방지. triagain.kr이 9/6까지 유효했던 건 6/8 수동 발급 흔적(자동 갱신 아님)
+- AI 역할: openssl/curl/dig 원격 진단으로 원인 확정, CloudWatch CSV 타임라인 분석(13:04 FCM 성공 → 13:34 만료 → 트래픽 소멸), 양 레포 탐색으로 TLS 종료 계층이 레포 밖(호스트 nginx + certbot)임을 규명, EC2 명령 가이드 + 로컬 검증
+- 배운 점: (1) "CloudWatch 잠잠 + 클라이언트 handshake 에러" 조합 = 앱이 아니라 TLS/프록시 계층부터 확인 — 재배포로는 못 고친다. (2) 레포 밖 수동 인프라(호스트 nginx, certbot)는 소스 관리·체크리스트에 안 잡혀 장애가 만료일까지 잠복한다 — 구성 즉시 문서화 필수. (3) certbot은 설치 ≠ 자동 갱신: timer/cron enable 여부를 반드시 확인
+
+---
+
 ### [2026-06-13] FCM 키 스모크 테스트 엔드포인트 추가 (POST /internal/fcm-test)
 
 - 상황: 2026-06-12 Firebase 서비스계정 키 무효(401)로 FCM 전멸. 발송 4경로가 전부 cron/이벤트/비활성이라 다음 cron까지 장애 탐지 불가. 키 로테이션·배포 직후 즉시 검증할 단건 스모크 엔드포인트 필요

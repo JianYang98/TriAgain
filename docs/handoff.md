@@ -258,7 +258,7 @@ PR 리뷰 후속 개선 항목 4건:
 - AWS S3 버킷/CORS 설정
 - `/internal/**` VPC 접근 제어
 - DB 마이그레이션 도구 도입 (Flyway/Liquibase)
-- SSL/HTTPS, Health check
+- SSL/HTTPS(✅ EC2 호스트 nginx + certbot, 2026-07-08 자동 갱신 타이머 등록 — checklist 참조), Health check
 
 ### 6.3 Phase 1 남은 작업
 
