@@ -10,6 +10,12 @@ incidental-whitespace 계산에 참여하므로 닫는 줄까지 보존한다).
 보존을 끄는 옵션은 두지 않는다. 끄고 싶은 상황이 없을뿐더러, 제외 대상을
 손으로 관리하면 새 텍스트 블록이 조용히 변조된다. 반대 방향의 실수(보존이
 과해 스페이스가 남음)는 maxWarnings=0 이라 빌드가 시끄럽게 깨진다.
+
+경계는 줄 단위 토글로 잡으므로 **주석 안의 \"\"\" 에 속는다.** 홀수 개면
+"닫히지 않았다"로 죽지만, 짝수 개가 진짜 텍스트 블록을 감싸면 경고 없이
+통과하며 그 본문이 탭화된다 — 4스페이스가 1탭이 되어 상대 들여쓰기가
+압축되므로 문자열 **값 자체가 바뀐다**. 그래서 주석 안 \"\"\" 를 만나면
+고치지 않고 죽는다. 판별이 애매하면 사람을 부르는 게 이 스크립트의 방침이다.
 """
 import argparse
 import pathlib
@@ -29,6 +35,10 @@ def convert(text, path):
     for no, line in enumerate(text.split('\n'), 1):
         if line.count('"""') > 1:
             raise SystemExit(f'{path}:{no} — 한 줄에 """ 가 2회. 토글 판별 불가하니 수동 확인.')
+        if '"""' in line:
+            head = line.split('"""')[0]
+            if head.lstrip().startswith(('//', '/*', '*')) or '//' in head:
+                raise SystemExit(f'{path}:{no} — 주석 안에 """ 가 있다. 토글이 뒤집히니 수동 확인.')
         out.append(line if inside else tabify(line))
         if '"""' in line:
             inside = not inside
