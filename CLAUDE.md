@@ -78,6 +78,9 @@ Phase B 구현 중 문서에 없는 결정이 필요하면 멈추고 문서부�
 - 네이버 Java 코딩 컨벤션 기반 (`config/checkstyle/triagain-checkstyle-rules.xml`)
 - 메소드 길이: 최대 30줄 — 여는 중괄호 줄부터 닫는 중괄호 줄까지, 빈 줄·주석 줄 제외
   (그래서 여러 줄 시그니처는 안 세어진다). 정본은 checkstyle `MethodLength`.
+- import 순서: static(알파벳순) → `java.` → `javax.` → `jakarta.` → `org.` → `net.` → `com.*`(naver 제외)
+  → 그 외(lombok 등) → `com.naver` 계열. **그룹 간 빈 줄 필수.** 정본은 rules.xml `ImportOrder`.
+  어긋나면 hook이 편집을 거절하니 `scripts/reorder-imports.py` 로 일괄 정렬한다.
 - .java 파일 수정 시 Claude Code Hook이 자동으로 Checkstyle 실행 (`src/main`·`src/test` 모두)
 - 위반 발견 시 반드시 수정 후 다음 작업 진행
 - 테스트 소스는 서프레션 파일이 다르다 (`…-suppressions-test.xml`) — 한글 테스트·스텝명 면제
