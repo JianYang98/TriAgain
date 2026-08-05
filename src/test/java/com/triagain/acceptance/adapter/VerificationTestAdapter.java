@@ -5,18 +5,18 @@ import io.restassured.response.Response;
 
 public class VerificationTestAdapter extends BaseTestAdapter {
 
-    public VerificationTestAdapter(int port) {
-        super(port);
-    }
+	public VerificationTestAdapter(int port) {
+		super(port);
+	}
 
-    /** 인증 생성 — POST /verifications */
-    public ExtractableResponse<Response> createVerification(String userId, Object request) {
-        return givenAuthRequest(userId)
-                .body(request)
-                .when()
-                .post("/verifications")
-                .then()
-                .log().ifError()
-                .extract();
-    }
+	/** 인증 생성 — POST /verifications */
+	public ExtractableResponse<Response> createVerification(String userId, Object request) {
+		return givenAuthRequest(userId)
+				.body(request)
+				.when()
+				.post("/verifications")
+				.then()
+				.log().ifError()
+				.extract();
+	}
 }

@@ -5,12 +5,36 @@
 
 ---
 
+### [2026-08-03] tabify 주석 함정 차단 — 트리거 지난 추후고려 항목이 실은 미확인 사고였다
+
+- 상황: `future-considerations.md`의 `[2026-07-31] scripts/tabify.py` 항목이 "필요 시점: **`src/test`에 tabify를 다시 돌리기 전**"이라 적혀 있었는데, 그 실행이 이미 `4acf044`(PR #133, 08-01)로 끝나 있었다. 문구 정리가 아니라 사고 조사가 먼저였다. 조사 결과 **피해 0** — 당시 부분 가드(`b8ae0ae`)가 이미 들어가 있었고, `src/test`의 유일한 텍스트블록 보유 파일 `AppleOAuthAdapterTest.java`의 본문이 보존돼 있었다. 다만 구멍은 살아 있었다: `convert()`가 `"""`를 볼 때마다 `inside`를 토글만 해서 **주석 안 `"""`가 짝수 개면 무경고로 통과**하고 텍스트블록 본문이 탭화된다. 스페이스 4가 탭 1이 되며 상대 들여쓰기가 압축돼 **문자열 값이 실제로 바뀐다**(`javac`로 컴파일해 확인)
+- 내 판단: (1) 항목을 다시 쓰지 않고 **막고 지웠다** — 다시 쓰면 이월이 반복되고, 그게 PR #126에서 걷어낸 4개월 방치 패턴이다. 삭제는 PR #131(`272c08f`) 전례대로. (2) 렉서를 짜지 않고 **감지 후 SystemExit** — 오탐 방향이 "멀쩡한 파일에서 죽는 것"이라 조용히 변조되는 반대 방향보다 낫다. (3) **회귀 테스트 기각** — 저장소에 파이썬 테스트가 0개라 하네스를 새로 깔아야 하는데, 대상은 마이그레이션이 끝나 CI·gradle·hook 어디서도 호출되지 않는 일회성 도구다
+- AI 역할: 노트의 "SQL이 조용히 바뀐다"는 주장을 그대로 믿지 않고 컴파일해 값까지 확인했다. **CodeRabbit의 "블록 주석은 못 잡는다" 지적을 재현했더니 "잡힌다"가 나와 오탐으로 닫을 뻔했다** — 왜 잡혔는지 파고드니 내 가드가 아니라 무관한 옛 가드(주석 `"""`가 홀수면 "블록이 안 닫혔다")가 우연히 걸러낸 것이었고, 짝수로 다시 만드니 뚫렸다. 지적이 사실이어서 반영(`f66bf39`)
+- 배운 점: **"막혔다"는 "내가 막았다"를 증명하지 않는다.** 검증이 통과했을 때 *왜* 통과했는지 한 문장으로 설명할 수 없으면 아직 안 끝난 것이다. 그리고 미래형 메모("~하기 전에 X 할 것")는 **시제부터** 확인해야 한다 — 트리거가 지났다면 낡은 문구가 아니라 아직 안 읽은 사고 보고서다
+
+---
+
 ### [2026-07-23] 만료 챌린지 스케줄러 lost update — 조건부 UPDATE로 교체 (D14-b)
 
 - 상황: `FailExpiredChallengesScheduler`가 `findExpiredWithoutVerification()`을 **청크 트랜잭션 밖**(`:42`)에서 조회한 뒤, 그 스냅샷으로 `challenge.fail(); save(challenge)`를 수행(`:49-52`). `ChallengeJpaEntity`에 `@Version`도 `@DynamicUpdate`도 없어 `save()`가 전 컬럼 UPDATE라, 조회~저장 사이에 유저가 인증을 커밋하면 낡은 `completed_days` + `FAILED`로 덮어써 **유저의 성공이 실패로 뒤집힌다**. 예외도 DeadLetter도 없고 로그엔 "성공 1건"으로 남아 조용히 데이터가 틀어진다. 인증 창(마감+grace 5분)과 스케줄러 창(마감+5분 초과)이 밀리초 단위로만 겹쳐 발생 확률이 낮았을 뿐, 구조적으로 열려 있었다. 인증 취소·수정(SDD verification-cancel)이 들어오면 같은 행에 쓰는 주체가 3개가 되므로 선행 수정
 - 내 판단: (1) **크루 참여 전략 C 선례를 그대로 따랐다** — `JoinCrewService:102-105` + `CrewJpaRepository.incrementMembersIfNotFull`처럼 도메인 메서드(`challenge.fail()`)는 유지하고 경합 조건만 DB predicate로 위임(`failIfUnchanged(id, expectedCompletedDays)`). `fail()`을 지우면 상태 전이 규칙이 SQL로 새어 헥사고날 경계가 무너진다. (2) `affected == 0`은 **오류가 아니라 정상 스킵** — 예외를 던지면 rehydrate 재시도 → 또 0 → DeadLetter 오염이라 기각. (3) **알림 대상 보정**: `ChunkProcessor.processor`가 `Consumer`라 스킵 건도 `successItems`에 포함되므로, 스킵 여부를 `Map<id, Boolean>`에 기록해 알림 대상에서 필터. 공용 엔진(`ChunkProcessor`, 스케줄러 6곳 공유)은 무변경. 알림은 현재 비활성이지만 "on/off UI 구현 후 복원" TODO가 있어 복원 시 터질 것을 지금 닫았다. (4) `@Version` 추가는 기각 — 조건부 UPDATE가 이미 compare-and-set이라 중복이고 다른 경로에 파급
 - AI 역할: 오케스트레이터가 지시서를 실제 코드로 그라운딩(`ChunkProcessor` rehydrator 발동 조건·엔티티 어노테이션 부재·컬럼명 schema.md 대조)하고 sonnet이 구현. **사용자가 "`skippedIds.remove()` 분기가 실제로 도달하냐"고 물은 것이 설계 결함을 잡아냈다** — 추적해보니 도달 경로는 있었고(같은 청크의 *다른* 항목이 예외를 던지면 0행이던 건도 함께 재시도됨), 그 경로에서 기대치를 **rehydrate된 fresh 인스턴스**에서 읽고 있어 "DB 값 vs DB 값" 비교로 compare-and-set이 무효화되는 상태였다. 원본 스냅샷 맵으로 기대치를 고정해 수정
 - 배운 점: **compare-and-set의 기대값은 "경합을 감지하려는 그 시점의 스냅샷"에서 와야 한다.** 값을 어디서 읽는지가 곧 감지 창의 정의다 — 재시도 경로에서 무심코 최신값을 읽으면 가드가 문법적으로는 멀쩡한 채 의미만 사라진다(테스트도 통과한다). 그리고 이 구멍은 수정 전 코드의 재시도 경로에도 이미 있었다: 조회 결과를 여러 트랜잭션에 걸쳐 처리하는 배치는 "재시도 시 무엇을 다시 읽고 무엇을 고정할지"를 명시적으로 정해야 한다
+
+---
+
+[긴급] 사유: prod TLS 인증서 만료(api.triagain.kr, 13:34 KST 만료)로 전 유저 API 접속 불가·CloudWatch 무유입 | 생략: 티어판정(원래 Tier 3)·SDD·PR리뷰 | 조치: certbot 갱신+nginx reload(운영자 직접 실행) | 소급기한: 07-10 | 2026-07-08
+
+[긴급→소급] 원래 Tier: 3 (SSL/인프라 보안) | 사후검증: 코드 무변경(서버 설정만) — 실갱신 성공 + 로컬 openssl verify 0(ok) + /health 200(-k 없이) + certbot-renew.timer enable로 갱신 경로 확보 | 2026-07-08
+
+---
+
+### [2026-07-08] prod TLS 인증서 만료 장애 — certbot-renew.timer disabled가 근본 원인
+
+- 상황: 13:34 KST에 api.triagain.kr의 Let's Encrypt 인증서 만료(4/9 발급 + 정확히 90일). 모든 클라이언트가 TLS 핸드셰이크에서 거부되어 요청이 앱까지 도달 못함 → CloudWatch 무유입이 "서버 다운"처럼 보였고, 앱 재기동 3회(14:54/15:00/15:50)는 무효과. 시뮬레이터에서는 `CERTIFICATE_VERIFY_FAILED: application verification failure`
+- 내 판단: (1) 로컬 openssl 실측으로 만료 확정 + `curl -k` health 200으로 "서버·앱은 정상, TLS 계층만 잠김"을 분리 진단 — 재배포 중단하고 인증서 갱신으로 직행. (2) 긴급 프로토콜 발동(실유저 영향 진행 중, 원래 Tier 3), 서버 조치는 운영자 직접 실행. (3) 복구는 `sudo certbot renew` 1회로 완료 — authenticator=nginx라 리로드까지 자동. (4) 근본 원인은 certbot-renew.timer가 설치만 되고 **disabled** 상태였던 것 → `systemctl enable --now certbot-renew.timer`로 재발 방지. triagain.kr이 9/6까지 유효했던 건 6/8 수동 발급 흔적(자동 갱신 아님)
+- AI 역할: openssl/curl/dig 원격 진단으로 원인 확정, CloudWatch CSV 타임라인 분석(13:04 FCM 성공 → 13:34 만료 → 트래픽 소멸), 양 레포 탐색으로 TLS 종료 계층이 레포 밖(호스트 nginx + certbot)임을 규명, EC2 명령 가이드 + 로컬 검증
+- 배운 점: (1) "CloudWatch 잠잠 + 클라이언트 handshake 에러" 조합 = 앱이 아니라 TLS/프록시 계층부터 확인 — 재배포로는 못 고친다. (2) 레포 밖 수동 인프라(호스트 nginx, certbot)는 소스 관리·체크리스트에 안 잡혀 장애가 만료일까지 잠복한다 — 구성 즉시 문서화 필수. (3) certbot은 설치 ≠ 자동 갱신: timer/cron enable 여부를 반드시 확인
 
 ---
 

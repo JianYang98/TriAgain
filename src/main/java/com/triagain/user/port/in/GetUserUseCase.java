@@ -4,8 +4,10 @@ import java.time.LocalDateTime;
 
 public interface GetUserUseCase {
 
-    UserResult getUser(String userId);
+	UserResult getUser(String userId);
 
-    record UserResult(String id, String provider, String email, String nickname, String profileImageUrl, LocalDateTime createdAt) {
-    }
+	record UserResult(
+			String id, String provider, String email, String nickname,
+			String profileImageUrl, LocalDateTime createdAt) {
+	}
 }

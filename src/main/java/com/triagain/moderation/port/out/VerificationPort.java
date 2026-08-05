@@ -5,23 +5,23 @@ import java.util.Optional;
 
 public interface VerificationPort {
 
-    void hideVerification(String verificationId);
+	void hideVerification(String verificationId);
 
-    void rejectVerification(String verificationId);
+	void rejectVerification(String verificationId);
 
-    void approveVerification(String verificationId);
+	void approveVerification(String verificationId);
 
-    int incrementReportCount(String verificationId);
+	int incrementReportCount(String verificationId);
 
-    Optional<VerificationInfo> findVerificationById(String verificationId);
+	Optional<VerificationInfo> findVerificationById(String verificationId);
 
-    record VerificationInfo(
-            String id,
-            String challengeId,
-            String userId,
-            String crewId,
-            int reportCount,
-            LocalDate targetDate
-    ) {
-    }
+	record VerificationInfo(
+			String id,
+			String challengeId,
+			String userId,
+			String crewId,
+			int reportCount,
+			LocalDate targetDate
+	) {
+	}
 }

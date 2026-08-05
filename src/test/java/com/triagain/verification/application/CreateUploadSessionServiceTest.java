@@ -28,6 +28,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
+import com.triagain.common.port.out.StoragePort;
 import com.triagain.verification.domain.model.UploadSession;
 import com.triagain.verification.port.in.CreateUploadSessionUseCase.CreateUploadSessionCommand;
 import com.triagain.verification.port.out.ChallengePort;
@@ -35,7 +36,6 @@ import com.triagain.verification.port.out.ChallengePort.ActiveChallengeInfo;
 import com.triagain.verification.port.out.CrewPort;
 import com.triagain.verification.port.out.CrewPort.CrewVerificationWindowInfo;
 import com.triagain.verification.port.out.HabitPort;
-import com.triagain.common.port.out.StoragePort;
 import com.triagain.verification.port.out.UploadSessionRepositoryPort;
 
 @ExtendWith(MockitoExtension.class)

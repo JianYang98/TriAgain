@@ -14,6 +14,9 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -38,8 +41,6 @@ import com.triagain.habit.port.out.HabitRepositoryPort;
 
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 
 /**
  * 솔로 인증 더블탭(POST /habits/&#123;habitId&#125;/verifications 2회) — 지는 쪽 에러코드 계약.

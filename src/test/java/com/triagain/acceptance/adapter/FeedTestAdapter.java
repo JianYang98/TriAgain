@@ -5,28 +5,28 @@ import io.restassured.response.Response;
 
 public class FeedTestAdapter extends BaseTestAdapter {
 
-    public FeedTestAdapter(int port) {
-        super(port);
-    }
+	public FeedTestAdapter(int port) {
+		super(port);
+	}
 
-    /** 크루 피드 조회 — GET /crews/{crewId}/feed */
-    public ExtractableResponse<Response> getFeed(String userId, String crewId) {
-        return givenAuthRequest(userId)
-                .when()
-                .get("/crews/" + crewId + "/feed")
-                .then()
-                .log().ifError()
-                .extract();
-    }
+	/** 크루 피드 조회 — GET /crews/{crewId}/feed */
+	public ExtractableResponse<Response> getFeed(String userId, String crewId) {
+		return givenAuthRequest(userId)
+				.when()
+				.get("/crews/" + crewId + "/feed")
+				.then()
+				.log().ifError()
+				.extract();
+	}
 
-    /** 크루 피드 페이지 조회 — GET /crews/{crewId}/feed?page={page} */
-    public ExtractableResponse<Response> getFeed(String userId, String crewId, int page) {
-        return givenAuthRequest(userId)
-                .queryParam("page", page)
-                .when()
-                .get("/crews/" + crewId + "/feed")
-                .then()
-                .log().ifError()
-                .extract();
-    }
+	/** 크루 피드 페이지 조회 — GET /crews/{crewId}/feed?page={page} */
+	public ExtractableResponse<Response> getFeed(String userId, String crewId, int page) {
+		return givenAuthRequest(userId)
+				.queryParam("page", page)
+				.when()
+				.get("/crews/" + crewId + "/feed")
+				.then()
+				.log().ifError()
+				.extract();
+	}
 }

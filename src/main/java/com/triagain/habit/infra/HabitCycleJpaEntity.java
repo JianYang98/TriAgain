@@ -3,15 +3,15 @@ package com.triagain.habit.infra;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-import com.triagain.habit.domain.model.HabitCycle;
-import com.triagain.habit.domain.vo.HabitCycleStatus;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+
+import com.triagain.habit.domain.model.HabitCycle;
+import com.triagain.habit.domain.vo.HabitCycleStatus;
 
 @Entity
 @Table(name = "habit_cycles")

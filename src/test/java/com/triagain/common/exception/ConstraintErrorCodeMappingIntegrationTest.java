@@ -1,5 +1,7 @@
 package com.triagain.common.exception;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.time.LocalDate;
 
 import org.junit.jupiter.api.DisplayName;
@@ -17,8 +19,6 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 import com.triagain.common.response.ApiResponse;
 import com.triagain.habit.domain.model.HabitVerification;

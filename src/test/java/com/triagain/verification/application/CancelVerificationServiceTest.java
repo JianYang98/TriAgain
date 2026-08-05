@@ -1,5 +1,14 @@
 package com.triagain.verification.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -12,15 +21,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
@@ -76,7 +76,8 @@ class CancelVerificationServiceTest {
 	}
 
 	private static CrewVerificationWindowInfo windowInfo(LocalTime deadlineTime) {
-		return new CrewVerificationWindowInfo("TEXT", "ACTIVE", SLOT.minusDays(30), SLOT.plusDays(30), false, deadlineTime);
+		return new CrewVerificationWindowInfo("TEXT", "ACTIVE", SLOT.minusDays(30), SLOT.plusDays(30), false,
+				deadlineTime);
 	}
 
 	@Test

@@ -15,7 +15,13 @@ fi
 PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 JAR="$PROJECT_ROOT/config/checkstyle/checkstyle-10.21.1-all.jar"
 CONFIG="$PROJECT_ROOT/config/checkstyle/triagain-checkstyle-rules.xml"
-SUPPRESSIONS="$PROJECT_ROOT/config/checkstyle/triagain-checkstyle-suppressions.xml"
+
+# gradle 과 같은 분기다 (build.gradle 의 tasks.named('checkstyleTest')).
+# 두 정책이 갈라지면 gradle 이 통과시키는 걸 훅만 막거나, 그 반대가 된다. 바꿀 땐 둘 다 바꾼다.
+case "$FILE_PATH" in
+  */src/test/*) SUPPRESSIONS="$PROJECT_ROOT/config/checkstyle/triagain-checkstyle-suppressions-test.xml" ;;
+  *)            SUPPRESSIONS="$PROJECT_ROOT/config/checkstyle/triagain-checkstyle-suppressions.xml" ;;
+esac
 
 # jar 없으면 스킵 (블로킹하지 않음)
 if [[ ! -f "$JAR" ]]; then

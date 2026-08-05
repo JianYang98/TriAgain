@@ -6,12 +6,45 @@
 
 ---
 
+> 📌 아래 3건은 PR #126(checkstyle 서프레션 해체) 리뷰에서 나왔다. 전부 코드 의미를 바꾸는
+> 수정이라 그 PR의 바이트코드 동일성 증명을 깨뜨려 이관했다.
+> (같이 이관됐던 "메서드 길이 30줄 정의 불일치"는 PR #130에서 해결돼 지웠다.
+> 확정된 규칙은 `CLAUDE.md` 의 "메소드 길이" 항목에 있다.
+> tabify 의 주석 속 `"""` 함정도 감지 가드가 들어가 지웠다 —
+> 함정의 내용과 죽이는 이유는 `scripts/tabify.py` docstring 에 있다.)
+
+### [2026-07-31] 초대코드 생성이 `Math.random()` — `SecureRandom` 전환 검토
+
+- 현재 상태: `Crew.generateInviteCode()`가 `Math.random()`으로 31자 중 6자를 뽑는다(31⁶ ≈ 8.9억). `Math.random()`은 48비트 LCG인 `java.util.Random` 하나를 공유한다.
+- 필요 시점: 비공개 크루가 늘어 초대코드가 실질적 접근 통제 수단이 될 때
+- 이유: LCG는 출력을 충분히 모으면 이후 값을 예측할 여지가 있다. Phase 1 규모에서 실효 피해가 작고 전환은 인스턴스 교체 수준이라 미룬다.
+
+### [2026-07-31] `reviews.report_id`에 유니크 제약이 없는데 단건 반환
+
+- 현재 상태: `ReviewJpaRepository.findByReportId`가 `Optional`을 반환하는데, 마이그레이션 전수 확인 결과 `reviews.report_id`에 유니크 제약이 없다.
+- 필요 시점: 한 신고에 리뷰가 2건 이상 생길 수 있는 흐름이 생길 때 (재심사 등)
+- 이유: "신고당 리뷰 1건"이 코드로만 지켜지고 DB로는 안 지켜진다. 깨지면 `IncorrectResultSizeDataAccessException`으로 조회가 실패한다. 유니크 제약을 걸지 `List` 반환으로 바꿀지는 도메인 결정이 먼저다.
+
+### [2026-07-31] `NotificationTargetQueryAdapter`의 다중 조인 네이티브 쿼리 3개 → MyBatis 이관 검토
+
+- 현재 상태: `findReminderTargets` 등 3개가 네이티브 SQL을 `EntityManager`로 직접 실행하고 결과를 수동 매핑한다.
+- 필요 시점: 이 쿼리들을 수정할 일이 생길 때 (그 PR에서 함께)
+- 이유: 기술 선택("JPA=CRUD/쓰기, MyBatis=복잡한 조회")의 경계 밖이지만 동작에 문제가 없고, 이관은 XML 매퍼 신설을 수반한다. 위 [2026-06-12] `CrewJpaAdapter` 항목과 같은 성격이라 함께 볼 것.
+
 ### [2026-07-26] 부하서버 GC를 Serial → G1으로 전환할지 (측정 완료, 전환 보류)
 
 - 현재 상태: 부하서버 JVM = **Serial GC** (1GiB 에르고노믹스). 2026-07-13/14 Serial↔G1 통제쌍 실험 완료 — 8블록(2밤 × 2전략 PESS/COND × 2암 게이트 on/off). 정본: `load-test/results/0714/serial-vs-g1/` 통합비교 4쌍.
 - 결정 (2026-07-26, Issue #97 종결): **측정만 하고 전환 보류.** G1은 런중 Major GC 오염을 소멸시키나(전략 교차 2/2 확정), 체감 지연인 **완료 p95는 Serial ≈ G1**으로 밤간 노이즈 봉투 안(판정 유보) → 전환을 정당화할 개선이 안 보임.
 - 필요 시점: 부하가 커져 런중 Major GC 오염이 실제 p95를 흔드는 규모에 도달하거나, 힙을 키워 Serial STW가 문제되는 시점. 그때 재평가.
 - 근거 상세: `load-test/results/0714/serial-vs-g1/Serial-vs-G1_통합비교-4쌍.md` §7 — ①오염 소멸=확정, ④기저 p95 우열=유보, ⑤커널 SYN drop=GC 독립, ⑥할당 불변식 0.46~0.51MB/도달 8/8.
+
+### [2026-07-11] 솔로 인증 마감 검증을 사이클-끝 → 슬롯별 마감으로 정렬 (deadlineTime FE 노출 시)
+
+- 현재 상태: `CreateHabitVerificationService`가 마감 검증(텍스트 122행·사진 107행)에 `cycle.getDeadline()`(= `startDate + 3일` at deadlineTime, **사이클 끝**)을 쓴다. 스케줄러 `findExpiredWithoutVerification`는 **슬롯별 마감**(`start_date + completed_days` at deadlineTime + 5분)으로 실패 판정 → 검증-수락 경계와 스케줄러-실패 경계의 기준이 다르다. 그날 슬롯 마감을 넘긴 인증이 스케줄러가 사이클을 FAILED로 처리하기 전(~5분 창) 수락될 수 있다.
+- 발현 조건(둘 다 필요): (1) **커스텀 deadlineTime** — 기본 23:59:59는 grace가 자정을 넘겨 D12 슬롯 가드가 날짜 경계에서 거부하므로 안전. `POST /habits`(`CreateHabitRequest.deadlineTime`)는 커스텀 값을 수용하나 **v1 FE는 미노출**. (2) 스케줄러 `fixedDelay=5분` 창.
+- 결정 (2026-07-11, PR#94 Codex P1 검토): **수용 + 이연 (옵션 B)**. 솔로 = 자기 스트릭만 영향(타 유저 무관), 발현 조건 좁음, **crew도 동일 패턴**(`FindOrCreateActiveChallengeService` 사이클-끝 마감 + `FailExpiredChallengesScheduler` 슬롯별 SQL — 회귀 아님). 현 시점 조치 없음.
+- 필요 시점: **deadlineTime을 FE에 노출**하거나(정상 유저 도달 경로 생김) 커스텀 마감 습관을 정식 지원하는 시점. 그때 재평가.
+- 근본 해결: 검증 경로(107·122행)를 `(cycle.getStartDate() + cycle.getCompletedDays()).atTime(habit.getDeadlineTime())` 슬롯별 마감으로 교체 → 검증-수락 경계 == 스케줄러-실패 경계 불변식. habit 도메인 인증 로직 변경 = Tier 3 (SDD step1 §3 갱신 + 실패-선커밋 테스트). crew 동반 여부는 별도 판단. 상세: `triagain/docs/fix-instructions/06-pr94-codex-리뷰-2건.md` Issue 2.
 
 ### [2026-06-17] 크루 첫 인증 알림 fan-out: 배치 발송 + Dead Letter 큐 도입
 
@@ -31,6 +64,7 @@
 - 필요 시점: FK 구조 변경, 또는 삭제 경로 추가 시
 - 이유: 이번 범위에서 공유 추출을 하려면 withdrawal 어댑터(`UserCrewMembershipAdapter`)까지 수정해야 해 범위를 초과. 복제를 허용하되 기록으로 남긴다.
 - 추가 미처리: FK-safe 크루 삭제가 `dead_letters`(target_id=crewId, CREW_ACTIVATE/CREW_COMPLETE 타입)는 정리하지 않음 — `deleteCrewWithAssociations`/`deleteCrewWithAllData` 공유 추출 시 함께 처리 검토(자동 재시도 스케줄러 없어 기능 영향은 없음).
+- 추가 (2026-07-31, PR #126 리뷰): 두 곳 모두 **네이티브 SQL을 `EntityManager`로 직접 실행**한다는 지적도 나왔다. 공유 추출을 할 때 "한 곳으로 모으기"와 "JPA 리포지토리/MyBatis로 옮기기"를 같이 볼 것 — 위 [2026-07-31] `NotificationTargetQueryAdapter` 항목과 같은 성격이다.
 
 ### [2026-06-11] permitAll 공개 경로 목록이 SecurityConfig/DevSecurityConfig에 중복 — 공유 상수 추출 후보
 

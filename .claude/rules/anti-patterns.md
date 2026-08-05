@@ -11,7 +11,7 @@ paths: "src/**/*.java"
 - Entity를 Controller에서 직접 반환 금지
 - `throw new RuntimeException()` 금지
 - Lombok `@Data` 사용 금지 → record 사용
-- 메서드 20라인 초과 시 분리 고려
+- 메서드 20라인 초과 시 분리 고려 (권고. 강제선은 checkstyle 30줄)
 
 ## Architecture
 

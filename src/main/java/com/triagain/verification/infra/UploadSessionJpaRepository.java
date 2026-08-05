@@ -1,18 +1,19 @@
 package com.triagain.verification.infra;
 
-import com.triagain.verification.domain.vo.UploadSessionStatus;
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.triagain.verification.domain.vo.UploadSessionStatus;
+
 public interface UploadSessionJpaRepository extends JpaRepository<UploadSessionJpaEntity, Long> {
 
-    Optional<UploadSessionJpaEntity> findByIdAndUserId(Long id, String userId);
+	Optional<UploadSessionJpaEntity> findByIdAndUserId(Long id, String userId);
 
-    Optional<UploadSessionJpaEntity> findByImageKey(String imageKey);
+	Optional<UploadSessionJpaEntity> findByImageKey(String imageKey);
 
-    List<UploadSessionJpaEntity> findByStatusAndCreatedAtBefore(
-            UploadSessionStatus status, LocalDateTime threshold);
+	List<UploadSessionJpaEntity> findByStatusAndCreatedAtBefore(
+			UploadSessionStatus status, LocalDateTime threshold);
 }

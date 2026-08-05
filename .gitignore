@@ -72,5 +72,8 @@ lambda/Ldeploy.sh
 #키
 triagain-admin_accessKeys.csv
 
+# 부하테스트용 JWT 토큰 (3,000개, 스크립트로 재생성 가능)
+load-test/tokens.csv
+
 #p8
 *.p8

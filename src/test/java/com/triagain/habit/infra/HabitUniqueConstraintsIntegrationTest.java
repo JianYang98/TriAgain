@@ -73,7 +73,8 @@ class HabitUniqueConstraintsIntegrationTest {
 
 	@BeforeEach
 	void setUp() {
-		Habit habit = Habit.create("uk-test-user", "매일 물 2L", HabitVerificationType.TEXT, LocalTime.of(23, 59, 59), null);
+		Habit habit = Habit.create("uk-test-user", "매일 물 2L", HabitVerificationType.TEXT, LocalTime.of(23, 59, 59),
+				null);
 		habitId = habitRepositoryPort.save(habit).getId();
 	}
 
@@ -81,11 +82,13 @@ class HabitUniqueConstraintsIntegrationTest {
 	@DisplayName("uk_habit_cycles_in_progress — 같은 habit_id로 IN_PROGRESS 사이클 2건 insert 시 제약 위반")
 	void duplicateInProgressCycle_violatesUniqueConstraint() {
 		// Given
-		HabitCycle first = HabitCycle.start(habitId, "uk-test-user", 1, LocalDate.now(), LocalDateTime.now().plusDays(3));
+		HabitCycle first = HabitCycle.start(habitId, "uk-test-user", 1, LocalDate.now(),
+				LocalDateTime.now().plusDays(3));
 		habitCycleRepositoryPort.save(first);
 
 		// When & Then — 같은 habit에 대해 2번째 IN_PROGRESS insert는 partial unique 위반
-		HabitCycle second = HabitCycle.start(habitId, "uk-test-user", 2, LocalDate.now(), LocalDateTime.now().plusDays(3));
+		HabitCycle second = HabitCycle.start(habitId, "uk-test-user", 2, LocalDate.now(),
+				LocalDateTime.now().plusDays(3));
 		assertThatThrownBy(() -> habitCycleRepositoryPort.save(second))
 				.isInstanceOf(DataIntegrityViolationException.class);
 	}

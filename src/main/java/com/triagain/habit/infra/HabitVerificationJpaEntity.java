@@ -3,12 +3,12 @@ package com.triagain.habit.infra;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-import com.triagain.habit.domain.model.HabitVerification;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+
+import com.triagain.habit.domain.model.HabitVerification;
 
 @Entity
 @Table(name = "habit_verifications")

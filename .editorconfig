@@ -1,0 +1,63 @@
+# EditorConfig — 에디터가 저장 시점에 지키게 한다. https://editorconfig.org
+#
+# 왜 있나: 2026-07-30 checkstyle 서프레션을 걷어내니 위반 7,600건이 나왔는데,
+# 그중 7,039건(92.6%)이 들여쓰기(7,004) + 파일 끝 개행(35)이었다.
+# CI 는 이미 막고 있었지만 서프레션에 덮여 4개월간 조용했다. 이 파일은 그 앞단을 막는다.
+#
+# ⚠️ 값은 config/checkstyle/triagain-checkstyle-rules.xml 에서 가져온 것이다.
+#    어긋나면 에디터와 CI 가 서로 싸운다. 한쪽을 고칠 땐 반드시 양쪽을 같이 본다.
+#      tabWidth 4      → indent_size 4
+#      LineLength 120  → max_line_length 120
+#      [indentation-tab] · [no-trailing-spaces] · NewlineAtEndOfFile
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# checkstyle 이 탭을 강제한다. src/main·src/test 모두 탭이다(src/test 는 2026-08-01 에 전환).
+# 예외는 텍스트 블록(""") 안쪽뿐 — 거기 선행 공백은 문자열 값이라 탭으로 바꾸면 내용이 바뀐다.
+[*.java]
+indent_style = tab
+indent_size = 4
+max_line_length = 120
+
+# YAML 은 탭이 문법 위반이다 — 여기만은 스페이스가 취향이 아니라 규격이다.
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+[*.{sql,gradle,xml}]
+indent_style = space
+indent_size = 4
+
+# 🔴 적용된 Flyway 마이그레이션은 체크섬에 묶여 있다. 한 바이트만 바뀌어도 validate 가 깨져
+#    애플리케이션이 기동하지 않는다(application.yml 에 validate-on-migrate 설정이 없어 기본값 true).
+#    지금 V15~V18 네 개가 파일 끝 개행이 없는데, 에디터가 저장하며 조용히 붙이면 배포가 깨진다.
+#    고칠 게 있으면 파일을 수정하지 말고 새 마이그레이션을 추가한다.
+[src/main/resources/db/migration/*.sql]
+insert_final_newline = unset
+trim_trailing_whitespace = unset
+end_of_line = unset
+
+[*.sh]
+indent_style = space
+indent_size = 2
+
+# 마크다운은 "줄 끝 두 칸 = 줄바꿈"이 문법이다. 지금 저장소에서 그 문법을 쓰는 곳은
+# 0건이지만, 지웠을 때 렌더링이 조용히 바뀌는 쪽이 남겨두는 쪽보다 나쁘다.
+[*.md]
+trim_trailing_whitespace = false
+
+# 바이너리 — 에디터가 개행을 붙이면 파일이 깨진다.
+[*.{jar,png,jpg,jpeg,ico,p8,keystore}]
+charset = unset
+end_of_line = unset
+insert_final_newline = unset
+trim_trailing_whitespace = unset
+
+# .py 는 일부러 넣지 않았다 — 저장소에 3개뿐인데 탭 1 · 스페이스 2 로 갈려 있다.
+# 규칙을 박으면 셋 중 하나는 무조건 어긋난다. 통일한 뒤에 추가할 것.
