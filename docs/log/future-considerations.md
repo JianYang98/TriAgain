@@ -6,6 +6,13 @@
 
 ---
 
+### [2026-08-05] 배포 헬스체크가 게이트로 작동하지 않는다 — 항상 초록
+
+- 현재 상태: `.github/workflows/deploy.yml:169-171` 이 `sleep 15` → `curl -f .../actuator/health` → `docker image prune -f` 순이다. **두 군데가 동시에 깨져 있다.** ① 기동 실측이 **22.65초**라 15초 대기로는 curl 이 매번 실패한다. ② 실패해도 뒤따르는 `prune` 이 성공하면서 스크립트의 exit code 를 덮어써 **잡은 항상 success** 로 뜬다.
+- 실측: 2026-08-05 릴리스 배포(run `31020388444`) 로그에 `curl: (56) Recv failure: Connection reset by peer` 가 찍혔는데 `deploy-backend → success`. 앱 자체는 정상이었다(외부 헬스 200 / 러너 3종 보정 완료) — 게이트가 통과시킨 게 아니라 **게이트가 아무것도 안 본 것**이다.
+- 필요 시점: **다음 배포 파이프라인 작업 때 함께.** 그 전까지 배포 결과를 판단할 땐 초록불을 믿지 말고 CloudWatch `/triagain/app` 기동 로그와 `https://triagain.kr/actuator/health` 를 직접 본다.
+- 이유: 수정 자체는 재시도 루프 3~4줄이지만 `deploy.yml` 은 tier-policy **Tier 3**(배포 경로 직결)이라 단독 PR + 사용자 승인이 필요하다. 지금 프로덕션이 정상이라 긴급도가 없어 분리한다.
+
 > 📌 아래 3건은 PR #126(checkstyle 서프레션 해체) 리뷰에서 나왔다. 전부 코드 의미를 바꾸는
 > 수정이라 그 PR의 바이트코드 동일성 증명을 깨뜨려 이관했다.
 > (같이 이관됐던 "메서드 길이 30줄 정의 불일치"는 PR #130에서 해결돼 지웠다.
