@@ -10,6 +10,7 @@
 
 - 현재 상태: `.github/workflows/deploy.yml:169-171` 이 `sleep 15` → `curl -f .../actuator/health` → `docker image prune -f` 순이다. **두 군데가 동시에 깨져 있다.** ① 기동 실측이 **22.65초**라 15초 대기로는 curl 이 매번 실패한다. ② 실패해도 뒤따르는 `prune` 이 성공하면서 스크립트의 exit code 를 덮어써 **잡은 항상 success** 로 뜬다.
 - 실측: 2026-08-05 릴리스 배포(run `31020388444`) 로그에 `curl: (56) Recv failure: Connection reset by peer` 가 찍혔는데 `deploy-backend → success`. 앱 자체는 정상이었다(외부 헬스 200 / 러너 3종 보정 완료) — 게이트가 통과시킨 게 아니라 **게이트가 아무것도 안 본 것**이다.
+- 📌 주소(`localhost`)는 문제가 아니다: 그 `curl` 은 ssh-action 으로 **EC2 안에서** 돌고 `-p 8080:8080` 으로 컨테이너가 물려 있다. 에러가 `Connection refused` 가 아니라 `reset` 인 게 근거 — 포트는 열렸고 앱만 아직 안 뜬 상태다. 도메인으로 바꾸면 앞단 nginx·DNS·TLS 가 끼어 **방금 배포한 그 컨테이너를 봤는지**가 흐려진다. 도메인 확인은 게이트가 아니라 **배포 후 스모크**로 분리한다.
 - 필요 시점: **다음 배포 파이프라인 작업 때 함께.** 그 전까지 배포 결과를 판단할 땐 초록불을 믿지 말고 CloudWatch `/triagain/app` 기동 로그와 `https://triagain.kr/actuator/health` 를 직접 본다.
 - 이유: 수정 자체는 재시도 루프 3~4줄이지만 `deploy.yml` 은 tier-policy **Tier 3**(배포 경로 직결)이라 단독 PR + 사용자 승인이 필요하다. 지금 프로덕션이 정상이라 긴급도가 없어 분리한다.
 
