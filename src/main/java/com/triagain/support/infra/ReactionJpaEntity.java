@@ -6,11 +6,17 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 import com.triagain.support.domain.model.Reaction;
 
+// [필수] 테스트(create-drop)의 유일한 인덱스 출처 — CucumberSpringContext·E2eTestBase: flyway off + ddl-auto=create-drop
+// → V26 마이그레이션이 인수·E2E에서 실행 안 됨. 이 어노테이션이 빠지면 upsert의 ON CONFLICT가 42P10으로 실패한다.
 @Entity
-@Table(name = "reactions")
+@Table(name = "reactions",
+		uniqueConstraints = @UniqueConstraint(
+				name = "uk_reactions_verification_user",
+				columnNames = {"verification_id", "user_id"}))
 public class ReactionJpaEntity {
 
 	@Id
