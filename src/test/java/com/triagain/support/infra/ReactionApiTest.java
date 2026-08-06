@@ -22,6 +22,8 @@ import com.triagain.crew.domain.vo.CrewStatus;
 import com.triagain.crew.domain.vo.CrewVisibility;
 import com.triagain.crew.domain.vo.VerificationType;
 import com.triagain.crew.port.out.CrewRepositoryPort;
+import com.triagain.user.domain.model.User;
+import com.triagain.user.port.out.UserRepositoryPort;
 import com.triagain.verification.domain.model.Verification;
 import com.triagain.verification.port.out.VerificationRepositoryPort;
 
@@ -52,6 +54,9 @@ class ReactionApiTest extends ReactionIntegrationTestBase {
 	@Autowired
 	private ReactionJpaRepository reactionJpaRepository;
 
+	@Autowired
+	private UserRepositoryPort userRepositoryPort;
+
 	@Test
 	@DisplayName("E3 연타 — 같은 유저가 같은 이모지(LIKE)를 2회 PUT하면 200 · reactions 행 1개 · count 1")
 	void addReaction_sameEmojiTwice_upsertsSingleRowWithCountOne() {
@@ -80,6 +85,10 @@ class ReactionApiTest extends ReactionIntegrationTestBase {
 	 * {@code CreateVerificationServiceSlotDeadlineIntegrationTest}).
 	 */
 	private String givenApprovedVerificationWithCrewMember(String userId) {
+		// 요약 쿼리가 닉네임 때문에 users 를 JOIN 한다 — 유저 행이 없으면 리액션이 요약에서 사라진다
+		userRepositoryPort.save(User.of(userId, "KAKAO", userId + "@test.com", userId,
+				null, null, null, LocalDateTime.now(), LocalDateTime.now(), null, 0));
+
 		String crewId = IdGenerator.generate("CREW");
 		Crew crew = Crew.of(
 				crewId, userId, "리액션 API 테스트 크루", "목표", "인증 내용",

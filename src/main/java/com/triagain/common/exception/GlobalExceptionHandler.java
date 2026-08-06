@@ -31,6 +31,9 @@ public class GlobalExceptionHandler {
 	 * DB 제약 이름 → 에러코드 정확 매칭. {@code contains()} 부분매칭 금지 — 새 제약이 추가돼도 조용히
 	 * 오매핑되지 않는다. 키는 마이그레이션 파일에서 그대로 복사한 값이다(추론 금지, lessons-learned.md).
 	 * 미등록 제약은 {@link ErrorCode#DATA_CONFLICT}로 폴백한다.
+	 * <p>
+	 * 리액션 유니크(uk_reactions_verification_user)는 ON CONFLICT가 흡수하므로 위반이 예외로
+	 * 표면화되지 않는다 → 매핑 엔트리 불필요(2026-08 리액션 SDD 판정). 제약 실존은 통합테스트가 검증한다.
 	 */
 	private static final Map<String, ErrorCode> CONSTRAINT_ERRORS = Map.of(
 			"uk_verifications_user_crew_date_active", ErrorCode.VERIFICATION_ALREADY_EXISTS,

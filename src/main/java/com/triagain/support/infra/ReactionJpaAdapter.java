@@ -1,10 +1,10 @@
 package com.triagain.support.infra;
 
-import java.util.Optional;
+import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.stereotype.Repository;
 
-import com.triagain.support.domain.model.Reaction;
 import com.triagain.support.port.out.ReactionRepositoryPort;
 
 import lombok.RequiredArgsConstructor;
@@ -16,24 +16,18 @@ public class ReactionJpaAdapter implements ReactionRepositoryPort {
 	private final ReactionJpaRepository reactionJpaRepository;
 
 	@Override
-	public Reaction save(Reaction reaction) {
-		ReactionJpaEntity entity = ReactionJpaEntity.fromDomain(reaction);
-		return reactionJpaRepository.save(entity).toDomain();
+	public int upsertIfVerificationActive(
+			String id, String verificationId, String userId, String emoji, LocalDateTime now) {
+		return reactionJpaRepository.upsertIfVerificationActive(id, verificationId, userId, emoji, now);
 	}
 
 	@Override
-	public void deleteById(String id) {
-		reactionJpaRepository.deleteById(id);
+	public long deleteByVerificationIdAndUserId(String verificationId, String userId) {
+		return reactionJpaRepository.deleteByVerificationIdAndUserId(verificationId, userId);
 	}
 
 	@Override
-	public Optional<Reaction> findByVerificationIdAndUserId(String verificationId, String userId) {
-		return reactionJpaRepository.findByVerificationIdAndUserId(verificationId, userId)
-				.map(ReactionJpaEntity::toDomain);
-	}
-
-	@Override
-	public long countByVerificationId(String verificationId) {
-		return reactionJpaRepository.countByVerificationId(verificationId);
+	public List<ReactionRow> findRowsByVerificationIdIn(List<String> verificationIds) {
+		return reactionJpaRepository.findRowsByVerificationIdIn(verificationIds);
 	}
 }
