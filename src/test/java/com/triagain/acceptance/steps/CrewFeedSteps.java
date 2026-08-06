@@ -9,6 +9,7 @@ import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.triagain.acceptance.ScenarioContext;
 import com.triagain.acceptance.adapter.FeedTestAdapter;
@@ -60,6 +61,9 @@ public class CrewFeedSteps {
 
 	private final Set<String> savedUserIds = new HashSet<>();
 
+	@Autowired
+	private TransactionTemplate transactionTemplate;
+
 	@Before
 	public void setUp() {
 		feedAdapter = new FeedTestAdapter(port);
@@ -78,7 +82,7 @@ public class CrewFeedSteps {
 			crewId = createActiveCrew(crewName, userId);
 			scenarioContext.putCrewId(crewName, crewId);
 		} else {
-			crewRepositoryPort.saveMember(CrewMember.createMember(userId, crewId));
+			joinCrewFixture(userId, crewId);
 		}
 		scenarioContext.setCrewId(crewId);
 		ensureChallengeExists(userId, crewId);
@@ -93,7 +97,20 @@ public class CrewFeedSteps {
 	public void 다른_사용자가_크루에_참여_중이다(String userId, String crewName) {
 		ensureUserExists(userId);
 		String crewId = scenarioContext.getCrewIdByName(crewName);
+		joinCrewFixture(userId, crewId);
+	}
+
+	/**
+	 * 크루 참여 픽스처 — 멤버 행과 current_members 를 함께 올린다.
+	 * <p>
+	 * 멤버 행만 넣으면 crew_members 행수와 crews.current_members 가 어긋나, 탈퇴 경로가
+	 * 정원 0으로 오판해 크루를 통째로 삭제한다(LeaveCrewService). 프로덕션 참여 경로와 동일한
+	 * incrementMembersIfNotFull 을 써서 불변식을 지킨다.
+	 */
+	private void joinCrewFixture(String userId, String crewId) {
 		crewRepositoryPort.saveMember(CrewMember.createMember(userId, crewId));
+		// incrementMembersIfNotFull 은 @Modifying 이라 호출자 트랜잭션이 필요하다 — 스텝은 트랜잭션 밖이다
+		transactionTemplate.executeWithoutResult(status -> crewRepositoryPort.incrementMembersIfNotFull(crewId));
 	}
 
 	@조건("{string}가 오늘 인증을 완료했다")
