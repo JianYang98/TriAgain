@@ -112,6 +112,13 @@ paths: "src/**/*.java"
 - 재발: 2회 (2026-08-06, verification-reaction SDD /implement)
 
 
+### 여러 클래스가 공유하는 TestContainers 컨테이너는 싱글턴으로 만들어라
+- 출처: verification-reaction /implement (2026-08-06)
+- 사례: 리액션 테스트 3개가 공유하는 `ReactionIntegrationTestBase` 에 `@Testcontainers` + `static @Container` 를 썼다. 이 조합은 **컨테이너 수명을 클래스 단위로 관리**하므로 **첫 하위 클래스가 끝나는 시점에 컨테이너를 stop** 한다. 뒤따르는 클래스는 죽은 컨테이너를 물고 `HikariPool … Connection is not available … (total=0, active=0, idle=0)` 으로 죽는다
+- 왜?: **하위 클래스가 2개일 땐 안 드러났고 3개가 되자 전체 실행에서만 재현**됐다. `--tests` 로 개별 실행하면 계속 그린이라 **CI에서만 터지는 종류**다. 게다가 house 에 이미 선례(`acceptance/TestContainers` — static 블록에서 `start()`, 아무도 stop 하지 않음)가 있었는데도 밟았다 = 그 지식의 **읽기 지점이 없었다**
+- 규칙: **여러 테스트 클래스가 공유하는 컨테이너는 싱글턴 패턴으로 만든다** — `@Testcontainers`/`@Container` 를 쓰지 말고 `static` 블록에서 `start()` 하고 stop 하지 않는다(JVM 종료 시 Ryuk 이 정리). `@Container` 는 **한 클래스가 단독으로 쓰는 컨테이너**에만 쓴다. 공용 베이스를 새로 만들 땐 `acceptance/TestContainers` 를 먼저 열어본다
+- 판별: 새 공용 베이스를 만들면 **하위 클래스를 3개 이상으로 늘린 상태에서 전체 실행**(`./gradlew test`)을 한 번 돌린다. 개별 실행 그린은 이 결함을 못 잡는다
+
 ### FK 없는 DB의 삭제/캐스케이드 SQL은 실DB로 고아행 0건을 검증하라
 - 출처: crew-solo-delete /verify (2026-06-12)
 - 사례: deleteCrewWithAssociations(9테이블 네이티브 삭제)를 단위테스트에서 `verify(port).deleteCrewWithAssociations(id)` mock 호출 검증으로만 확인 → 실제 SQL 정합 미검증. step4가 "삭제 후 참조행 0건 assert"를 명시했는데도 mock으로 축소됨.
