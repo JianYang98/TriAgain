@@ -110,7 +110,13 @@ public class CrewFeedSteps {
 	private void joinCrewFixture(String userId, String crewId) {
 		crewRepositoryPort.saveMember(CrewMember.createMember(userId, crewId));
 		// incrementMembersIfNotFull 은 @Modifying 이라 호출자 트랜잭션이 필요하다 — 스텝은 트랜잭션 밖이다
-		transactionTemplate.executeWithoutResult(status -> crewRepositoryPort.incrementMembersIfNotFull(crewId));
+		Integer affected = transactionTemplate.execute(
+				status -> crewRepositoryPort.incrementMembersIfNotFull(crewId));
+		// CAS 라 정원이 차면 0을 반환한다 — 삼키면 crew_members 행수와 current_members 가 다시 어긋난다
+		if (affected == null || affected != 1) {
+			throw new IllegalStateException(
+					"크루 참여 픽스처 실패 — current_members 증가가 " + affected + "행(정원 초과 의심): crewId=" + crewId);
+		}
 	}
 
 	@조건("{string}가 오늘 인증을 완료했다")
