@@ -141,16 +141,21 @@ class ReactionApiTest extends ReactionIntegrationTestBase {
 	}
 
 	@Test
-	@DisplayName("S003 — emojiType이 비어 있으면 400이고 메시지가 enum 이름이 아니다")
+	@DisplayName("S003 — emojiType이 비어 있거나 누락이면 400이고 메시지가 enum 이름이 아니다")
 	void addReaction_withBlankEmoji_returns400WithResolvedMessage() {
 		String userId = "reaction-api-user7";
 		String verificationId = givenApprovedVerificationWithCrewMember(userId);
 
-		Response response = putReaction(userId, verificationId, "");
+		Response blank = putReaction(userId, verificationId, "");
+		Response missing = putReactionWithBody(userId, verificationId, "{}");
 
-		assertThat(response.statusCode()).isEqualTo(400);
-		String message = response.jsonPath().getString("error.message");
-		assertThat(message).isNotEqualTo("EMOJI_REQUIRED").isEqualTo(MSG_EMOJI_REQUIRED);
+		assertThat(blank.statusCode()).isEqualTo(400);
+		assertThat(blank.jsonPath().getString("error.message"))
+				.isNotEqualTo("EMOJI_REQUIRED").isEqualTo(MSG_EMOJI_REQUIRED);
+		// 필드 누락은 Jackson 이 null 을 바인딩하는 다른 경로다 — 400 이 아니라 500 이 나올 수 있다
+		assertThat(missing.statusCode()).isEqualTo(400);
+		assertThat(missing.jsonPath().getString("error.message"))
+				.isNotEqualTo("EMOJI_REQUIRED").isEqualTo(MSG_EMOJI_REQUIRED);
 	}
 
 	@Test
@@ -165,6 +170,28 @@ class ReactionApiTest extends ReactionIntegrationTestBase {
 		assertThat(response.statusCode()).isEqualTo(404);
 		String message = response.jsonPath().getString("error.message");
 		assertThat(message).isNotEqualTo("REACTION_TARGET_NOT_FOUND").isEqualTo(MSG_TARGET_NOT_FOUND);
+	}
+
+	@Test
+	@DisplayName("PUT 200 응답 data 가 §6 계약 4필드(emojiType·count·reactedByMe·users)를 담는다")
+	void addReaction_returnsUpdatedSummaryMatchingResponseContract() {
+		// FE 가 피드 재조회 없이 카드를 갱신하는 근거다 — count 만으로는 버튼 상태(reactedByMe)와 닉네임이 안 잠긴다
+		String userId = "reaction-api-user9";
+		String verificationId = givenApprovedVerificationWithCrewMember(userId);
+
+		Response response = putReaction(userId, verificationId, "LIKE");
+
+		assertThat(response.statusCode()).isEqualTo(200);
+		List<Map<String, Object>> reactions = response.jsonPath().getList("data.reactions");
+		assertThat(reactions).hasSize(1);
+		assertThat(reactions.get(0).get("emojiType")).isEqualTo("LIKE");
+		assertThat(((Number) reactions.get(0).get("count")).intValue()).isEqualTo(1);
+		assertThat(reactions.get(0).get("reactedByMe")).isEqualTo(true);
+
+		List<Map<String, Object>> users = response.jsonPath().getList("data.reactions[0].users");
+		assertThat(users).hasSize(1);
+		assertThat(users.get(0).get("userId")).isEqualTo(userId);
+		assertThat(users.get(0).get("nickname")).isEqualTo(nicknameOf(userId));
 	}
 
 	// ===== 시드 헬퍼 =====
@@ -216,19 +243,28 @@ class ReactionApiTest extends ReactionIntegrationTestBase {
 
 	/** 요약 쿼리가 닉네임 때문에 users 를 JOIN 한다 — 유저 행이 없으면 리액션이 요약에서 사라진다 */
 	private void saveUser(String userId) {
-		userRepositoryPort.save(User.of(userId, "KAKAO", userId + "@test.com", userId,
+		userRepositoryPort.save(User.of(userId, "KAKAO", userId + "@test.com", nicknameOf(userId),
 				null, null, null, LocalDateTime.now(), LocalDateTime.now(), null, 0));
+	}
+
+	/** userId 와 다른 값이어야 한다 — 같으면 users[].nickname 단언이 user_id 를 되읽어도 통과한다 */
+	private static String nicknameOf(String userId) {
+		return "닉네임-" + userId;
 	}
 
 	// ===== HTTP 헬퍼 =====
 
 	/** 리액션 PUT 호출 — 요청마다 port를 지정해 RestAssured 정적 설정에 기대지 않는다 */
 	private Response putReaction(String userId, String verificationId, String emojiType) {
+		return putReactionWithBody(userId, verificationId, "{\"emojiType\": \"" + emojiType + "\"}");
+	}
+
+	private Response putReactionWithBody(String userId, String verificationId, String body) {
 		return RestAssured.given()
 				.port(port)
 				.contentType("application/json")
 				.header("X-User-Id", userId)
-				.body("{\"emojiType\": \"" + emojiType + "\"}")
+				.body(body)
 				.when()
 				.put("/verifications/{verificationId}/reactions", verificationId);
 	}
