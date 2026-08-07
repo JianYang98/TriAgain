@@ -76,10 +76,12 @@ public class ReactionSteps {
 	@그러면("피드에 다시 뜬 {string}의 인증에는 좋아요가 없다")
 	public void 피드에_다시_뜬_인증에는_좋아요가_없다(String ownerUserId) {
 		String originalId = scenarioContext.getVerificationId();
-		Map<String, Object> replacement = feedVerifications(scenarioContext.getUserId()).stream()
+		List<Map<String, Object>> owned = feedVerifications(scenarioContext.getUserId()).stream()
 				.filter(verification -> ownerUserId.equals(verification.get("userId")))
-				.findFirst()
-				.orElseThrow(() -> new AssertionError(ownerUserId + "의 대체 인증이 피드에 없다 — 수정이 실패했다"));
+				.toList();
+		// 1건 가정을 단언으로 남긴다 — 이틀치 시나리오가 생기면 조용히 엉뚱한 걸 집는 대신 여기서 터진다
+		assertThat(owned).as(ownerUserId + "의 피드 인증은 정확히 1건이어야 한다").hasSize(1);
+		Map<String, Object> replacement = owned.get(0);
 
 		// 원본이 그대로 떠 있으면 아래 단언은 "수정 전 상태"를 보는 셈이라 무의미하다
 		assertThat(replacement.get("id")).as("대체 인증은 원본과 다른 행이어야 한다").isNotEqualTo(originalId);

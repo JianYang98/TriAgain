@@ -39,5 +39,10 @@ public abstract class ReactionIntegrationTestBase {
 		registry.add("spring.datasource.password", POSTGRES::getPassword);
 		registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
 		registry.add("spring.jpa.hibernate.ddl-auto", () -> "validate");
+		// 취소 컷오프 해제 — E1-b 가 실제 취소 서비스를 태우는데, 기본 5분이면 하루의 마지막 5분에
+		// 벽시계 때문에 결정적으로 깨진다. 컷오프 로직 자체는 CancelVerificationServiceTest:152,171 이
+		// 시각·컷오프를 주입해 잠그고 있으므로 여기서 0으로 내려도 커버리지 손실이 없다.
+		// ⚠️ 이 베이스를 상속하는 리액션 테스트에서 컷오프를 검증하려면 이 줄을 되돌리고 그 테스트에서 값을 지정한다.
+		registry.add("triagain.verification.cancel-cutoff-minutes", () -> "0");
 	}
 }
