@@ -85,7 +85,7 @@ class CancelVerificationIntegrationTest {
 				crewId, leaderId, "취소 테스트 크루", "목표",
 				"인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
 				LocalDate.now().minusDays(10), LocalDate.now().plusDays(30), true,
-				inviteCode(), LocalDateTime.now(),
+				Crew.generateInviteCode(), LocalDateTime.now(),
 				LocalTime.of(23, 59, 59), null, CrewVisibility.PRIVATE, 0L, List.of());
 		crewRepositoryPort.save(crew);
 	}
@@ -103,16 +103,6 @@ class CancelVerificationIntegrationTest {
 		Verification verification = Verification.createText(
 				challengeId, userId, crewId, "인증 완료", LocalDate.now(), attemptNumber, slotAttempt);
 		return verificationRepositoryPort.save(verification);
-	}
-
-	/** crews.invite_code는 VARCHAR(6) — 6자 랜덤 코드 생성(E2eTestBase.generateInviteCode와 동일 패턴) */
-	private String inviteCode() {
-		String chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-		StringBuilder code = new StringBuilder(6);
-		for (int i = 0; i < 6; i++) {
-			code.append(chars.charAt((int) (Math.random() * chars.length())));
-		}
-		return code.toString();
 	}
 
 	@Test

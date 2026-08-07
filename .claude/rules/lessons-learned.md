@@ -112,12 +112,16 @@ paths: "src/**/*.java"
 - 재발: 2회 (2026-08-06, verification-reaction SDD /implement)
 
 
-### 여러 클래스가 공유하는 TestContainers 컨테이너는 싱글턴으로 만들어라
-- 출처: verification-reaction /implement (2026-08-06)
-- 사례: 리액션 테스트 3개가 공유하는 `ReactionIntegrationTestBase` 에 `@Testcontainers` + `static @Container` 를 썼다. 이 조합은 **컨테이너 수명을 클래스 단위로 관리**하므로 **첫 하위 클래스가 끝나는 시점에 컨테이너를 stop** 한다. 뒤따르는 클래스는 죽은 컨테이너를 물고 `HikariPool … Connection is not available … (total=0, active=0, idle=0)` 으로 죽는다
-- 왜?: **하위 클래스가 2개일 땐 안 드러났고 3개가 되자 전체 실행에서만 재현**됐다. `--tests` 로 개별 실행하면 계속 그린이라 **CI에서만 터지는 종류**다. 게다가 house 에 이미 선례(`acceptance/TestContainers` — static 블록에서 `start()`, 아무도 stop 하지 않음)가 있었는데도 밟았다 = 그 지식의 **읽기 지점이 없었다**
-- 규칙: **여러 테스트 클래스가 공유하는 컨테이너는 싱글턴 패턴으로 만든다** — `@Testcontainers`/`@Container` 를 쓰지 말고 `static` 블록에서 `start()` 하고 stop 하지 않는다(JVM 종료 시 Ryuk 이 정리). `@Container` 는 **한 클래스가 단독으로 쓰는 컨테이너**에만 쓴다. 공용 베이스를 새로 만들 땐 `acceptance/TestContainers` 를 먼저 열어본다
-- 판별: 새 공용 베이스를 만들면 **하위 클래스를 3개 이상으로 늘린 상태에서 전체 실행**(`./gradlew test`)을 한 번 돌린다. 개별 실행 그린은 이 결함을 못 잡는다
+### 테스트 픽스처는 개수를 늘려보기 전엔 검증된 게 아니다
+- 출처: verification-reaction /implement (2026-08-06~07)
+- **계열**: 둘 다 **픽스처가 N개에서만 터지고 개별 실행(`--tests`)에선 그린**이라 CI에서만 드러나는 종류다
+  - ① **공유 컨테이너 수명** — 리액션 테스트 3개가 공유하는 `ReactionIntegrationTestBase` 에 `@Testcontainers` + `static @Container` 를 썼다. 이 조합은 **컨테이너 수명을 클래스 단위로 관리**하므로 **첫 하위 클래스가 끝나는 시점에 stop** 한다. 뒤따르는 클래스는 죽은 컨테이너를 물고 `HikariPool … Connection is not available … (total=0, active=0, idle=0)` 으로 죽는다. **하위 클래스 2개까진 안 드러났고 3개가 되자 전체 실행에서만 재현**
+  - ② **고정 초대코드** — `ReactionApiTest` 의 시드 헬퍼가 `invite_code` 를 `"RCTAPI"` 로 고정했다. 테스트가 1개일 땐 통과했고, 7개가 되자 `uk_crews_invite_code` 충돌로 **6/7 실패**(실측: `ERROR: duplicate key value violates unique constraint "uk_crews_invite_code"`). 이 클래스엔 `DatabaseCleanup` 이 없어 데이터가 누적된다
+- 왜?: 픽스처를 처음 쓸 때의 개수(1개·2개)에서 그린이면 "됐다"고 읽힌다. 하지만 **결함의 트리거는 로직이 아니라 개수**다 — 수명 관리든 유니크 제약이든, 두 번째·세 번째 사용자가 생겨야 위반이 발생한다. 게다가 ①은 house 에 이미 선례(`acceptance/TestContainers`)가, ②는 사본이 **6벌**(`E2eTestBase` 외 5) 있었는데도 밟았다 = 그 지식의 **읽기 지점이 없었다**
+- 규칙:
+  - **공유 컨테이너는 싱글턴으로** — `@Testcontainers`/`@Container` 를 쓰지 말고 `static` 블록에서 `start()` 하고 stop 하지 않는다(JVM 종료 시 Ryuk 이 정리). `@Container` 는 **한 클래스가 단독으로 쓰는 컨테이너**에만 쓴다
+  - **DB 유니크 컬럼을 시드하는 값은 고정하지 마라** — 초대코드는 `Crew.generateInviteCode()`(2026-08-07 `public` 승격, 사본 6벌 제거) 를 쓴다. 새로 만들지 마라
+- 판별: **새 픽스처·공용 베이스를 만들면 사용처를 3개 이상으로 늘린 상태에서 전체 실행**(`./gradlew test`)을 한 번 돌린다. `--tests` 개별 실행 그린은 이 계열을 원리적으로 못 잡는다
 
 ### FK 없는 DB의 삭제/캐스케이드 SQL은 실DB로 고아행 0건을 검증하라
 - 출처: crew-solo-delete /verify (2026-06-12)

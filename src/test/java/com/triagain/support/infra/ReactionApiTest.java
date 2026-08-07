@@ -25,22 +25,26 @@ import com.triagain.crew.port.out.CrewRepositoryPort;
 import com.triagain.user.domain.model.User;
 import com.triagain.user.port.out.UserRepositoryPort;
 import com.triagain.verification.domain.model.Verification;
+import com.triagain.verification.domain.vo.ReviewStatus;
+import com.triagain.verification.domain.vo.VerificationStatus;
 import com.triagain.verification.port.out.VerificationRepositoryPort;
 
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
 
 /**
- * PUT /verifications/{id}/reactions — E3 연타(v1 유일 중복 경로): 같은 유저·같은 인증·같은 이모지(LIKE)를
- * 연속 2회 PUT하면 200 · {@code reactions} 행 1개 · 요약 count 1이어야 한다(step1-biz-logic.md §7-2).
- * 활성 이모지 세트가 LIKE 하나뿐이라 "다른 이모지로 교체"는 API로 도달 불가 — 이게 v1에서 유저가 실제로
- * 밟는 유일한 중복 경로다.
+ * 리액션 API 계층 테스트 — 유저 여정으로 쓸 수 없는 API 방어·에러 계약을 잠근다(step1-biz-logic.md §7-2).
  * <p>
- * ⚠️ {@code AddReactionService}는 아직 스켈레톤(저장 없이 빈 요약 반환)이라 이 테스트는 현재 단언 실패로
- * 떨어지는 것이 정상이다 — 포트 교정 후 그린이 되어야 한다.
+ * ⚠️ {@code test}(H2) 프로파일 금지 — H2 는 {@code ON CONFLICT} 를 실행하지 못한다(42000).
+ * {@link ReactionIntegrationTestBase}(전용 컨테이너 + Flyway ON + validate)를 상속한다.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ReactionApiTest extends ReactionIntegrationTestBase {
+
+	/** error-messages.properties 실값 — 추측 금지, 파일에서 복사했다 */
+	private static final String MSG_EMOJI_REQUIRED = "이모지는 필수입니다.";
+	private static final String MSG_EMOJI_NOT_SUPPORTED = "지원하지 않는 이모지입니다.";
+	private static final String MSG_TARGET_NOT_FOUND = "반응을 남길 인증을 찾을 수 없습니다.";
 
 	@LocalServerPort
 	private int port;
@@ -60,15 +64,12 @@ class ReactionApiTest extends ReactionIntegrationTestBase {
 	@Test
 	@DisplayName("E3 연타 — 같은 유저가 같은 이모지(LIKE)를 2회 PUT하면 200 · reactions 행 1개 · count 1")
 	void addReaction_sameEmojiTwice_upsertsSingleRowWithCountOne() {
-		// given
 		String userId = "reaction-api-user1";
 		String verificationId = givenApprovedVerificationWithCrewMember(userId);
 
-		// when — 같은 유저·같은 인증·같은 이모지(LIKE)로 연속 2회 PUT
 		putReaction(userId, verificationId, "LIKE");
 		Response second = putReaction(userId, verificationId, "LIKE");
 
-		// then
 		assertThat(second.statusCode()).isEqualTo(200);
 		assertThat(reactionJpaRepository.countByVerificationId(verificationId)).isEqualTo(1);
 
@@ -78,31 +79,148 @@ class ReactionApiTest extends ReactionIntegrationTestBase {
 		assertThat(((Number) reactions.get(0).get("count")).intValue()).isEqualTo(1);
 	}
 
-	/**
-	 * 크루 리더 멤버 + APPROVED 인증 시드 — 리액션을 남기는 유효한 크루 컨텍스트 재현.
-	 * {@code Crew.create}는 startDate가 미래여야 하는 신규-생성 검증을 거치므로(진행 중 크루를 표현할 수 없음),
-	 * DB 복원용 {@code Crew.of}로 이미 ACTIVE인 크루를 직접 구성한다(선례:
-	 * {@code CreateVerificationServiceSlotDeadlineIntegrationTest}).
-	 */
-	private String givenApprovedVerificationWithCrewMember(String userId) {
-		// 요약 쿼리가 닉네임 때문에 users 를 JOIN 한다 — 유저 행이 없으면 리액션이 요약에서 사라진다
-		userRepositoryPort.save(User.of(userId, "KAKAO", userId + "@test.com", userId,
-				null, null, null, LocalDateTime.now(), LocalDateTime.now(), null, 0));
+	@Test
+	@DisplayName("E1-d — 취소된 인증에 내 리액션을 DELETE하면 200이고 요약은 빈 배열이다")
+	void removeReaction_onCancelledVerification_returnsOkWithEmptySummary() {
+		String userId = "reaction-api-user2";
+		String crewId = givenCrewWithLeader(userId);
+		String verificationId = givenCancelledVerification(crewId, userId);
 
+		Response response = deleteReaction(userId, verificationId);
+
+		assertThat(response.statusCode()).isEqualTo(200);
+		assertThat(response.jsonPath().getList("data.reactions")).isEmpty();
+	}
+
+	@Test
+	@DisplayName("리액션 2건 중 내 것만 DELETE하면 응답 요약이 count 1 · reactedByMe false 로 갱신된다")
+	void removeReaction_withOtherUsersReaction_reflectsDeletionInResponseBody() {
+		// derived delete(③)와 네이티브 요약 조회(④)의 flush 순서를 잠근다.
+		// 여기가 깨지면 프로덕션 삭제를 @Modifying(flushAutomatically = true) 네이티브로 바꿔야 한다는 신호다.
+		String owner = "reaction-api-user3";
+		String other = "reaction-api-user4";
+		String crewId = givenCrewWithLeader(owner);
+		givenMember(crewId, other);
+		String verificationId = givenApprovedVerification(crewId, owner);
+
+		putReaction(owner, verificationId, "LIKE");
+		putReaction(other, verificationId, "LIKE");
+
+		Response response = deleteReaction(owner, verificationId);
+
+		assertThat(response.statusCode()).isEqualTo(200);
+		List<Map<String, Object>> reactions = response.jsonPath().getList("data.reactions");
+		assertThat(reactions).hasSize(1);
+		assertThat(((Number) reactions.get(0).get("count")).intValue()).isEqualTo(1);
+		assertThat(reactions.get(0).get("reactedByMe")).isEqualTo(false);
+	}
+
+	@Test
+	@DisplayName("E4 — 남긴 리액션이 없어도 DELETE는 200이다(멱등)")
+	void removeReaction_withoutExistingReaction_isIdempotent() {
+		String userId = "reaction-api-user5";
+		String verificationId = givenApprovedVerificationWithCrewMember(userId);
+
+		Response response = deleteReaction(userId, verificationId);
+
+		assertThat(response.statusCode()).isEqualTo(200);
+		assertThat(response.jsonPath().getList("data.reactions")).isEmpty();
+	}
+
+	@Test
+	@DisplayName("S006 — 비활성 이모지로 PUT하면 400이고 메시지가 enum 이름이 아니다")
+	void addReaction_withInactiveEmoji_returns400WithResolvedMessage() {
+		String userId = "reaction-api-user6";
+		String verificationId = givenApprovedVerificationWithCrewMember(userId);
+
+		Response response = putReaction(userId, verificationId, "FIRE");
+
+		assertThat(response.statusCode()).isEqualTo(400);
+		String message = response.jsonPath().getString("error.message");
+		assertThat(message).isNotEqualTo("EMOJI_NOT_SUPPORTED").isEqualTo(MSG_EMOJI_NOT_SUPPORTED);
+	}
+
+	@Test
+	@DisplayName("S003 — emojiType이 비어 있으면 400이고 메시지가 enum 이름이 아니다")
+	void addReaction_withBlankEmoji_returns400WithResolvedMessage() {
+		String userId = "reaction-api-user7";
+		String verificationId = givenApprovedVerificationWithCrewMember(userId);
+
+		Response response = putReaction(userId, verificationId, "");
+
+		assertThat(response.statusCode()).isEqualTo(400);
+		String message = response.jsonPath().getString("error.message");
+		assertThat(message).isNotEqualTo("EMOJI_REQUIRED").isEqualTo(MSG_EMOJI_REQUIRED);
+	}
+
+	@Test
+	@DisplayName("S005 — 취소된 인증에 PUT하면 404이고 메시지가 enum 이름이 아니다")
+	void addReaction_onCancelledVerification_returns404WithResolvedMessage() {
+		String userId = "reaction-api-user8";
+		String crewId = givenCrewWithLeader(userId);
+		String verificationId = givenCancelledVerification(crewId, userId);
+
+		Response response = putReaction(userId, verificationId, "LIKE");
+
+		assertThat(response.statusCode()).isEqualTo(404);
+		String message = response.jsonPath().getString("error.message");
+		assertThat(message).isNotEqualTo("REACTION_TARGET_NOT_FOUND").isEqualTo(MSG_TARGET_NOT_FOUND);
+	}
+
+	// ===== 시드 헬퍼 =====
+
+	/** 크루 + 리더 멤버 + APPROVED 인증 — 단일 유저 시나리오용 */
+	private String givenApprovedVerificationWithCrewMember(String userId) {
+		String crewId = givenCrewWithLeader(userId);
+		return givenApprovedVerification(crewId, userId);
+	}
+
+	/**
+	 * ACTIVE 크루 + 리더 멤버 생성.
+	 * {@code Crew.create}는 startDate가 미래여야 하는 신규-생성 검증을 거쳐 진행 중 크루를 표현할 수 없으므로
+	 * DB 복원용 {@code Crew.of}를 쓴다(선례: {@code CreateVerificationServiceSlotDeadlineIntegrationTest}).
+	 */
+	private String givenCrewWithLeader(String userId) {
+		saveUser(userId);
 		String crewId = IdGenerator.generate("CREW");
 		Crew crew = Crew.of(
 				crewId, userId, "리액션 API 테스트 크루", "목표", "인증 내용",
 				VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
 				LocalDate.now(), LocalDate.now().plusDays(3), false,
-				"RCTAPI", LocalDateTime.now(), LocalTime.of(23, 59, 59),
+				Crew.generateInviteCode(), LocalDateTime.now(), LocalTime.of(23, 59, 59),
 				CrewCategory.ETC, CrewVisibility.PRIVATE, 0L, List.of());
 		crewRepositoryPort.save(crew);
 		crewRepositoryPort.saveMember(CrewMember.createLeader(userId, crewId));
+		return crewId;
+	}
 
+	/** 크루에 일반 멤버 추가 — 멤버십 검증을 통과해야 리액션을 남길 수 있다 */
+	private void givenMember(String crewId, String userId) {
+		saveUser(userId);
+		crewRepositoryPort.saveMember(CrewMember.createMember(userId, crewId));
+	}
+
+	private String givenApprovedVerification(String crewId, String userId) {
 		Verification verification = Verification.createText(
-				"CHAL-reaction-api", userId, crew.getId(), "인증", LocalDate.now(), 1, 1);
+				"CHAL-reaction-api", userId, crewId, "인증", LocalDate.now(), 1, 1);
 		return verificationRepositoryPort.save(verification).getId();
 	}
+
+	private String givenCancelledVerification(String crewId, String userId) {
+		Verification verification = Verification.of(
+				IdGenerator.generate("VRFY"), "CHAL-reaction-api", userId, crewId, null, null, "취소된 인증",
+				VerificationStatus.CANCELLED, 0, LocalDate.now(), 1, 1,
+				ReviewStatus.NOT_REQUIRED, LocalDateTime.now());
+		return verificationRepositoryPort.save(verification).getId();
+	}
+
+	/** 요약 쿼리가 닉네임 때문에 users 를 JOIN 한다 — 유저 행이 없으면 리액션이 요약에서 사라진다 */
+	private void saveUser(String userId) {
+		userRepositoryPort.save(User.of(userId, "KAKAO", userId + "@test.com", userId,
+				null, null, null, LocalDateTime.now(), LocalDateTime.now(), null, 0));
+	}
+
+	// ===== HTTP 헬퍼 =====
 
 	/** 리액션 PUT 호출 — 요청마다 port를 지정해 RestAssured 정적 설정에 기대지 않는다 */
 	private Response putReaction(String userId, String verificationId, String emojiType) {
@@ -113,5 +231,13 @@ class ReactionApiTest extends ReactionIntegrationTestBase {
 				.body("{\"emojiType\": \"" + emojiType + "\"}")
 				.when()
 				.put("/verifications/{verificationId}/reactions", verificationId);
+	}
+
+	private Response deleteReaction(String userId, String verificationId) {
+		return RestAssured.given()
+				.port(port)
+				.header("X-User-Id", userId)
+				.when()
+				.delete("/verifications/{verificationId}/reactions", verificationId);
 	}
 }

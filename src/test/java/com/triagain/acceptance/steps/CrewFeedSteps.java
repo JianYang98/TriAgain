@@ -318,7 +318,7 @@ public class CrewFeedSteps {
 				crewId, creatorId, crewName, crewName + " 목표",
 				"인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
 				LocalDate.now(), LocalDate.now().plusDays(14), true,
-				generateInviteCode(), LocalDateTime.now(),
+				Crew.generateInviteCode(), LocalDateTime.now(),
 				Crew.DEFAULT_DEADLINE_TIME, null, CrewVisibility.PRIVATE, 0L, java.util.List.of()
 		);
 		crewRepositoryPort.save(crew);
@@ -338,16 +338,6 @@ public class CrewFeedSteps {
 					return challengeRepositoryPort.save(newChallenge);
 				});
 		scenarioContext.setChallengeId(challenge.getId());
-	}
-
-	private String generateInviteCode() {
-		String chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-		StringBuilder code = new StringBuilder(6);
-		for (int i = 0; i < 6; i++) {
-			int index = (int) (Math.random() * chars.length());
-			code.append(chars.charAt(index));
-		}
-		return code.toString();
 	}
 
 	private String getFirstCrewId() {
