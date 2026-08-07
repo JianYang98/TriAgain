@@ -19,7 +19,7 @@ description: Git 브랜치 전략과 커밋 메시지 컨벤션 (AngularJS Conve
 ```bash
 git fetch origin develop                # ← origin/develop 이 낡으면 낡은 커밋에서 갈라진다
 git worktree add <경로> origin/develop -b <브랜치>
-git -C <경로> push -u origin <브랜치>   # ← 생략 금지(이유는 아래). 에이전트는 못 하니 사용자에게 요청
+git -C <경로> push -u origin <브랜치>   # ← 생략 금지(이유는 아래). 에이전트가 직접 실행한다
 ```
 
 **`push -u`를 생성 직후에 하는 이유** — 두 가지가 한 번에 해결된다.
