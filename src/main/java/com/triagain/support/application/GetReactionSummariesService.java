@@ -28,7 +28,16 @@ public class GetReactionSummariesService implements GetReactionSummariesUseCase 
 		return groupByVerification(rows, viewerId);
 	}
 
-	/** verificationId → 이모지별 요약 — 이모지 그룹 순서 고정을 위해 바깥·안쪽 모두 LinkedHashMap */
+	/**
+	 * verificationId → 이모지별 요약.
+	 * <p>
+	 * {@code LinkedHashMap} 은 <b>삽입 순서(= 쿼리의 행 정렬 순서)를 보존</b>할 뿐이다.
+	 * <b>이모지 그룹 순서는 계약이 아니다</b> — api-spec 은 {@code reactions} 를 "이모지별 그룹"이라고만
+	 * 정의하고 그룹 간 순서를 어디에도 정하지 않았다. 지금 나오는 순서는 행 정렬에서 파생된 속성이다.
+	 * v1 은 활성 이모지가 LIKE 하나라 그룹이 항상 1개이므로 미결이어도 무해하다.
+	 * 활성 세트를 늘릴 땐 그룹 순서를 <b>먼저 계약으로 정하고</b>(enum 고정 순서 vs 최초 반응 순)
+	 * api-spec 에 명시한 뒤 테스트를 붙인다 — future-considerations.md 2026-08-07 ④.
+	 */
 	private Map<String, List<ReactionSummary>> groupByVerification(List<ReactionRow> rows, String viewerId) {
 		Map<String, Map<String, List<ReactionRow>>> byVerificationThenEmoji = new LinkedHashMap<>();
 		for (ReactionRow row : rows) {
