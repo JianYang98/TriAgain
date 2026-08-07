@@ -2,7 +2,6 @@ package com.triagain.support.infra;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -12,9 +11,6 @@ import org.springframework.data.repository.query.Param;
 import com.triagain.support.port.out.ReactionRepositoryPort.ReactionRow;
 
 public interface ReactionJpaRepository extends JpaRepository<ReactionJpaEntity, String> {
-
-	/** 리액션이 있는지·현재 이모지가 무엇인지 확인 — 실 DB 레인 테스트 전용(포트에는 없음, 직접 단언용) */
-	Optional<ReactionJpaEntity> findByVerificationIdAndUserId(String verificationId, String userId);
 
 	/** 인증의 리액션 총 개수 — 실 DB 레인 테스트 전용(포트에는 없음, 직접 단언용) */
 	long countByVerificationId(String verificationId);

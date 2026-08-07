@@ -26,6 +26,7 @@ import com.triagain.crew.port.out.CrewRepositoryPort;
 import com.triagain.support.application.AddReactionService;
 import com.triagain.support.port.in.AddReactionUseCase.AddReactionCommand;
 import com.triagain.support.port.out.ReactionRepositoryPort;
+import com.triagain.support.port.out.ReactionRepositoryPort.ReactionRow;
 import com.triagain.user.domain.model.User;
 import com.triagain.user.port.out.UserRepositoryPort;
 import com.triagain.verification.domain.model.Verification;
@@ -99,11 +100,10 @@ class ReactionIntegrationTest extends ReactionIntegrationTestBase {
 
 		// then
 		assertThat(reactionJpaRepository.countByVerificationId(approved.getId())).isEqualTo(1);
-		String emoji = reactionJpaRepository.findByVerificationIdAndUserId(approved.getId(), userId)
-				.orElseThrow()
-				.toDomain()
-				.getEmoji();
-		assertThat(emoji).isEqualTo("FIRE");
+		// 엔티티 게터를 늘리지 않고 기존 요약 projection 으로 읽는다(엔티티는 스키마 선언 전용)
+		List<ReactionRow> rows = reactionRepositoryPort.findRowsByVerificationIdIn(List.of(approved.getId()));
+		assertThat(rows).hasSize(1);
+		assertThat(rows.get(0).getEmoji()).isEqualTo("FIRE");
 	}
 
 	private Verification save(Verification verification) {
