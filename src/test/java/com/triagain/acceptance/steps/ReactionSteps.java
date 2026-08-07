@@ -68,6 +68,24 @@ public class ReactionSteps {
 		assertThat(totalReactionCount(scenarioContext.getVerificationId())).isEqualTo(expected);
 	}
 
+	/**
+	 * 수정 전용 단언 — "그 인증"(원본 id)으로 세면 **공허하다**: 수정하면 원본은 CANCELLED 라 피드에서
+	 * 통째로 사라지고 count 가 0으로 나온다. 리액션이 새 행으로 복사됐어도 그대로 통과한다.
+	 * 그래서 <b>대체 인증(새 행)을 직접 찾아</b> 그쪽 reactions 가 비었는지 본다.
+	 */
+	@그러면("피드에 다시 뜬 {string}의 인증에는 좋아요가 없다")
+	public void 피드에_다시_뜬_인증에는_좋아요가_없다(String ownerUserId) {
+		String originalId = scenarioContext.getVerificationId();
+		Map<String, Object> replacement = feedVerifications(scenarioContext.getUserId()).stream()
+				.filter(verification -> ownerUserId.equals(verification.get("userId")))
+				.findFirst()
+				.orElseThrow(() -> new AssertionError(ownerUserId + "의 대체 인증이 피드에 없다 — 수정이 실패했다"));
+
+		// 원본이 그대로 떠 있으면 아래 단언은 "수정 전 상태"를 보는 셈이라 무의미하다
+		assertThat(replacement.get("id")).as("대체 인증은 원본과 다른 행이어야 한다").isNotEqualTo(originalId);
+		assertThat(reactionSummaries(replacement)).as("대체 인증에는 좋아요가 따라오지 않는다").isEmpty();
+	}
+
 	@그리고("좋아요 누른 사람에 {string}이 표시된다")
 	public void 좋아요_누른_사람에_이_표시된다(String nickname) {
 		assertThat(reactionUserNicknames(scenarioContext.getVerificationId())).contains(nickname);

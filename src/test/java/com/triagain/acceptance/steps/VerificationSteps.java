@@ -161,8 +161,11 @@ public class VerificationSteps {
 
 	/**
 	 * 취소/수정 컷오프 안쪽으로 마감을 미는 시각 앵커 — 두 레버(challenge.deadline·crew.deadlineTime)를
-	 * 함께 밀고 자기 사후조건을 검사한다(step1-biz-logic.md §7-1). 하루의 마지막 몇 분(23:55~24:00)에
-	 * 실행되면 crew.deadlineTime 상한(23:59:59)에 막혀 조건을 못 채울 수 있다 — 그때는 원인을 명시해 실패한다.
+	 * 함께 밀고 자기 사후조건을 검사한다(step1-biz-logic.md §7-1).
+	 * <p>
+	 * 하루의 마지막 몇 분(23:55~24:00)에 실행되면 crew.deadlineTime 상한(23:59:59)에 막힐 수 있었으나,
+	 * CucumberSpringContext 가 cancel-cutoff-minutes 를 0으로 내려 그 구간을 없앴다 — 사후조건 검사는
+	 * 남겨 둔다(레버가 하나라도 안 먹으면 가드의 모호한 4xx 대신 원인을 명시해 실패시킨다).
 	 */
 	@조건("그 인증은 아직 마감 전이다")
 	public void 그_인증은_아직_마감_전이다() {

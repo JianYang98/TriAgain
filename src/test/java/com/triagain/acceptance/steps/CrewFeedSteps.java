@@ -108,15 +108,17 @@ public class CrewFeedSteps {
 	 * incrementMembersIfNotFull 을 써서 불변식을 지킨다.
 	 */
 	private void joinCrewFixture(String userId, String crewId) {
-		crewRepositoryPort.saveMember(CrewMember.createMember(userId, crewId));
-		// incrementMembersIfNotFull 은 @Modifying 이라 호출자 트랜잭션이 필요하다 — 스텝은 트랜잭션 밖이다
-		Integer affected = transactionTemplate.execute(
-				status -> crewRepositoryPort.incrementMembersIfNotFull(crewId));
-		// CAS 라 정원이 차면 0을 반환한다 — 삼키면 crew_members 행수와 current_members 가 다시 어긋난다
-		if (affected == null || affected != 1) {
-			throw new IllegalStateException(
-					"크루 참여 픽스처 실패 — current_members 증가가 " + affected + "행(정원 초과 의심): crewId=" + crewId);
-		}
+		// 두 쓰기가 한 트랜잭션이어야 한다 — 멤버 행만 커밋된 채 증가가 실패하면 고치려던 그 어긋남이 그대로 남는다.
+		// (incrementMembersIfNotFull 은 @Modifying 이라 어차피 호출자 트랜잭션이 필요하다 — 스텝은 트랜잭션 밖이다)
+		transactionTemplate.executeWithoutResult(status -> {
+			crewRepositoryPort.saveMember(CrewMember.createMember(userId, crewId));
+			// CAS 라 정원이 차면 0을 반환한다 — 삼키면 crew_members 행수와 current_members 가 어긋난다
+			int affected = crewRepositoryPort.incrementMembersIfNotFull(crewId);
+			if (affected != 1) {
+				throw new IllegalStateException(
+						"크루 참여 픽스처 실패 — current_members 증가가 " + affected + "행(정원 초과 의심): crewId=" + crewId);
+			}
+		});
 	}
 
 	@조건("{string}가 오늘 인증을 완료했다")
