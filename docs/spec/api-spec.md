@@ -25,7 +25,7 @@
 |--------|------|-----------------|
 | 인증/유저 | [`api-spec/auth-user.md`](api-spec/auth-user.md) | POST /auth/kakao · signup · apple · apple-signup · refresh · logout, GET /users/me, PATCH /users/me/nickname, 프로필 이미지 업로드·확정, DELETE /users/me |
 | 크루 | [`api-spec/crew.md`](api-spec/crew.md) | GET /crews/{id}/feed · my-verifications, GET /crews/invite/{code} · {id}/preview, POST /crews/join, GET /crews/{id}, POST /crews, GET /crews, PATCH·DELETE /crews/{id}, DELETE /crews/{id}/members/me, GET /crews/search, POST /crews/{id}/join, GET /invite/{code} |
-| 인증 업로드 | [`api-spec/verification.md`](api-spec/verification.md) | POST /upload-sessions, POST /verifications, DELETE /verifications/{id}, PATCH /verifications/{id}, GET /upload-sessions/{id}/events (SSE) |
+| 인증 업로드 | [`api-spec/verification.md`](api-spec/verification.md) | POST /upload-sessions, POST /verifications, DELETE /verifications/{id}, PATCH /verifications/{id}, PUT·DELETE /verifications/{id}/reactions (Support Context), GET /upload-sessions/{id}/events (SSE) |
 | 알림 | [`api-spec/notification.md`](api-spec/notification.md) | PATCH /users/me/fcm-token, GET /notifications · unread-count, PATCH /notifications/{id}/read · read-all, DELETE /notifications |
 | 습관·솔로 | [`api-spec/habit.md`](api-spec/habit.md) | POST /habits, GET /habits · archived, PATCH /habits/{id}, POST /habits/{id}/end · pause · resume · cycles · verifications, DELETE cycles/current |
 | 내부 API | [`api-spec/internal.md`](api-spec/internal.md) | PUT /internal/upload-sessions/complete, POST /internal/fcm-test |
@@ -35,5 +35,3 @@
 ### Moderation Context
 - POST /verifications/{id}/reports — 신고
 
-### Support Context
-- POST /verifications/{id}/reactions — 반응 (이모지)

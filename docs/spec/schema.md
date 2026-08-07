@@ -137,12 +137,13 @@ erDiagram
         timestamp created_at
     }
     
+    %% (verification_id, user_id) UNIQUE 제약 — V26 (uk_reactions_verification_user, 유저당 인증 1개 · upsert 교체의 충돌 대상)
     reactions {
         string id PK
         string verification_id FK
         string user_id FK
-        string emoji
-        timestamp created_at
+        string emoji "LIKE / FIRE / CLAP / HEART / LAUGH — v1 활성 세트는 LIKE만"
+        timestamp created_at "최초 반응 시각 — 이모지 교체 시 갱신하지 않는다 (표시 순서 정렬 키)"
     }
     
     upload_session {
@@ -254,6 +255,14 @@ erDiagram
 |----|------|
 | TEXT | 텍스트 인증 (텍스트 필수) |
 | PHOTO | 사진 인증 (사진 필수 + 텍스트 선택) |
+
+### reactions 제약
+| 제약 | 컬럼 | 설명 |
+|------|------|------|
+| UNIQUE | (verification_id, user_id) | 유저당 인증 1개 — V26(uk_reactions_verification_user). 이모지 교체는 `ON CONFLICT … DO UPDATE`의 충돌 대상이라 **제약이 빠지면 upsert 자체가 실패**한다 |
+
+> ⚠️ **삭제 경로 가드**: reactions는 FK가 없다(이 DB는 FK 제약을 쓰지 않는다). 현재 정리는 **크루 삭제 경로**(`deleteCrewWithAssociations`)에서만 일어난다.
+> **인증·크루뿐 아니라 `users`를 물리 삭제하는 경로를 신설하면 reactions를 반드시 포함하라** — 현재 회원 탈퇴는 익명화(soft delete)라 해당 없고, 남긴 반응은 `"탈퇴한 사용자"` 닉네임으로 존속한다.
 
 ### crew_members 제약
 | 제약 | 컬럼 | 설명 |
@@ -414,6 +423,13 @@ WHERE status = 'IN_PROGRESS';
 -- 신고 중복 방지
 CREATE UNIQUE INDEX uk_reports_verification_reporter
 ON reports(verification_id, reporter_id);
+
+-- 유저당 인증 1개 반응 (이모지 교체는 UPDATE) — Flyway V26에서 추가
+-- ⚠️ 이 제약은 두 곳에 선언돼 있다: V26(운영·Flyway ON 테스트) + ReactionJpaEntity의 @Table(uniqueConstraints)
+--    (인수·E2E 테스트는 ddl-auto=create-drop + flyway off 라 엔티티가 스키마 출처다).
+--    한쪽만 고치면 다른 계층이 42P10(ON CONFLICT 대상 없음)으로 죽는다 — 항상 세트로 바꾼다.
+CREATE UNIQUE INDEX uk_reactions_verification_user
+ON reactions(verification_id, user_id);
 
 -- 크루 중복 가입 방지 (유저·크루당 멤버십 1개만 허용)
 -- Flyway V22에서 추가 (전략 C 조건부 UPDATE의 동시성 안전망)

@@ -541,3 +541,112 @@ data: COMPLETED
 
 ---
 
+
+### PUT /verifications/{verificationId}/reactions (인증 좋아요 남기기)
+
+크루원이 인증에 이모지 반응을 남긴다. 유저당 인증 1개이며 **재요청은 교체**(멱등).
+
+**요청 (Request)**
+```json
+PUT /verifications/ver_789/reactions HTTP/1.1
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "emojiType": "LIKE"
+}
+```
+
+**파라미터:**
+- `emojiType`: (필수) **v1은 `"LIKE"`만 허용**. 서버는 `LIKE`·`FIRE`·`CLAP`·`HEART`·`LAUGH`를 정의하되 활성 세트 밖 값은 400으로 거부한다 (구버전 클라이언트가 렌더할 수 없는 값의 저장 차단)
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": {
+    "verificationId": "ver_789",
+    "reactions": [
+      {
+        "emojiType": "LIKE",
+        "count": 2,
+        "reactedByMe": true,
+        "users": [
+          {"userId": "user_222", "nickname": "지안"},
+          {"userId": "user_333", "nickname": "영희"}
+        ]
+      }
+    ]
+  },
+  "error": null
+}
+```
+
+**필드 설명:**
+- `reactions`: 해당 인증의 **갱신된 전체 요약** (이모지별 그룹, 없으면 `[]`) — FE가 피드 재조회 없이 카드를 갱신하는 데 사용
+  - `count`: 그 이모지를 남긴 인원 수
+  - `reactedByMe`: 요청자가 그 이모지를 남겼는지
+  - `users`: 남긴 사람 전원 (크루 정원 10명 → 인증당 최대 9명이라 전량 반환). 크루를 떠난 사람의 과거 리액션도 포함된다
+  - 표시 순서는 서버 정렬(`created_at`, `user_id`)을 따른다
+
+**제약 사항:**
+- 같은 유저가 다른 이모지로 재요청하면 **교체**된다 (행이 늘지 않는다). 같은 이모지 재요청도 200 — 상태가 같은 값으로 수렴한다
+- 좋아요 **취소는 이 API가 아니라 DELETE**다 (같은 이모지 재탭 = 취소는 클라이언트가 DELETE로 구현)
+- 본인 인증에도 남길 수 있다
+
+**에러 응답**
+
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 400 | S003 | 이모지는 필수입니다. | `emojiType` 누락·공백 |
+| 400 | S006 | 지원하지 않는 이모지입니다. | 정의 밖 값 또는 활성 세트 밖 이모지 |
+| 403 | CR009 | 크루 멤버만 조회할 수 있습니다. | 해당 크루의 현재 멤버가 아님 (`CREW_ACCESS_DENIED` 재사용 — 취소 API 선례) |
+| 404 | CR001 | 크루를 찾을 수 없습니다. | 인증이 속한 크루 없음 |
+| 404 | S005 | 반응을 남길 인증을 찾을 수 없습니다. | 인증 미존재 **또는** 노출 상태(`APPROVED`)가 아님 — 취소·신고 숨김 등. 서버는 이 둘을 구분하지 않는다 (원자 처리) |
+
+---
+
+### DELETE /verifications/{verificationId}/reactions (내 좋아요 취소)
+
+요청자가 그 인증에 남긴 반응을 제거한다. **멱등** — 남긴 반응이 없어도 200이다.
+
+**요청 (Request)**
+```
+DELETE /verifications/ver_789/reactions HTTP/1.1
+Authorization: Bearer <token>
+```
+본문 없음. (이모지를 지정하지 않는다 — 유저당 1개이므로 대상이 유일하다)
+
+**성공 응답 (200 OK)** — PUT과 동일 구조
+```json
+{
+  "success": true,
+  "data": {
+    "verificationId": "ver_789",
+    "reactions": [
+      {
+        "emojiType": "LIKE",
+        "count": 1,
+        "reactedByMe": false,
+        "users": [{"userId": "user_333", "nickname": "영희"}]
+      }
+    ]
+  },
+  "error": null
+}
+```
+
+**제약 사항:**
+- 마지막 반응이 사라지면 `reactions`는 `[]`
+- **취소된 인증에 대한 DELETE도 200**이다 (비노출 데이터 제거라 무해). 이때 `reactions`는 항상 `[]` — 노출 상태가 아닌 인증의 요약은 어떤 응답에도 실리지 않는다
+- 응답의 `reactions`는 PUT과 같은 조회를 쓰므로 위 규칙이 두 API에 동일하게 적용된다
+
+**에러 응답**
+
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 403 | CR009 | 크루 멤버만 조회할 수 있습니다. | 해당 크루의 현재 멤버가 아님 |
+| 404 | CR001 | 크루를 찾을 수 없습니다. | 인증이 속한 크루 없음 |
+| 404 | S005 | 반응을 남길 인증을 찾을 수 없습니다. | 인증 미존재 (취소된 인증은 **에러가 아니다** — 위 참조) |
+
+---
