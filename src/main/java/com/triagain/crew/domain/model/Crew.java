@@ -298,7 +298,11 @@ public class Crew {
 		}
 	}
 
-	private static String generateInviteCode() {
+	/**
+	 * 초대코드 생성 — {@code crews.invite_code} 는 {@code VARCHAR(6)} + {@code uk_crews_invite_code UNIQUE} 다.
+	 * 길이·알파벳이 계약이라 테스트도 이 메서드를 쓴다(사본을 만들지 마라 — 2026-08-07 이전엔 6벌이 있었다).
+	 */
+	public static String generateInviteCode() {
 		StringBuilder code = new StringBuilder(6);
 		for (int i = 0; i < 6; i++) {
 			int index = (int) (Math.random() * INVITE_CODE_CHARS.length());

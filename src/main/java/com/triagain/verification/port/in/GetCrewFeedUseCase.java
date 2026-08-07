@@ -4,6 +4,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.triagain.verification.port.out.ReactionPort;
+
 public interface GetCrewFeedUseCase {
 
 	/** 크루 피드 조회 — 크루원 인증 목록 + 나의 현황 반환 */
@@ -40,7 +42,8 @@ public interface GetCrewFeedUseCase {
 			String textContent,
 			LocalDate targetDate,
 			int slotAttempt,
-			LocalDateTime createdAt
+			LocalDateTime createdAt,
+			List<ReactionPort.ReactionSummary> reactions
 	) {
 	}
 

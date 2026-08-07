@@ -57,7 +57,7 @@ class CreateVerificationServiceSlotDeadlineIntegrationTest extends E2eTestBase {
 				crewId, userId, "캡 테스트 크루", "목표",
 				"인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
 				yesterday, yesterday, true,
-				generateInviteCode(), LocalDateTime.now(),
+				Crew.generateInviteCode(), LocalDateTime.now(),
 				deadlineTime, null, CrewVisibility.PRIVATE, 0L, List.of()
 		);
 		crewRepositoryPort.save(crew);

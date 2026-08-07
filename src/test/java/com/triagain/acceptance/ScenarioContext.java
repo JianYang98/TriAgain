@@ -19,6 +19,7 @@ public class ScenarioContext {
 	private String inviteCode;
 	private String creatorId;
 	private String challengeId;
+	private String verificationId;
 	private Long uploadSessionId;
 	private String imageKey;
 	private String notificationId;
@@ -78,6 +79,14 @@ public class ScenarioContext {
 
 	public void setChallengeId(String challengeId) {
 		this.challengeId = challengeId;
+	}
+
+	public String getVerificationId() {
+		return verificationId;
+	}
+
+	public void setVerificationId(String verificationId) {
+		this.verificationId = verificationId;
 	}
 
 	public Long getUploadSessionId() {

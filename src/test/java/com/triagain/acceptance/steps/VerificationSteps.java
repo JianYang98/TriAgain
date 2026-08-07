@@ -19,6 +19,7 @@ import com.triagain.crew.domain.model.Crew;
 import com.triagain.crew.domain.vo.VerificationType;
 import com.triagain.crew.port.out.ChallengeRepositoryPort;
 import com.triagain.crew.port.out.CrewRepositoryPort;
+import com.triagain.verification.application.VerificationPolicyProperties;
 import com.triagain.verification.domain.model.UploadSession;
 import com.triagain.verification.domain.model.Verification;
 import com.triagain.verification.domain.vo.ReviewStatus;
@@ -54,6 +55,9 @@ public class VerificationSteps {
 
 	@Autowired
 	private VerificationRepositoryPort verificationRepositoryPort;
+
+	@Autowired
+	private VerificationPolicyProperties policyProperties;
 
 	private VerificationTestAdapter verificationAdapter;
 	private int initialCompletedDays;
@@ -155,7 +159,92 @@ public class VerificationSteps {
 		return DeadlinePolicy.effectiveSlotDeadline(slot, crew.getDeadlineTime(), challenge.getDeadline());
 	}
 
+	/**
+	 * 취소/수정 컷오프 안쪽으로 마감을 미는 시각 앵커 — 두 레버(challenge.deadline·crew.deadlineTime)를
+	 * 함께 밀고 자기 사후조건을 검사한다(step1-biz-logic.md §7-1).
+	 * <p>
+	 * 하루의 마지막 몇 분(23:55~24:00)에 실행되면 crew.deadlineTime 상한(23:59:59)에 막힐 수 있었으나,
+	 * CucumberSpringContext 가 cancel-cutoff-minutes 를 0으로 내려 그 구간을 없앴다 — 사후조건 검사는
+	 * 남겨 둔다(레버가 하나라도 안 먹으면 가드의 모호한 4xx 대신 원인을 명시해 실패시킨다).
+	 */
+	@조건("그 인증은 아직 마감 전이다")
+	public void 그_인증은_아직_마감_전이다() {
+		Challenge challenge = pushChallengeDeadline();
+		pushCrewDeadlineTime(challenge.getCrewId());
+		assertWithinCancelCutoff();
+	}
+
+	private Challenge pushChallengeDeadline() {
+		String challengeId = scenarioContext.getChallengeId();
+		Challenge challenge = challengeRepositoryPort.findById(challengeId).orElseThrow();
+		Challenge pushed = Challenge.of(
+				challenge.getId(), challenge.getUserId(), challenge.getCrewId(),
+				challenge.getCycleNumber(), challenge.getTargetDays(), challenge.getCompletedDays(),
+				challenge.getStatus(), challenge.getStartDate(),
+				LocalDateTime.now().plusHours(2),
+				challenge.getCreatedAt()
+		);
+		challengeRepositoryPort.save(pushed);
+		return pushed;
+	}
+
+	private void pushCrewDeadlineTime(String crewId) {
+		Crew crew = crewRepositoryPort.findById(crewId).orElseThrow();
+		Crew pushed = Crew.of(
+				crew.getId(), crew.getCreatorId(), crew.getName(), crew.getGoal(),
+				crew.getVerificationContent(), crew.getVerificationType(), crew.getMaxMembers(),
+				crew.getCurrentMembers(), crew.getStatus(), crew.getStartDate(),
+				crew.getEndDate(), crew.isAllowLateJoin(), crew.getInviteCode(),
+				crew.getCreatedAt(), Crew.DEFAULT_DEADLINE_TIME, crew.getCategory(), crew.getVisibility(), 0L,
+				crew.getMembers()
+		);
+		crewRepositoryPort.save(pushed);
+	}
+
+	private void assertWithinCancelCutoff() {
+		LocalDateTime effective = slotEffectiveDeadline();
+		LocalDateTime cancelDeadline = effective.minusMinutes(policyProperties.getCancelCutoffMinutes());
+		if (!LocalDateTime.now().isBefore(cancelDeadline)) {
+			throw new IllegalStateException(
+					"마감 앵커 실패 — 컷오프(" + policyProperties.getCancelCutoffMinutes() + "분) 이내다. "
+							+ "effective=" + effective + ", now=" + LocalDateTime.now()
+							+ " — 하루의 마지막 몇 분(23:55~24:00)에 실행되면 발생할 수 있다"
+							+ "(step1-biz-logic.md §7-1 잔존 위험).");
+		}
+	}
+
+	/** "그 인증"(현재 시나리오가 다루는 대상 인증)의 id — 캐시돼 있으면 재사용, 없으면 활성 인증을 조회해 캐시한다 */
+	private String resolveVerificationId(String ownerUserId) {
+		String cached = scenarioContext.getVerificationId();
+		if (cached != null) {
+			return cached;
+		}
+		String crewId = scenarioContext.getCrewId();
+		Verification verification = verificationRepositoryPort
+				.findActiveByUserIdAndCrewIdAndTargetDate(ownerUserId, crewId, LocalDate.now())
+				.orElseThrow(() -> new IllegalStateException(ownerUserId + "의 활성 인증을 찾을 수 없다"));
+		scenarioContext.setVerificationId(verification.getId());
+		return verification.getId();
+	}
+
 	// ===== 만일 (When) =====
+
+	@만일("{string}가 자신의 인증을 취소한다")
+	public void 자신의_인증을_취소한다(String userId) {
+		String verificationId = resolveVerificationId(userId);
+		ExtractableResponse<Response> response = verificationAdapter.cancelVerification(userId, verificationId);
+		scenarioContext.setResponse(response);
+	}
+
+	@만일("{string}가 자신의 인증의 내용을 수정한다")
+	public void 자신의_인증의_내용을_수정한다(String userId) {
+		String verificationId = resolveVerificationId(userId);
+		Map<String, Object> request = new HashMap<>();
+		request.put("textContent", "수정된 인증 내용입니다");
+		ExtractableResponse<Response> response =
+				verificationAdapter.updateVerification(userId, verificationId, request);
+		scenarioContext.setResponse(response);
+	}
 
 	@만일("다음 정보로 인증을 생성한다")
 	public void 다음_정보로_인증을_생성한다(DataTable dataTable) {
