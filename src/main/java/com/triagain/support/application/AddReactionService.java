@@ -38,6 +38,12 @@ public class AddReactionService implements AddReactionUseCase {
 				.orElseThrow(() -> new BusinessException(ErrorCode.REACTION_TARGET_NOT_FOUND));
 		crewMembershipPort.validateMembership(crewId, command.userId());
 
+		// 멤버십 검사와 upsert 사이에 탈퇴가 커밋되는 경합은 잠그지 않는다(2026-08-07 PR #141 리뷰에서 재지적, 기각).
+		// 그 경합의 결과가 합법적인 순서와 **구분 불가능**하기 때문이다:
+		//   경합 → 리액션 저장 → 탈퇴 → 피드에 남음 / 정상 → 리액션 남김 → 탈퇴 → 피드에 남음
+		// E5("크루를 떠나도 남긴 좋아요는 유지된다", 인수 시나리오 8)가 후자를 명시적으로 허용하므로
+		// 막을 잘못된 상태가 없다. upsert SQL 에 crew_members 조건을 넣는 대가(Support BC 가 Crew 테이블을
+		// 직접 읽음)만 남는다. 피드 조회도 같은 비잠금 검증을 쓴다(GetCrewFeedService:32).
 		upsertOrThrow(command, emojiType);
 
 		return toVerificationReactions(command.verificationId(), command.userId());
