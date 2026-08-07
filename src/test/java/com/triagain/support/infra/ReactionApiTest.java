@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.triagain.common.util.IdGenerator;
 import com.triagain.crew.domain.model.Crew;
@@ -61,6 +62,9 @@ class ReactionApiTest extends ReactionIntegrationTestBase {
 	@Autowired
 	private UserRepositoryPort userRepositoryPort;
 
+	@Autowired
+	private TransactionTemplate transactionTemplate;
+
 	@Test
 	@DisplayName("E3 연타 — 같은 유저가 같은 이모지(LIKE)를 2회 PUT하면 200 · reactions 행 1개 · count 1")
 	void addReaction_sameEmojiTwice_upsertsSingleRowWithCountOne() {
@@ -80,16 +84,33 @@ class ReactionApiTest extends ReactionIntegrationTestBase {
 	}
 
 	@Test
-	@DisplayName("E1-d — 취소된 인증에 내 리액션을 DELETE하면 200이고 요약은 빈 배열이다")
+	@DisplayName("E1-d — 리액션이 달린 인증이 취소된 뒤 DELETE하면 200이고 요약은 빈 배열이다")
 	void removeReaction_onCancelledVerification_returnsOkWithEmptySummary() {
+		// ⚠️ 남의 리액션이 **남아 있는 상태**여야 한다. 내 것만 두면 DELETE 가 그걸 지워서
+		// 빈 배열이 필터와 무관하게 참이 되고(2026-08-07 실험으로 확인), 그러면 E4 와 같아진다.
+		// 남의 행이 남아야 "취소된 인증의 요약은 항상 비어 있다"(step2 §3)가 실제로 검증된다.
 		String userId = "reaction-api-user2";
+		String other = "reaction-api-user2b";
 		String crewId = givenCrewWithLeader(userId);
-		String verificationId = givenCancelledVerification(crewId, userId);
+		givenMember(crewId, other);
+		String verificationId = givenApprovedVerification(crewId, userId);
+		putReaction(userId, verificationId, "LIKE");
+		putReaction(other, verificationId, "LIKE");
+		assertThat(reactionJpaRepository.countByVerificationId(verificationId))
+				.as("사전 조건: 리액션 2건 — 내 것을 지워도 1건이 남아야 필터가 검증된다")
+				.isEqualTo(2);
+		// cancelIfApproved 는 @Modifying 이라 호출자 트랜잭션이 필요하다 — API 테스트는 트랜잭션 밖이다
+		transactionTemplate.execute(status -> verificationRepositoryPort.cancelIfApproved(verificationId));
 
 		Response response = deleteReaction(userId, verificationId);
 
 		assertThat(response.statusCode()).isEqualTo(200);
-		assertThat(response.jsonPath().getList("data.reactions")).isEmpty();
+		assertThat(reactionJpaRepository.countByVerificationId(verificationId))
+				.as("남의 리액션 행은 그대로 남아 있다 — 아래 빈 배열은 삭제가 아니라 필터의 결과여야 한다")
+				.isEqualTo(1);
+		assertThat(response.jsonPath().getList("data.reactions"))
+				.as("비노출 인증의 반응은 응답 바디에도 실리지 않는다(step2 §5 불변식 4)")
+				.isEmpty();
 	}
 
 	@Test
@@ -159,17 +180,22 @@ class ReactionApiTest extends ReactionIntegrationTestBase {
 	}
 
 	@Test
-	@DisplayName("S005 — 취소된 인증에 PUT하면 404이고 메시지가 enum 이름이 아니다")
+	@DisplayName("S005 — 취소된 인증과 미존재 인증에 PUT하면 같은 404가 나온다(사유 미구분)")
 	void addReaction_onCancelledVerification_returns404WithResolvedMessage() {
 		String userId = "reaction-api-user8";
 		String crewId = givenCrewWithLeader(userId);
 		String verificationId = givenCancelledVerification(crewId, userId);
 
-		Response response = putReaction(userId, verificationId, "LIKE");
+		Response cancelled = putReaction(userId, verificationId, "LIKE");
+		// 불변식 5 — 서버는 취소와 미존재를 구분하지 않는다. 한쪽만 검증하면 그 '구분 안 함'이 안 잠긴다
+		Response missing = putReaction(userId, "VRFY-does-not-exist", "LIKE");
 
-		assertThat(response.statusCode()).isEqualTo(404);
-		String message = response.jsonPath().getString("error.message");
-		assertThat(message).isNotEqualTo("REACTION_TARGET_NOT_FOUND").isEqualTo(MSG_TARGET_NOT_FOUND);
+		assertThat(cancelled.statusCode()).isEqualTo(404);
+		assertThat(cancelled.jsonPath().getString("error.message"))
+				.isNotEqualTo("REACTION_TARGET_NOT_FOUND").isEqualTo(MSG_TARGET_NOT_FOUND);
+		assertThat(missing.statusCode()).as("미존재도 같은 404·같은 코드여야 한다").isEqualTo(404);
+		assertThat(missing.jsonPath().getString("error.code"))
+				.isEqualTo(cancelled.jsonPath().getString("error.code"));
 	}
 
 	@Test
