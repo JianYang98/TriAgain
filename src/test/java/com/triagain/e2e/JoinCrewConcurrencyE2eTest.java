@@ -36,7 +36,7 @@ import io.restassured.response.Response;
  * flush 수정 없이 T2는 RED(중복행 생성), 수정 후 GREEN(CREW_ALREADY_JOINED).
  * 이 전이가 saveMemberAndFlush의 유일한 실증이다.
  */
-class JoinCrewConcurrencyTest extends E2eTestBase {
+class JoinCrewConcurrencyE2eTest extends E2eTestBase {
 
 	@PersistenceContext
 	private EntityManager entityManager;
