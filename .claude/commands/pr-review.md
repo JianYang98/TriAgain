@@ -11,9 +11,15 @@ model: opus
 ### Step 0: 변경 범위 파악
 
 ```bash
-git fetch origin develop -q      # origin/develop 이 낡으면 남의 머지분이 딸려온다
-git diff origin/develop...HEAD --name-only
+# 기준점은 PR 이 어디로 가는지로 정한다 — 고정하면 한쪽 PR 은 반드시 틀린다
+BASE=$(gh pr view --json baseRefName -q .baseRefName 2>/dev/null || echo develop)
+echo "기준: origin/$BASE"
+git fetch origin "$BASE" -q || echo "⚠️ fetch 실패 — origin/$BASE 가 낡았을 수 있다"
+git diff "origin/$BASE...HEAD" --name-only
 ```
+
+⚠️ **0개면 리뷰를 진행하지 말고 기준점부터 의심한다.** PR 생성 전에 돌리면 `BASE` 가 `develop` 으로
+폴백되는데, 릴리스(`develop → main`)를 보려던 거였다면 자기 자신과 비교해 0파일이 나온다.
 
 변경된 파일 목록을 카테고리별로 분류합니다:
 
@@ -152,7 +158,7 @@ git diff origin/develop...HEAD --name-only
 ```
 /pr-review
 ```
-→ git diff origin/develop...HEAD 기반으로 변경된 파일 자동 분류 → 해당 리뷰어 실행
+→ PR 의 base 브랜치 기준으로 변경된 파일 자동 분류 → 해당 리뷰어 실행
 
 ### 브랜치 지정
 
