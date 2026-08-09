@@ -11,7 +11,8 @@ model: opus
 ### Step 0: 변경 범위 파악
 
 ```bash
-git diff main..HEAD --name-only
+git fetch origin develop -q      # origin/develop 이 낡으면 남의 머지분이 딸려온다
+git diff origin/develop...HEAD --name-only
 ```
 
 변경된 파일 목록을 카테고리별로 분류합니다:
@@ -151,7 +152,7 @@ git diff main..HEAD --name-only
 ```
 /pr-review
 ```
-→ git diff main..HEAD 기반으로 변경된 파일 자동 분류 → 해당 리뷰어 실행
+→ git diff origin/develop...HEAD 기반으로 변경된 파일 자동 분류 → 해당 리뷰어 실행
 
 ### 브랜치 지정
 
