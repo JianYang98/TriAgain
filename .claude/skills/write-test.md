@@ -85,7 +85,7 @@ TriAgain은 3계층 테스트 구조를 따른다. 아래에서 위로 쌓는다
 > 여기서는 레벨별 *작성 방법*만 다룬다. (`*Test` / `*IntegrationTest` / `*ApiTest` / `*E2eTest`)
 
 ```
-         E2E (해피패스 5개) — ./gradlew e2eTest
+         E2E 해피패스 — ./gradlew e2eTest (태스크엔 실DB 동시성·제약도 같이 실린다)
       Cucumber BDD — 스텝 본문은 한국어 (Gherkin 키워드는 혼용, §2-2 참조)
    단위테스트 — 도메인 모델 + 서비스 + 어댑터
 ```
@@ -208,9 +208,13 @@ dialect와 무관하게 스텝 본문은 20/20 전부 한국어이며, 영문 `G
 
 ### 2-3. E2E 테스트
 
-**대상**: 핵심 해피패스 (현재 5개 시나리오)
+**대상**: 해피패스 5개 시나리오 (`HappyPathE2eTest`)
 **DB**: TestContainers (PostgreSQL 16)
 **실행**: `./gradlew e2eTest` (별도 task)
+
+⚠️ `e2eTest` **태스크**는 이 5개만 도는 게 아니다 — `@Tag("e2e")`가 붙은 실DB 동시성·제약
+테스트가 같이 실린다. 여기 "대상"은 **해피패스 층**을 말한다.
+태스크에 뭐가 실리는지는 `.claude/rules/test-strategy.md` "무엇이 언제 도는가" 참조.
 
 #### 작성 기준
 
@@ -220,7 +224,7 @@ dialect와 무관하게 스텝 본문은 20/20 전부 한국어이며, 영문 `G
 | 배포 전 스모크 테스트 용도 | 핵심 5개 시나리오 |
 
 #### 주의사항
-- E2E는 해피패스만. 에러 케이스는 Cucumber에서 커버한다.
+- E2E 해피패스에는 해피패스만. 에러 케이스는 Cucumber에서 커버한다.
 - E2E 시나리오 수는 최소로 유지한다 (느리므로).
 - 새 E2E 추가는 "이 플로우가 깨지면 서비스를 못 쓴다" 수준일 때만.
 
@@ -319,7 +323,9 @@ dialect와 무관하게 스텝 본문은 20/20 전부 한국어이며, 영문 `G
 - ❌ 파급력 리포트 승인 전에 테스트를 고치지 않는다
 - ❌ 깨진 테스트를 삭제하지 않는다 (수정한다)
 - ❌ Cucumber 스텝에서 REST-Assured를 직접 호출하지 않는다 (TestAdapter를 쓴다)
-- ❌ E2E에 에러 케이스를 추가하지 않는다 (Cucumber에서 커버)
+- ❌ E2E **해피패스**에 에러 케이스를 추가하지 않는다 (Cucumber에서 커버).
+  단, 실DB·동시성에서만 재현되는 불변식은 예외 — 단위·Cucumber로 원리적으로 못 잡으므로
+  `@Tag("e2e")`를 붙여 `e2eTest`에 싣는다 (예: `JoinCrewConcurrencyE2eTest`의 중복 가입 409)
 - ❌ `@Disabled`로 실패하는 테스트를 무시하지 않는다
 - ❌ 한 번에 여러 테스트 레벨을 동시에 수정하지 않는다 (단위 → Cucumber → E2E 순서)
 - ❌ hard-delete/캐스케이드 정리 SQL을 mock verify(호출 여부)로만 검증하지 않는다 — 실DB(TestContainers)로 참조행 0건을 assert한다 (FK 제약 부재로 SQL 오류가 단위테스트에서 안 잡힘)

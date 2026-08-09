@@ -32,7 +32,7 @@ import com.triagain.support.port.out.NotificationRepositoryPort;
 @ActiveProfiles("integration")
 @Tag("integration")
 @Testcontainers
-class NotificationTypeCheckConstraintTest {
+class NotificationTypeCheckConstraintIntegrationTest {
 
 	@Container
 	static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine")

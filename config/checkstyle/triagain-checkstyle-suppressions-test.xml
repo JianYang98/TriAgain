@@ -51,8 +51,8 @@
         그 사정은 통합·e2e 에만 해당한다.
 
         실측 2026-08-03 — 30줄 초과 4건은 전부 통합·e2e 다.
-          68 e2e/JoinCrewConcurrencyTest:50        (동시성)
-          58 e2e/JoinCrewConcurrencyTest:138       (동시성)
+          68 e2e/JoinCrewConcurrencyE2eTest:50     (동시성)
+          58 e2e/JoinCrewConcurrencyE2eTest:138    (동시성)
           52 crew/infra/DeleteCrewWithAssociationsIntegrationTest:56  (9테이블 삭제 검증)
           32 crew/infra/ChallengeFailIfUnchangedIntegrationTest:56    (경합 재현)
         같은 시점 최장 — 단위 29줄(ChunkProcessorTest:88) · Cucumber Steps 24줄.
