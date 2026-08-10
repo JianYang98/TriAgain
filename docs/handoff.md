@@ -353,12 +353,5 @@ Redis 캐시, AWS SQS 비동기 이벤트, FCM 푸시 알림, 분산 락(Redis),
 
 ### 8.4 디버깅 로그
 
-버그 수정, 설계 결정, AI 방향 수정 시 `/docs/log/debugging-log.md`에 기록 필수. 형식:
-
-```
-### [날짜] 제목
-- 상황: (한 줄)
-- 내 판단: (결정 + 이유)
-- AI 역할: (AI가 도운 것)
-- 배운 점: (한 줄)
-```
+버그 수정, 설계 결정, AI 방향 수정 시 `/docs/log/debugging-log.md`에 기록 필수.
+형식과 분량 기준은 `.claude/rules/logging-rules.md` 가 정본이다.
