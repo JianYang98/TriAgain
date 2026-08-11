@@ -55,7 +55,7 @@ paths: "src/main/resources/db/migration/**"
 
 ## 6. 운영은 baseline 위에서 돈다 — V6 이전은 존재하지 않는 것으로 취급된다
 
-- 사실: `src/main/resources/application.yml:21-23`이 **`baseline-on-migrate: true` / `baseline-version: 6`**이다. 기존 DB에 Flyway를 도입하며 설정한 값이다(`docs/log/debugging-log.md` 2026-03-08 — baseline 없이 붙였다가 V2부터 재실행되며 `column already exists`로 실패한 기록).
+- 사실: `src/main/resources/application.yml:18-20`이 **`baseline-on-migrate: true` / `baseline-version: 6`**이다. 기존 DB에 Flyway를 도입하며 설정한 값이다(`docs/log/debugging-log.md` 2026-03-08 — baseline 없이 붙였다가 V2부터 재실행되며 `column already exists`로 실패한 기록).
 - 함의: 운영 DB는 V6 시점 스키마를 출발점으로 삼는다. **V1~V5를 고쳐도 운영에 반영되지 않는다** — 그 파일들은 이력 재현용이다.
 - 규칙: 운영에 나가야 하는 변경은 반드시 **새 버전**으로 만든다. 과거 파일을 고쳐 반영하려는 시도는 1번(체크섬) 위반이자 여기서도 무효다.
 

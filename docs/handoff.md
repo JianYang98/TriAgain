@@ -32,7 +32,7 @@
 |------|------|
 | Language | Java 17 |
 | Framework | Spring Boot 3.4.13 |
-| ORM | Spring Data JPA (CRUD/쓰기) + MyBatis 3.0.5 (복잡한 조회) |
+| ORM | Spring Data JPA (복잡한 조회는 네이티브 쿼리) |
 | Database | PostgreSQL 16 |
 | Storage | AWS S3 (Pre-signed URL 기반 Direct Upload) |
 | Serverless | AWS Lambda (S3 업로드 완료 감지 → session COMPLETED 처리) |
@@ -86,7 +86,7 @@ com.triagain.{context}/
 ├── port/
 │   ├── in/            UseCase 인터페이스
 │   └── out/           Repository Port, External Port
-└── infra/             JPA Entity, Adapter, MyBatis Mapper
+└── infra/             JPA Entity, Adapter
 ```
 
 ### 3.4 계층별 의존성 규칙
@@ -273,7 +273,7 @@ PR 리뷰 후속 개선 항목 4건:
 
 ### 6.4 Phase 2 예정
 
-Redis 캐시, AWS SQS 비동기 이벤트, FCM 푸시 알림, 분산 락(Redis), JPA vs MyBatis 성능 비교, 공개 크루 탐색
+Redis 캐시, AWS SQS 비동기 이벤트, FCM 푸시 알림, 분산 락(Redis), 공개 크루 탐색
 
 ---
 

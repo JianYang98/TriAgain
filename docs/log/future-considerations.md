@@ -60,11 +60,12 @@
 - 필요 시점: 한 신고에 리뷰가 2건 이상 생길 수 있는 흐름이 생길 때 (재심사 등)
 - 이유: "신고당 리뷰 1건"이 코드로만 지켜지고 DB로는 안 지켜진다. 깨지면 `IncorrectResultSizeDataAccessException`으로 조회가 실패한다. 유니크 제약을 걸지 `List` 반환으로 바꿀지는 도메인 결정이 먼저다.
 
-### [2026-07-31] `NotificationTargetQueryAdapter`의 다중 조인 네이티브 쿼리 3개 → MyBatis 이관 검토
+### [2026-07-31] ~~`NotificationTargetQueryAdapter`의 다중 조인 네이티브 쿼리 3개 → MyBatis 이관 검토~~ ✅ RESOLVED 2026-08-11
 
-- 현재 상태: `findReminderTargets` 등 3개가 네이티브 SQL을 `EntityManager`로 직접 실행하고 결과를 수동 매핑한다.
-- 필요 시점: 이 쿼리들을 수정할 일이 생길 때 (그 PR에서 함께)
-- 이유: 기술 선택("JPA=CRUD/쓰기, MyBatis=복잡한 조회")의 경계 밖이지만 동작에 문제가 없고, 이관은 XML 매퍼 신설을 수반한다. 위 [2026-06-12] `CrewJpaAdapter` 항목과 같은 성격이라 함께 볼 것.
+- ~~현재 상태: `findReminderTargets` 등 3개가 네이티브 SQL을 `EntityManager`로 직접 실행하고 결과를 수동 매핑한다.~~
+- ~~필요 시점: 이 쿼리들을 수정할 일이 생길 때 (그 PR에서 함께)~~
+- ~~이유: 기술 선택("JPA=CRUD/쓰기, MyBatis=복잡한 조회")의 경계 밖이지만 동작에 문제가 없고, 이관은 XML 매퍼 신설을 수반한다. 위 [2026-06-12] `CrewJpaAdapter` 항목과 같은 성격이라 함께 볼 것.~~
+- **해결**: MyBatis 미채택 확정 — 의존·설정을 제거해 **이관 목적지가 사라졌고**, 복잡 조회는 네이티브 쿼리가 실질 규칙이므로 현재 상태가 곧 정답이다. 근거: `triagain/docs/fix-instructions/17-mybatis-잔재-정리.md`
 
 ### [2026-07-26] 부하서버 GC를 Serial → G1으로 전환할지 (측정 완료, 전환 보류)
 
@@ -99,7 +100,7 @@
 - 필요 시점: FK 구조 변경, 또는 삭제 경로 추가 시
 - 이유: 이번 범위에서 공유 추출을 하려면 withdrawal 어댑터(`UserCrewMembershipAdapter`)까지 수정해야 해 범위를 초과. 복제를 허용하되 기록으로 남긴다.
 - 추가 미처리: FK-safe 크루 삭제가 `dead_letters`(target_id=crewId, CREW_ACTIVATE/CREW_COMPLETE 타입)는 정리하지 않음 — `deleteCrewWithAssociations`/`deleteCrewWithAllData` 공유 추출 시 함께 처리 검토(자동 재시도 스케줄러 없어 기능 영향은 없음).
-- 추가 (2026-07-31, PR #126 리뷰): 두 곳 모두 **네이티브 SQL을 `EntityManager`로 직접 실행**한다는 지적도 나왔다. 공유 추출을 할 때 "한 곳으로 모으기"와 "JPA 리포지토리/MyBatis로 옮기기"를 같이 볼 것 — 위 [2026-07-31] `NotificationTargetQueryAdapter` 항목과 같은 성격이다.
+- 추가 (2026-07-31, PR #126 리뷰): 두 곳 모두 **네이티브 SQL을 `EntityManager`로 직접 실행**한다는 지적도 나왔다. 공유 추출을 할 때 "한 곳으로 모으기"와 "JPA 리포지토리로 옮기기"를 같이 볼 것 — 위 [2026-07-31] `NotificationTargetQueryAdapter` 항목과 같은 성격이다(해당 항목은 2026-08-11 종결).
 
 ### [2026-06-11] permitAll 공개 경로 목록이 SecurityConfig/DevSecurityConfig에 중복 — 공유 상수 추출 후보
 

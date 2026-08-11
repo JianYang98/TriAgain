@@ -39,7 +39,7 @@ paths: "src/main/resources/application*.yml, src/test/resources/application*.yml
 
   | 파일 | flyway | ddl-auto |
   |---|---|---|
-  | `application.yml:21-23` | `baseline-on-migrate: true` · `baseline-version: 6` | — |
+  | `application.yml:18-20` | `baseline-on-migrate: true` · `baseline-version: 6` | — |
   | `application-local.yml:9,13` | `enabled: true` | `validate` |
   | `application-dev.yml:10` · `application-prod.yml:10` | 키 없음 (= 상속·활성) | `validate` |
   | `src/test/.../application-test.yml:9,13` | `enabled: false` | `create-drop` |
