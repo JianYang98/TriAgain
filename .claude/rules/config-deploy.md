@@ -7,8 +7,10 @@ paths: "src/main/resources/application*.yml, src/test/resources/application*.yml
 
 > 위 `paths` 파일을 편집할 때 로드된다.
 >
-> ⚠️ 이 영역은 tier-policy **Tier 3**다 — 운영 트래픽·보안 설정, 배포 파이프라인 직결 설정.
-> "한 줄짜리 yml"로 보여도 Tier가 내려가지 않는다. 배포 트리거·경로 변경은 특히 그렇다.
+> ⚠️ 티어는 tier-policy가 정본이다 — **항상 로드되므로 여기 요약본을 두지 않는다**(요약본은 갈라진다).
+> 이 영역은 **Tier 3과 Tier 2가 섞여 있다.** 파일 종류가 아니라 **변경이 닿는 대상**으로 갈린다.
+> 배포 경로·트리거 변경이 그중 최고위험이다(2번 참조). "한 줄짜리 yml"은 강등 근거가 아니다 —
+> 크기는 기준이 아니다. 헷갈리면 상위 티어. 판정 근거엔 tier-policy 항목 문구를 **그대로 인용**한다.
 >
 > Java 구현 교훈은 `lessons-learned.md`, 마이그레이션 파일 규칙은 `db-migration.md`가 정본이다.
 > 여기엔 **설정·배포 파일을 쓸 때의 규칙**만 둔다. 겹치는 사건은 한쪽에만 쓰고 반대편을 가리킨다.
@@ -18,9 +20,9 @@ paths: "src/main/resources/application*.yml, src/test/resources/application*.yml
 ## 1. 배포 게이트는 "있다"가 아니라 "된다"를 확인한다
 
 - 왜? 존재 체크는 **죽은 자격증명을 통과시킨다.** 게다가 `GoogleCredentials.fromStream()`은 JSON 구조만 파싱하고 Google 통신은 첫 `send()`까지 지연된다 — 부팅 성공이 "키 정상"을 뜻하지 않는다. 다음 cron까지 아무도 모른다.
-- 근거: `.github/workflows/deploy.yml:120-126`이 `[ -f "$FIREBASE_KEY_PATH" ]` 하나로 `FIREBASE_ENABLED=true`를 정한다. 2026-06-12 FCM 전면 실패(`docs/log/debugging-log.md`) — 무효 키로 부팅해 09:00 cron이 401로 전멸했다. 후속으로 스모크 엔드포인트 `POST /internal/fcm-test`가 생겼다(2026-06-13).
-- 규칙: 외부 자격증명을 켜는 게이트는 **실호출 1회**로 확인한다. 워크플로 안에서 못 하면 배포 직후 스모크 호출을 절차에 넣는다. `deploy.yml:120-126`은 **지금도 존재 체크만 한다** — 이 파일을 손대는 김에 같이 올린다.
-- ⚠️ 스모크의 **판정 기준도 같은 함정을 밟는다.** `InternalFcmTestController:27`은 `ResponseEntity.ok(...)`라 키가 죽어도 **HTTP 200**이고, 결과는 body 의 `FcmTestResult`(`SUCCESS`/`TOKEN_INVALID`/`ERROR`)에 들어 있다. `curl -f` 로는 초록불이 뜬다 — 게이트는 `data.status == SUCCESS` 로 판정한다. 토큰은 **전용 카나리**를 쓴다(실유저 토큰으로 스모크하면 남의 폰에 알림이 간다).
+- 근거: `deploy.yml`의 `deploy-backend` → **`Deploy to EC2` 스텝** script 안에서 `[ -f "$FIREBASE_KEY_PATH" ]` 하나로 `FIREBASE_ENABLED=true`를 정한다. 2026-06-12 FCM 전면 실패(`docs/log/debugging-log.md`) — 무효 키로 부팅해 09:00 cron이 401로 전멸했다. 후속으로 스모크 엔드포인트 `POST /internal/fcm-test`가 생겼다(2026-06-13).
+- 규칙: 외부 자격증명을 켜는 게이트는 **실호출 1회**로 확인한다. 워크플로 안에서 못 하면 배포 직후 스모크 호출을 절차에 넣는다. 그 `FIREBASE_KEY_PATH` 체크는 **지금도 존재 체크만 한다** — 이 파일을 손대는 김에 같이 올린다.
+- ⚠️ 스모크의 **판정 기준도 같은 함정을 밟는다.** `InternalFcmTestController.sendTest()`가 `ResponseEntity.ok(...)`로 반환해 키가 죽어도 **HTTP 200**이고, 결과는 body 의 `FcmTestResult`(`SUCCESS`/`TOKEN_INVALID`/`ERROR`)에 들어 있다. `curl -f` 로는 초록불이 뜬다 — 게이트는 `data.status == SUCCESS` 로 판정한다. 토큰은 **전용 카나리**를 쓴다(실유저 토큰으로 스모크하면 남의 폰에 알림이 간다).
 
 ## 2. 잡 조건은 diff가 아니라 최종 파일에서 읽는다
 
@@ -39,7 +41,7 @@ paths: "src/main/resources/application*.yml, src/test/resources/application*.yml
 
   | 파일 | flyway | ddl-auto |
   |---|---|---|
-  | `application.yml:18-20` | `baseline-on-migrate: true` · `baseline-version: 6` | — |
+  | `application.yml` `spring.flyway` | `baseline-on-migrate: true` · `baseline-version: 6` | — |
   | `application-local.yml:9,13` | `enabled: true` | `validate` |
   | `application-dev.yml:10` · `application-prod.yml:10` | 키 없음 (= 상속·활성) | `validate` |
   | `src/test/.../application-test.yml:9,13` | `enabled: false` | `create-drop` |
