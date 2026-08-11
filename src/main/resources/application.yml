@@ -5,9 +5,6 @@ spring:
 
   jpa:
     open-in-view: false
-    properties:
-      hibernate:
-        default_batch_fetch_size: 100
 
   messages:
     basename: error-messages
@@ -49,7 +46,3 @@ triagain:
   verification:
     cancel-cutoff-minutes: 5  # 마감 임박 취소 차단 구간(G2, 분)
     slot-attempt-limit: 3     # 슬롯당 최대 제출 회차(G5)
-
-mybatis:
-  mapper-locations: classpath:mybatis/mapper/**/*.xml
-  config-location: classpath:mybatis/mybatis-config.xml
