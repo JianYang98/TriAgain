@@ -74,5 +74,5 @@ paths: "src/main/resources/db/migration/**"
 
 **어디에 쓸지 헷갈릴 때**: 마이그레이션 파일을 *쓰는 사람*이 알아야 하면 여기, Java 코드를 *쓰는 사람*이 알아야 하면 `lessons-learned.md`. 양쪽 다 걸리면 **한쪽에만 쓰고 반대편에서 가리킨다**(3번이 그 예다).
 
-> 아직 규칙이 없는 인접 영역: `application*.yml`, `Dockerfile`, `.github/workflows/deploy.yml`.
-> 전부 Tier 3 대상인데 로드되는 규칙이 0개다 — 그쪽에서 사건이 쌓이면 같은 방식으로 전용 규칙을 만든다.
+> 인접 영역 `application*.yml`·`Dockerfile`·`.github/workflows/**` 는 `config-deploy.md`가 맡는다
+> (2026-08-11 신설). 프로파일별 flyway 레인 표는 그쪽 3번에 있다.
