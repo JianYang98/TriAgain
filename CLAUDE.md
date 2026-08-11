@@ -47,7 +47,7 @@
 ### Tech Stack
 
 - **Backend:** Java 17, Spring Boot 3.4 (최신 patch)
-- **ORM:** Spring Data JPA (CRUD/쓰기) + MyBatis (복잡한 조회)
+- **ORM:** Spring Data JPA — 복잡한 조회는 네이티브 쿼리(@Query nativeQuery / EntityManager.createNativeQuery)
 - **Database:** PostgreSQL 16
 - **Storage:** AWS S3 (Pre-signed URL)
 - **Serverless:** AWS Lambda (S3 업로드 완료 감지 → session COMPLETED 처리)
