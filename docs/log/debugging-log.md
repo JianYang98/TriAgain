@@ -5,6 +5,15 @@
 
 ---
 
+### [2026-08-11] MyBatis 폐기 확정 — 6개월 미사용 의존을 걷고 문서를 실태에 맞췄다
+
+- 상황: 초기 셋업(`668eff1`, 2026-02-22)이 "JPA=CRUD/쓰기, MyBatis=복잡한 조회" 계획으로 스타터·`@MapperScan`·`mybatis:` 블록을 넣었는데 매퍼 XML 0건·`@Mapper` 0건·`SqlSession` 0건인 채 6개월이 지났다 — `mapper-locations`가 가리키는 `mybatis/mapper/` 디렉토리는 만들어진 적도 없다. 실사용은 네이티브 쿼리 11파일 33곳. 같은 커밋의 `default_batch_fetch_size: 100`도 무효였다: 연관관계 애너테이션(`@OneToMany`·`@JoinColumn`·`FetchType` 등)이 src 전체 0건이고 `@Entity` 14개가 FK를 원시 ID 필드로 들고 있어 지연 로딩 자체가 없다. 문서는 8곳이 아직 현행 기술로 기술 중이었고, 그중 `CODEX.md`의 포트-어댑터 표는 **실존한 적 없는 `VerificationMyBatisAdapter`**를 외부 리뷰어에게 내보내고 있었다(이 파일은 `.gitignore` 대상이라 PR 밖 로컬에서 고쳤다)
+- 내 판단: 폐기 확정. `default_batch_fetch_size`도 같이 걷었다 — 지금 무효인데 남겨두면 "N+1 대비가 되어 있다"는 반대 신호를 준다. `future-considerations`의 MyBatis 이관 항목은 미루기가 아니라 **종결**로 처리했다. 이관의 목적지가 사라졌으므로 현재 상태가 곧 정답이다
+- AI 역할: 지시서 주장을 라인번호까지 전량 재실측(전부 일치)하고 지시서가 놓친 셋을 찾았다 — ① 문서 2곳(`coding-convention.md`·`CODEX.md`)은 경로를 나열한 grep이 못 봤다 ② "`./gradlew test`가 E2E까지 함께 판정한다"는 서술이 사실이 아니다(`excludeTags 'e2e'`) ③ yml 3줄 삭제가 flyway 좌표를 21-23→18-20으로 밀어 규칙 파일 2곳의 인용을 낡게 만든다
+- 배운 점: **삭제의 검증은 "소스에 문자열이 없다"가 아니라 "런타임에서 빠졌다"로 한다.** 정적 grep 0건은 스타터가 클래스패스에 남아 있어도 참이다 — 제거 전 테스트 XML의 `No MyBatis mapper was found` WARN 16개(test·e2eTest 계열)를 양성 대조로 먼저 잡아두고, 제거 후 같은 명령이 0건인 것으로 판정했다. 그리고 **잔재 grep은 경로를 나열하지 말고 저장소 루트를 훑는다** — 나열식이 같은 문서 2곳을 두 번 놓쳤다
+
+---
+
 ### [2026-08-11] 게이트 두 곳이 헛돌고 있었다 — e2eTest 0건 통과 · /pr-review 범위
 
 - 상황: (1) `e2eTest` 는 `@Tag("e2e")` 가 하나도 안 맞으면 결과 XML 도 없이 `BUILD SUCCESSFUL` 을 낸다 — main 의 required check `E2E Tests` 가 아무것도 안 돌린 채 초록불이 된다(Gradle 8.12 엔 `failOnNoDiscoveredTests` 가 없다). (2) `/pr-review` 의 `git diff main..HEAD` 는 PR 변경분이 아니라 develop↔main 누적 델타를 잡는다 — 8파일짜리 PR 이 **425파일**로 나왔다. 363은 로컬 main 이 132커밋 낡아서, 54는 base 가 main 이라서 — 원인이 둘이고 pull 로는 앞엣것만 사라진다
