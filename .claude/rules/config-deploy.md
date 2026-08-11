@@ -20,14 +20,15 @@ paths: "src/main/resources/application*.yml, src/test/resources/application*.yml
 - 왜? 존재 체크는 **죽은 자격증명을 통과시킨다.** 게다가 `GoogleCredentials.fromStream()`은 JSON 구조만 파싱하고 Google 통신은 첫 `send()`까지 지연된다 — 부팅 성공이 "키 정상"을 뜻하지 않는다. 다음 cron까지 아무도 모른다.
 - 근거: `.github/workflows/deploy.yml:120-126`이 `[ -f "$FIREBASE_KEY_PATH" ]` 하나로 `FIREBASE_ENABLED=true`를 정한다. 2026-06-12 FCM 전면 실패(`docs/log/debugging-log.md`) — 무효 키로 부팅해 09:00 cron이 401로 전멸했다. 후속으로 스모크 엔드포인트 `POST /internal/fcm-test`가 생겼다(2026-06-13).
 - 규칙: 외부 자격증명을 켜는 게이트는 **실호출 1회**로 확인한다. 워크플로 안에서 못 하면 배포 직후 스모크 호출을 절차에 넣는다. `deploy.yml:120-126`은 **지금도 존재 체크만 한다** — 이 파일을 손대는 김에 같이 올린다.
+- ⚠️ 스모크의 **판정 기준도 같은 함정을 밟는다.** `InternalFcmTestController:27`은 `ResponseEntity.ok(...)`라 키가 죽어도 **HTTP 200**이고, 결과는 body 의 `FcmTestResult`(`SUCCESS`/`TOKEN_INVALID`/`ERROR`)에 들어 있다. `curl -f` 로는 초록불이 뜬다 — 게이트는 `data.status == SUCCESS` 로 판정한다. 토큰은 **전용 카나리**를 쓴다(실유저 토큰으로 스모크하면 남의 폰에 알림이 간다).
 
 ## 2. 잡 조건은 diff가 아니라 최종 파일에서 읽는다
 
 - 왜? **게이트는 삭제로 사라지지 않고 이동으로 사라진다.** `e674fd8`(2026-03-17, PR #25)이 e2e 잡을 신설하면서 `needs: ci`가 e2e 쪽으로 옮겨 붙었고, `deploy-backend`에서 없어진 사실이 unified diff에서 **context 줄로 보였다**. 삭제(`-`) 표시가 안 났다. 그대로 11개 리비전·88회 배포를 지났다.
-- 근거: 루트 `TODO/TODO-추후-07-30-develop-push가-운영에-직결-배포게이트-소실.md` (deploy.yml 이력 11 리비전 + Actions run 88건 집계).
+- 근거: **루트 저장소**(`triagain/`)의 `TODO/TODO-추후-07-30-develop-push가-운영에-직결-배포게이트-소실.md` — deploy.yml 이력 11 리비전 + Actions run 88건 집계. **이 저장소엔 없다**(BE 는 중첩 저장소다).
 - 규칙: 워크플로를 고치면 `needs:`·`if:`를 **최종 파일에서 전량** 세로로 읽는다. 잡마다 "무엇이 이 잡을 막는가"를 한 줄로 답할 수 있어야 한다.
   ```bash
-  command grep -n "^  [a-z-]*:\|needs:\|if: " .github/workflows/deploy.yml
+  command grep -nE '^  [A-Za-z0-9_-]+:|needs:|if: ' .github/workflows/*.yml
   ```
 - 현재(2026-08-11): `deploy-backend`에 `needs:` 없음 → **push 경로에서 도는 테스트는 0개**이고 `develop` push도 운영 배포다. 어떻게 고칠지는 **방향 미정으로 파킹**돼 있으니 임의로 고치지 않는다. 선택지·`git-convention.md`와의 불일치는 위 TODO가, 실제로 걸리는 게이트 목록(브랜치 보호 포함)은 `test-strategy.md`가 정본이다 — 여기 복사하지 않는다.
 - ⏳ 이 항목은 **배포 경로·트리거가 바뀌면 같은 PR에서 갱신한다.** 위 grep 결과와 어긋나면 grep이 맞다.
@@ -53,8 +54,8 @@ paths: "src/main/resources/application*.yml, src/test/resources/application*.yml
 
 ## 4. Dockerfile의 `Asia/Seoul` 은 표시 설정이 아니라 도메인 시간 기준이다
 
-- 왜? `Dockerfile:12`(`cp /usr/share/zoneinfo/Asia/Seoul /etc/localtime`)가 JVM 기본존을 정하고, pgjdbc는 커넥션마다 **DB 세션 TimeZone을 JVM 기본존으로 SET**한다(`hibernate.jdbc.time_zone` 미설정이라 덮이지 않는다). 크루 만료 쿼리(`ChallengeJpaRepository.findExpiredWithoutVerification`)는 naive 마감시각을 DB `NOW()`와 비교한다 — 즉 **이 한 줄이 만료·인증취소 판정 시각을 정한다.**
-- 근거: 루트 `TODO/TODO-추후-07-17-타임존-도메인시간기준-실측.md` §0. 앱 세션 tz가 KST면 무해, non-KST면 최대 ~9시간 지연 — **실측 미완**이다.
+- 왜? `Dockerfile:12`(`cp /usr/share/zoneinfo/Asia/Seoul /etc/localtime`)가 JVM 기본존을 정하고, pgjdbc는 커넥션 시작 시 **DB 세션 TimeZone 을 JVM 기본존으로 SET** 한다 — 드라이버가 startup 패킷에서 직접 하는 일이라 **커넥션 프로퍼티로 못 바꾼다**(바꾸려면 JVM `user.timezone` 또는 연결 후 `SET TIMEZONE`). `hibernate.jdbc.time_zone` 은 세션 tz 가 아니라 **Hibernate 의 타임스탬프 바인딩/판독**을 바꾸는 별개 축이고, 이 프로젝트엔 미설정이다. 크루 만료 쿼리(`ChallengeJpaRepository.findExpiredWithoutVerification`)는 naive 마감시각을 DB `NOW()`와 비교한다 — 즉 **이 한 줄이 만료·인증취소 판정 시각을 정한다.**
+- 근거: **루트 저장소**(`triagain/`)의 `TODO/TODO-추후-07-17-타임존-도메인시간기준-실측.md` §0 (이 저장소엔 없다). 앱 세션 tz가 KST면 무해, non-KST면 최대 ~9시간 지연 — **실측 미완**이다.
 - 규칙: `Dockerfile`의 TZ 줄과 `ENV SPRING_PROFILES_ACTIVE`(:17) 변경은 **Tier 3**. "컨테이너 로그 시각을 UTC로 맞추자" 같은 이유로 건드리지 않는다. 바꾸려면 그 TODO의 실측 4스텝을 먼저 끝낸다.
 
 ## 5. 태그가 환경을 안 가른다 — `latest`를 미는 것이 곧 운영 배포다
