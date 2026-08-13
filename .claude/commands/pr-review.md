@@ -135,7 +135,7 @@ git diff "origin/$BASE...HEAD" --name-only
 
 ### 변경 범위
 - 변경 파일: N개
-- 실행된 리뷰어: [api / domain / security / test / docs-sync]
+- 실행된 리뷰어: [실제로 실행한 것만 나열. 트리거가 안 맞아 건너뛴 리뷰어는 여기 쓰지 않는다]
 
 ---
 
@@ -143,11 +143,16 @@ git diff "origin/$BASE...HEAD" --name-only
 
 | 리뷰어 | 결과 | Critical | Warning | 비고 |
 |--------|------|----------|---------|------|
-| API | PASS/SUGGESTIONS/IMPROVEMENT | 0 | 0 | |
-| Domain | PASS/SUGGESTIONS/IMPROVEMENT | 0 | 0 | |
-| Security | PASS/SUGGESTIONS/CRITICAL | 0 | 0 | |
-| Test | PASS/SUGGESTIONS/IMPROVEMENT | 0 | 0 | |
-| Docs Sync | IN SYNC/MINOR/MAJOR | 0 | 0 | |
+| API | PASS/SUGGESTIONS/IMPROVEMENT/**SKIPPED** | 0 | 0 | |
+| Domain | PASS/SUGGESTIONS/IMPROVEMENT/**SKIPPED** | 0 | 0 | |
+| Security | PASS/SUGGESTIONS/CRITICAL/**SKIPPED** | 0 | 0 | |
+| Test | PASS/SUGGESTIONS/IMPROVEMENT/**SKIPPED** | 0 | 0 | |
+| Docs Sync | IN SYNC/MINOR/MAJOR | 0 | 0 | (항상 실행) |
+
+⚠️ **안 돌린 리뷰어는 반드시 `SKIPPED` 로 적고 비고에 트리거 미충족 사유를 쓴다.**
+Docs Sync 외 4개는 전부 조건부 실행(Step 1~4)이라, 안 돌았는데 `PASS`·`0건`으로 적으면
+**"통과"로 읽히지만 실은 "아무것도 안 봤다"** 가 된다. 이 저장소에서 실제로 난 사고다 —
+`docs-sync-reviewer` 가 존재하지 않는 `messages.properties` 를 보며 `0건`을 계속 찍었다(2026-08-13 PR #153).
 
 ---
 
