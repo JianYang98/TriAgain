@@ -87,9 +87,13 @@ git diff "origin/$BASE...HEAD" --name-only
 
 ### Step 4: 테스트 리뷰 (해당 시)
 
-**트리거**: `src/test/**`, `src/test/resources/application-test.yml`, `*.feature` 변경
+**트리거** (둘 중 하나):
+- ⓐ `src/test/**`, `src/test/resources/application-test.yml`, `*.feature` 변경 → 변경된 테스트를 리뷰
+- ⓑ **프로덕션 코드가 바뀌었는데 위 경로 변경이 0건** → 테스트 부재 자체를 리포트한다.
+  `*.api/`·Controller·`*.domain/`·`*.application/` 이 바뀐 경우면 **CRITICAL**, 그 외는 WARNING.
+  ⓑ는 test-reviewer 를 호출하지 않는다 — 볼 파일이 없으므로 판정만 이 문서에서 한다.
 
-변경된 테스트 파일을 대상으로 `.claude/commands/test-reviewer.md` 기준에 따라 리뷰합니다.
+ⓐ의 경우 변경된 테스트 파일을 대상으로 `.claude/commands/test-reviewer.md` 기준에 따라 리뷰합니다.
 
 검증 항목:
 - ScenarioContext 상태 관리 (`putCrewId()` vs `setCrewId()` 구분)
@@ -100,8 +104,13 @@ git diff "origin/$BASE...HEAD" --name-only
 - Cucumber 시나리오 일관성
 
 ⚠️ **Scope 한계** — test-reviewer 는 *"최근 변경된 테스트 파일"* 기준이라 **테스트가 없어서 생긴 공백은 못 잡는다**
-(변경된 테스트 파일이 애초에 없으므로). 그 층은 `/verify` §1 의 API 레벨 테스트 게이트가 담당한다
-(`docs/harness-decisions.md` 2026-07-27).
+(변경된 테스트 파일이 애초에 없으므로) — 그래서 위 트리거 ⓑ 를 둔다.
+
+ⓑ 는 **"테스트가 있는가"만** 본다. **"테스트가 의미 있는가"**(API 레벨을 실제로 태우는가 —
+컨트롤러 라우팅·인증·직렬화·에러코드→HTTP 매핑)는 상위 오케스트레이션 저장소(`triagain/`)의
+`/verify` §1 이 담당하며 **이 클론엔 딸려오지 않는다**
+(실측 2026-08-13: `git ls-files | grep -i verify` → 0건, `harness-decisions` → 0건).
+**그 층은 여전히 공백이다** (PR #153 Codex P2).
 
 ---
 
@@ -146,7 +155,7 @@ git diff "origin/$BASE...HEAD" --name-only
 | API | PASS/SUGGESTIONS/IMPROVEMENT/**SKIPPED** | 0 | 0 | |
 | Domain | PASS/SUGGESTIONS/IMPROVEMENT/**SKIPPED** | 0 | 0 | |
 | Security | PASS/SUGGESTIONS/CRITICAL/**SKIPPED** | 0 | 0 | |
-| Test | PASS/SUGGESTIONS/IMPROVEMENT/**SKIPPED** | 0 | 0 | |
+| Test | PASS/SUGGESTIONS/IMPROVEMENT/**CRITICAL**/**SKIPPED** | 0 | 0 | ⓑ(테스트 부재)면 CRITICAL |
 | Docs Sync | IN SYNC/MINOR/MAJOR | 0 | 0 | (항상 실행) |
 
 ⚠️ **안 돌린 리뷰어는 반드시 `SKIPPED` 로 적고 비고에 트리거 미충족 사유를 쓴다.**
