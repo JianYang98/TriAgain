@@ -22,7 +22,7 @@ sequenceDiagram
         alt 성공
             Lock-->>Facade: OK
             Facade->>Service: 비즈니스 로직
-            Service->>DB: SELECT FOR UPDATE
+            Service->>DB: SELECT ... FOR NO KEY UPDATE
             Service->>DB: INSERT + UPDATE
             Service-->>Facade: 완료
             Facade->>Idem: 결과 저장
@@ -86,7 +86,7 @@ sequenceDiagram
 
             Note over Service,DB: 5) DB Pessimistic Lock (정원 체크)
             Service->>CrewRepo: findByIdWithLock(crewId)
-            CrewRepo->>DB: SELECT * FROM crew<br/>WHERE id = :crewId<br/>FOR UPDATE
+            CrewRepo->>DB: SELECT * FROM crews<br/>WHERE id = :crewId<br/>FOR NO KEY UPDATE
             DB-->>CrewRepo: Crew (행 락 획득)
             CrewRepo-->>Service: Crew (currentMembers=9, maxMembers=10)
 

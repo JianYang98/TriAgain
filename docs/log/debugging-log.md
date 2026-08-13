@@ -5,6 +5,28 @@
 
 ---
 
+### [2026-08-13] 비관적 락의 발행 SQL은 `FOR UPDATE`가 아니라 `FOR NO KEY UPDATE`였다
+
+- 상황: 문서 8곳이 비관적 락을 `SELECT FOR UPDATE`로 기술했으나, SQL 로그 실측 결과 발행되는 건
+  `SELECT … FOR NO KEY UPDATE`였다. 설계가 바뀐 게 아니라 **최초 커밋부터 어긋나 있었다** —
+  문서를 SQL 어휘로 먼저 쓰고(`bc48920` 02:47), 2시간 20분 뒤 구현을 JPA 어휘로 썼다
+  (`edcc15f` 05:07, 그 시점 파일에 이미 `@Lock(LockModeType.PESSIMISTIC_WRITE)`). JPA엔 락 절의 SQL
+  텍스트를 지정할 수단이 없고, Hibernate 6 `PostgreSQLSqlAstTranslator.getForUpdate()`가
+  `" for no key update"`를 하드코딩한다. 최초 커밋부터 Boot 3.4.13(Hibernate 6)이라 `for update`가 나간 적이 없다
+- 내 판단: **문서만 고치고 코드는 둔다.** 두 락의 유일한 차이는 FK 참조가 취하는 `FOR KEY SHARE`와의
+  충돌 여부인데 마이그레이션 전체에 FK 제약이 0건이라 동작이 동일하다 — 네이티브 쿼리나 dialect
+  커스터마이즈로 진짜 `FOR UPDATE`를 내보내면 얻는 것 없이 동시성 핵심 경로를 만지는 위험만 진다.
+  이 로그 **[2026-06-12] crew-solo-delete 2번의 `SELECT … FOR UPDATE` 표기도 같은 오류지만,
+  그 시점의 판단 기록이라 소급 수정하지 않고 이 항목으로 정정한다**
+- AI 역할: 임시 프로브로 두 가입 진입점의 SQL 시퀀스 실측(락 보유 구간 비관 6문장 / 조건부 3문장),
+  `PostgreSQLSqlAstTranslator` 바이트코드까지 생성 지점 추적, `git log -S`로 네이티브 `FOR UPDATE` 부재 확인,
+  커밋 시각으로 문서-코드 선후 확정
+- 배운 점: **ORM이 생성하는 SQL을 문서에 적을 땐 관측하고 적는다.** JPA 어휘(`PESSIMISTIC_WRITE`)와
+  SQL 어휘(`FOR UPDATE`)는 1:1이 아니며 번역은 dialect·Hibernate 버전이 정한다.
+  **증상이 0인 불일치는 테스트로 잡히지 않는다** — 전 구간 그린인 채 6개월 살아남았다
+
+---
+
 ### [2026-08-11] MyBatis 폐기 확정 — 6개월 미사용 의존을 걷고 문서를 실태에 맞췄다
 
 - 상황: 초기 셋업(`668eff1`, 2026-02-22)이 "JPA=CRUD/쓰기, MyBatis=복잡한 조회" 계획으로 스타터·`@MapperScan`·`mybatis:` 블록을 넣었는데 매퍼 XML 0건·`@Mapper` 0건·`SqlSession` 0건인 채 6개월이 지났다 — `mapper-locations`가 가리키는 `mybatis/mapper/` 디렉토리는 만들어진 적도 없다. 실사용은 네이티브 쿼리 11파일 33곳. 같은 커밋의 `default_batch_fetch_size: 100`도 무효였다: 연관관계 애너테이션(`@OneToMany`·`@JoinColumn`·`FetchType` 등)이 src 전체 0건이고 `@Entity` 14개가 FK를 원시 ID 필드로 들고 있어 지연 로딩 자체가 없다. 문서는 8곳이 아직 현행 기술로 기술 중이었고, 그중 `CODEX.md`의 포트-어댑터 표는 **실존한 적 없는 `VerificationMyBatisAdapter`**를 외부 리뷰어에게 내보내고 있었다(이 파일은 `.gitignore` 대상이라 PR 밖 로컬에서 고쳤다)

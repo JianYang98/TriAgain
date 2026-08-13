@@ -411,12 +411,16 @@
 - **영향:** 공정성 붕괴
 - **대응:** yml 설정으로 비관적/낙관적/조건부 락 전환 가능 (`triagain.crew.lock-strategy`, 기본값 `CONDITIONAL`)
   - **CONDITIONAL** (현재 기본): 조건부 원자적 UPDATE — 정원은 `current_members < max_members` predicate로 단일 statement 보호(재시도·version 불사용), 중복 가입은 `(crew_id, user_id)` 유니크 제약으로 방어. Postgres EvalPlanQual 재검사로 정원 초과 0건 보장. 동시성 벤치마크에서 p95 최저로 기본 채택.
-  - **PESSIMISTIC**: `SELECT FOR UPDATE`로 직렬화, 안정성 우선
+  - **PESSIMISTIC**: `SELECT … FOR NO KEY UPDATE`로 직렬화, 안정성 우선
   - **OPTIMISTIC**: crews 테이블 `version` 컬럼으로 동시 수정 감지
   - UPDATE 시 `WHERE version = ?` 조건 — 버전 불일치 시 재시도 (최대 `triagain.crew.max-retry`, 기본 3회)
   - 재시도 전부 실패 시 `CREW_JOIN_CONFLICT(409, CR023)` 응답
   - 전환: `--triagain.crew.lock-strategy=PESSIMISTIC` (재빌드 불필요)
   - 삭제(`DeleteCrewService`)와 탈퇴(`LeaveCrewService`)는 빈도가 극히 낮아 항상 비관적 락 고정
+
+> **비관적 락의 실제 SQL** — `@Lock(PESSIMISTIC_WRITE)`는 PostgreSQL에서 `FOR UPDATE`가 아니라
+> `FOR NO KEY UPDATE`로 발행된다 (Hibernate 6 `PostgreSQLSqlAstTranslator.getForUpdate()` 하드코딩,
+> JPA로는 변경 불가). FK 제약이 0건이라 `FOR UPDATE`와 동작은 동일하다. (2026-08-13 SQL 로그 실측)
 
 ### 4.2 마감 직전 동시 인증 폭주
 
@@ -689,6 +693,6 @@ BC별로 Runner를 분리하여 Bounded Context 경계를 유지한다.
 
 - **기대 슬롯 가드(D12)**: 인증 시 `targetDate == cycle.startDate + cycle.completedDays`를 강제한다. 자정 직후 건너뛴 날 인증이나 자정을 넘긴 유예(grace) 인증으로 "연속 3일"을 위장하는 경로를 원천 차단한다 — 위반 시 `VERIFICATION_DEADLINE_EXCEEDED`(V002)
 - **좀비 사이클 방지**: `TODAY` 시작은 마감 전(V002)뿐 아니라 오늘 미인증(`existsByHabitIdAndTargetDate`, V003)까지 통과해야 한다. 당일 완료 직후 `TODAY` 재시작이 방금 마친 인증과 슬롯 충돌·스케줄러 마스킹을 일으키는 것을 막는다 — `TOMORROW`만 허용
-- **비관적 락(D13)**: 습관 뮤테이션 서비스(시작·취소·멈춤·재개·종료·인증) 전부 진입 시 habit row를 `SELECT FOR UPDATE`로 선취득해 셀프 경합(예: 멈춤↔시작, 인증↔종료)을 직렬화한다. 스케줄러·부팅 보정 러너는 락 미참여 — 상태 가드(`IN_PROGRESS`만 대상)로 충분하고, 기본 마감(23:59:59)에서는 인증 통과 창과 스케줄러 스캔 창이 날짜 경계로 분리되어 실경합이 없다
+- **비관적 락(D13)**: 습관 뮤테이션 서비스(시작·취소·멈춤·재개·종료·인증) 전부 진입 시 habit row를 `SELECT … FOR NO KEY UPDATE`로 선취득해 셀프 경합(예: 멈춤↔시작, 인증↔종료)을 직렬화한다. 스케줄러·부팅 보정 러너는 락 미참여 — 상태 가드(`IN_PROGRESS`만 대상)로 충분하고, 기본 마감(23:59:59)에서는 인증 통과 창과 스케줄러 스캔 창이 날짜 경계로 분리되어 실경합이 없다
 - **더블탭 처리**: 사이클 시작은 `uk_habit_cycles_in_progress` 위반 시 기존 IN_PROGRESS를 재조회해 200(created=false)으로 멱등 반환, 신규 생성은 201(created=true). 인증은 유니크 제약(`uk_habit_verifications_habit_date`) 위반을 서비스에서 catch해 `VERIFICATION_ALREADY_EXISTS`(V003)로 명시 매핑한다 — `GlobalExceptionHandler`의 constraint-name substring 매처에 의존하지 않는다
 - **만료 판정 시각(`:now`)**: 스케줄러의 만료 native query는 크루 원본의 `NOW()`(DB 세션 tz=UTC) 대신 앱의 `LocalDateTime.now(clock)`을 파라미터 바인딩한다 — prod JVM=KST 기준으로 자기일관 유지, crew가 상속한 "~9h 지연 의심"을 상속하지 않는다
