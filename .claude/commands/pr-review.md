@@ -28,7 +28,7 @@ git diff "origin/$BASE...HEAD" --name-only
 | API | `*.api/`, Controller, Request DTO, ErrorCode, SecurityConfig | api-reviewer |
 | Domain | `*.domain/`, `*.application/`, Policy, Port | domain-reviewer |
 | Security | `common/auth/`, JWT, OAuth, `/internal`, SecurityConfig | security-reviewer |
-| Docs | `docs/spec/`, Flyway, ErrorCode, messages.properties | docs-sync-reviewer |
+| Docs | `docs/spec/`, Flyway, ErrorCode, error-messages.properties | docs-sync-reviewer |
 | Test | `src/test/**`, `application-test.yml`, `*.feature` | test-reviewer |
 
 **하나의 파일이 여러 카테고리에 해당할 수 있습니다** (예: SecurityConfig → API + Security)
@@ -85,7 +85,27 @@ git diff "origin/$BASE...HEAD" --name-only
 
 ---
 
-### Step 4: 문서 동기화 리뷰 (항상 실행)
+### Step 4: 테스트 리뷰 (해당 시)
+
+**트리거**: `src/test/**`, `src/test/resources/application-test.yml`, `*.feature` 변경
+
+변경된 테스트 파일을 대상으로 `.claude/commands/test-reviewer.md` 기준에 따라 리뷰합니다.
+
+검증 항목:
+- ScenarioContext 상태 관리 (`putCrewId()` vs `setCrewId()` 구분)
+- 테스트 어댑터 URL·파라미터 정확성
+- Given 단계의 상태 설정 방식
+- H2 호환성
+- 단위테스트 품질 (비즈니스 규칙을 실제로 검증하는가)
+- Cucumber 시나리오 일관성
+
+⚠️ **Scope 한계** — test-reviewer 는 *"최근 변경된 테스트 파일"* 기준이라 **테스트가 없어서 생긴 공백은 못 잡는다**
+(변경된 테스트 파일이 애초에 없으므로). 그 층은 `/verify` §1 의 API 레벨 테스트 게이트가 담당한다
+(`docs/harness-decisions.md` 2026-07-27).
+
+---
+
+### Step 5: 문서 동기화 리뷰 (항상 실행)
 
 **트리거**: 항상 실행 (코드 변경이 있으면 문서도 업데이트되어야 하므로)
 
@@ -95,11 +115,11 @@ git diff "origin/$BASE...HEAD" --name-only
 - api-spec.md ↔ Controller 일치
 - schema.md ↔ JPA Entity / Flyway 일치
 - biz-logic.md ↔ Domain 코드 일치
-- ErrorCode ↔ api-spec.md / messages.properties 일치
+- ErrorCode ↔ api-spec.md / error-messages.properties 일치
 
 ---
 
-### Step 5: 종합 리포트 → 파일 저장
+### Step 6: 종합 리포트 → 파일 저장
 
 모든 리뷰 결과를 종합하여 `docs/review-comment/pr-review-comment.md`에 저장합니다.
 
@@ -115,7 +135,7 @@ git diff "origin/$BASE...HEAD" --name-only
 
 ### 변경 범위
 - 변경 파일: N개
-- 실행된 리뷰어: [api / domain / security / docs-sync]
+- 실행된 리뷰어: [api / domain / security / test / docs-sync]
 
 ---
 
@@ -126,6 +146,7 @@ git diff "origin/$BASE...HEAD" --name-only
 | API | PASS/SUGGESTIONS/IMPROVEMENT | 0 | 0 | |
 | Domain | PASS/SUGGESTIONS/IMPROVEMENT | 0 | 0 | |
 | Security | PASS/SUGGESTIONS/CRITICAL | 0 | 0 | |
+| Test | PASS/SUGGESTIONS/IMPROVEMENT | 0 | 0 | |
 | Docs Sync | IN SYNC/MINOR/MAJOR | 0 | 0 | |
 
 ---
