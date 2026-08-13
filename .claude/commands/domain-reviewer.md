@@ -425,16 +425,22 @@ public void createVerification(Request req) {
 ### 6. 크루 정원 관리 (동시성)
 
 **검증 항목:**
-- 정원이 DB predicate(`current_members < max_members`)로 보호되는지
-- 정원 초과 거부가 affected rows 0 → `CREW_FULL(CR002)`인지
-- 중복 가입이 `(crew_id, user_id)` 유니크 제약 → `CREW_ALREADY_JOINED(CR004)`인지
+- 정원 초과가 구조적으로 불가능한지 — **강제 지점이 선택된 전략과 일치**하는지 (아래 표)
+- 중복 가입이 `CREW_ALREADY_JOINED(CR004)`로 거부되는지 — `(crew_id, user_id)` 유니크 제약(V22)이 전 전략 공통 안전망
 - 중간 가입(allow_late_join) 조건 확인
 - 크루 종료 3일 전까지만 가입 허용
 
-> ⚠️ **기본 전략은 조건부 원자적 UPDATE(`CONDITIONAL`)다** — 정의는 `docs/spec/biz-logic.md` §4.1.
-> 도메인이 정원을 검사하지 않는 건 결함이 아니다: `Crew.addMemberSkipCapacityCheck()`가 `isFull()`을
-> 의도적으로 제외한다. "락 누락"·"검증 누락"으로 지적하지 마라 — 전략은 `triagain.crew.lock-strategy`로
-> 고른 것이다(`PESSIMISTIC`·`OPTIMISTIC`은 yml 전환 선택지, 탈퇴·삭제는 항상 비관 락).
+| 전략 (`triagain.crew.lock-strategy`) | 정원 강제 지점 | 초과·충돌 응답 |
+|------|------|------|
+| `CONDITIONAL` (기본) | DB predicate `current_members < max_members` | affected rows 0 → `CREW_FULL(CR002)` |
+| `PESSIMISTIC` | 행 락 선취득 + `Crew.addMember()`의 `isFull()` | `CREW_FULL(CR002)` |
+| `OPTIMISTIC` | `Crew.addMember()` + `WHERE version = ?` CAS | 정원 `CR002` / 재시도 소진 `CREW_JOIN_CONFLICT(CR023)` |
+
+> ⚠️ **한쪽 전략의 기준으로 다른 쪽을 지적하지 마라.** 기본은 조건부 원자적 UPDATE(`CONDITIONAL`,
+> 정의는 `docs/spec/biz-logic.md` §4.1)이고, 이 경로의 `Crew.addMemberSkipCapacityCheck()`가
+> `isFull()`을 의도적으로 제외하는 건 "락 누락"·"검증 누락"이 아니다. 반대로 비관·낙관 경로가
+> `Crew.addMember()`로 정원을 검사하는 것도 정상이다 — **테스트 프로파일 2개가 `PESSIMISTIC`이다.**
+> 탈퇴·삭제는 전략과 무관하게 항상 비관 락.
 
 **biz-logic.md 규칙:**
 ```
