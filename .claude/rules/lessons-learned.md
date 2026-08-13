@@ -181,6 +181,7 @@ paths: "src/**/*.java"
 - 왜?: 콘솔 확인 없이 "EC2가 t3.micro니 RDS도 그렇겠지"로 유추 기재
 - 규칙: 인프라 값은 기재 시점에 콘솔/CLI로 실측하고 "(YYYY-MM-DD 실측)"을 남긴다. 실측 못 하면 "[미확인]" 명시
 - 형제 항목: **"실패 모드를 문서에 적을 땐 실제로 깨뜨려 보고 적는다"**(테스트 섹션) — 같은 모양(추측값을 확정처럼 기재), 다른 처방(그쪽은 가드 제거 실증)
+- 재발: 1회 (2026-08-13, 비관적 락 SQL 표기 8곳) — **ORM이 생성하는 SQL**도 같은 유형이다. `@Lock(PESSIMISTIC_WRITE)`를 문서에 `SELECT FOR UPDATE`로 옮겨 적었으나 실제 발행은 `FOR NO KEY UPDATE`였다(Hibernate 6 `PostgreSQLSqlAstTranslator.getForUpdate()` 하드코딩). JPA 어휘와 SQL 어휘는 1:1이 아니다 — 문서에 SQL을 적을 땐 `org.hibernate.SQL` 로그로 관측하고 "(YYYY-MM-DD 실측)"을 남긴다. 최초 커밋부터 어긋났는데 FK 0건이라 증상이 없어 6개월 그린이었다
 
 ---
 
