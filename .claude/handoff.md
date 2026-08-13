@@ -9,7 +9,7 @@
 
 ### MyBatis 폐기 — PR #149 (머지: `b9e7bce`)
 
-지시서 `triagain/docs/fix-instructions/17-mybatis-잔재-정리.md` 실행. Tier 2 / Light Track.
+지시서 `triagain/revisions/17-mybatis-잔재-정리.md` 실행. Tier 2 / Light Track.
 초기 셋업 커밋 `668eff1`(2026-02-22)이 넣은 MyBatis가 **매퍼 XML 0건 · `@Mapper` 0건 · `SqlSession` 0건**인 채
 6개월 방치돼 있었다. 복잡 조회는 네이티브 쿼리(11파일 33곳)가 실질 규칙 — 폐기 확정.
 
