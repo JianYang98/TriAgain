@@ -162,7 +162,7 @@ record CrewVerificationWindowInfo(
 | 인증 시간 기준 | upload_session.requested_at (서버 기록, 조작 불가) | Domain |
 | 하루 1회 | 같은 user_id + crew_id + target_date 중복 불가 | DB UNIQUE + 코드 검증 |
 | 닉네임 | 2~12자, 한글/영문/숫자/언더스코어, 앞뒤 공백 트림 | Domain (VO 또는 검증) |
-| 크루 정원 | max_members 초과 시 가입 불가, min_members 기본 1 | Domain + SELECT FOR UPDATE |
+| 크루 정원 | max_members 초과 시 가입 불가, min_members 기본 1 | DB predicate (조건부 UPDATE) |
 | 크루 기간 | 시작일: 내일 이후, 종료일: 시작일+6일 이상, 최대 crew.max-duration-days(기본 30일) | Domain |
 | 중간 가입 | allow_late_join=true면 크루 시작 후 참여 가능 (단, 종료 3일 전까지) | Domain |
 | 초대코드 | 6자리 영숫자, 0/O/I/L 제외, 크루 생성 시 자동 발급 | Domain |
@@ -344,7 +344,7 @@ public void expire() {
 
 **검증 항목:**
 - 멱등성 체크가 락보다 먼저 오는지 (Fast Fail 원칙)
-- 비관적 락(SELECT FOR UPDATE) 사용이 적절한지
+- 락 전략 선택이 적절한지 (비관·낙관·조건부)
 - Partial Unique Index로 "존재하지 않는 행"의 동시 생성 방어
 - catch-retry 패턴이 UK 위반 시 적용되는지
 
@@ -357,7 +357,7 @@ public void expire() {
 **실행 순서:**
 ```
 1. 멱등성 체크 (Idempotency-Key 존재?) → Fast Fail
-2. 비관적 락 (SELECT FOR UPDATE) → 있는 행 보호
+2. 비관적 락 (SELECT … FOR NO KEY UPDATE) → 있는 행 보호
 3. Partial Unique Index → 없는 행 보호 (Lazy 생성 대비)
 4. catch-retry → UK 위반 시 재조회
 ```
@@ -425,10 +425,16 @@ public void createVerification(Request req) {
 ### 6. 크루 정원 관리 (동시성)
 
 **검증 항목:**
-- 크루 가입 시 SELECT FOR UPDATE로 current_members 보호
-- max_members 초과 검증 후 가입 처리
+- 정원이 DB predicate(`current_members < max_members`)로 보호되는지
+- 정원 초과 거부가 affected rows 0 → `CREW_FULL(CR002)`인지
+- 중복 가입이 `(crew_id, user_id)` 유니크 제약 → `CREW_ALREADY_JOINED(CR004)`인지
 - 중간 가입(allow_late_join) 조건 확인
 - 크루 종료 3일 전까지만 가입 허용
+
+> ⚠️ **기본 전략은 조건부 원자적 UPDATE(`CONDITIONAL`)다** — 정의는 `docs/spec/biz-logic.md` §4.1.
+> 도메인이 정원을 검사하지 않는 건 결함이 아니다: `Crew.addMemberSkipCapacityCheck()`가 `isFull()`을
+> 의도적으로 제외한다. "락 누락"·"검증 누락"으로 지적하지 마라 — 전략은 `triagain.crew.lock-strategy`로
+> 고른 것이다(`PESSIMISTIC`·`OPTIMISTIC`은 yml 전환 선택지, 탈퇴·삭제는 항상 비관 락).
 
 **biz-logic.md 규칙:**
 ```
