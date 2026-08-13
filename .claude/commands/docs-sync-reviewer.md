@@ -132,14 +132,17 @@ Presigned URL 만료: 15분
 - api-spec.md에 기술된 에러코드가 ErrorCode enum에 존재하는지
 - ErrorCode enum에 새로 추가된 코드가 api-spec.md에 반영되어 있는지
 - 에러코드의 HTTP Status가 일치하는지
-- MessageSource(messages.properties)에 메시지가 정의되어 있는지
+- MessageSource(error-messages.properties)에 메시지가 정의되어 있는지
 
 **검증 방법:**
 ```
 1. ErrorCode.java에서 모든 코드 추출
 2. api-spec.md의 에러 응답 섹션과 대조
-3. messages.properties에서 누락된 키 확인
-4. 불일치 리포트
+3. error-messages.properties에서 누락된 키 확인
+4. ⚠️ 대상 파일이 없거나 추출된 키가 0건이면 "누락 0건"이 아니라 **검증 실패**로 보고한다
+   (파일 부재를 통과로 읽으면 검증이 조용히 헛돈다 — 2026-08-13 실사례: 실제 basename 은
+    `error-messages` 인데 이 문서가 `messages.properties` 를 가리켜 이 항목이 계속 무의미했다)
+5. 불일치 리포트
 ```
 
 ---
@@ -218,7 +221,7 @@ Presigned URL 만료: 15분
 | schema.md ↔ 프론트 models/ | ✅/⚠️/❌ | 0건 |
 | biz-logic.md ↔ Domain/Service | ✅/⚠️/❌ | 0건 |
 | ErrorCode ↔ api-spec.md | ✅/⚠️/❌ | 0건 |
-| ErrorCode ↔ messages.properties | ✅/⚠️/❌ | 0건 |
+| ErrorCode ↔ error-messages.properties | ✅/⚠️/❌ | 0건 |
 
 ## 📝 수정 지시서
 [백엔드/프론트 각각 어떤 파일을 어떻게 수정해야 하는지]
@@ -237,7 +240,7 @@ Presigned URL 만료: 15분
 - `docs/spec/schema.md` ↔ `src/main/resources/db/migration/V*.sql` Flyway
 - `docs/spec/biz-logic.md` ↔ `{context}.domain/`, `{context}.application/`
 - `common/exception/ErrorCode.java` ↔ `docs/spec/api-spec.md`
-- `src/main/resources/messages.properties` ↔ `common/exception/ErrorCode.java`
+- `src/main/resources/error-messages.properties` ↔ `common/exception/ErrorCode.java`
 
 **프론트엔드 (triagain-front/):**
 - `lib/models/` ↔ 백엔드 api-spec.md 응답 필드
@@ -287,7 +290,7 @@ Presigned URL 만료: 15분
 ```
 
 ```
-/docs-sync-reviewer ErrorCode enum이랑 messages.properties 누락 키 있는지 확인해줘
+/docs-sync-reviewer ErrorCode enum이랑 error-messages.properties 누락 키 있는지 확인해줘
 ```
 
 ### 프론트-백엔드 동기화

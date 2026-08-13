@@ -253,7 +253,7 @@ public ResponseEntity<ApiResponse<VerificationResponse>> create(
 - `BusinessException` + `ErrorCode` enum 사용
 - `GlobalExceptionHandler` 일관된 에러 응답
 - 명확한 에러 코드 (클라이언트가 분기 처리 가능)
-- 에러 메시지는 `MessageSource`(`messages.properties`)로 관리
+- 에러 메시지는 `MessageSource`(`error-messages.properties`)로 관리
 
 **ErrorCode 패턴 (TriAgain):**
 ```java
@@ -311,7 +311,7 @@ public class GlobalExceptionHandler {
 
     private final MessageSource messageSource;
 
-    /** ErrorCode → messages.properties 메시지 resolve */
+    /** ErrorCode → error-messages.properties 메시지 resolve */
     private String resolveMessage(ErrorCode errorCode, Object[] args) {
         return messageSource.getMessage(
                 errorCode.name(), args, errorCode.name(), Locale.getDefault());
