@@ -58,9 +58,6 @@ dependencies {
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
 
-    // MyBatis
-    implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.5'
-
     // AWS S3
     implementation platform('software.amazon.awssdk:bom:2.31.3')
     implementation 'software.amazon.awssdk:s3'
@@ -114,10 +111,35 @@ tasks.named('test') {
 }
 
 tasks.register('e2eTest', Test) {
-    description = 'E2E 해피패스 테스트만 실행'
+    // 뭐가 실리는지 열거하지 않는다 — 새 카테고리가 e2e 태그를 받을 때마다 낡는다.
+    // 실제 목록은 돌려서 확인하고(build/test-results/e2eTest/), 정본은 rules/test-strategy.md 다.
+    description = '@Tag("e2e") 가 붙은 테스트 실행'
     group = 'verification'
     useJUnitPlatform {
         includeTags 'e2e'
         includeEngines 'junit-jupiter'
+    }
+
+    // 0건 실행 방지. 태그가 하나도 안 맞으면 이 태스크는 아무것도 안 돌고 그냥 그린이 된다
+    // (실측: BUILD SUCCESSFUL, 결과 XML 없음). 그러면 CI의 required check "E2E Tests"가
+    // 헛돈 채 통과하고, 빨간불이 안 뜨므로 알아챌 계기 자체가 없다.
+    // 태그는 E2eTestBase 상속으로도 전파되므로 상속이 끊겨도 여기서 걸린다.
+    // Gradle 8.12에는 failOnNoDiscoveredTests가 없어(8.13+) 직접 센다.
+    //
+    // SKIPPED 를 빼는 이유: afterTest 는 @Disabled 로 건너뛴 테스트에도 불린다
+    // (실측 — 전부 @Disabled 인 클래스만 선택했더니 tests="1" skipped="1" 로 가드가 통과했다).
+    // 즉 "발견은 됐지만 본문은 한 줄도 안 돈" 두 번째 0건 시나리오가 있다.
+    def executed = new java.util.concurrent.atomic.AtomicInteger()
+    afterTest { desc, result ->
+        if (result.resultType != org.gradle.api.tasks.testing.TestResult.ResultType.SKIPPED) {
+            executed.incrementAndGet()
+        }
+    }
+    doLast {
+        if (executed.get() == 0) {
+            throw new GradleException(
+                'e2eTest가 실제로 실행한 테스트가 0개다 — @Tag("e2e")·E2eTestBase 상속이 사라졌거나 '
+                    + '전부 @Disabled 인지 확인하라')
+        }
     }
 }

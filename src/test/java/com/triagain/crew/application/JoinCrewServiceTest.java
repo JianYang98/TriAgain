@@ -376,7 +376,7 @@ class JoinCrewServiceTest {
 		@DisplayName("saveMemberAndFlush가 DataIntegrityViolationException을 던지면 CREW_ALREADY_JOINED")
 		void conditionalJoin_duplicateConcurrent() {
 			// ⚠️ U3: mock으로 DataIntegrityViolationException을 throw시키므로
-			// flush 누락 버그(plain save)는 여기서는 못 잡음 — 실DB T2(JoinCrewConcurrencyTest)가 필수
+			// flush 누락 버그(plain save)는 여기서는 못 잡음 — 실DB T2(JoinCrewConcurrencyE2eTest)가 필수
 			// Given
 			Crew crew = publicRecruitingCrew(
 				LocalDate.now().plusDays(7),

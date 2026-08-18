@@ -6,6 +6,40 @@
 
 ---
 
+### [2026-08-07] 인증 리액션 — 이관·알림·크루 중도 탈퇴·그룹 순서 4건
+
+- 맥락: 인증 리액션 v1 도입(`sdd/verification-reaction/`). 아래 4건은 **의식적으로 v1 범위 밖**으로 둔 것이다.
+
+**① 인증 수정 시 리액션 이관**
+- 지금: 인증 수정은 구행 취소 + 신행 INSERT 라 **반응이 따라오지 않는다**(구행에 남아 비노출). FE가 수정 진입 시 이 사실을 안내한다.
+- 전환 조건: **실사용에서 "좋아요가 사라졌다"는 불만 신호가 관측될 때**. 그때는 신행 INSERT 직후 `UPDATE reactions SET verification_id = :새 인증 WHERE verification_id = :구행` 1문이면 된다.
+- 왜 지금 안 하나: 사진 교체 시 "이 사진에 눌린 좋아요"가 다른 사진으로 옮겨가는 것이 오히려 왜곡이다. 판단이 갈리는 지점이라 **실사용 신호를 기다린다**.
+
+**② 리액션 푸시 알림**
+- 지금: v1은 **발송하지 않는다**.
+- 전환 조건: 리액션이 **알림 피로를 만들지 않을 만큼 희소**하다고 관측되거나, 묶음 발송(하루 1회 다이제스트) 설계가 준비될 때.
+- 왜 지금 안 하나: 고빈도 저가치 이벤트다. 크루 2~10명 규모에서 인증 1건당 최대 9건이 즉시 발송되면 기존 인증·리마인더 알림까지 같이 무시된다.
+
+**③ 크루 중도 탈퇴 기능 도입 시 리액션 영향 — 선판정: 무변경**
+- 검토 중인 안이 **"인증하지 않은 멤버 한정"** 이라면 리액션 쪽 변경은 없다: 받은 리액션이 **없고**(인증 자체가 없다), 남긴 리액션은 크루 탈퇴 정책 그대로 **보존**된다(계정 존속·닉네임 유지). 스키마·API·정책 무변경.
+- ⚠️ **탈퇴 조건이 "인증 無 한정"이 아니게 바뀌면 이 판정은 무효다** — 인증을 남긴 멤버가 나갈 수 있게 되는 순간 "그 인증과 거기 달린 반응을 어떻게 할 것인가"가 새 결정이 된다. 그때 재판정한다.
+
+
+**④ 이모지 그룹 표시 순서 — 계약이 아직 없다**
+- 지금: api-spec 은 `reactions` 를 "이모지별 그룹"이라고만 정의하고 **그룹 간 순서를 정하지 않았다**. 구현이 `LinkedHashMap` 이라 삽입 순서(= 행 정렬 `created_at, user_id`)가 그대로 나오지만, 그건 **행 정렬에서 파생된 속성이지 약속이 아니다**.
+- 왜 지금 테스트를 붙이지 않나: **v1 은 활성 이모지가 `LIKE` 하나라 그룹이 항상 1개**다. 미결이어도 관측되는 차이가 없다. 지금 순서를 테스트로 박으면 **계약이 없는 자리를 테스트가 참칭**하게 되고, 나중에 올바른 변경이 그 테스트를 깨면서 회귀처럼 보인다.
+- 전환 조건: **활성 세트를 늘리는 시점.** 그때 순서를 먼저 계약으로 정하고(**enum 고정 순서**(LIKE 먼저) vs **최초 반응 순**) `api-spec` 에 명시한 뒤 테스트를 붙인다. FE 가 원할 순서는 십중팔구 고정 이모지 순서다 — 그러면 지금 구현(행 정렬 파생)은 바꿔야 한다.
+- 관련: `GetReactionSummariesService.groupByVerification` javadoc
+---
+
+### [2026-08-05] 배포 헬스체크가 게이트로 작동하지 않는다 — 항상 초록
+
+- 현재 상태: `.github/workflows/deploy.yml:152-154` 이 `sleep 15` → `curl -f .../actuator/health` → `docker image prune -f` 순이다. **두 군데가 동시에 깨져 있다.** ① 기동 실측이 **22.65초**라 15초 대기로는 curl 이 매번 실패한다. ② 실패해도 뒤따르는 `prune` 이 성공하면서 스크립트의 exit code 를 덮어써 **잡은 항상 success** 로 뜬다.
+- 실측: 2026-08-05 릴리스 배포(run `31020388444`) 로그에 `curl: (56) Recv failure: Connection reset by peer` 가 찍혔는데 `deploy-backend → success`. 앱 자체는 정상이었다(외부 헬스 200 / 러너 3종 보정 완료) — 게이트가 통과시킨 게 아니라 **게이트가 아무것도 안 본 것**이다.
+- 📌 주소(`localhost`)는 문제가 아니다: 그 `curl` 은 ssh-action 으로 **EC2 안에서** 돌고 `-p 8080:8080` 으로 컨테이너가 물려 있다. 에러가 `Connection refused` 가 아니라 `reset` 인 게 근거 — 포트는 열렸고 앱만 아직 안 뜬 상태다. 도메인으로 바꾸면 앞단 nginx·DNS·TLS 가 끼어 **방금 배포한 그 컨테이너를 봤는지**가 흐려진다. 도메인 확인은 게이트가 아니라 **배포 후 스모크**로 분리한다.
+- 필요 시점: **다음 배포 파이프라인 작업 때 함께.** 그 전까지 배포 결과를 판단할 땐 초록불을 믿지 말고 CloudWatch `/triagain/app` 기동 로그와 `https://triagain.kr/actuator/health` 를 직접 본다.
+- 이유: 수정 자체는 재시도 루프 3~4줄이지만 `deploy.yml` 은 tier-policy **Tier 3**(배포 경로 직결)이라 단독 PR + 사용자 승인이 필요하다. 지금 프로덕션이 정상이라 긴급도가 없어 분리한다.
+
 > 📌 아래 3건은 PR #126(checkstyle 서프레션 해체) 리뷰에서 나왔다. 전부 코드 의미를 바꾸는
 > 수정이라 그 PR의 바이트코드 동일성 증명을 깨뜨려 이관했다.
 > (같이 이관됐던 "메서드 길이 30줄 정의 불일치"는 PR #130에서 해결돼 지웠다.
@@ -18,6 +52,7 @@
 - 현재 상태: `Crew.generateInviteCode()`가 `Math.random()`으로 31자 중 6자를 뽑는다(31⁶ ≈ 8.9억). `Math.random()`은 48비트 LCG인 `java.util.Random` 하나를 공유한다.
 - 필요 시점: 비공개 크루가 늘어 초대코드가 실질적 접근 통제 수단이 될 때
 - 이유: LCG는 출력을 충분히 모으면 이후 값을 예측할 여지가 있다. Phase 1 규모에서 실효 피해가 작고 전환은 인스턴스 교체 수준이라 미룬다.
+- 📌 2026-08-07부터 이 메서드는 `public`이고 **테스트 7곳이 공유**한다(사본 6벌 제거). 전환 시 테스트는 자동으로 따라오므로 테스트 쪽 작업은 없다.
 
 ### [2026-07-31] `reviews.report_id`에 유니크 제약이 없는데 단건 반환
 
@@ -25,11 +60,12 @@
 - 필요 시점: 한 신고에 리뷰가 2건 이상 생길 수 있는 흐름이 생길 때 (재심사 등)
 - 이유: "신고당 리뷰 1건"이 코드로만 지켜지고 DB로는 안 지켜진다. 깨지면 `IncorrectResultSizeDataAccessException`으로 조회가 실패한다. 유니크 제약을 걸지 `List` 반환으로 바꿀지는 도메인 결정이 먼저다.
 
-### [2026-07-31] `NotificationTargetQueryAdapter`의 다중 조인 네이티브 쿼리 3개 → MyBatis 이관 검토
+### [2026-07-31] ~~`NotificationTargetQueryAdapter`의 다중 조인 네이티브 쿼리 3개 → MyBatis 이관 검토~~ ✅ RESOLVED 2026-08-11
 
-- 현재 상태: `findReminderTargets` 등 3개가 네이티브 SQL을 `EntityManager`로 직접 실행하고 결과를 수동 매핑한다.
-- 필요 시점: 이 쿼리들을 수정할 일이 생길 때 (그 PR에서 함께)
-- 이유: 기술 선택("JPA=CRUD/쓰기, MyBatis=복잡한 조회")의 경계 밖이지만 동작에 문제가 없고, 이관은 XML 매퍼 신설을 수반한다. 위 [2026-06-12] `CrewJpaAdapter` 항목과 같은 성격이라 함께 볼 것.
+- ~~현재 상태: `findReminderTargets` 등 3개가 네이티브 SQL을 `EntityManager`로 직접 실행하고 결과를 수동 매핑한다.~~
+- ~~필요 시점: 이 쿼리들을 수정할 일이 생길 때 (그 PR에서 함께)~~
+- ~~이유: 기술 선택("JPA=CRUD/쓰기, MyBatis=복잡한 조회")의 경계 밖이지만 동작에 문제가 없고, 이관은 XML 매퍼 신설을 수반한다. 위 [2026-06-12] `CrewJpaAdapter` 항목과 같은 성격이라 함께 볼 것.~~
+- **해결**: MyBatis 미채택 확정 — 의존·설정을 제거해 **이관 목적지가 사라졌고**, 복잡 조회는 네이티브 쿼리가 실질 규칙이므로 현재 상태가 곧 정답이다. 근거: `triagain/revisions/17-mybatis-잔재-정리.md`
 
 ### [2026-07-26] 부하서버 GC를 Serial → G1으로 전환할지 (측정 완료, 전환 보류)
 
@@ -44,7 +80,7 @@
 - 발현 조건(둘 다 필요): (1) **커스텀 deadlineTime** — 기본 23:59:59는 grace가 자정을 넘겨 D12 슬롯 가드가 날짜 경계에서 거부하므로 안전. `POST /habits`(`CreateHabitRequest.deadlineTime`)는 커스텀 값을 수용하나 **v1 FE는 미노출**. (2) 스케줄러 `fixedDelay=5분` 창.
 - 결정 (2026-07-11, PR#94 Codex P1 검토): **수용 + 이연 (옵션 B)**. 솔로 = 자기 스트릭만 영향(타 유저 무관), 발현 조건 좁음, **crew도 동일 패턴**(`FindOrCreateActiveChallengeService` 사이클-끝 마감 + `FailExpiredChallengesScheduler` 슬롯별 SQL — 회귀 아님). 현 시점 조치 없음.
 - 필요 시점: **deadlineTime을 FE에 노출**하거나(정상 유저 도달 경로 생김) 커스텀 마감 습관을 정식 지원하는 시점. 그때 재평가.
-- 근본 해결: 검증 경로(107·122행)를 `(cycle.getStartDate() + cycle.getCompletedDays()).atTime(habit.getDeadlineTime())` 슬롯별 마감으로 교체 → 검증-수락 경계 == 스케줄러-실패 경계 불변식. habit 도메인 인증 로직 변경 = Tier 3 (SDD step1 §3 갱신 + 실패-선커밋 테스트). crew 동반 여부는 별도 판단. 상세: `triagain/docs/fix-instructions/06-pr94-codex-리뷰-2건.md` Issue 2.
+- 근본 해결: 검증 경로(107·122행)를 `(cycle.getStartDate() + cycle.getCompletedDays()).atTime(habit.getDeadlineTime())` 슬롯별 마감으로 교체 → 검증-수락 경계 == 스케줄러-실패 경계 불변식. habit 도메인 인증 로직 변경 = Tier 3 (SDD step1 §3 갱신 + 실패-선커밋 테스트). crew 동반 여부는 별도 판단. 상세: `triagain/revisions/06-pr94-codex-리뷰-2건.md` Issue 2.
 
 ### [2026-06-17] 크루 첫 인증 알림 fan-out: 배치 발송 + Dead Letter 큐 도입
 
@@ -64,7 +100,7 @@
 - 필요 시점: FK 구조 변경, 또는 삭제 경로 추가 시
 - 이유: 이번 범위에서 공유 추출을 하려면 withdrawal 어댑터(`UserCrewMembershipAdapter`)까지 수정해야 해 범위를 초과. 복제를 허용하되 기록으로 남긴다.
 - 추가 미처리: FK-safe 크루 삭제가 `dead_letters`(target_id=crewId, CREW_ACTIVATE/CREW_COMPLETE 타입)는 정리하지 않음 — `deleteCrewWithAssociations`/`deleteCrewWithAllData` 공유 추출 시 함께 처리 검토(자동 재시도 스케줄러 없어 기능 영향은 없음).
-- 추가 (2026-07-31, PR #126 리뷰): 두 곳 모두 **네이티브 SQL을 `EntityManager`로 직접 실행**한다는 지적도 나왔다. 공유 추출을 할 때 "한 곳으로 모으기"와 "JPA 리포지토리/MyBatis로 옮기기"를 같이 볼 것 — 위 [2026-07-31] `NotificationTargetQueryAdapter` 항목과 같은 성격이다.
+- 추가 (2026-07-31, PR #126 리뷰): 두 곳 모두 **네이티브 SQL을 `EntityManager`로 직접 실행**한다는 지적도 나왔다. 공유 추출을 할 때 "한 곳으로 모으기"와 "JPA 리포지토리로 옮기기"를 같이 볼 것 — 위 [2026-07-31] `NotificationTargetQueryAdapter` 항목과 같은 성격이다(해당 항목은 2026-08-11 종결).
 
 ### [2026-06-11] permitAll 공개 경로 목록이 SecurityConfig/DevSecurityConfig에 중복 — 공유 상수 추출 후보
 

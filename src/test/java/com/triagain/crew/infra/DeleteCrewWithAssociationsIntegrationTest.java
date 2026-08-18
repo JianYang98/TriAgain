@@ -82,6 +82,20 @@ class DeleteCrewWithAssociationsIntegrationTest extends E2eTestBase {
 		);
 		uploadSessionRepositoryPort.save(session);
 
+		// Given — 인증 + 리액션 삽입.
+		// ⚠️ 리액션 행을 실제로 만들어야 "0건" 단언이 의미를 갖는다 — 안 만들면 애초에 0건이라
+		//    삭제 SQL 이 reactions 를 건너뛰어도 통과하는 vacuous green 이 된다.
+		String verificationId = "VRFY-del-reaction";
+		insert("INSERT INTO verifications "
+				+ "(id, challenge_id, user_id, crew_id, text_content, status, report_count, target_date, "
+				+ " attempt_number, slot_attempt, review_status, created_at) "
+				+ "VALUES (:vid, 'CHAL-del', :uid, :cid, '인증', 'APPROVED', 0, CURRENT_DATE, "
+				+ " 1, 1, 'NOT_REQUIRED', CURRENT_TIMESTAMP)",
+				verificationId, userId, crewId);
+		insert("INSERT INTO reactions (id, verification_id, user_id, emoji, created_at) "
+				+ "VALUES ('RCTN-del', :vid, :uid, 'LIKE', CURRENT_TIMESTAMP)",
+				verificationId, userId, crewId);
+
 		// 삽입 확인 (사전 조건)
 		long membersBefore = countQuery("SELECT COUNT(*) FROM crew_members WHERE crew_id = :id", crewId);
 		long crewsBefore = countQuery("SELECT COUNT(*) FROM crews WHERE id = :id", crewId);
@@ -89,6 +103,10 @@ class DeleteCrewWithAssociationsIntegrationTest extends E2eTestBase {
 				"SELECT COUNT(*) FROM notifications WHERE target_type = 'CREW' AND target_id = :id", crewId);
 		long sessionsBefore = countQuery("SELECT COUNT(*) FROM upload_session WHERE crew_id = :id", crewId);
 
+		long reactionsBefore = countQuery(
+				"SELECT COUNT(*) FROM reactions WHERE verification_id = :id", verificationId);
+
+		assertThat(reactionsBefore).as("사전 조건: reactions 1건 — 이게 0이면 아래 0건 단언은 무의미하다").isEqualTo(1);
 		assertThat(membersBefore).as("사전 조건: crew_members 1건").isEqualTo(1);
 		assertThat(crewsBefore).as("사전 조건: crews 1건").isEqualTo(1);
 		assertThat(notifsBefore).as("사전 조건: notifications(CREW) 1건").isEqualTo(1);
@@ -103,6 +121,9 @@ class DeleteCrewWithAssociationsIntegrationTest extends E2eTestBase {
 
 		// Then — crew_members 0건
 		long membersAfter = countQuery("SELECT COUNT(*) FROM crew_members WHERE crew_id = :id", crewId);
+		long reactionsAfter = countQuery(
+				"SELECT COUNT(*) FROM reactions WHERE verification_id = :id", verificationId);
+		assertThat(reactionsAfter).as("reactions 고아 레코드 0건").isZero();
 		assertThat(membersAfter).as("crew_members 고아 레코드 0건").isZero();
 
 		// Then — crews 0건
@@ -172,6 +193,17 @@ class DeleteCrewWithAssociationsIntegrationTest extends E2eTestBase {
 	// ===== 헬퍼 =====
 
 	/** 단일 :id 파라미터 COUNT 쿼리 */
+	/** 네이티브 INSERT — 삭제 SQL 이 지우는 대상을 그대로 만든다(도메인 팩토리를 우회) */
+	private void insert(String sql, String vid, String uid, String cid) {
+		var query = entityManager.createNativeQuery(sql)
+				.setParameter("vid", vid)
+				.setParameter("uid", uid);
+		if (sql.contains(":cid")) {
+			query.setParameter("cid", cid);
+		}
+		query.executeUpdate();
+	}
+
 	private long countQuery(String sql, String id) {
 		Number count = (Number) entityManager.createNativeQuery(sql)
 				.setParameter("id", id)

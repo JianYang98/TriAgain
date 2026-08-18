@@ -113,7 +113,7 @@ sequenceDiagram
     DB-->>UseCase: session (requested_at 포함)
 
     Note over UseCase,DB: 4) 챌린지 비관적 락
-    UseCase->>DB: SELECT FOR UPDATE (Challenge)
+    UseCase->>DB: SELECT ... FOR NO KEY UPDATE (Challenge)
     DB-->>UseCase: challenge data
 
     Note over UseCase: 5) 마감 시간 검증<br/>(session.requested_at < deadline?)
@@ -189,7 +189,7 @@ sequenceDiagram
             else 세션 COMPLETED
                 Note over UseCase,DB: 4) 챌린지 비관적 락
 
-                UseCase->>DB: SELECT FOR UPDATE (Challenge)
+                UseCase->>DB: SELECT ... FOR NO KEY UPDATE (Challenge)
                 DB-->>UseCase: challenge data
 
                 Note over UseCase: 5) 마감 시간 검증<br/>(session.requested_at < deadline?)
@@ -258,7 +258,7 @@ sequenceDiagram
 
 **verification INSERT** (POST /verifications):
 1. upload_session 상태 확인 (COMPLETED인지만 체크)
-2. 챌린지 비관적 락 (SELECT FOR UPDATE)
+2. 챌린지 비관적 락 (SELECT … FOR NO KEY UPDATE)
 3. 마감 시간 검증
 4. verification INSERT (기본 APPROVED, UNIQUE로 중복 방지)
 5. COMMIT

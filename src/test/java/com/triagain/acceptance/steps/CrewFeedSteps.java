@@ -9,6 +9,7 @@ import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.triagain.acceptance.ScenarioContext;
 import com.triagain.acceptance.adapter.FeedTestAdapter;
@@ -60,6 +61,9 @@ public class CrewFeedSteps {
 
 	private final Set<String> savedUserIds = new HashSet<>();
 
+	@Autowired
+	private TransactionTemplate transactionTemplate;
+
 	@Before
 	public void setUp() {
 		feedAdapter = new FeedTestAdapter(port);
@@ -78,7 +82,7 @@ public class CrewFeedSteps {
 			crewId = createActiveCrew(crewName, userId);
 			scenarioContext.putCrewId(crewName, crewId);
 		} else {
-			crewRepositoryPort.saveMember(CrewMember.createMember(userId, crewId));
+			joinCrewFixture(userId, crewId);
 		}
 		scenarioContext.setCrewId(crewId);
 		ensureChallengeExists(userId, crewId);
@@ -93,7 +97,28 @@ public class CrewFeedSteps {
 	public void 다른_사용자가_크루에_참여_중이다(String userId, String crewName) {
 		ensureUserExists(userId);
 		String crewId = scenarioContext.getCrewIdByName(crewName);
-		crewRepositoryPort.saveMember(CrewMember.createMember(userId, crewId));
+		joinCrewFixture(userId, crewId);
+	}
+
+	/**
+	 * 크루 참여 픽스처 — 멤버 행과 current_members 를 함께 올린다.
+	 * <p>
+	 * 멤버 행만 넣으면 crew_members 행수와 crews.current_members 가 어긋나, 탈퇴 경로가
+	 * 정원 0으로 오판해 크루를 통째로 삭제한다(LeaveCrewService). 프로덕션 참여 경로와 동일한
+	 * incrementMembersIfNotFull 을 써서 불변식을 지킨다.
+	 */
+	private void joinCrewFixture(String userId, String crewId) {
+		// 두 쓰기가 한 트랜잭션이어야 한다 — 멤버 행만 커밋된 채 증가가 실패하면 고치려던 그 어긋남이 그대로 남는다.
+		// (incrementMembersIfNotFull 은 @Modifying 이라 어차피 호출자 트랜잭션이 필요하다 — 스텝은 트랜잭션 밖이다)
+		transactionTemplate.executeWithoutResult(status -> {
+			crewRepositoryPort.saveMember(CrewMember.createMember(userId, crewId));
+			// CAS 라 정원이 차면 0을 반환한다 — 삼키면 crew_members 행수와 current_members 가 어긋난다
+			int affected = crewRepositoryPort.incrementMembersIfNotFull(crewId);
+			if (affected != 1) {
+				throw new IllegalStateException(
+						"크루 참여 픽스처 실패 — current_members 증가가 " + affected + "행(정원 초과 의심): crewId=" + crewId);
+			}
+		});
 	}
 
 	@조건("{string}가 오늘 인증을 완료했다")
@@ -295,7 +320,7 @@ public class CrewFeedSteps {
 				crewId, creatorId, crewName, crewName + " 목표",
 				"인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
 				LocalDate.now(), LocalDate.now().plusDays(14), true,
-				generateInviteCode(), LocalDateTime.now(),
+				Crew.generateInviteCode(), LocalDateTime.now(),
 				Crew.DEFAULT_DEADLINE_TIME, null, CrewVisibility.PRIVATE, 0L, java.util.List.of()
 		);
 		crewRepositoryPort.save(crew);
@@ -315,16 +340,6 @@ public class CrewFeedSteps {
 					return challengeRepositoryPort.save(newChallenge);
 				});
 		scenarioContext.setChallengeId(challenge.getId());
-	}
-
-	private String generateInviteCode() {
-		String chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-		StringBuilder code = new StringBuilder(6);
-		for (int i = 0; i < 6; i++) {
-			int index = (int) (Math.random() * chars.length());
-			code.append(chars.charAt(index));
-		}
-		return code.toString();
 	}
 
 	private String getFirstCrewId() {

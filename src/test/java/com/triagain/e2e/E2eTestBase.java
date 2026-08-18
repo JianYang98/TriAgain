@@ -113,7 +113,7 @@ public abstract class E2eTestBase {
 				crewId, creatorId, "E2E 테스트 크루", "E2E 목표",
 				"인증 내용", VerificationType.TEXT, 10, 1, CrewStatus.ACTIVE,
 				LocalDate.now(), LocalDate.now().plusDays(14), true,
-				generateInviteCode(), LocalDateTime.now(),
+				Crew.generateInviteCode(), LocalDateTime.now(),
 				Crew.DEFAULT_DEADLINE_TIME, null, CrewVisibility.PRIVATE, 0L, List.of()
 		);
 		crewRepositoryPort.save(crew);
@@ -134,14 +134,5 @@ public abstract class E2eTestBase {
 				LocalDate.now().minusDays(completedDays), LocalDateTime.now().plusDays(3), LocalDateTime.now()
 		);
 		return challengeRepositoryPort.save(challenge);
-	}
-
-	protected String generateInviteCode() {
-		String chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-		StringBuilder code = new StringBuilder(6);
-		for (int i = 0; i < 6; i++) {
-			code.append(chars.charAt((int) (Math.random() * chars.length())));
-		}
-		return code.toString();
 	}
 }

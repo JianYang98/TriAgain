@@ -273,7 +273,7 @@ com.jaksam.{context}
 ├── port/
 │   ├── in/            // UseCase 인터페이스
 │   └── out/           // Repository Port, External Port
-└── infra/             // JPA, MyBatis, S3 Adapter
+└── infra/             // JPA, S3 Adapter
 ```
 
 ## 5. 컨텍스트 간 통신 규칙

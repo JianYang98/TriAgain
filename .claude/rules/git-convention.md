@@ -6,6 +6,24 @@ description: Git 브랜치 전략과 커밋 메시지 컨벤션 (AngularJS Conve
 
 ## 브랜치 전략
 
+**저장소 3개, 전략이 다르다. 커밋 전에 어디인지 확인한다.**
+
+```bash
+git remote -v | head -1        # 어느 저장소인가
+git branch --show-current
+```
+
+| 저장소 | remote | 허용 |
+|---|---|---|
+| `triagain` (루트, 오케스트레이션) | `TriAgain-orchestration` (private) | **`main` 직커밋 OK** — 문서만이라 CI·리뷰어가 없다 |
+| `triagain-back` | `TriAgain` | **PR만.** `develop`·`main` 직커밋 금지 |
+| `triagain-front` | `TriAgain-front` | **PR만.** 〃 |
+
+⛔ **루트가 예외인 것이지 직커밋이 기본이 아니다.** 2026-08-13 실제로 섞였다 —
+orchestrator가 BE `develop`에 직접 커밋했고 `branch -f`로 되돌렸다.
+
+### BE · FE 브랜치
+
 - main: 운영 배포 (직접 push 금지, develop에서 PR로만 병합)
 - develop: 통합 브랜치 (feat→develop PR, CI + E2E 통과 필수)
 - feat/*: 기능 개발 브랜치 (develop에서 분기, develop으로 PR)
@@ -19,7 +37,7 @@ description: Git 브랜치 전략과 커밋 메시지 컨벤션 (AngularJS Conve
 ```bash
 git fetch origin develop                # ← origin/develop 이 낡으면 낡은 커밋에서 갈라진다
 git worktree add <경로> origin/develop -b <브랜치>
-git -C <경로> push -u origin <브랜치>   # ← 생략 금지(이유는 아래). 에이전트는 못 하니 사용자에게 요청
+git -C <경로> push -u origin <브랜치>   # ← 생략 금지(이유는 아래). 에이전트가 직접 실행한다
 ```
 
 **`push -u`를 생성 직후에 하는 이유** — 두 가지가 한 번에 해결된다.
@@ -36,7 +54,9 @@ untracked 파일은 워크트리를 따라가지 않으므로 "옮기면 되겠�
 로컬 브랜치는 squash-merge면 `-d`가 거부하므로, **PR 상태로 머지를 확인한 뒤** `-D`를 쓴다.
 
 **세션 마감 점검**: `git log --branches --not --remotes --oneline` 이 비어 있는지 본다.
-비어 있지 않으면 push 안 된 커밋이 있다. (원격 없는 저장소 — 루트 `triagain` — 은 예외)
+비어 있지 않으면 push 안 된 커밋이 있다. **3개 저장소를 각각** 본다 — 루트는 2026-08-13에
+remote가 붙어 **예외가 사라졌다**(그전 문구는 "루트는 예외"였다).
+이 점검은 `/session-pack` 4번째 단계로 배선돼 있다.
 
 ## 커밋 메시지 (AngularJS Convention)
 

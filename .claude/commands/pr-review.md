@@ -11,8 +11,15 @@ model: opus
 ### Step 0: 변경 범위 파악
 
 ```bash
-git diff main..HEAD --name-only
+# 기준점은 PR 이 어디로 가는지로 정한다 — 고정하면 한쪽 PR 은 반드시 틀린다
+BASE=$(gh pr view --json baseRefName -q .baseRefName 2>/dev/null || echo develop)
+echo "기준: origin/$BASE"
+git fetch origin "$BASE" -q || echo "⚠️ fetch 실패 — origin/$BASE 가 낡았을 수 있다"
+git diff "origin/$BASE...HEAD" --name-only
 ```
+
+⚠️ **0개면 리뷰를 진행하지 말고 기준점부터 의심한다.** PR 생성 전에 돌리면 `BASE` 가 `develop` 으로
+폴백되는데, 릴리스(`develop → main`)를 보려던 거였다면 자기 자신과 비교해 0파일이 나온다.
 
 변경된 파일 목록을 카테고리별로 분류합니다:
 
@@ -21,7 +28,7 @@ git diff main..HEAD --name-only
 | API | `*.api/`, Controller, Request DTO, ErrorCode, SecurityConfig | api-reviewer |
 | Domain | `*.domain/`, `*.application/`, Policy, Port | domain-reviewer |
 | Security | `common/auth/`, JWT, OAuth, `/internal`, SecurityConfig | security-reviewer |
-| Docs | `docs/spec/`, Flyway, ErrorCode, messages.properties | docs-sync-reviewer |
+| Docs | `docs/spec/`, Flyway, ErrorCode, error-messages.properties | docs-sync-reviewer |
 | Test | `src/test/**`, `application-test.yml`, `*.feature` | test-reviewer |
 
 **하나의 파일이 여러 카테고리에 해당할 수 있습니다** (예: SecurityConfig → API + Security)
@@ -78,7 +85,36 @@ git diff main..HEAD --name-only
 
 ---
 
-### Step 4: 문서 동기화 리뷰 (항상 실행)
+### Step 4: 테스트 리뷰 (해당 시)
+
+**트리거** (둘 중 하나):
+- ⓐ `src/test/**`, `src/test/resources/application-test.yml`, `*.feature` 변경 → 변경된 테스트를 리뷰
+- ⓑ **프로덕션 코드가 바뀌었는데 위 경로 변경이 0건** → 테스트 부재 자체를 리포트한다.
+  `*.api/`·Controller·`*.domain/`·`*.application/` 이 바뀐 경우면 **CRITICAL**, 그 외는 WARNING.
+  ⓑ는 test-reviewer 를 호출하지 않는다 — 볼 파일이 없으므로 판정만 이 문서에서 한다.
+
+ⓐ의 경우 변경된 테스트 파일을 대상으로 `.claude/commands/test-reviewer.md` 기준에 따라 리뷰합니다.
+
+검증 항목:
+- ScenarioContext 상태 관리 (`putCrewId()` vs `setCrewId()` 구분)
+- 테스트 어댑터 URL·파라미터 정확성
+- Given 단계의 상태 설정 방식
+- H2 호환성
+- 단위테스트 품질 (비즈니스 규칙을 실제로 검증하는가)
+- Cucumber 시나리오 일관성
+
+⚠️ **Scope 한계** — test-reviewer 는 *"최근 변경된 테스트 파일"* 기준이라 **테스트가 없어서 생긴 공백은 못 잡는다**
+(변경된 테스트 파일이 애초에 없으므로) — 그래서 위 트리거 ⓑ 를 둔다.
+
+ⓑ 는 **"테스트가 있는가"만** 본다. **"테스트가 의미 있는가"**(API 레벨을 실제로 태우는가 —
+컨트롤러 라우팅·인증·직렬화·에러코드→HTTP 매핑)는 상위 오케스트레이션 저장소(`triagain/`)의
+`/verify` §1 이 담당하며 **이 클론엔 딸려오지 않는다**
+(실측 2026-08-13: `git ls-files | grep -i verify` → 0건, `harness-decisions` → 0건).
+**그 층은 여전히 공백이다** (PR #153 Codex P2).
+
+---
+
+### Step 5: 문서 동기화 리뷰 (항상 실행)
 
 **트리거**: 항상 실행 (코드 변경이 있으면 문서도 업데이트되어야 하므로)
 
@@ -88,11 +124,11 @@ git diff main..HEAD --name-only
 - api-spec.md ↔ Controller 일치
 - schema.md ↔ JPA Entity / Flyway 일치
 - biz-logic.md ↔ Domain 코드 일치
-- ErrorCode ↔ api-spec.md / messages.properties 일치
+- ErrorCode ↔ api-spec.md / error-messages.properties 일치
 
 ---
 
-### Step 5: 종합 리포트 → 파일 저장
+### Step 6: 종합 리포트 → 파일 저장
 
 모든 리뷰 결과를 종합하여 `docs/review-comment/pr-review-comment.md`에 저장합니다.
 
@@ -108,7 +144,7 @@ git diff main..HEAD --name-only
 
 ### 변경 범위
 - 변경 파일: N개
-- 실행된 리뷰어: [api / domain / security / docs-sync]
+- 실행된 리뷰어: [실제로 실행한 것만 나열. 트리거가 안 맞아 건너뛴 리뷰어는 여기 쓰지 않는다]
 
 ---
 
@@ -116,10 +152,16 @@ git diff main..HEAD --name-only
 
 | 리뷰어 | 결과 | Critical | Warning | 비고 |
 |--------|------|----------|---------|------|
-| API | PASS/SUGGESTIONS/IMPROVEMENT | 0 | 0 | |
-| Domain | PASS/SUGGESTIONS/IMPROVEMENT | 0 | 0 | |
-| Security | PASS/SUGGESTIONS/CRITICAL | 0 | 0 | |
-| Docs Sync | IN SYNC/MINOR/MAJOR | 0 | 0 | |
+| API | PASS/SUGGESTIONS/IMPROVEMENT/**SKIPPED** | 0 | 0 | |
+| Domain | PASS/SUGGESTIONS/IMPROVEMENT/**SKIPPED** | 0 | 0 | |
+| Security | PASS/SUGGESTIONS/CRITICAL/**SKIPPED** | 0 | 0 | |
+| Test | PASS/SUGGESTIONS/IMPROVEMENT/**CRITICAL**/**SKIPPED** | 0 | 0 | ⓑ(테스트 부재)면 CRITICAL |
+| Docs Sync | IN SYNC/MINOR/MAJOR | 0 | 0 | (항상 실행) |
+
+⚠️ **안 돌린 리뷰어는 반드시 `SKIPPED` 로 적고 비고에 트리거 미충족 사유를 쓴다.**
+Docs Sync 외 4개는 전부 조건부 실행(Step 1~4)이라, 안 돌았는데 `PASS`·`0건`으로 적으면
+**"통과"로 읽히지만 실은 "아무것도 안 봤다"** 가 된다. 이 저장소에서 실제로 난 사고다 —
+`docs-sync-reviewer` 가 존재하지 않는 `messages.properties` 를 보며 `0건`을 계속 찍었다(2026-08-13 PR #153).
 
 ---
 
@@ -151,7 +193,7 @@ git diff main..HEAD --name-only
 ```
 /pr-review
 ```
-→ git diff main..HEAD 기반으로 변경된 파일 자동 분류 → 해당 리뷰어 실행
+→ PR 의 base 브랜치 기준으로 변경된 파일 자동 분류 → 해당 리뷰어 실행
 
 ### 브랜치 지정
 

@@ -33,7 +33,11 @@ Authorization: Bearer <token>
         "textContent": "오늘도 달리기 완료!",
         "targetDate": "2026-03-04",
         "slotAttempt": 1,
-        "createdAt": "2026-03-04T14:30:00"
+        "createdAt": "2026-03-04T14:30:00",
+        "reactions": [
+          {"emojiType": "LIKE", "count": 2, "reactedByMe": true,
+           "users": [{"userId": "user_222", "nickname": "지안"}, {"userId": "user_333", "nickname": "영희"}]}
+        ]
       }
     ],
     "myProgress": {
@@ -72,6 +76,13 @@ Authorization: Bearer <token>
   - `targetDate`: 인증 대상 날짜
   - `slotAttempt`: 해당 슬롯의 제출 회차 (취소·수정 이력 포함). `_FeedCard`의 ⋯ 메뉴(수정/취소) 활성 여부 판단에 사용
   - `createdAt`: 인증 생성 시각
+  - `reactions`: 반응 요약 배열 (additive — 기존 필드·구조 무변경이라 구버전 클라이언트는 영향받지 않는다). 반응이 없으면 `[]` (null 아님)
+    - `emojiType`: 이모지 (v1은 `LIKE`만)
+    - `count`: 그 이모지를 남긴 인원 수
+    - `reactedByMe`: 요청자가 그 이모지를 남겼는지
+    - `users`: 남긴 사람 전원 (크루 정원 10명 → 본인 포함 최대 10명). **표시 순서는 서버 정렬**(`created_at`, `user_id`)을 따르며 클라이언트에서 재정렬하지 않는다
+    - 피드는 `APPROVED` 인증만 반환한다. **취소된 인증은 그 반응과 함께 피드에서 사라지고**, 수정된 인증은 새 행으로 대체되므로 **수정된 내용이 나오되 `reactions`는 빈 배열이다** (이전 반응은 구행에 남아 노출되지 않는다)
+    - 조회 전용 리액션 API는 **없다** — 반응은 인증과 함께만 조회된다. 갱신은 `PUT·DELETE /verifications/{id}/reactions` 응답 바디로 받는다
 - `myProgress`: 나의 챌린지 현황 (**nullable** — 활성 챌린지가 없으면 null)
   - `challengeId`: 챌린지 ID
   - `status`: 챌린지 상태 (IN_PROGRESS, SUCCESS, FAILED, ENDED)

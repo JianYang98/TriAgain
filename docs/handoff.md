@@ -32,7 +32,7 @@
 |------|------|
 | Language | Java 17 |
 | Framework | Spring Boot 3.4.13 |
-| ORM | Spring Data JPA (CRUD/쓰기) + MyBatis 3.0.5 (복잡한 조회) |
+| ORM | Spring Data JPA (복잡한 조회는 네이티브 쿼리) |
 | Database | PostgreSQL 16 |
 | Storage | AWS S3 (Pre-signed URL 기반 Direct Upload) |
 | Serverless | AWS Lambda (S3 업로드 완료 감지 → session COMPLETED 처리) |
@@ -86,7 +86,7 @@ com.triagain.{context}/
 ├── port/
 │   ├── in/            UseCase 인터페이스
 │   └── out/           Repository Port, External Port
-└── infra/             JPA Entity, Adapter, MyBatis Mapper
+└── infra/             JPA Entity, Adapter
 ```
 
 ### 3.4 계층별 의존성 규칙
@@ -102,7 +102,7 @@ com.triagain.{context}/
 
 ### 4.1 크루 생성/참여
 
-- **정원:** 2~10명, 비관적 락(`SELECT FOR UPDATE`)으로 동시 참여 시 정원 초과 방지
+- **정원:** 2~10명, 조건부 원자적 UPDATE로 동시 참여 시 정원 초과 방지 (기본 `CONDITIONAL`; 비관적 락으로 전환 시 발행 SQL은 `SELECT … FOR NO KEY UPDATE`)
 - **초대코드:** 6자리 영숫자 자동 발급 (0/O/I/L 제외)
 - **시작일:** 내일(+1) 이후만 선택 가능
 - **종료일:** 시작일+6일 이상 (작심삼일 2회 보장)
@@ -273,7 +273,7 @@ PR 리뷰 후속 개선 항목 4건:
 
 ### 6.4 Phase 2 예정
 
-Redis 캐시, AWS SQS 비동기 이벤트, FCM 푸시 알림, 분산 락(Redis), JPA vs MyBatis 성능 비교, 공개 크루 탐색
+Redis 캐시, AWS SQS 비동기 이벤트, FCM 푸시 알림, 분산 락(Redis), 공개 크루 탐색
 
 ---
 
@@ -353,12 +353,5 @@ Redis 캐시, AWS SQS 비동기 이벤트, FCM 푸시 알림, 분산 락(Redis),
 
 ### 8.4 디버깅 로그
 
-버그 수정, 설계 결정, AI 방향 수정 시 `/docs/log/debugging-log.md`에 기록 필수. 형식:
-
-```
-### [날짜] 제목
-- 상황: (한 줄)
-- 내 판단: (결정 + 이유)
-- AI 역할: (AI가 도운 것)
-- 배운 점: (한 줄)
-```
+버그 수정, 설계 결정, AI 방향 수정 시 `/docs/log/debugging-log.md`에 기록 필수.
+형식과 분량 기준은 `.claude/rules/logging-rules.md` 가 정본이다.

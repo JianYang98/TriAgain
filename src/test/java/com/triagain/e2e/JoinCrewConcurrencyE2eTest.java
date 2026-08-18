@@ -36,7 +36,7 @@ import io.restassured.response.Response;
  * flush 수정 없이 T2는 RED(중복행 생성), 수정 후 GREEN(CREW_ALREADY_JOINED).
  * 이 전이가 saveMemberAndFlush의 유일한 실증이다.
  */
-class JoinCrewConcurrencyTest extends E2eTestBase {
+class JoinCrewConcurrencyE2eTest extends E2eTestBase {
 
 	@PersistenceContext
 	private EntityManager entityManager;
@@ -217,17 +217,8 @@ class JoinCrewConcurrencyTest extends E2eTestBase {
 			"인증 내용", VerificationType.TEXT, maxMembers, currentMembers,
 			CrewStatus.RECRUITING,
 			LocalDate.now().plusDays(1), LocalDate.now().plusDays(30),
-			true, generateCode(), LocalDateTime.now(),
+			true, Crew.generateInviteCode(), LocalDateTime.now(),
 			Crew.DEFAULT_DEADLINE_TIME, null, CrewVisibility.PUBLIC, 0L, List.of()
 		);
-	}
-
-	private String generateCode() {
-		String chars = Crew.INVITE_CODE_CHARS;
-		StringBuilder code = new StringBuilder(6);
-		for (int i = 0; i < 6; i++) {
-			code.append(chars.charAt((int) (Math.random() * chars.length())));
-		}
-		return code.toString();
 	}
 }
