@@ -516,13 +516,55 @@ Content-Type: application/json
 
 ---
 
+### GET /upload-sessions/{id} (업로드 세션 상태 조회)
+
+SSE 이벤트 누락·연결 실패에 대비해 업로드 세션의 현재 상태를 조회하는 폴링 API. 클라이언트는 S3 업로드 후 SSE 구독과 이 API의 2초 간격 폴링을 병렬로 실행하고, 먼저 `COMPLETED` 또는 `EXPIRED`를 확인한 결과를 사용한다.
+
+**인증:** 필요 (본인이 생성한 업로드 세션만 조회 가능)
+
+**요청 (Request)**
+```http
+GET /upload-sessions/123 HTTP/1.1
+Authorization: Bearer <token>
+```
+
+**파라미터:**
+- `id`: (필수) 업로드 세션 ID (Long)
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": {
+    "uploadSessionId": 123,
+    "status": "PENDING"
+  },
+  "error": null
+}
+```
+
+**필드 설명:**
+- `uploadSessionId`: 조회한 업로드 세션 ID
+- `status`: `PENDING`(처리 대기), `COMPLETED`(업로드 완료), `EXPIRED`(만료)
+
+**에러 응답**
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 401 | A003 | 로그인이 필요합니다. | 인증 토큰 없음·만료 |
+| 404 | V004 | 업로드 세션을 찾을 수 없습니다. | 세션이 없거나 요청자 소유가 아님 |
+
+---
+
 ### GET /upload-sessions/{id}/events (SSE 구독 — 업로드 완료 알림)
 
 업로드 세션의 상태 변경을 실시간으로 수신하는 SSE 엔드포인트. 클라이언트가 S3 업로드 후 Lambda가 세션을 COMPLETED로 변경하면 이벤트를 받는다.
 
+**인증:** 필요 (본인이 생성한 업로드 세션만 구독 가능)
+
 **요청 (Request)**
 ```
 GET /upload-sessions/{id}/events HTTP/1.1
+Authorization: Bearer <token>
 Accept: text/event-stream
 ```
 
@@ -535,9 +577,16 @@ event: upload-complete
 data: COMPLETED
 ```
 
+**에러 응답**
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 401 | A003 | 로그인이 필요합니다. | 인증 토큰 없음·만료 |
+| 404 | V004 | 업로드 세션을 찾을 수 없습니다. | 세션이 없거나 요청자 소유가 아님 |
+
 **제약 사항:**
 - SSE 타임아웃: 60초
-- 클라이언트는 fallback으로 폴링 대비 필요
+- 클라이언트는 SSE 이벤트 누락·연결 실패에 대비해 `GET /upload-sessions/{id}`를 2초 간격으로 병렬 폴링한다
+- SSE와 폴링 중 먼저 `COMPLETED` 또는 `EXPIRED`를 확인한 결과를 사용하고 나머지 대기를 종료한다
 
 ---
 

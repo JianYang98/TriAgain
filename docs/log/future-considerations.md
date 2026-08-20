@@ -6,6 +6,43 @@
 
 ---
 
+### [2026-08-20] Lambda 업로드 완료 최종 실패 보관·경보 — SQS 도입 여부 추후 결정
+
+- 현재 상태: S3 `ObjectCreated:Put`이 `upload-complete` Lambda를 비동기로 호출하고, handler는
+  백엔드 완료 API의 HTTP·연결 오류를 다시 던져 Lambda 실패로 처리한다. SAM 템플릿에는 DLQ,
+  OnFailure Destination, 명시적 비동기 재시도, CloudWatch alarm이 없다.
+- 현재 결정: **이번 문서·구현 정리 범위에서는 AWS SQS를 도입하지 않는다.** 운영 AWS에 별도
+  설정이 있는지는 저장소 밖에서 확인한다.
+- 재검토 시점: 실제 업로드 완료 유실이 관측되거나, 운영에서 최종 실패 이벤트의 보관·재처리와
+  즉시 알림을 보장해야 할 때.
+- 검토안: SQS DLQ와 SQS OnFailure Destination 중 하나를 선택하고, Lambda `Errors`,
+  `AsyncEventsDropped`, `DestinationDeliveryFailures`, 실패 큐 적재량 경보 및 수동 재처리 runbook을
+  함께 설계한다. 큐만 만들고 소비·재처리 절차 없이 방치하지 않는다.
+- 관련 정본: `docs/spec/photo-upload-lambda-sse.md`, `docs/spec/api-spec/internal.md`,
+  `docs/prod-deploy-checklist.md`.
+
+---
+
+### [2026-08-20] 상위 `sdd/solo-habit` 현행화 — 초기 결정은 보존하고 변경 이력만 보강
+
+- 현재 API 정본은 `triagain-back/docs/spec/api-spec/habit.md`, 비즈니스 규칙은 `biz-logic.md`,
+  스키마는 `schema.md`다. 상위 `sdd/solo-habit/`은 최초 설계와 결정 이유를 보존하는 이력 문서로 둔다.
+- 문서 교차검증과 PostgreSQL Testcontainers 실측에서 확인한 현재 차이:
+  - 인증 더블탭은 동시·순차 모두 승자 `201`, 패자 `400 V002`다.
+    `impl-guards.md`의 “사이클 시작·인증 각각 409”는 현재 테스트와 다르다.
+  - `GlobalExceptionHandler`는 과거 substring 분기가 아니라 제약 이름 exact-match Map을 사용한다.
+  - `verificationContent`는 초기 범위 밖이었지만 V24에서 구현됐고, `HB010`도 이후 추가됐다.
+  - `step2-api.md`의 사이클 더블탭 설명에는 사전 조회 `409 HB002`와 제약 경합 후 기존 사이클
+    `200` 반환이 섞여 있으므로 두 경로를 분리해야 한다.
+- 수정 방식: 과거 문장을 삭제하거나 현재 상태로 덮어쓰지 않고, 각 정본 파일 상단의 역할 표시와
+  날짜가 있는 정정·변경 섹션을 추가한다. `.bak` 파일은 수정하지 않는다.
+- 대상: `step0-overview.md`, `step1-biz-logic.md`, `step2-api.md`, `impl-guards.md`.
+  `step3-schema.md`는 V23 설계 이력을 유지하고 현재 Flyway/JPA 제약 차이만 주의사항으로 보강한다.
+- 실행 조건: `sdd/`는 현재 백엔드 worktree 밖의 상위 저장소이므로 Claude 작업과 섞지 않는다.
+  문서 크로스체크 종료 후 상위 저장소용 별도 worktree·branch에서 최소 정정한다.
+
+---
+
 ### [2026-08-07] 인증 리액션 — 이관·알림·크루 중도 탈퇴·그룹 순서 4건
 
 - 맥락: 인증 리액션 v1 도입(`sdd/verification-reaction/`). 아래 4건은 **의식적으로 v1 범위 밖**으로 둔 것이다.
@@ -183,6 +220,11 @@
 - ~~D-C1: UserCrewMembershipAdapter (User Context)가 Crew Context의 JPA 인프라를 직접 import~~ ✅ **2026-04-09 해결 (최소 침습)**: 어댑터를 `crew.infra.adapter.UserCrewMembershipAdapter`로 이동. `CrewMembershipPort`는 `user.port.out`에 그대로 두고 Crew BC가 구현하는 형태(다른 BC가 Output Port 구현 — 헥사고날 정당 패턴). **권장 옵션**(`UserWithdrawnEvent` 발행 → 각 BC 자체 정리)는 후속 PR로 분리.
 - 현재 상태:
   - D-C2: NotificationAdapter, VerificationNotificationAdapter가 Support Context의 Notification 도메인 모델을 직접 생성
+- **2026-08-20 문서 교차검증 보강**:
+  - 두 Adapter는 Support Domain뿐 아니라 `NotificationRepositoryPort`, `NotificationSendPort`,
+    `FcmTokenCleanupPort` 등 Support의 Outbound Port와 UserRepositoryPort까지 직접 사용한다.
+  - 현재 패키지 컴파일 의존에는 Crew↔Verification, Verification↔Habit, Crew↔Support의 양방향이 있다.
+    런타임 순환 호출로 단정하지 말고, Adapter 소유권·Inbound UseCase 경계·이벤트 대체 가능성을 별도 분석한다.
 - 필요 시점: Phase 2 또는 마이크로서비스 분리 시
 - 이유: 모노리스 단일 배포이므로 Phase 1에서는 실질적 문제 없음. 리팩토링 범위가 크고 기능 변경 없으므로 별도 PR로 분리
 
@@ -204,12 +246,10 @@
 
 ---
 
-### [2026-03-27] CreateVerificationService — 트랜잭션 내 FCM 동기 호출 분리
+### [2026-03-27] ~~CreateVerificationService — 트랜잭션 내 FCM 동기 호출 분리~~ ✅ RESOLVED
 
-- 현재 상태: `CreateVerificationService.createVerification()`이 `@Transactional` 내부에서 `verificationNotificationPort.sendChallengeSuccessNotification()`을 동기 호출. 이 안에서 FCM 발송(`FcmAdapter.send()`)이 `@Retryable` 3회(1s+2s+4s, 최악 7초) 블로킹되며, 그동안 DB 커넥션을 점유
-- 필요 시점: Phase 2 또는 트래픽 증가 시
-- 이유: CLAUDE.md Anti-Pattern "트랜잭션 안에 외부 API 호출 금지" 위반. Phase 1(TPS 50, 500명)에서는 커넥션 풀 고갈 가능성 낮으나, 트래픽 증가 시 인증 API 응답 지연 + 커넥션 풀 고갈 위험. 해결 방향: (1) `@Async` + 스레드 풀로 FCM 비동기 분리, (2) 트랜잭션 커밋 후 이벤트(`@TransactionalEventListener`)로 FCM 발송, (3) 스케줄러처럼 트랜잭션 밖으로 FCM 호출 이동
-- 검증: 리팩토링 전후로 `POST /verifications` 부하 테스트 실시하여 응답 시간 및 커넥션 풀 사용량 비교 필요
+- 해결 상태: `CreateVerificationService`는 `ChallengeSuccessEvent`만 발행하도록 변경되어 트랜잭션 내 FCM 동기 호출이 제거됐다. 현재 `ChallengeSuccessEventListener` 처리 메서드는 주석 처리돼 있어 성공 알림 자체는 미발송 상태다.
+- 과거 위험이었던 트랜잭션 내 외부 FCM 호출과 DB 커넥션 장기 점유는 현재 코드에 남아 있지 않다.
 
 ---
 
@@ -261,11 +301,9 @@
 
 ---
 
-### [2026-03-13] Moderation Context BC 경계 위반 수정
+### [2026-03-13] ~~Moderation Context BC 경계 위반 수정~~ ✅ RESOLVED
 
-- 현재 상태: `moderation/infra/CrewClientAdapter.java`가 `crew.domain.model.Crew`, `crew.domain.model.CrewMember`, `crew.port.out.CrewRepositoryPort`를 직접 import. Verification → Crew 경계 수정과 동일 패턴의 위반
-- 필요 시점: 다음 Moderation Context 관련 작업 시
-- 이유: 이번 PR은 Verification → Crew 경계만 수정 범위. Moderation도 동일하게 `CrewQueryUseCase` (Input Port) 도입 후 어댑터가 UseCase만 의존하도록 변경 필요
+- 해결 상태: `moderation/infra/CrewClientAdapter.java`는 현재 Crew Domain·Repository가 아니라 `CrewMembershipQueryUseCase` Inbound Port를 호출한다.
 
 ---
 
@@ -360,11 +398,7 @@
 
 ---
 
-### [2026-03-03 11:12] `/internal/**` Lambda 인증 필터 추가 필요
+### [2026-03-03 11:12] ~~`/internal/**` Lambda 인증 필터 추가 필요~~ ✅ RESOLVED
 
-- 맥락: `/internal/**` 엔드포인트가 `permitAll`로 열려있어 보안 위험 → prod에서 `denyAll`로 임시 차단
-- 지금 한 것: `SecurityConfig`(prod)에서 `denyAll`로 변경, `DevSecurityConfig`(!prod)는 `permitAll` 유지
-- 추후 고려: Lambda 연동 시 시크릿 키 헤더 검증 필터 추가
-  - Lambda 요청에 `X-Internal-Secret` 등의 헤더를 포함하고, Spring Security 필터에서 검증
-  - 필터 추가 후 dev/prod 설정 통일 (`denyAll` → 필터 기반 인증으로 전환)
-  - VPC 내부 통신만 허용하는 네트워크 레벨 제한도 병행 검토
+- 해결 상태: prod에서 `InternalApiKeyFilter`가 모든 `/internal/**` 요청의 `X-Internal-Api-Key`를 검증한다. Security matcher의 `permitAll`은 필터 우회를 뜻하지 않는다. `!prod`에는 이 필터가 없다.
+- 네트워크 레벨 제한(VPC·Security Group)은 저장소 밖 운영 설정 확인 대상이다.
