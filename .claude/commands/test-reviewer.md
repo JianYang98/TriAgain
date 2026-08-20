@@ -273,8 +273,9 @@ void FAILED_챌린지에는_인증할_수_없다() {
 
 리뷰 완료 후 결과를 `docs/review-comment/test-review-comment.md`에 저장합니다.
 기존 파일이 있으면 덮어씁니다.
-파일 머리말에 `review_head: <git rev-parse HEAD의 전체 SHA>`를 기록합니다.
-이 값이 없으면 `/pr-review-fix test`와 `/pr-review-check test`는 오래된 결과로 보고 중단합니다.
+파일 머리말에 `review_head: <git rev-parse HEAD의 전체 SHA>`와
+`review_branch: <git branch --show-current>`를 기록합니다.
+둘 중 하나라도 없으면 `/pr-review-fix test`와 `/pr-review-check test`는 오래된 결과로 보고 중단합니다.
 
 ---
 

@@ -40,12 +40,13 @@ git diff "origin/$BASE...HEAD" --name-only
 | Domain | `*.domain/`, `*.application/`, Policy, Port | domain-reviewer |
 | Security | `common/auth/`, JWT, OAuth, `/internal`, SecurityConfig | security-reviewer |
 | Data | JPA Entity·Repository·DB persistence Adapter, `db/migration/**`, `nativeQuery`, `createNativeQuery` | `docs/spec/schema.md` + 변경 유형별 규칙 |
-| Config·Deploy | `application*.yml`, Dockerfile, `.github/workflows/**`, 빌드·배포 wiring을 바꾼 `build.gradle` | `.claude/rules/config-deploy.md` |
+| Config·Deploy | `application*.yml`, Dockerfile, `.github/workflows/**`, `lambda/**`, 빌드·배포 wiring을 바꾼 `build.gradle` | `.claude/rules/config-deploy.md` |
 | Docs | `docs/spec/`, Flyway, ErrorCode, error-messages.properties | docs-sync-reviewer |
 | Test | `src/test/**`, `application-test.yml`, `*.feature`, 테스트 태스크를 바꾼 `build.gradle` | test-reviewer |
 
 **하나의 파일이 여러 카테고리에 해당할 수 있습니다.**
 예: SecurityConfig → API + Security, Flyway → Data + Docs, 테스트 태스크를 바꾼 build.gradle → Config·Deploy + Test.
+`lambda/**`는 실제 배포 워크플로의 변경 감지 범위이므로 Config·Deploy에 포함합니다.
 
 `Adapter`라는 이름만으로 Data에 넣지 않습니다. JPA·SQL·DB persistence 근거가 있는 변경만 Data입니다.
 
@@ -146,7 +147,7 @@ git diff "origin/$BASE...HEAD" --name-only
 
 ### Step 6: 설정·배포 리뷰 (해당 시)
 
-**트리거**: `application*.yml`, Dockerfile, `.github/workflows/**`, 빌드·배포 wiring을 바꾼 `build.gradle` 변경
+**트리거**: `application*.yml`, Dockerfile, `.github/workflows/**`, `lambda/**`, 빌드·배포 wiring을 바꾼 `build.gradle` 변경
 
 `.claude/rules/config-deploy.md`를 읽고 판정합니다. `build.gradle`의 테스트 태스크·필터 변경은
 Step 4 테스트 리뷰도 함께 실행합니다. 규칙 내용을 여기에 복사하지 않습니다.
@@ -158,6 +159,7 @@ Step 4 테스트 리뷰도 함께 실행합니다. 규칙 내용을 여기에 �
 **트리거**: 항상 실행 (코드 변경이 있으면 문서도 업데이트되어야 하므로)
 
 변경된 파일과 관련된 문서의 동기화 상태를 `.claude/commands/docs-sync-reviewer.md` 기준에 따라 검증합니다.
+종합 결과에서는 `MAJOR DRIFT`를 `CRITICAL`, `MINOR DRIFT`를 `WARNING`으로 분류합니다.
 
 검증 항목:
 - api-spec.md ↔ Controller 일치
@@ -175,15 +177,17 @@ Step 4 테스트 리뷰도 함께 실행합니다. 규칙 내용을 여기에 �
 
 > 이 파일은 `/pr-review-fix` 커맨드에서 읽어서 수정 플랜을 세우는 데 사용됩니다.
 > 개발 에이전트가 이 파일만 보고 무엇을 어떻게 고쳐야 하는지 알 수 있도록 작성합니다.
-> 종합·개별 리뷰 결과 모두 `review_head`에 `git rev-parse HEAD`의 전체 SHA를 기록합니다.
+> 종합·개별 리뷰 결과 모두 `review_head`에 `git rev-parse HEAD`의 전체 SHA를,
+> `review_branch`에 `git branch --show-current`를 기록합니다.
 
 아래 형식으로 작성합니다.
 
-```
+```markdown
 ## 🎯 PR 리뷰 종합 리포트
 
 ### 변경 범위
 - review_head: `<git rev-parse HEAD의 전체 SHA>`
+- review_branch: `<git branch --show-current>`
 - 기준 브랜치: `origin/<BASE>`
 - 변경 파일: N개
 - 실행된 리뷰어: [실제로 실행한 것만 나열. 트리거가 안 맞아 건너뛴 리뷰어는 여기 쓰지 않는다]

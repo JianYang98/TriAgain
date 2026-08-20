@@ -37,15 +37,17 @@ model: opus
 ### Step 1: 이전 리뷰 결과 읽기
 
 해당 review-comment.md에서 🔴 CRITICAL + 🟡 WARNING 항목만 추출한다.
+Docs Sync 결과는 `MAJOR DRIFT → CRITICAL`, `MINOR DRIFT → WARNING`으로 정규화합니다.
 ✅ APPROVE, 🟢 INFO는 무시.
 
 시작 전에 아래를 확인합니다.
 
 1. `git status --porcelain --untracked-files=no` 출력이 없나. 추적 파일의 미커밋 변경이 있으면 중단한다.
-2. 리뷰 파일에 `review_head` 전체 SHA가 있나. 없으면 오래된 산출물이므로 중단한다.
-3. `review_head`가 실제 commit이고 현재 HEAD의 조상인가.
-   `git merge-base --is-ancestor <review_head> HEAD`가 실패하면 다른 브랜치의 결과이므로 중단한다.
-4. `review_head == HEAD`면 수정 커밋이 없으므로 재검증하지 않고 그 사실을 보고한다.
+2. 리뷰 파일에 `review_head` 전체 SHA와 `review_branch`가 있나. 하나라도 없으면 중단한다.
+3. `review_branch`가 현재 `git branch --show-current`와 정확히 같은가. 다르면 다른 브랜치의 결과이므로 중단한다.
+4. `review_head`가 실제 commit이고 현재 HEAD의 조상인가.
+   `git merge-base --is-ancestor <review_head> HEAD`가 실패하면 현재 커밋 계보의 결과가 아니므로 중단한다.
+5. `review_head == HEAD`면 수정 커밋이 없으므로 재검증하지 않고 그 사실을 보고한다.
 
 미추적 파일은 차단하지 않고 `git status --porcelain | grep '^??'` 목록을 리포트에 남깁니다.
 어느 게이트든 실패하면 응답 최상단에 `BLOCKED: <사유>`를 적고 재검증을 중단합니다.

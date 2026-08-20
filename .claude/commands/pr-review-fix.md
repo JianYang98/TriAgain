@@ -29,8 +29,9 @@ model: opus
 **신선도 게이트:** 수정 시작 전 아래를 모두 만족해야 합니다.
 
 1. `git status --porcelain --untracked-files=no` 출력이 없다. 추적 파일의 미커밋 변경이 있으면 중단한다.
-2. 선택한 리뷰 파일에 `review_head` 전체 SHA가 있다. 없으면 오래된 산출물이므로 중단한다.
+2. 선택한 리뷰 파일에 `review_head` 전체 SHA와 `review_branch`가 있다. 하나라도 없으면 중단한다.
 3. `review_head`가 현재 `git rev-parse HEAD`와 정확히 같다. 다르면 `/pr-review`를 다시 실행한다.
+4. `review_branch`가 현재 `git branch --show-current`와 정확히 같다. 다르면 `/pr-review`를 다시 실행한다.
 
 미추적 파일은 차단하지 않고 `git status --porcelain | grep '^??'` 목록을 플랜에 남깁니다.
 게이트가 실패하면 응답 최상단에 `BLOCKED: <사유>`를 적고 수정을 중단합니다.
@@ -41,6 +42,7 @@ model: opus
 ### Step 2: 수정 필요 항목 분류
 
 리뷰 코멘트에서 수정이 필요한 항목을 추출하고 우선순위를 정합니다.
+Docs Sync 결과는 `MAJOR DRIFT → Critical`, `MINOR DRIFT → Warning`으로 정규화합니다.
 
 ```
 1순위: 🚨 Critical (즉시 수정) — 보안 결함, 데이터 손실 위험
@@ -102,12 +104,16 @@ model: opus
 - Warning은 사용자 선택에 따라
 - 문서 동기화는 코드 수정과 함께 처리
 - 수정할 때마다 어떤 리뷰 항목을 해결하는지 명시
-- 수정 후 관련 테스트가 있으면 실행하여 확인
-- 테스트가 통과하면 선택한 리뷰 항목의 수정만 `.claude/rules/git-convention.md`에 맞춰 커밋한다
+- 커밋 전에 아래 검증을 모두 실행하고 결과를 기록한다
+  1. `git diff --check`
+  2. `./gradlew checkstyleMain checkstyleTest`
+  3. `./gradlew compileJava compileTestJava -x test`
+  4. `./gradlew test`
+- 검증이 모두 통과하면 선택한 리뷰 항목의 수정만 `.claude/rules/git-convention.md`에 맞춰 커밋한다
   - 독립 실행: Step 3의 사용자 승인 플랜에 커밋을 명시한 경우만
   - `/implement` 내부: Step 1 승인 범위 안에서 자동 커밋
   - 사용자가 커밋을 원치 않으면 `NO-COMMIT: 사용자 선택`으로 정상 종료하고 `/pr-review-check`를 호출하지 않음
-  - 테스트 실패 등으로 커밋하지 못하면 `BLOCKED: 수정 커밋 없음`을 보고하고 `/pr-review-check`를 호출하지 않음
+  - 검증이 하나라도 실패하면 `BLOCKED: 필수 검증 실패`를 보고하고 커밋과 `/pr-review-check`를 실행하지 않음
 
 `/pr-review-check`는 `review_head..HEAD`의 커밋을 검증하므로 수정만 하고 커밋을 생략하지 않습니다.
 
@@ -133,6 +139,12 @@ model: opus
 | # | 카테고리 | 사유 |
 |---|----------|------|
 | 4 | Warning | Phase 2에서 처리 예정 |
+
+### 검증 결과
+- git diff --check: PASS/FAIL
+- Checkstyle: PASS/FAIL
+- Compile: PASS/FAIL
+- Test: PASS/FAIL
 
 ### 재리뷰 필요 여부
 [모든 Critical 수정 완료 → 해당 리뷰어 재실행 권장]
