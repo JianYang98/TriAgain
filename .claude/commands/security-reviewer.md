@@ -420,6 +420,8 @@ Access Token 만료 → 401 응답
 
 리뷰 완료 후 결과를 `docs/review-comment/security-review-comment.md`에 저장합니다.
 기존 파일이 있으면 덮어씁니다.
+파일 머리말에 `review_head: <git rev-parse HEAD의 전체 SHA>`를 기록합니다.
+이 값이 없으면 `/pr-review-fix security`와 `/pr-review-check security`는 오래된 결과로 보고 중단합니다.
 이 파일은 `/pr-review-fix security` 커맨드에서 읽어서 수정 플랜을 세우는 데 사용됩니다.
 
 ---

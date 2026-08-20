@@ -19,11 +19,22 @@ model: opus
 | `/pr-review-fix domain` | `docs/review-comment/domain-review-comment.md` |
 | `/pr-review-fix security` | `docs/review-comment/security-review-comment.md` |
 | `/pr-review-fix docs-sync` | `docs/review-comment/docs-sync-review-comment.md` |
+| `/pr-review-fix test` | `docs/review-comment/test-review-comment.md` |
 
 파일이 없으면:
 > "⚠️ 리뷰 코멘트 파일이 없습니다. 먼저 해당 리뷰어를 실행해주세요."
 > - 종합 리뷰: `/pr-review`
-> - 개별 리뷰: `/api-reviewer`, `/domain-reviewer`, `/security-reviewer`, `/docs-sync-reviewer`
+> - 개별 리뷰: `/api-reviewer`, `/domain-reviewer`, `/security-reviewer`, `/docs-sync-reviewer`, `/test-reviewer`
+
+**신선도 게이트:** 수정 시작 전 아래를 모두 만족해야 합니다.
+
+1. `git status --porcelain --untracked-files=no` 출력이 없다. 추적 파일의 미커밋 변경이 있으면 중단한다.
+2. 선택한 리뷰 파일에 `review_head` 전체 SHA가 있다. 없으면 오래된 산출물이므로 중단한다.
+3. `review_head`가 현재 `git rev-parse HEAD`와 정확히 같다. 다르면 `/pr-review`를 다시 실행한다.
+
+미추적 파일은 차단하지 않고 `git status --porcelain | grep '^??'` 목록을 플랜에 남깁니다.
+게이트가 실패하면 응답 최상단에 `BLOCKED: <사유>`를 적고 수정을 중단합니다.
+리뷰 시점과 코드가 다르면 좌표와 심볼이 어긋난 대상을 수정할 수 있으므로 추측해서 진행하지 않습니다.
 
 ---
 
@@ -41,7 +52,20 @@ model: opus
 
 ### Step 3: 수정 플랜 제시
 
-수정 전에 반드시 플랜을 먼저 보여주고 확인을 받습니다.
+수정 전에 반드시 플랜을 먼저 보여줍니다. 승인 방식은 실행 맥락에 따라 다릅니다.
+
+| 실행 맥락 | 승인 방식 |
+|----------|----------|
+| 독립 실행 | 플랜을 보여주고 사용자의 `전체 / Critical만 / 선택` 응답을 기다린다 |
+| `/implement` Step 4 내부 | Step 1에서 승인된 범위만 자동 수정한다. 플랜은 출력하되 대기하지 않는다 |
+
+다음 변경이 필요하면 실행 맥락과 무관하게 중단하고 사용자에게 넘깁니다.
+
+- API 요청·응답·경로·HTTP status·ErrorCode 계약 변경
+- 상태 전이, 락 전략, 비즈니스 규칙 수치 등 도메인 결정 변경
+- `/implement` Step 1에서 승인되지 않은 파일·기능 변경
+
+중단할 때는 남은 항목, 중단 사유, 필요한 사용자 판단을 한 줄씩 보고합니다.
 
 ```
 ## 🔧 수정 플랜
@@ -60,6 +84,10 @@ model: opus
 1. [문서명] — 불일치 내용 → 수정 방법
 2. ...
 
+### 커밋
+- 수정 후 커밋: 예 / 아니오 (기본 예)
+- 아니오면 `/pr-review-check`를 호출하지 않고 `NO-COMMIT: 사용자 선택`으로 종료
+
 진행할까요? (전체 / Critical만 / 선택)
 ```
 
@@ -75,6 +103,13 @@ model: opus
 - 문서 동기화는 코드 수정과 함께 처리
 - 수정할 때마다 어떤 리뷰 항목을 해결하는지 명시
 - 수정 후 관련 테스트가 있으면 실행하여 확인
+- 테스트가 통과하면 선택한 리뷰 항목의 수정만 `.claude/rules/git-convention.md`에 맞춰 커밋한다
+  - 독립 실행: Step 3의 사용자 승인 플랜에 커밋을 명시한 경우만
+  - `/implement` 내부: Step 1 승인 범위 안에서 자동 커밋
+  - 사용자가 커밋을 원치 않으면 `NO-COMMIT: 사용자 선택`으로 정상 종료하고 `/pr-review-check`를 호출하지 않음
+  - 테스트 실패 등으로 커밋하지 못하면 `BLOCKED: 수정 커밋 없음`을 보고하고 `/pr-review-check`를 호출하지 않음
+
+`/pr-review-check`는 `review_head..HEAD`의 커밋을 검증하므로 수정만 하고 커밋을 생략하지 않습니다.
 
 ---
 

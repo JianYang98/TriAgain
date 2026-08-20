@@ -13,14 +13,22 @@ model: opus
 ```
 /pr-review-check
 /pr-review-check api
-/pr-review-check state
-/pr-review-check ui
-/pr-review-check code-quality
+/pr-review-check domain
+/pr-review-check security
+/pr-review-check docs-sync
+/pr-review-check test
 ```
 
 ## 입력
-- 인자 없음: `docs/review-comment/pr-review-comment.md` 읽기
-- 인자 있음: `docs/review-comment/{인자}-review-comment.md` 읽기
+
+| 실행 방법 | 읽는 파일 |
+|----------|----------|
+| 인자 없음 | `docs/review-comment/pr-review-comment.md` |
+| `api` | `docs/review-comment/api-review-comment.md` |
+| `domain` | `docs/review-comment/domain-review-comment.md` |
+| `security` | `docs/review-comment/security-review-comment.md` |
+| `docs-sync` | `docs/review-comment/docs-sync-review-comment.md` |
+| `test` | `docs/review-comment/test-review-comment.md` |
 
 ---
 
@@ -31,10 +39,22 @@ model: opus
 해당 review-comment.md에서 🔴 CRITICAL + 🟡 WARNING 항목만 추출한다.
 ✅ APPROVE, 🟢 INFO는 무시.
 
+시작 전에 아래를 확인합니다.
+
+1. `git status --porcelain --untracked-files=no` 출력이 없나. 추적 파일의 미커밋 변경이 있으면 중단한다.
+2. 리뷰 파일에 `review_head` 전체 SHA가 있나. 없으면 오래된 산출물이므로 중단한다.
+3. `review_head`가 실제 commit이고 현재 HEAD의 조상인가.
+   `git merge-base --is-ancestor <review_head> HEAD`가 실패하면 다른 브랜치의 결과이므로 중단한다.
+4. `review_head == HEAD`면 수정 커밋이 없으므로 재검증하지 않고 그 사실을 보고한다.
+
+미추적 파일은 차단하지 않고 `git status --porcelain | grep '^??'` 목록을 리포트에 남깁니다.
+어느 게이트든 실패하면 응답 최상단에 `BLOCKED: <사유>`를 적고 재검증을 중단합니다.
+`/pr-review-fix`는 동일 HEAD에서 시작하고, `/pr-review-check`는 그 HEAD 이후 커밋을 검증합니다.
+
 ### Step 2: 각 항목별 수정 여부 확인
 
-각 지적 사항에 대해:
-1. 해당 파일의 해당 라인을 확인
+먼저 `git diff <review_head>..HEAD`로 리뷰 이후 변경분을 확보합니다. 각 지적 사항에 대해:
+1. 해당 파일의 해당 심볼을 확인한다. 라인 번호는 길잡이지 근거가 아니다
 2. 지적 내용이 수정됐는지 판단
 3. 결과를 ✅ (수정됨) / ❌ (미수정) / ⚠️ (부분 수정)으로 표시
 
@@ -50,7 +70,7 @@ model: opus
 | 1 | 🔴 CRITICAL | Controller에 비즈니스 로직 | ✅ 수정됨 — UseCase로 분리 |
 | 2 | 🔴 CRITICAL | 외부 URL 검증 누락 | ✅ 수정됨 — Service에서 검증 추가 |
 | 3 | 🟡 WARNING | null 가드 누락 | ✅ 수정됨 — email != null 가드 추가 |
-| 4 | 🟡 WARNING | dispose 시 cancel 누락 | ❌ 미수정 |
+| 4 | 🟡 WARNING | 상태 전이 유효성 검증 누락 | ❌ 미수정 |
 
 ## 결과: 3/4 수정 완료
 
@@ -58,10 +78,10 @@ model: opus
 🟡 WARNING: 1/2 — 미수정 1건 남음
 
 ## 미수정 항목 상세
-### #4: dispose 시 cancel 누락
-- 파일: lib/features/profile/screens/edit_profile_screen.dart
-- 내용: CancelToken이 dispose에서 cancel 되지 않음
-- 수정 필요: dispose() 메서드에 _cancelToken.cancel() 추가
+### #4: {지적 제목}
+- 파일: {경로}:{심볼}
+- 내용: {원 지적 요약}
+- 수정 필요: {구체적 조치}
 ```
 
 ### Step 4: 판정
@@ -75,14 +95,15 @@ model: opus
 ## 전체 플로우
 
 ```
-/pr-review          → 전체 리뷰 (4개 리뷰어)
+/pr-review          → 전체 리뷰 (diff에 걸린 관점만 실행)
   ↓
 /pr-review-fix      → 지적 사항 수정
   ↓
 /pr-review-check    → 수정됐는지 빠르게 확인 ← 이 커맨드
   ↓
 ✅ PASS → 머지
-🔴 FAIL → /pr-review-fix 다시 → /pr-review-check 다시
+🔴 FAIL → /pr-review 다시 (fix 커밋으로 HEAD가 이동했으므로 재리뷰가 먼저)
+         → /pr-review-fix → /pr-review-check
 ```
 
 ---
