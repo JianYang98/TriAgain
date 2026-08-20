@@ -270,3 +270,5 @@
   4. **후속 조치** — (a) FCM 스모크 테스트 엔드포인트 `/internal/fcm-test` 신설(Tier 2, BE 에이전트 지시 전달 완료). (b) 스케줄러 요약 로그를 FCM 발송 결과와 DB 저장 결과로 분리. (c) 배포 게이트 키 유효성 검증 보강 검토 중
 - AI 역할: 3겹 탐지 공백(배포 게이트·`GoogleCredentials` lazy 검증·요약 로그 설계) 분석, FCM 에러코드(`UNAUTHENTICATED` vs `UNREGISTERED`) 구분으로 토큰 안전 여부 판정
 - 배운 점: `GoogleCredentials.fromStream()`은 구조 파싱만 하고 Google과 실제 통신은 하지 않는다. 키 교체 후에는 반드시 온디맨드 `send()` 호출로 발송 인증까지 확인해야 한다. 스케줄러 요약 로그는 처리 대상 카운트와 외부 I/O 결과를 분리해서 집계해야 거짓 초록불을 막는다
+- 후속 결과 (2026-08-20): `/internal/fcm-test`가 `firebase.enabled=true`에서만 활성화되도록 구현되었고,
+  성공·영구 토큰 무효·발송 오류를 별도 상태로 반환한다. 관련 단위 테스트 3건이 통과했다.
