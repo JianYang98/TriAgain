@@ -33,7 +33,15 @@ model: opus
 3. `review_head`가 현재 `git rev-parse HEAD`와 정확히 같다. 다르면 `/pr-review`를 다시 실행한다.
 4. `review_branch`가 현재 `git branch --show-current`와 정확히 같다. 다르면 `/pr-review`를 다시 실행한다.
 
-미추적 파일은 차단하지 않고 `git status --porcelain | grep '^??'` 목록을 플랜에 남깁니다.
+미추적 파일은 차단하지 않습니다. 수정 전 아래처럼 파일 단위 baseline을 `/tmp`에 저장하고,
+플랜에는 출력된 임시 파일 경로와 개수만 남깁니다.
+
+```bash
+BASELINE_UNTRACKED_FILE=$(mktemp /tmp/triagain-pr-review-fix-untracked.XXXXXX)
+git ls-files --others --exclude-standard | LC_ALL=C sort > "$BASELINE_UNTRACKED_FILE"
+echo "untracked_baseline_file=$BASELINE_UNTRACKED_FILE"
+wc -l "$BASELINE_UNTRACKED_FILE"
+```
 게이트가 실패하면 응답 최상단에 `BLOCKED: <사유>`를 적고 수정을 중단합니다.
 리뷰 시점과 코드가 다르면 좌표와 심볼이 어긋난 대상을 수정할 수 있으므로 추측해서 진행하지 않습니다.
 
@@ -106,7 +114,16 @@ Docs Sync의 `## 🚨 Major Drift (즉시 수정)` 아래 항목은 `Critical`,
 - Warning은 사용자 선택에 따라
 - 문서 동기화는 코드 수정과 함께 처리
 - 수정할 때마다 어떤 리뷰 항목을 해결하는지 명시
-- 커밋 전 `git diff HEAD --name-only`로 실제 수정 범위를 분류하고 아래 게이트의 실행·생략 사유를 기록한다
+- 커밋 전 실제 수정 범위는 아래 둘의 합집합으로 분류하고 게이트의 실행·생략 사유를 기록한다
+  1. `git diff HEAD --name-only`의 tracked 변경
+  2. 아래 명령이 출력하는 Step 1 이후 신규 untracked 파일
+
+  ```bash
+  comm -13 <Step 1에서 기록한 baseline 파일> \
+    <(git ls-files --others --exclude-standard | LC_ALL=C sort)
+  ```
+
+  분류가 끝나면 Step 1의 baseline 임시 파일을 삭제한다.
 
   | 수정 범위 | 필수 검증 |
   |----------|----------|
