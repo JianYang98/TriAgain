@@ -37,7 +37,9 @@ model: opus
 ### Step 1: 이전 리뷰 결과 읽기
 
 해당 review-comment.md에서 🔴 CRITICAL + 🟡 WARNING 항목만 추출한다.
-Docs Sync 결과는 `MAJOR DRIFT → CRITICAL`, `MINOR DRIFT → WARNING`으로 정규화합니다.
+Docs Sync의 `## 🚨 Major Drift (즉시 수정)` 아래 항목은 `CRITICAL`,
+`## ⚠️ Minor Drift (정리 권장)` 아래 항목은 `WARNING`으로 분류합니다.
+`[Overall: ...]`은 전체 요약일 뿐 개별 항목의 심각도를 바꾸지 않습니다.
 ✅ APPROVE, 🟢 INFO는 무시.
 
 시작 전에 아래를 확인합니다.

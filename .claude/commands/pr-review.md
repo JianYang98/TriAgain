@@ -159,7 +159,9 @@ Step 4 테스트 리뷰도 함께 실행합니다. 규칙 내용을 여기에 �
 **트리거**: 항상 실행 (코드 변경이 있으면 문서도 업데이트되어야 하므로)
 
 변경된 파일과 관련된 문서의 동기화 상태를 `.claude/commands/docs-sync-reviewer.md` 기준에 따라 검증합니다.
-종합 결과에서는 `MAJOR DRIFT`를 `CRITICAL`, `MINOR DRIFT`를 `WARNING`으로 분류합니다.
+Docs Sync의 `## 🚨 Major Drift (즉시 수정)` 아래 항목은 `CRITICAL`,
+`## ⚠️ Minor Drift (정리 권장)` 아래 항목은 `WARNING`으로 분류합니다.
+`[Overall: ...]`은 전체 요약일 뿐 개별 항목의 심각도를 바꾸지 않습니다.
 
 검증 항목:
 - api-spec.md ↔ Controller 일치
