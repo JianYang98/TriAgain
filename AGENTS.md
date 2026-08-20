@@ -21,9 +21,13 @@ Java/Spring 백엔드를 구현하고, 헥사고날 경계·도메인 규칙·�
 
 - 도메인이 인프라에 의존하지 않도록 Port/Adapter 경계를 지킨다.
 - Phase A(문서 확인) → Phase B(구현) → Phase C(테스트) 순으로 진행한다.
+- Phase A 결과를 사용자에게 보여주고 승인받은 뒤에만 Phase B로 진행한다.
 - 문서에 없는 결정이 필요하면 구현을 멈추고 문서를 먼저 갱신한다.
-- 새 API·도메인·테스트 변경 시 관련 상세 절차는 각각
-  `.claude/skills/new-api.md`, `.claude/skills/new-domain.md`, `.claude/skills/write-test.md`에서 확인한다.
+- Java 구현: `.claude/rules/lessons-learned.md`
+- DB 마이그레이션: `.claude/rules/db-migration.md`
+- 설정·배포: `.claude/rules/config-deploy.md`
+- 테스트: `.claude/rules/test-strategy.md`, `.claude/skills/write-test.md`
+- 새 API·도메인: `.claude/skills/new-api.md`, `.claude/skills/new-domain.md`
 
 ## 완료 조건
 
