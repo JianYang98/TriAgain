@@ -517,6 +517,9 @@ public void createVerification(Request req) {
 
 리뷰 완료 후 결과를 `docs/review-comment/domain-review-comment.md`에 저장합니다.
 기존 파일이 있으면 덮어씁니다.
+파일 머리말에 `review_head: <git rev-parse HEAD의 전체 SHA>`와
+`review_branch: <git branch --show-current>`를 기록합니다.
+둘 중 하나라도 없으면 `/pr-review-fix domain`과 `/pr-review-check domain`은 오래된 결과로 보고 중단합니다.
 이 파일은 `/pr-review-fix domain` 커맨드에서 읽어서 수정 플랜을 세우는 데 사용됩니다.
 
 ---
