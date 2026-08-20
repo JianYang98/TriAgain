@@ -23,15 +23,24 @@ Java/Spring 백엔드를 구현하고, 헥사고날 경계·도메인 규칙·�
 - Phase A(문서 확인) → Phase B(구현) → Phase C(테스트) 순으로 진행한다.
 - Phase A 결과를 사용자에게 보여주고 승인받은 뒤에만 Phase B로 진행한다.
 - 문서에 없는 결정이 필요하면 구현을 멈추고 문서를 먼저 갱신한다.
-- Java 구현: `.claude/rules/lessons-learned.md`
-- DB 마이그레이션: `.claude/rules/db-migration.md`
-- 설정·배포: `.claude/rules/config-deploy.md`
-- 테스트: `.claude/rules/test-strategy.md`, `.claude/skills/write-test.md`
-- 새 API·도메인: `.claude/skills/new-api.md`, `.claude/skills/new-domain.md`
+
+## 작업 유형별 필독 문서
+
+| 작업 | 읽을 파일 |
+|---|---|
+| 새 API·도메인 | `.claude/skills/new-api.md`, `.claude/skills/new-domain.md` |
+| Java 구현 전반 | `.claude/rules/coding-convention.md`, `.claude/rules/anti-patterns.md`, `.claude/rules/lessons-learned.md` |
+| DB 마이그레이션·스키마 | `.claude/rules/db-migration.md` |
+| 설정·배포 | `.claude/rules/config-deploy.md` |
+| 테스트 | `.claude/rules/test-strategy.md`, `.claude/skills/write-test.md` |
+| 커밋·브랜치·워크트리 | `.claude/rules/git-convention.md` |
+| 디버깅·추후 고려 기록 | `.claude/rules/logging-rules.md` |
 
 ## 완료 조건
 
 - `.java` 변경 후 `./gradlew checkstyleMain checkstyleTest`를 실행한다.
+- Checkstyle 정본은 `config/checkstyle/triagain-checkstyle-rules.xml`과 suppressions 파일이다.
+- import 순서 위반은 `scripts/reorder-imports.py`로 일괄 정렬한다.
 - `./gradlew compileJava compileTestJava -x test`를 실행한다.
 - 관련 테스트와 `./gradlew test`를 실행한다.
 - Claude Code hook은 Codex에서 자동 실행된다고 가정하지 않는다.
