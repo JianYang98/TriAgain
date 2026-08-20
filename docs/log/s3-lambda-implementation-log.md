@@ -1,5 +1,11 @@
 # S3 Lambda + SSE 사진 인증 구현 로그
 
+> **역사 기록**: 초기 S3 Lambda·SSE 구현 당시의 플로우와 변경 과정을 보존한다.
+> 이 문서에는 이후 변경 전 계약(`USED` 상태, 초기 내부 API 경로, 당시 SSE 공개 설정)이 포함되어
+> 있으므로 현재 동작의 정본으로 사용하지 않는다. 현재 API·상태·폴링·소유권 계약은
+> [`api-spec/verification.md`](../spec/api-spec/verification.md), 현재 Lambda·SSE 운영은
+> [`photo-upload-lambda-sse.md`](../spec/photo-upload-lambda-sse.md)를 참조한다.
+
 ## 1. 개요
 
 - **뭘 했는지**: S3 업로드 완료 감지 Lambda + 내부 API + SSE 실시간 알림 플로우 구현

@@ -1,5 +1,11 @@
 # 백엔드 동기화 수정 지시서
 
+> **역사 기록**: 2026-03 당시 코드와 문서의 불일치를 맞추기 위한 완료된 지시서다.
+> 아래의 “변경 전/후”와 당시 환경 설명을 현재 계약이나 현재 설정으로 해석하지 않는다.
+> 현재 API·비즈니스 규칙·스키마는 [`docs/spec/api-spec.md`](spec/api-spec.md),
+> [`docs/spec/biz-logic.md`](spec/biz-logic.md), [`docs/spec/schema.md`](spec/schema.md)를,
+> 현재 배포·설정은 [`docs/prod-deploy-checklist.md`](prod-deploy-checklist.md)를 참조한다.
+
 > 생성일: 2026-03-04
 > 출처: 오케스트레이션 에이전트 전체 동기화 검증
 > 정본: 백엔드 실제 코드 (문서가 코드와 불일치하므로 코드 기준으로 문서를 수정)
