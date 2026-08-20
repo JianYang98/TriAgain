@@ -24,6 +24,13 @@ paths: "src/test/**/*.java, **/*.feature, build.gradle"
 | `@Tag("e2e")` | `test`에서 **제외**된다 |
 | `@Tag("integration")` | **없다.** `build.gradle`이 이 태그를 안 쓴다 — `test`에서 그냥 같이 돈다 |
 
+⚠️ **축이 하나 더 있다 — Gherkin 태그는 위 `@Tag`(JUnit)와 별개다.**
+`CucumberTest`의 `@ConfigurationParameter(FILTER_TAGS_PROPERTY_NAME, "not @wip and not @ignore")` 때문에
+`.feature` 파일에 `@wip`·`@ignore`가 붙으면 **`test`에서 조용히 빠진다.** 실사용 3건 —
+`crew-activation.feature`·`challenge-auto-creation.feature`(`@wip`) · `apple-login.feature`(`@ignore`).
+**파일이 있어도 안 돈다.** 루트 `/verify` §1은 이 태그가 달린 시나리오를 API 레벨 테스트 게이트
+**불충족**으로 본다(2026-08-19) — 쿠컴버로 게이트를 충족시키려면 태그가 없어야 한다.
+
 ⚠️ **태그는 `E2eTestBase` 상속으로도 전파되고, 그렇게 붙은 게 `e2e/` 밖에 더 많다.**
 `e2eTest`가 도는 건 `e2e/`의 해피패스·동시성만이 아니라 아래 패키지의 `*IntegrationTest`들도 포함이다:
 
