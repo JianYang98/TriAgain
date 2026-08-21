@@ -6,27 +6,6 @@
 
 ---
 
-### [2026-08-21] 닉네임 비ASCII 공백 — 경로별 동작 불일치 (PR #170에서 분리)
-
-- 증상: 비ASCII 공백만으로 이루어진 닉네임(전각공백 `"　"` U+3000 등)이 경로마다 다르게 처리된다.
-  `PATCH /users/me/nickname`은 **200 OK를 주면서 닉네임을 바꾸지 않고**, 가입(`POST /auth/signup`)은
-  400 `U004`(`NICKNAME_REQUIRED`)로 거부한다.
-- 원인: "blank"의 정의가 두 곳에서 다르다. `UpdateNicknameRequest`의 `@NotBlank`는 Hibernate
-  `NotBlankValidator` → `String.trim()` 기반이라 U+0020 이하만 자르므로 U+3000은 살아남아 통과한다.
-  반면 `User.updateProfile()`의 `if (nickname != null && !nickname.isBlank())`는
-  `Character.isWhitespace` 기반이라 U+3000을 blank로 보고 **블록 전체를 건너뛴다** — 예외도 변경도 없다.
-  가입 경로는 `SignupService`가 `trim()` 후 `User.validateNickname()`을 직접 호출하므로 `isBlank()`에서
-  `NICKNAME_REQUIRED`가 난다.
-- 근본 수정안: `User.updateProfile()`의 `!isBlank()` 스킵 분기를 제거하고 `validateNickname()`이 항상
-  판정하게 한다. 호출자는 `UpdateUserProfileService.updateProfile()` 하나뿐이고 nickname을 null로 넘기는
-  부분수정 호출자가 없어 사실상 사문화된 분기다.
-- 티어: 도메인 엔티티(`User`) 변경이므로 `tier-policy.md` 기준 **Tier 3**다. PR #170은 Tier 2로 판정했으므로
-  여기에 얹으면 판정이 깨진다 — 별도 Tier 3 PR로 처리한다.
-- 발견 경위: PR #170 Claude 리뷰에서 발견 → Codex 교차검증 CONFIRMED (2026-08-21). 셋이 독립 재현했다.
-- 관련 정본: `docs/spec/user.md`, `docs/spec/api-spec/auth-user.md`.
-
----
-
 ### [2026-08-20] Lambda 업로드 완료 최종 실패 보관·경보 — SQS 도입 여부 추후 결정
 
 - 현재 상태: S3 `ObjectCreated:Put`이 `upload-complete` Lambda를 비동기로 호출하고, handler는

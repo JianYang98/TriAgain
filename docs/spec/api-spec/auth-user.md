@@ -127,7 +127,7 @@
 ```
 
 - `kakaoId`는 `/auth/kakao`에서 받은 값이며 토큰의 실제 소유자 ID와 일치해야 한다.
-- `nickname`은 2~12자의 한글·영문·숫자·언더스코어만 허용한다. **앞뒤 공백은 트림한 뒤 검증·저장한다** — `"  닉네임  "`은 `"닉네임"`으로 가입된다.
+- `nickname`은 2~12자의 한글·영문·숫자·언더스코어만 허용하고, 앞뒤 공백은 `String.trim()` 기준(U+0020 이하)으로 트림한 뒤 검증·저장한다 — `"  닉네임  "`은 `"닉네임"`이 된다. 공백만으로 된 값과 비ASCII 공백의 판정은 `docs/spec/user.md`의 닉네임 표를 따르며, 가입 두 경로와 `PATCH /users/me/nickname`이 동일하게 동작한다.
 - `termsAgreed`는 반드시 true여야 한다.
 
 **응답 — 201 Created (`data`)**
@@ -148,6 +148,7 @@
 | HTTP | 코드 | 조건 |
 |---|---|---|
 | 400 | C001 | 필수 필드 누락·blank |
+| 400 | U004 | `nickname`이 `Character.isWhitespace` 기준 비ASCII 공백(U+3000 등)만으로 구성 |
 | 400 | U005 | `termsAgreed=false` |
 | 400 | U007 | 닉네임 형식 불일치 |
 | 400 | U008 | `kakaoId`와 토큰 소유자 불일치 |
@@ -236,6 +237,7 @@ Apple 신규 가입 또는 탈퇴 계정 재활성화를 수행하고 JWT를 발
 ```
 
 - `appleId`는 `/auth/apple`에서 받은 값이며 identity token의 `sub`와 일치해야 한다.
+- `nickname`은 2~12자의 한글·영문·숫자·언더스코어만 허용하고, 앞뒤 공백은 `String.trim()` 기준(U+0020 이하)으로 트림한 뒤 검증·저장한다 — `"  닉네임  "`은 `"닉네임"`이 된다. 공백만으로 된 값과 비ASCII 공백의 판정은 `docs/spec/user.md`의 닉네임 표를 따르며, 가입 두 경로와 `PATCH /users/me/nickname`이 동일하게 동작한다.
 - `authorizationCode`는 필수이며 1회용이다. Apple refresh token으로 교환한 뒤 암호화하여 저장한다.
 - authorization code 교환이 실패하면 사용자 생성·재활성화를 진행하지 않는다.
 
@@ -257,6 +259,7 @@ Apple 신규 가입 또는 탈퇴 계정 재활성화를 수행하고 JWT를 발
 | HTTP | 코드 | 조건 |
 |---|---|---|
 | 400 | C001 | 필수 필드 누락·blank |
+| 400 | U004 | `nickname`이 `Character.isWhitespace` 기준 비ASCII 공백(U+3000 등)만으로 구성 |
 | 400 | U005 | `termsAgreed=false` |
 | 400 | U007 | 닉네임 형식 불일치 |
 | 400 | U009 | `appleId`와 identity token의 `sub` 불일치 |
@@ -348,7 +351,7 @@ Phase 1 로그아웃은 서버 상태를 변경하지 않는 no-op이다. 클라
 }
 ```
 
-- `nickname`은 2~12자의 한글·영문·숫자·언더스코어만 허용한다. **앞뒤 공백은 트림한 뒤 검증·저장한다** — `"  새닉네임  "`은 `"새닉네임"`으로 저장된다. 단 `String.trim()` 기준이므로 전각공백(U+3000)·NBSP(U+00A0) 같은 비ASCII 공백은 트림되지 않는다 (알려진 결함은 `docs/spec/user.md` 참조).
+- `nickname`은 2~12자의 한글·영문·숫자·언더스코어만 허용하고, 앞뒤 공백은 `String.trim()` 기준(U+0020 이하)으로 트림한 뒤 검증·저장한다 — `"  닉네임  "`은 `"닉네임"`이 된다. 공백만으로 된 값과 비ASCII 공백의 판정은 `docs/spec/user.md`의 닉네임 표를 따르며, 가입 두 경로와 `PATCH /users/me/nickname`이 동일하게 동작한다.
 
 **응답 — 200 OK (`data`)**
 
@@ -364,6 +367,7 @@ Phase 1 로그아웃은 서버 상태를 변경하지 않는 no-op이다. 클라
 | HTTP | 코드 | 조건 |
 |---|---|---|
 | 400 | C001 | `nickname` 누락·blank |
+| 400 | U004 | `nickname`이 `Character.isWhitespace` 기준 비ASCII 공백(U+3000 등)만으로 구성 |
 | 400 | U007 | 2~12자 한글·영문·숫자·언더스코어 규칙 불일치 |
 
 ### POST /users/me/profile-image/upload-session

@@ -36,6 +36,12 @@ Feature: 마이페이지
     Then 응답 코드는 400이다
     And 에러 코드는 "INVALID_INPUT"이다
 
+  Scenario: 공백만으로 된 닉네임으로 변경 시 실패
+    Given 사용자 "user_001"이 로그인되어 있다
+    When "user_001"이 닉네임을 "　"으로 변경한다
+    Then 응답 코드는 400이다
+    And 에러 코드는 "NICKNAME_REQUIRED"이다
+
   Scenario: 패턴 불일치 닉네임으로 변경 시 실패
     Given 사용자 "user_001"이 로그인되어 있다
     When "user_001"이 닉네임을 "a"으로 변경한다

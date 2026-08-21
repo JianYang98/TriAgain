@@ -27,6 +27,10 @@ public class UpdateUserProfileService implements UpdateUserProfileUseCase {
 		User user = userRepositoryPort.findById(command.userId())
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
+		// updateProfile() 안에서 또 불리지만 중복이 아니다 — 그 안의 !isBlank() 가드는
+		// 공백만으로 된 닉네임(Character.isWhitespace 기준, 전각공백 U+3000 등)에서 검증 블록을
+		// 통째로 건너뛴다. 호출 시점을 앞당겨 가입 경로와 동일하게 U004를 낸다.
+		User.validateNickname(command.nickname());
 		user.updateProfile(command.nickname(), command.profileImageUrl());
 		User saved = userRepositoryPort.save(user);
 

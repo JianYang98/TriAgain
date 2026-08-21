@@ -77,12 +77,16 @@ flowchart LR
 | `deleted_at` | soft delete 시각, 활성 사용자는 null |
 | `token_version` | 탈퇴·재가입 전후 기존 JWT 무효화 기준 |
 
-닉네임은 2~12자의 한글·영문·숫자·언더스코어만 허용한다 (`^[가-힣a-zA-Z0-9_]{2,12}$`). 앞뒤 공백은 트림한 뒤 검증·저장한다 — 단 `String.trim()` 기준이라 **U+0020 이하만** 잘린다. 전각공백(U+3000)·NBSP(U+00A0) 같은 비ASCII 공백은 트림되지 않고 패턴 검사에서 거부된다. 문자열 중간 공백은 어느 경로에서도 허용되지 않는다.
+닉네임은 2~12자의 한글·영문·숫자·언더스코어만 허용한다 (`^[가-힣a-zA-Z0-9_]{2,12}$`). 앞뒤 공백은 트림한 뒤 검증·저장하지만 `String.trim()` 기준이라 **U+0020 이하만** 잘린다. 가입(`POST /auth/signup`·`POST /auth/apple-signup`)과 `PATCH /users/me/nickname`은 모두 같은 `User.validateNickname()`을 거치므로 **모든 경로에서 동일하게 동작한다.**
 
-> ⚠️ **알려진 결함** — 비ASCII 공백**만**으로 이루어진 닉네임(`"　"`)은 경로마다 다르게 동작한다.
-> 가입은 400 `U004`로 거부하지만, `PATCH /users/me/nickname`은 **200 OK를 주면서 닉네임을 바꾸지 않는다.**
-> `User.updateProfile()`의 `!isBlank()` 스킵 분기가 원인이며, 도메인 변경이 필요해 Tier 3로 분리했다
-> (`docs/log/future-considerations.md` 참조).
+| 입력 | 결과 |
+|---|---|
+| `""` · `"  "` — 빈 문자열·ASCII 공백만 | 400 `C001` (요청 DTO `@NotBlank`) |
+| `"　"` — `Character.isWhitespace`가 true인 비ASCII 공백만 | 400 `U004` (`validateNickname()`의 blank 검사) |
+| `"  가나  "` | 성공, `"가나"`로 트림 저장 |
+| `"　가나　"` · `"가 나"` · `"a"` | 400 `U007` (트림되지 않은 공백·중간 공백·길이 미달로 패턴 불일치) |
+
+`U004`가 나는 비ASCII 공백은 `Character.isWhitespace`가 true인 15개다 — U+1680, U+2000–2006, U+2008–200A, U+2028, U+2029, U+205F, U+3000. NBSP(U+00A0)·U+2007·U+202F는 `isWhitespace`가 false라 여기 해당하지 않고 패턴 검사로 넘어가 `U007`이 된다.
 
 ---
 
