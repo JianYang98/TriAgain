@@ -33,12 +33,16 @@ sequenceDiagram
     end
 
     Note over Client: SSE·폴링 중 먼저 확정된 결과 사용
-    alt 크루 사진 인증
-        Client->>Server: POST /verifications<br/>(crewId/challengeId, uploadSessionId, textContent?)
-        Server-->>Client: 201 Created
-    else 솔로 사진 인증
-        Client->>Server: POST /habits/{habitId}/verifications<br/>(uploadSessionId, textContent?)
-        Server-->>Client: 201 Created
+    alt COMPLETED
+        alt 크루 사진 인증
+            Client->>Server: POST /verifications<br/>(crewId/challengeId, uploadSessionId, textContent?)
+            Server-->>Client: 201 Created
+        else 솔로 사진 인증
+            Client->>Server: POST /habits/{habitId}/verifications<br/>(uploadSessionId, textContent?)
+            Server-->>Client: 201 Created
+        end
+    else EXPIRED
+        Note over Client: 인증 생성 불가 — 새 업로드 세션 발급 또는 실패 종료
     end
 ```
 

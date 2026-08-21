@@ -14,8 +14,10 @@
 2. GET /upload-sessions/{id}/events (SSE) 구독 시작          ← S3 PUT 전
 3. S3에 직접 업로드 (PUT {presignedUrl})
 4. 업로드 완료 후 GET /upload-sessions/{id} 2초 폴링 시작     ← S3 PUT 후
-5. SSE·폴링 중 "COMPLETED" 또는 "EXPIRED"를 먼저 확인한 결과 채택
-6. POST /verifications → 인증 완료
+5. SSE·폴링 중 먼저 확정된 결과를 채택하고 나머지 대기 종료
+   ├─ "COMPLETED" → 6으로 진행
+   └─ "EXPIRED"   → 인증 생성 불가. 1부터 새 세션 발급 또는 실패 종료
+6. POST /verifications → 인증 완료  ("COMPLETED"인 경우에만)
 ```
 
 > **순서 주의** — SSE 구독은 반드시 **S3 PUT 전**에 시작한다. 서버는 미구독 세션의 완료 이벤트를

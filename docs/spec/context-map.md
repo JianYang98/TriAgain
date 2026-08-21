@@ -11,7 +11,7 @@ flowchart LR
     User["User<br/>회원·인증·프로필"]
     Crew["Crew (Core)<br/>크루·챌린지"]
     Verification["Verification<br/>인증 기록"]
-    Habit["Habit<br/>습관·업로드 세션"]
+    Habit["Habit<br/>습관"]
     Support["Support<br/>리액션·알림"]
     Moderation["Moderation<br/>기반 코드만 존재"]
     Common["Common<br/>공유 인프라"]
