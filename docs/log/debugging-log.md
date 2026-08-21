@@ -5,6 +5,28 @@
 
 ---
 
+### [2026-08-22] 우회책이 원인 수정보다 오래 살았다 — habit 인증 저장의 무조건 catch (#167)
+
+- 상황: `CreateHabitVerificationService.saveVerification()`이 `DataIntegrityViolationException`을
+  제약명 구분 없이 잡아 전부 `V003`으로 바꾸고 있었다. PR #164 리뷰가 "V015·HB010을 뭉갠다"로 보고
+- 내 판단: **분기를 추가하지 않고 catch를 지운다.** 이 catch는 매핑 누락이 아니라 **해소된 우회책의
+  잔재**였다 — `2a33b73`(07-11) habit BC 구현 시점의 `GlobalExceptionHandler`는 `contains()`
+  부분매칭이었고, `sdd/solo-habit/impl-guards.md` G2가 *"매처에 의존하지 마라 … 서비스 레이어에서
+  catch해 명시 매핑 … 그럼 애초에 핸들러까지 안 감"* 이라고 이 catch를 지시했다. 그런데
+  `af52fc0`(07-24)가 매처를 정확매칭 Map으로 교체했고 `23694b3`(07-25)가 habit 제약 2건을 등록했다.
+  **07-25부터 우회책은 중복이자 정확매칭을 가로막는 쪽**이 됐고, 07-11의 지시서 문구만 남아 4주를 더 살았다.
+  분기를 추가하면 제약명→에러코드 표가 두 곳이 되고, application 레이어가 Hibernate 타입을 import하게 된다
+- AI 역할: 세 커밋의 시간순 대조로 "매핑 버그"가 아니라 "잔재"임을 특정. `HabitVerificationJpaAdapter`에
+  flush가 없다는 대조군(crew는 `saveMemberAndFlush` 명시)으로 catch 도달 여부 자체가 불확실함을 확인 —
+  삭제하면 서비스 안에서 터지든 commit 시점에 터지든 같은 코드가 나가므로 그 불확실성이 함께 사라진다
+- 배운 점: **우회책에는 전제가 붙어 있고, 전제가 사라져도 코드는 안 사라진다.** 원인을 고치는 커밋
+  (`af52fc0`)은 자기가 무효화한 우회책을 찾아 지우는 것까지가 범위다. 특히 그 우회책이 SDD 가드 문서에
+  적혀 있으면 문서가 코드를 되살리는 압력으로 남는다. `[2026-03-03] DataIntegrityViolation 기본
+  에러코드 V003 하드코딩` 항목의 *"기본 fallback은 범용 코드, 구체 매핑은 명시적 분기"* 판단을
+  서비스 레이어가 다시 덮고 있던 셈이다
+
+---
+
 ### [2026-08-13] 비관적 락의 발행 SQL은 `FOR UPDATE`가 아니라 `FOR NO KEY UPDATE`였다
 
 - 상황: 문서 8곳이 비관적 락을 `SELECT FOR UPDATE`로 기술했으나, SQL 로그 실측 결과 발행되는 건
