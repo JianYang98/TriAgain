@@ -17,8 +17,8 @@
   조건-불가지론적인 일반 권한 문구("이 작업을 수행할 권한이 없습니다.")로 바꿨다 — `ErrorCode`
   enum·throw 지점·HTTP 상태코드는 전부 무변경. 구현 전에 `ApiResponse`·`ErrorResponse`·
   `GlobalExceptionHandler`를 먼저 읽어 응답 JSON에 `error.message`가 실제로 존재하는지 확인했다
-  (레코드가 `code`·`message` 두 필드뿐이라 jsonPath `error.message`가 맞았다). 지금까지 어떤
-  테스트도 메시지 문자열을 단언하지 않았다는 걸 확인한 뒤(기존 `에러 코드는 {string}이다` 스텝은
+  (레코드가 `code`·`message` 두 필드뿐이라 jsonPath `error.message`가 맞았다). CR009(CREW_ACCESS_DENIED)
+  메시지를 단언하는 테스트는 지금까지 없었다는 걸 확인한 뒤(기존 `에러 코드는 {string}이다` 스텝은
   `ErrorCode.valueOf().getCode()`만 비교) 새 스텝을 추가했고, crew-detail·crew-edit 두 시나리오에만
   붙였다 — crew-delete는 `DeleteCrewService`가 `EditCrewService`와 동일한 `!isLeader()` 패턴이라
   회귀 감지 목적상 중복이라 판단해 생략했다
@@ -30,7 +30,7 @@
 - 배운 점: 공용 에러코드가 서로 무관한 조건에 재사용될 때, 메시지 문자열은 코드와 달리 조건
   하나에만 맞게 "우연히" 고정될 수 있다 — 코드(`CR009`) 재사용 자체는 설계 의도(docs §2.8)였지만,
   메시지가 조건-불가지론적이어야 한다는 요구는 별도로 지켜야 했다. 그리고 이 버그가 지금까지
-  안 잡힌 이유는 "테스트가 메시지 문자열을 단언한 적이 없어서"였다 — 응답 바디의 필드 중 어떤
+  안 잡힌 이유는 "CR009 메시지를 단언한 테스트가 없어서"였다 — 응답 바디의 필드 중 어떤
   것도 검증하지 않으면 그 필드는 회귀해도 그린으로 남는다
 
 ---
