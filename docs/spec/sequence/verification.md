@@ -12,10 +12,10 @@ sequenceDiagram
     participant S3 as AWS S3
     participant Lambda as AWS Lambda
 
-    Client->>Server: POST /upload-sessions<br/>(crewId, fileName, fileType, fileSize)
+    Client->>Server: POST /upload-sessions<br/>(crewId XOR habitId, fileName, fileType, fileSize)
     Server-->>Client: 201 Created<br/>uploadSessionId + presignedUrl<br/>(15분 유효)
 
-    Client->>Server: GET /upload-sessions/{id}/events<br/>(Bearer, 본인 세션, SSE)
+    Client->>Server: GET /upload-sessions/{id}/events<br/>(SSE 구독 — PUT 전에 시작)
     Client->>S3: PUT image (presignedUrl)
     S3-->>Client: 200 OK
 
@@ -27,17 +27,27 @@ sequenceDiagram
         Server-->>Client: afterCommit SSE COMPLETED
     and 누락 대비 상태 확인
         loop 2초 간격
-            Client->>Server: GET /upload-sessions/{id}
+            Client->>Server: GET /upload-sessions/{id} (구현 대기)
             Server-->>Client: PENDING / COMPLETED / EXPIRED
         end
     end
 
     Note over Client: SSE·폴링 중 먼저 확정된 결과 사용
-    Client->>Server: POST /verifications<br/>(crewId/challengeId, uploadSessionId, textContent?)
-    Server-->>Client: 201 Created
+    alt 크루 사진 인증
+        Client->>Server: POST /verifications<br/>(crewId/challengeId, uploadSessionId, textContent?)
+        Server-->>Client: 201 Created
+    else 솔로 사진 인증
+        Client->>Server: POST /habits/{habitId}/verifications<br/>(uploadSessionId, textContent?)
+        Server-->>Client: 201 Created
+    end
 ```
 
-SSE와 상태 조회는 로그인한 세션 소유자만 사용할 수 있다. 연결 실패나 이벤트 유실이 인증 실패로 이어지지 않도록 클라이언트는 상태 조회를 병렬 수행한다. `COMPLETED` 또는 `EXPIRED`를 먼저 확인한 채널의 결과를 사용하고 나머지 대기를 종료한다.
+세션 생성 시 `crewId`와 `habitId`는 XOR다 — 크루 인증은 `crewId`, 솔로 인증은 `habitId`를 보내며 둘 다 없거나 둘 다 있으면 `C001`이다. 이에 따라 마지막 인증 생성 호출도 크루는 `POST /verifications`, 솔로는 `POST /habits/{habitId}/verifications`로 갈린다.
+
+SSE 구독은 **S3 업로드(PUT) 전에** 시작하고, 상태 조회 폴링은 **업로드 후에** 시작한다. 서버가 미구독 세션의 완료 이벤트를 버리기 때문이다. 연결 실패나 이벤트 유실이 인증 실패로 이어지지 않도록 클라이언트는 상태 조회를 병렬 수행하며, `COMPLETED` 또는 `EXPIRED`를 먼저 확인한 채널의 결과를 사용하고 나머지 대기를 종료한다.
+
+> ⚠️ **SSE와 상태 조회를 로그인한 세션 소유자 전용으로 한다는 것은 목표 계약이며 아직 구현되지 않았다.**
+> 현재 SSE는 `permitAll`이고 소유권 검증이 없으며, `GET /upload-sessions/{id}`는 라우트 자체가 없다.
 
 ## 2. `POST /upload-sessions`
 
@@ -87,7 +97,7 @@ sequenceDiagram
     SSE-->>Client: upload-complete
 
     opt SSE 미수신
-        Client->>StatusController: GET /upload-sessions/{id}
+        Client->>StatusController: GET /upload-sessions/{id} (구현 대기)
         StatusController-->>Client: status=COMPLETED
     end
 ```

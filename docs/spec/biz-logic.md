@@ -248,7 +248,7 @@ API 계약: [`api-spec/auth-user.md`](./api-spec/auth-user.md)
 
 ## 5. 습관 — 솔로 모드
 
-상세 설계 정본: [`sdd/solo-habit/step1-biz-logic.md`](../../../sdd/solo-habit/step1-biz-logic.md)
+상세 설계는 비공개 오케스트레이션 저장소의 `sdd/solo-habit/step1-biz-logic.md`에 있다 (이 저장소 밖). 아래 5.1~ 절이 이 저장소의 정본이다.
 
 API 계약: [`api-spec/habit.md`](./api-spec/habit.md)
 

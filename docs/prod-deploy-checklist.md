@@ -79,7 +79,11 @@
 - 기존 컨테이너를 먼저 중단하므로 무중단 배포가 아니다.
 - 새 컨테이너의 health check가 실패해도 이전 컨테이너를 자동 복구하는 rollback 단계가 없다.
 - SHA 이미지는 push되지만 자동 rollback·재배포에 사용되지 않는다.
-- Dockerfile은 문서·Lambda·GitHub Actions·로컬 비밀 파일을 build context에서 제외한다.
+- build context 제외 주체는 Dockerfile이 아니라 `.dockerignore`다 (Dockerfile은 `COPY . .`을 쓴다).
+  `.dockerignore`가 제외하는 범주: Git 메타(`.git`, `.gitignore`), 빌드 산출물(`.gradle`, `build`),
+  IDE·에디터 파일, 문서(`docs/`), Lambda(`lambda/`), GitHub Actions(`.github/`),
+  로컬 비밀 파일(`.env`, `*.pem`, `triagain-admin_accessKeys.csv`), OS 부산물,
+  스크립트(`deploy.sh`, `*.bak`), 에이전트 설정(`.claude/`, `CODEX.md`, `agent`).
 - 컨테이너 로그는 `awslogs` 드라이버로 `/triagain/app`에 보낸다. EC2의 CloudWatch Logs 권한과
   로그 그룹 생성 권한은 저장소 밖 IAM에서 확인해야 한다.
 
@@ -186,7 +190,9 @@ Flutter iOS/Android 네이티브 HTTP 클라이언트에는 브라우저 CORS �
 
 - 배포 성공 판정은 현재 `/actuator/health` HTTP 상태만 본다.
 - 애플리케이션 로그는 CloudWatch Logs `/triagain/app`, stream `triagain`으로 고정한다.
-- 배포 실패 시 컨테이너 로그 자동 수집·출력이나 이전 버전 rollback 단계는 없다.
+- 컨테이너 로그는 `awslogs` 드라이버로 **항상** CloudWatch에 수집된다(위 참조). 별개로,
+  **배포 workflow에는 실패 시 컨테이너 로그를 출력하는 단계(`docker logs`)와 이전 버전 rollback 단계가 없다.**
+  실패 원인은 CloudWatch에서 직접 확인해야 한다.
 - 알림, Lambda 실패, Dead Letter 적재량에 대한 저장소 내 CloudWatch alarm 정의는 없다.
 
 ### 배포 후 확인

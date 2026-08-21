@@ -11,11 +11,19 @@
 
 ```
 1. POST /upload-sessions → presignedUrl + uploadSessionId 수신
-2. GET /upload-sessions/{id}/events (SSE) + GET /upload-sessions/{id} (2초 폴링)
+2. GET /upload-sessions/{id}/events (SSE) 구독 시작          ← S3 PUT 전
 3. S3에 직접 업로드 (PUT {presignedUrl})
-4. Lambda → 자동 완료 감지 → SSE·폴링 중 먼저 "COMPLETED" 확인
-5. POST /verifications → 인증 완료
+4. 업로드 완료 후 GET /upload-sessions/{id} 2초 폴링 시작     ← S3 PUT 후
+5. SSE·폴링 중 "COMPLETED" 또는 "EXPIRED"를 먼저 확인한 결과 채택
+6. POST /verifications → 인증 완료
 ```
+
+> **순서 주의** — SSE 구독은 반드시 **S3 PUT 전**에 시작한다. 서버는 미구독 세션의 완료 이벤트를
+> 보관하지 않고 버리므로, 구독 전에 Lambda 콜백이 도착하면 이벤트가 영구 유실된다.
+> 폴링은 업로드 전에는 완료될 수 없으므로 **S3 PUT 후**에 시작한다.
+>
+> **`GET /upload-sessions/{id}`는 계약 확정·구현 대기 상태다.** 현재 백엔드에 해당 라우트가 없어
+> 폴링 폴백이 동작하지 않는다 — 상세는 [`api-spec/verification.md`](api-spec/verification.md) 참조.
 
 ---
 
@@ -25,7 +33,7 @@
 |--------|------|-----------------|
 | 인증/유저 | [`api-spec/auth-user.md`](api-spec/auth-user.md) | POST /auth/kakao · signup · apple · apple-signup · refresh · logout, GET /users/me, PATCH /users/me/nickname · fcm-token, 프로필 이미지 업로드·확정, DELETE /users/me |
 | 크루 | [`api-spec/crew.md`](api-spec/crew.md) | GET /crews/{id}/feed · my-verifications, GET /crews/invite/{code} · {id}/preview, POST /crews/join, GET /crews/{id}, POST /crews, GET /crews, PATCH·DELETE /crews/{id}, DELETE /crews/{id}/members/me, GET /crews/search, POST /crews/{id}/join, GET /invite/{code} |
-| 인증 업로드 | [`api-spec/verification.md`](api-spec/verification.md) | POST /upload-sessions, GET /upload-sessions/{id} · {id}/events (SSE), POST /verifications, DELETE /verifications/{id}, PATCH /verifications/{id}, PUT·DELETE /verifications/{id}/reactions (Support Context) |
+| 인증 업로드 | [`api-spec/verification.md`](api-spec/verification.md) | POST /upload-sessions, GET /upload-sessions/{id} *(구현 대기)* · {id}/events (SSE), POST /verifications, DELETE /verifications/{id}, PATCH /verifications/{id}, PUT·DELETE /verifications/{id}/reactions (Support Context) |
 | 알림 | [`api-spec/notification.md`](api-spec/notification.md) | GET /notifications · unread-count, PATCH /notifications/{id}/read · read-all, DELETE /notifications |
 | 습관·솔로 | [`api-spec/habit.md`](api-spec/habit.md) | POST /habits, GET /habits · archived, PATCH /habits/{id}, POST /habits/{id}/end · pause · resume · cycles · verifications, DELETE cycles/current |
 | 내부 API | [`api-spec/internal.md`](api-spec/internal.md) | PUT /internal/upload-sessions/complete, POST /internal/fcm-test |

@@ -39,8 +39,8 @@ flowchart LR
 |---|---|---|
 | User | 카카오·애플 로그인, JWT, 프로필, 탈퇴·재가입, FCM 토큰 | `User` |
 | Crew | 크루 생성·가입·탈퇴, 멤버 관리, 3일 챌린지와 참여 상태 | `Crew`, `CrewMember`, `Challenge`, `ChallengeParticipant` |
-| Verification | 텍스트·사진 인증 생성, 조회, 리액션 요약 연결 | `Verification` |
-| Habit | 사용자 습관, 사진 업로드 세션 생성·완료 상태 | `Habit`, `UploadSession` |
+| Verification | 텍스트·사진 인증 생성, 조회, 리액션 요약 연결, **업로드 세션 소유**(생성·완료·만료·SSE) | `Verification`, `UploadSession` |
+| Habit | 사용자 습관 | `Habit` |
 | Support | 리액션 등록·취소·조회, FCM 알림 연결 | `Reaction` 및 알림 Adapter |
 | Moderation | 신고·검토 도메인과 저장소 기반 | `Report`, `Review` |
 

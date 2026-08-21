@@ -117,7 +117,17 @@ Redis와 AWS SQS는 현재 런타임에 없다.
   `CREW_FIRST_VERIFICATION`이다.
 - Challenge SUCCESS 리스너와 FAILED 알림 호출은 현재 비활성이다.
 - 인앱 알림을 먼저 저장하고 FCM은 best-effort다.
-- 첫 인증 알림 운영 기본값은 ON이며 `[08:00, 22:00)`에만 보낸다.
+- 첫 인증 알림은 **아래 4개를 모두 통과한 수신자에게만** 인앱 알림이 저장된다.
+  ① 기능 게이트 `notification.crew-first-verification.enabled` — 리스너의 `@ConditionalOnProperty`가
+     `matchIfMissing=false`라 미설정이면 리스너 자체가 없다. prod는 `CREW_FIRST_VERIFICATION_ENABLED`
+     기본값으로 ON이고, 그 외 프로필은 기본 OFF다.
+  ② 시간창 `[08:00, 22:00)`
+  ③ 당일 해당 크루 중복 방지
+  ④ 수신자 존재 — 본인 제외 ACTIVE 멤버가 없으면 종료
+  발송은 즉시가 아니라 트랜잭션 커밋 후 비동기다.
+- FCM은 그 위의 별개 축이다. ①~④를 통과한 수신자 중 `fcmToken`이 있는 경우에만 시도하며,
+  실제 전송 여부는 `firebase.enabled`가 정한다(꺼져 있으면 no-op 어댑터). 즉 **FCM이 꺼져 있어도
+  인앱 알림은 저장된다.** 전송 실패는 로그만 남기고 삼킨다.
 - 사용자별 종류·시간대·방해 금지 정책은 제품 확정 전이다.
 
 ---
