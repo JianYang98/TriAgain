@@ -1,357 +1,246 @@
-# AI 에이전트 Handoff Document
+# Backend Handoff
 
-> **작성일:** 2026-03-02
-> **브랜치:** `feat/upload-sessions-happy-path`
-> **Base URL:** `http://localhost:8080`
-
----
-
-## 1. 프로젝트 개요 및 핵심 컨셉
-
-**TriAgain — "작심삼일도 괜찮아. Start Small. Try Again."**
-
-기존 습관 앱들은 연속 기록(스트릭) 기반이라, 한 번 실패하면 동기를 잃고 이탈하는 구조적 문제가 있다. TriAgain은 **실패를 허용하는 습관 형성 서비스**로, 이 문제를 해결한다.
-
-- **3일 단위 챌린지 사이클**: 실패해도 즉시 새 사이클 시작 → 부담 없는 재도전
-- **소규모 크루(2~10명)**: 함께 인증하고 응원하며 습관 형성
-- **크루장이 인증 방식 선택**: TEXT(텍스트 필수) / PHOTO(사진 필수 + 텍스트 선택)
-
-### Phase 1 목표
-
-| 항목 | 목표 |
-|------|------|
-| 대상 유저 | 500명 |
-| 목표 TPS | 50 |
-| 핵심 기능 | 크루 생성/참여, 챌린지 사이클, 인증(텍스트/사진), 피드 조회 |
+> **현행 기준일:** 2026-08-20
+>
+> 이 문서는 다음 작업자가 현재 상태와 정본 위치를 빠르게 찾기 위한 인수인계 문서다.
+> API 필드·에러·스키마·비즈니스 규칙을 여기서 다시 정의하지 않는다. 충돌하면 아래 정본이 우선한다.
 
 ---
 
-## 2. 기술 스택
+## 1. 프로젝트와 현재 단계
 
-| 구분 | 기술 |
-|------|------|
-| Language | Java 17 |
-| Framework | Spring Boot 3.4.13 |
-| ORM | Spring Data JPA (복잡한 조회는 네이티브 쿼리) |
-| Database | PostgreSQL 16 |
-| Storage | AWS S3 (Pre-signed URL 기반 Direct Upload) |
-| Serverless | AWS Lambda (S3 업로드 완료 감지 → session COMPLETED 처리) |
-| 실시간 통신 | SSE (Server-Sent Events, 60초 타임아웃) |
-| Auth | 카카오 OAuth + JWT (access 30min / refresh 14d) |
-| Client | Flutter 3.16.0 (iOS + Android) |
-| Infra | AWS (EC2 + RDS), GitHub Actions CI/CD |
-| Test | Cucumber 7.17.0 (BDD), REST-Assured 5.5.0, Testcontainers 1.21.3 |
-| JWT | jjwt 0.12.6 (HMAC-SHA) |
-| AWS SDK | v2 (BOM 2.31.3) |
+TriAgain은 실패 후 다시 시작할 수 있는 3일 습관 사이클과 2~10명 크루를 제공하는 서비스다.
+Phase 1 목표는 사용자 500명, TPS 50이며 현재 백엔드는 Java 17·Spring Boot 3.4.13 단일
+애플리케이션으로 배포한다.
 
-### Phase 2 확장 예정
+현재 문서 작업 브랜치는 `codex/docs-canonical-cross-check`다.
 
-Redis (ElastiCache), AWS SQS, FCM 푸시
+- 현재 단계: Phase A 문서 정본 교차검증
+- 이 브랜치의 원칙: 문서와 코드의 차이를 기록하며 Java·설정·migration을 임의로 수정하지 않음
+- 구현 변경은 문서 검토가 끝난 뒤 별도 승인으로 진행
+- 상위 `sdd/`는 설계 이력이며 백엔드 현행 계약 정본은 `docs/spec/`다.
 
 ---
 
-## 3. 아키텍처 구조
+## 2. 정본 문서 라우팅
 
-### 3.1 Bounded Context (5개)
+| 필요한 정보 | 정본 |
+|---|---|
+| API 경로·필드·nullable·HTTP·에러 | [`spec/api-spec.md`](./spec/api-spec.md) → 도메인별 파일 |
+| 현재 비즈니스 규칙·엣지케이스 | [`spec/biz-logic.md`](./spec/biz-logic.md) |
+| 테이블·상태·제약·인덱스 | [`spec/schema.md`](./spec/schema.md) 및 Flyway migration |
+| 런타임·패키지·보안·Port/Adapter | [`spec/architecture.md`](./spec/architecture.md) |
+| 컨텍스트 관계 | [`spec/context-map.md`](./spec/context-map.md) |
+| User 로그인·탈퇴·재가입 개요 | [`spec/user.md`](./spec/user.md) |
+| 사진 업로드 사용자 흐름 | [`spec/photo-upload-flow.md`](./spec/photo-upload-flow.md) |
+| Lambda·S3·SSE 운영 경계 | [`spec/photo-upload-lambda-sse.md`](./spec/photo-upload-lambda-sse.md) |
+| 운영 배포 | [`prod-deploy-checklist.md`](./prod-deploy-checklist.md) |
+| 후속 결정·도입 보류 | [`log/future-considerations.md`](./log/future-considerations.md) |
+| 과거 장애·판단 기록 | [`log/debugging-log.md`](./log/debugging-log.md) |
 
-```
-User Context       — 회원/인증 (카카오 OAuth, JWT)
-Crew Context       — 크루, 멤버, 챌린지 핵심 로직 (Core)
-Verification Context — 인증, 업로드 세션, 피드
-Moderation Context — 신고, 검토
-Support Context    — 알림, 반응(이모지)
-```
+API 정본은 다음 여섯 파일로 나뉜다.
 
-### 3.2 컨텍스트 간 통신
-
-| From → To | 방식 | Port |
-|-----------|------|------|
-| Crew → User | 동기 호출 | `UserPort` → `UserClientAdapter` |
-| Verification → Crew | 동기 호출 | `ChallengePort`, `CrewPort` → `ChallengeClientAdapter`, `CrewMembershipAdapter` |
-| Moderation → Verification | 동기 호출 | `VerificationPort` → `VerificationClientAdapter` |
-| Moderation → Crew | 동기 호출 | `CrewPort` → `CrewClientAdapter` |
-
-현재 모든 컨텍스트 간 통신은 **같은 프로세스 내 Port/Adapter 동기 호출**이다 (HTTP 아님). Phase 2에서 비동기 이벤트 도입 예정.
-
-### 3.3 헥사고날 아키텍처 — 패키지 구조
-
-```
-com.triagain.{context}/
-├── api/               Controller, Request/Response DTO
-│   └── internal/      Lambda 전용 Internal Controller
-├── application/       UseCase 구현체 (Service)
-├── domain/
-│   ├── model/         Entity, Aggregate Root (POJO)
-│   └── vo/            Value Object (Enum 등)
-├── port/
-│   ├── in/            UseCase 인터페이스
-│   └── out/           Repository Port, External Port
-└── infra/             JPA Entity, Adapter
-```
-
-### 3.4 계층별 의존성 규칙
-
-- **Controller** → UseCase 인터페이스에만 의존, 비즈니스 로직 금지
-- **Service** → Output Port 인터페이스에만 의존, `@Transactional` (쓰기)
-- **Domain** → 외부 의존 없는 순수 POJO, Aggregate 간 참조는 ID로만
-- **Adapter** → Output Port 구현, JPA Entity ↔ Domain Model 변환 담당
+- `api-spec/auth-user.md`
+- `api-spec/crew.md`
+- `api-spec/verification.md`
+- `api-spec/notification.md`
+- `api-spec/habit.md`
+- `api-spec/internal.md`
 
 ---
 
-## 4. 핵심 비즈니스 규칙
+## 3. 런타임과 컨텍스트 상태
 
-### 4.1 크루 생성/참여
+| 영역 | 상태 | 현재 책임 |
+|---|---|---|
+| User | 연결됨 | 카카오·Apple, JWT, 프로필, 탈퇴·재가입, FCM 토큰 |
+| Crew | 연결됨 | 크루·멤버십·챌린지, 검색, 가입 동시성 |
+| Verification | 연결됨 | 업로드 세션, 크루 인증, 피드, SSE |
+| Support | 연결됨 | 인앱 알림, 조건부 FCM, 인증 리액션 |
+| Habit | 연결됨 | 솔로 습관·3일 사이클·인증 |
+| Moderation | 기반만 존재 | Report·Review Domain/JPA/Bridge 일부. 사용자 API·Application UseCase 없음 |
+| Common | 공유 인프라 | 인증, 응답, 예외, Clock, Dead Letter, ChunkProcessor |
 
-- **정원:** 2~10명, 조건부 원자적 UPDATE로 동시 참여 시 정원 초과 방지 (기본 `CONDITIONAL`; 비관적 락으로 전환 시 발행 SQL은 `SELECT … FOR NO KEY UPDATE`)
-- **초대코드:** 6자리 영숫자 자동 발급 (0/O/I/L 제외)
-- **시작일:** 내일(+1) 이후만 선택 가능
-- **종료일:** 시작일+6일 이상 (작심삼일 2회 보장)
-- **중간 가입:** 크루장이 `allowLateJoin` 설정 — true면 크루 시작 후에도 참여 가능
-- **크루 생성자:** LEADER 역할로 자동 가입
+외부 구성요소:
 
-### 4.2 챌린지 라이프사이클
+- PostgreSQL 16 + Flyway
+- AWS S3 presigned URL 직접 업로드
+- S3 ObjectCreated → AWS Lambda → 내부 완료 API
+- Firebase FCM (`firebase.enabled=true`일 때만 실제 전송)
+- Kakao·Apple 소셜 API
 
-```
-크루 활성화(ACTIVE) → 멤버별 첫 챌린지 자동 생성
-   ↓
-3일 연속 인증 성공 → SUCCESS → 새 챌린지 자동 시작
-인증 실패(마감 미인증) → FAILED → 새 챌린지 자동 시작
-크루 기간 종료 → ENDED (진행 중 챌린지 일괄 종료)
-```
-
-- **사이클:** 3일 단위, 개인별 독립 진행
-- **스케줄러:** 매일 03:00 크루 만료 확인 / 매 5분 챌린지 마감 확인
-
-### 4.3 인증 규칙
-
-- **횟수:** 하루 1회 (UNIQUE 제약: `user_id + crew_id + target_date`)
-- **마감:** 크루의 `deadlineTime` 기준 (미지정 시 23:59:59)
-- **텍스트 인증:** `POST /verifications` (텍스트 포함) → 바로 완료
-- **사진 인증:** 업로드 세션 → S3 업로드 → 인증 생성 (아래 플로우 참조)
-- **시간 판정:** `upload_session.requested_at` 기준 (서버 기록, 조작 불가)
-
-### 4.4 사진 업로드 플로우
-
-```
-Client              Backend              S3              Lambda
-  │                    │                  │                  │
-  │ 1. POST /upload-sessions             │                  │
-  │───────────────────►│ PENDING 생성     │                  │
-  │◄───────────────────│ presignedUrl     │                  │
-  │                    │                  │                  │
-  │ 2. GET /upload-sessions/{id}/events (SSE 구독)          │
-  │───────────────────►│                  │                  │
-  │                    │                  │                  │
-  │ 3. PUT presignedUrl (S3 직접 업로드)  │                  │
-  │──────────────────────────────────────►│                  │
-  │                    │                  │ 4. S3 Event      │
-  │                    │                  │─────────────────►│
-  │                    │                  │                  │
-  │                    │ 5. PUT /internal/upload-sessions/{id}/complete
-  │                    │◄──────────────────────────────────── │
-  │                    │ → COMPLETED + SSE 발행              │
-  │                    │                  │                  │
-  │ 6. SSE: upload-complete              │                  │
-  │◄───────────────────│                  │                  │
-  │                    │                  │                  │
-  │ 7. POST /verifications               │                  │
-  │───────────────────►│ 인증 생성        │                  │
-  │◄───────────────────│                  │                  │
-```
-
-**Upload Session 상태 흐름:**
-
-```
-PENDING → COMPLETED → USED (인증에 사용됨)
-PENDING → EXPIRED (15분 초과 미사용)
-```
-
-### 4.5 S3 장애 Fallback 3단계
-
-| Level | 상황 | upload_session | verification |
-|-------|------|---------------|-------------|
-| Level 1 | S3 일시 오류 | PENDING → COMPLETED | 생성 (클라이언트 자동 재시도) |
-| Level 2 | S3 장애 지속 | PENDING → COMPLETED | 유예시간(deadline+1h) 내 생성 |
-| Level 3 | S3 심각한 장애 | PENDING → EXPIRED | 생성 안 됨 |
-
-### 4.6 신고/검토 정책
-
-- 동일 인증에 대해 1인 1신고, 3건 이상 시 자동 검토 트리거
-- 검토 주체: Phase 1 AUTO → Phase 2 크루장 → Phase 3 AI
-- 7일 미검토 시 자동 승인
+Redis와 AWS SQS는 현재 런타임에 없다.
 
 ---
 
-## 5. 현재 구현 상태 — 컨텍스트별 요약표
+## 4. 현재 핵심 동작
 
-### 5.1 구현 현황
+### 크루와 챌린지
 
-| Context | 상태 | 구현 범위 |
-|---------|------|-----------|
-| **Common** | ✅ 완료 | Auth(JWT+카카오), SecurityConfig(prod/dev 분리), GlobalExceptionHandler(42 에러코드), ApiResponse, IdGenerator |
-| **User** | ✅ 완료 | 카카오 OAuth 로그인, 토큰 갱신, 프로필 조회/수정 — Controller 2, Service 6, Port 2 |
-| **Crew** | ✅ 완료 | 생성/참여/목록/상세/활성화 + 스케줄러 2개 — Controller 1, Service 6, Scheduler 2, Port 3 |
-| **Verification** | ✅ 완료 | 업로드 세션(생성/완료/만료/SSE) + 인증 생성 + 피드 조회 — Controller 3(+Internal 1), Service 4, Scheduler 1, Port 7 |
-| **Moderation** | ⚠️ 도메인만 | Domain Model(Report, Review, ReportPolicy) + VO + Infra Adapter만 구현. API/Service 미구현 |
-| **Support** | ⚠️ 도메인만 | Domain Model(Notification, Reaction) + VO + Infra Adapter만 구현. API/Service 미구현 |
+- 크루 가입 기본 전략은 `CONDITIONAL`이다.
+- 정원은 조건부 원자적 UPDATE, 중복 멤버십은 DB 유니크 제약으로 보호한다.
+- 설정으로 PESSIMISTIC·OPTIMISTIC을 선택할 수 있지만 현재 기본 계약은 아니다.
+- 크루는 매일 00:00 활성화, 00:05 종료한다.
+- 챌린지는 활성화 때 미리 만들지 않고 사용자의 첫 인증 때 lazy 생성한다.
+- 3일 인증을 채우면 SUCCESS, 마감+grace를 넘기면 FAILED다.
+- 실패 뒤 재인증 요청이 들어오면 새 챌린지를 만든다.
 
-### 5.2 구현 완료 API (17개)
+### 크루 인증
 
-| # | Method | Path | 설명 |
-|---|--------|------|------|
-| 1 | GET | `/health` | 헬스체크 |
-| 2 | POST | `/auth/kakao` | 카카오 로그인 |
-| 3 | POST | `/auth/refresh` | 토큰 갱신 |
-| 4 | POST | `/crews` | 크루 생성 |
-| 5 | POST | `/crews/join` | 크루 참여 (초대코드) |
-| 6 | GET | `/crews` | 내 크루 목록 |
-| 7 | GET | `/crews/{crewId}` | 크루 상세 (멤버 프로필 + 챌린지 진행도) |
-| 8 | POST | `/upload-sessions` | 업로드 세션 생성 (Presigned URL 발급) |
-| 9 | GET | `/upload-sessions/{id}/events` | SSE 구독 (업로드 완료 알림) |
-| 10 | PUT | `/internal/upload-sessions/{id}/complete` | Lambda → 세션 완료 (VPC 내부) |
-| 11 | POST | `/verifications` | 인증 생성 (텍스트/사진) |
-| 12 | GET | `/crews/{crewId}/feed` | 크루 피드 조회 (페이지네이션) |
-| 13 | POST | `/auth/test-login` | 테스트 로그인 — userId로 JWT 발급 (`!prod` 전용) |
-| 14 | POST | `/auth/signup` | 회원가입 (카카오 인증 + 닉네임 + 약관) |
-| 15 | POST | `/auth/logout` | 로그아웃 (Phase 1: no-op) |
-| 16 | GET | `/users/me` | 내 프로필 조회 |
-| 17 | PATCH | `/users/me/nickname` | 닉네임 변경 |
+- TEXT는 텍스트가 필수다.
+- PHOTO는 완료된 uploadSessionId가 필수이고 텍스트는 선택이다.
+- 사진 마감 기준은 서버가 기록한 upload session `requestedAt`이다.
+- 인증 생성 grace는 5분이며 서버에 별도 S3 장애 1시간 유예가 없다.
+- 같은 사용자·크루·날짜의 유효 인증은 부분 유니크 인덱스로 하나만 허용한다.
+- 인증 수정은 기존 행 UPDATE가 아니라 구행 CANCELLED + 신행 INSERT다.
+- 리액션은 현재 `LIKE` 하나만 허용하며 수정된 신행으로 자동 이관하지 않는다.
 
-### 5.3 스케줄러 (3개)
+### User
 
-| 스케줄러 | Context | 주기 | 동작 |
-|----------|---------|------|------|
-| `CompleteExpiredCrewsScheduler` | Crew | 매일 03:00 | ACTIVE 크루 중 endDate 지난 것 → COMPLETED, 잔여 챌린지 → ENDED |
-| `FailExpiredChallengesScheduler` | Crew | 매 5분 | 마감 지난 IN_PROGRESS 챌린지(미인증) → FAILED, 다음 챌린지 자동 생성 |
-| `ExpireUploadSessionScheduler` | Verification | 매 5분 | 15분 이상 PENDING인 세션 → EXPIRED |
+- 카카오·Apple 모두 로그인과 회원가입이 분리되어 있다.
+- 신규·탈퇴 사용자는 로그인 API에서 자동 생성되지 않는다.
+- Access Token 30분, Refresh Token 14일이며 rotation·서버 저장소는 없다.
+- logout은 서버 no-op이고 탈퇴·재가입은 `tokenVersion`으로 기존 JWT를 무효화한다.
+- 회원탈퇴는 soft delete이며 Apple refresh token revoke는 best-effort다.
 
-### 5.4 테스트 현황
+### Habit
 
-| 구분 | 파일 수 | 설명 |
-|------|---------|------|
-| **Cucumber Feature** | 11개 | health, crew-creation, crew-join, crew-activation, crew-detail, crew-list, crew-feed, challenge-auto-creation, upload-session, verification-creation, my-profile |
-| **단위 테스트** | 16개 | JWT, 도메인 모델(Crew, Challenge, UploadSession, Verification, Report, ReportPolicy), 서비스(KakaoLogin, RefreshToken, CompleteUploadSession, CreateVerification), 스케줄러 2개, Adapter 2개 |
-| **인프라** | Testcontainers | PostgreSQL 컨테이너 기반 acceptance 테스트 + H2 인메모리 단위 테스트 |
+- 크루와 분리된 솔로 3일 사이클이다.
+- 습관 생성만으로 사이클을 시작하지 않으며 사용자가 TODAY/TOMORROW로 시작한다.
+- PAUSED, ENDED 상태가 있고 실패 뒤 재시작도 사용자 명시 요청이다.
+- Habit 변경 서비스는 habit 행 비관적 lock으로 자기 경합을 직렬화한다.
+- 크루와 달리 자정을 넘긴 전날 슬롯 제출을 허용하지 않는다.
 
----
+### 알림
 
-## 6. 진행중/예정 작업
-
-### 6.1 현재 브랜치
-
-`feat/upload-sessions-happy-path` — Upload Session 해피패스 구현 완료, main 머지 전
-
-### 6.2 후속 TODO 문서 (3건)
-
-#### `/docs/archive/20260301-upload-session-review-todo.md`
-
-PR 리뷰 후속 개선 항목 4건:
-1. **[Medium]** `CompleteUploadSessionService`의 `afterCommit` 단위 테스트 추가
-2. **[Medium]** `ChallengeClientAdapter.recordCompletion()` 예외 테스트 추가
-3. **[Medium]** `SseEmitterAdapter` 엣지 케이스 테스트 (IOException, 타임아웃)
-4. **[Low]** `CreateVerificationService` 챌린지 중복 조회 구조 리팩토링
-
-#### `/docs/prod-deploy-checklist.md`
-
-운영 배포 전 확인사항:
-- 필수 환경변수 5개: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `APPLE_REFRESH_KEY`
-- AWS S3 버킷/CORS 설정
-- `/internal/**` VPC 접근 제어
-- DB 마이그레이션 도구 도입 (Flyway/Liquibase)
-- SSL/HTTPS(✅ EC2 호스트 nginx + certbot, 2026-07-08 자동 갱신 타이머 등록 — checklist 참조), Health check
-
-### 6.3 Phase 1 남은 작업
-
-| 작업 | 상태 |
-|------|------|
-| Moderation API/Service (신고 접수 → 자동 검토) | 미구현 |
-| Support API/Service (반응/이모지) | 미구현 |
-| 크루 탈퇴 API | 미구현 |
-| Apple 로그인 (앱스토어 필수 요건) | 플랜 작성 중 |
-| 프로덕션 배포 파이프라인 (GitHub Actions → EC2 + RDS) | 미구현 |
-| `/internal/**` VPC 네트워크 접근 제어 | 미구현 |
-
-### 6.4 Phase 2 예정
-
-Redis 캐시, AWS SQS 비동기 이벤트, FCM 푸시 알림, 분산 락(Redis), 공개 크루 탐색
+- 현재 자동 생성되는 타입은 `CREW_STARTED`, `REMINDER`, 조건부
+  `CREW_FIRST_VERIFICATION`이다.
+- Challenge SUCCESS 리스너와 FAILED 알림 호출은 현재 비활성이다.
+- 인앱 알림을 먼저 저장하고 FCM은 best-effort다.
+- 첫 인증 알림은 **아래 4개를 모두 통과한 수신자에게만** 인앱 알림이 저장된다.
+  ① 기능 게이트 `notification.crew-first-verification.enabled` — 리스너의 `@ConditionalOnProperty`가
+     `matchIfMissing=false`라 미설정이면 리스너 자체가 없다. prod는 `CREW_FIRST_VERIFICATION_ENABLED`
+     기본값으로 ON이고, 그 외 프로필은 기본 OFF다.
+  ② 시간창 `[08:00, 22:00)`
+  ③ 당일 해당 크루 중복 방지
+  ④ 수신자 존재 — 본인 제외 ACTIVE 멤버가 없으면 종료
+  발송은 즉시가 아니라 트랜잭션 커밋 후 비동기다.
+- FCM은 그 위의 별개 축이다. ①~④를 통과한 수신자 중 `fcmToken`이 있는 경우에만 시도하며,
+  실제 전송 여부는 `firebase.enabled`가 정한다(꺼져 있으면 no-op 어댑터). 즉 **FCM이 꺼져 있어도
+  인앱 알림은 저장된다.** 전송 실패는 로그만 남기고 삼킨다.
+- 사용자별 종류·시간대·방해 금지 정책은 제품 확정 전이다.
 
 ---
 
-## 7. 코드 컨벤션 및 규칙
+## 5. 사진 업로드 완료 흐름
 
-### 7.1 핵심 규칙
+```mermaid
+sequenceDiagram
+    participant FE as Flutter
+    participant BE as Spring Boot
+    participant S3
+    participant L as Lambda
 
-| 항목 | 규칙 |
-|------|------|
-| DI | `@RequiredArgsConstructor` + `private final` (생성자 주입만) |
-| DTO | Java `record` 사용, Entity 직접 반환 금지 |
-| 예외 | `BusinessException(ErrorCode)` 사용, `RuntimeException` 금지 |
-| 테스트 | BDD(Given-When-Then) 주석, 성공+실패 케이스 필수 |
-| 주석 | public 메서드에 한 줄 한국어 Javadoc (`/** 무엇 — 언제/왜 */`) |
-| ID 생성 | `IdGenerator.generate("PREFIX")` → `PREFIX-<16 hex>` |
-| 응답 | 모든 API는 `ApiResponse<T>` 래핑 |
-| Lombok | `@Data` 금지, `@RequiredArgsConstructor` + `@Getter` 허용 |
-
-### 7.2 커밋 메시지 (AngularJS Convention)
-
-```
-<type>: <한국어 메시지>
-- 부연 설명 (선택)
+    FE->>BE: POST /upload-sessions
+    BE-->>FE: presignedUrl + uploadSessionId
+    FE->>BE: SSE 구독 (현재 구현)
+    FE->>S3: PUT image
+    S3->>L: ObjectCreated:Put
+    L->>BE: PUT /internal/upload-sessions/complete?imageKey=...
+    BE->>BE: PENDING → COMPLETED
+    BE-->>FE: upload-complete SSE
+    FE-->>BE: GET /upload-sessions/{id} 2초 폴링 (계약 확정·구현 대기)
+    FE->>BE: POST /verifications
 ```
 
-타입: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
-
-### 7.3 Anti-Patterns (금지 사항)
-
-- `@Autowired` 필드 주입 금지
-- Controller에 비즈니스 로직 금지
-- Domain에서 JPA/HTTP 의존 금지
-- Port 없이 Adapter 직접 참조 금지
-- 트랜잭션 안에 외부 API 호출 금지
-- `@Data` 사용 금지
-- 메서드 20라인 초과 시 분리 고려
+- UploadSession 상태는 `PENDING`, `COMPLETED`, `EXPIRED`다. `USED` 상태는 없다.
+- 사용 여부는 verification·habit_verification의 upload_session 유니크 제약으로 보호한다.
+- Lambda 완료 상태 전이는 멱등이지만 재호출 때 SSE 전송은 다시 시도한다.
+- 운영 `/internal/**`은 JWT 대신 Internal API Key Filter가 보호한다.
+- dev/test에는 Internal API Key Filter가 없다.
 
 ---
 
-## 8. 주의사항
+## 6. 현재 구현 공백과 우선순위
 
-### 8.1 아키텍처 함정
+### 우선 해결 제안
 
-| 항목 | 설명 |
-|------|------|
-| **트랜잭션 + 외부 API** | 트랜잭션 안에서 S3 등 외부 API 호출 금지. SSE 발행도 `afterCommit`에서 수행 |
-| **Presigned URL** | Presigned URL 생성은 S3 통신이 아님 (로컬 서명 생성). 트랜잭션 내부에서 호출해도 무방 |
-| **session COMPLETED** | Lambda → `/internal/upload-sessions/{id}/complete`에서 처리. 트랜잭션 분리됨 |
-| **SSE 타임아웃** | 60초. 클라이언트는 타임아웃 시 `POST /verifications` 시도로 상태 확인 (폴링 fallback) |
-| **로그인 시 닉네임** | 카카오 재로그인 시 닉네임은 동기화하지 않음. email/profileImageUrl만 변경 시 조건부 save |
+1. SSE JWT 인증·UploadSession 소유권 검증
+2. `GET /upload-sessions/{id}` 상태 폴링 API 구현
+3. SHA 이미지 배포와 health 실패 자동 rollback
+4. 추적 가능한 안전한 `application-local.yml` 정리
 
-### 8.2 보안 주의
+SSE와 폴링은 같은 소유권 검증을 공유해야 한다. 현재 SSE는 운영에서도 `permitAll`이고 세션 ID당
+emitter 하나만 저장하므로 타인의 구독과 emitter 덮어쓰기 가능성이 있다.
 
-| 항목 | 설명 |
-|------|------|
-| **X-User-Id 헤더** | `!prod` 프로필에서만 허용 (`DevSecurityConfig`). 운영에서는 JWT만 유효 |
-| **`/auth/test-login`** | `@Profile("!prod")` — prod에서는 빈 자체가 로드되지 않음. 카카오 로그인 없이 JWT 발급 |
-| **`/internal/**` 경로** | Spring Security `permitAll()`이지만 **VPC Security Group으로 Lambda만 접근 허용** 필수 |
-| **JWT Secret** | 운영에서 `${JWT_SECRET}` 환경변수 필수. 하드코딩 기본값 절대 금지 |
-| **Apple refresh_token 암호화** | `${APPLE_REFRESH_KEY}` 필수 (AES-256-GCM, Base64 32바이트). 키 손실 시 기존 데이터 복호화 불가 |
-| **프로필 분리** | `LocalStorageAdapter`(!prod) / `S3StorageAdapter`(prod) — 프로필에 따라 자동 전환 |
+### 확인된 도메인·구현 차이
 
-### 8.3 문서 우선 참조
+- Habit용 upload session은 `crewId=null`인데 Crew 인증 검증이 이를 거부하지 않는 비대칭이 있다.
+- 같은 upload session이 크루 인증 테이블과 Habit 인증 테이블에서 각각 한 번 사용될 수 있다.
+- 일부 잘못된 query parameter 타입은 전용 변환 예외 처리가 없어 `500 C002`가 될 수 있다.
+- Notification 업무키 유니크 제약이 없어 스케줄러 다중 실행 시 중복 알림 가능성이 있다.
+- 오래된 알림 삭제 Repository 메서드는 있으나 호출 스케줄러가 없다.
+- Crew·Verification의 알림 Adapter가 Support 내부 타입과 Port를 직접 import한다.
 
-코드를 수정하기 전에 반드시 아래 문서를 먼저 확인할 것:
+### 도입 보류
 
-| 문서 | 경로 | 설명 |
-|------|------|------|
-| ERD | `/docs/spec/schema.md` | 엔티티 관계, 상태 Enum 정의, 인덱스 설계 |
-| API 명세 | `/docs/spec/api-spec.md` | API 계약서 (요청/응답/에러 코드) |
-| 비즈니스 규칙 | `/docs/spec/biz-logic.md` | 엣지케이스, Fallback 등급, Phase 로드맵 |
-| 컨텍스트 맵 | `/docs/spec/context-map.md` | 바운디드 컨텍스트 관계도 |
-| 아키텍처 | `/docs/spec/architecture.md` | 헥사고날 아키텍처 상세 |
-| 배포 체크리스트 | `/docs/prod-deploy-checklist.md` | 프로필별 설정 비교, 필수 환경변수 |
-| 리뷰 TODO | `/docs/archive/20260301-upload-session-review-todo.md` | Upload Session PR 후속 개선 항목 |
-| 코딩 규칙 | `/CLAUDE.md` | 전체 코딩 컨벤션, Anti-Patterns, 디버깅 로그 규칙 |
+- Lambda 최종 실패 보관용 SQS DLQ·OnFailure Destination과 경보
+- Redis 기반 분산 기능·토큰 블랙리스트
+- 사용자별 알림 수신 종류·시간대 정책
+- 상위 `sdd/solo-habit` 변경 이력 보강
 
-### 8.4 디버깅 로그
+보류 사유와 재검토 조건은 `future-considerations.md`를 따른다.
 
-버그 수정, 설계 결정, AI 방향 수정 시 `/docs/log/debugging-log.md`에 기록 필수.
-형식과 분량 기준은 `.claude/rules/logging-rules.md` 가 정본이다.
+---
+
+## 7. 배포 현행
+
+- PR에서는 `./gradlew build`와 `./gradlew e2eTest` 잡이 순서대로 실행된다.
+- push에서는 테스트 잡을 기다리지 않고 `main`, `develop` 모두 같은 운영 EC2에 배포된다.
+- Docker Hub에 `latest`와 SHA를 push하지만 EC2는 `latest`를 실행한다.
+- 기존 컨테이너를 먼저 제거하며 health 실패 자동 rollback이 없다.
+- Firebase는 EC2 key 파일 존재 여부만 보고 활성화하며 배포 후 실제 FCM 스모크는 자동화되지 않았다.
+- Lambda GitHub Actions는 SAM stack을 배포하지만 S3 notification·invoke permission은 수동 스크립트
+  또는 저장소 밖 기존 설정에 의존한다.
+- Flyway는 별도 migration job이 아니라 애플리케이션 부팅 때 실행된다.
+
+상세 체크와 저장소 밖 확인 항목은 `prod-deploy-checklist.md`를 따른다.
+
+---
+
+## 8. 검증 명령
+
+Java를 수정하면 다음 세 단계를 모두 통과해야 한다.
+
+```bash
+./gradlew checkstyleMain checkstyleTest
+./gradlew compileJava compileTestJava -x test
+./gradlew test
+```
+
+e2e 태그 테스트는 일반 `test`에서 제외되므로 필요한 변경은 별도로 실행한다.
+
+```bash
+./gradlew cleanE2eTest e2eTest
+```
+
+- H2 test profile은 Flyway OFF·`create-drop`이다.
+- PostgreSQL 전용 쿼리·제약은 integration/Testcontainers 테스트로 검증한다.
+- Dockerfile의 빌드 단계는 `bootJar`만 수행하며 테스트 게이트가 아니다.
+
+---
+
+## 9. 구현 규칙 요약
+
+- 문서 확정 → 구현 → 테스트 순서를 지킨다.
+- Controller는 Inbound UseCase에 의존하고 비즈니스 로직을 두지 않는다.
+- Domain은 Spring·JPA·AWS에 의존하지 않는다.
+- aggregate 간 영속 참조는 객체 관계 대신 ID를 사용한다.
+- JPA Entity와 Adapter는 infra에 둔다.
+- ID는 `PREFIX-<하이픈 없는 UUID 앞 16자>` 형식이다.
+- 모든 API는 `ApiResponse<T>`로 감싼다.
+- Java 메서드 길이 정본은 Checkstyle `MethodLength` 최대 30줄이다.
+- 새 API·도메인·테스트 변경은 `.claude/skills/`의 해당 지침을 먼저 읽는다.
+- 설정·배포 파일 변경은 `.claude/rules/config-deploy.md`를 먼저 읽는다.
+
+세부 규칙은 저장소 루트 `CLAUDE.md`와 `.claude/rules/`가 정본이다.

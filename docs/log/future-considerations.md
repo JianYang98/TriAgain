@@ -6,6 +6,43 @@
 
 ---
 
+### [2026-08-20] Lambda 업로드 완료 최종 실패 보관·경보 — SQS 도입 여부 추후 결정
+
+- 현재 상태: S3 `ObjectCreated:Put`이 `upload-complete` Lambda를 비동기로 호출하고, handler는
+  백엔드 완료 API의 HTTP·연결 오류를 다시 던져 Lambda 실패로 처리한다. SAM 템플릿에는 DLQ,
+  OnFailure Destination, 명시적 비동기 재시도, CloudWatch alarm이 없다.
+- 현재 결정: **이번 문서·구현 정리 범위에서는 AWS SQS를 도입하지 않는다.** 운영 AWS에 별도
+  설정이 있는지는 저장소 밖에서 확인한다.
+- 재검토 시점: 실제 업로드 완료 유실이 관측되거나, 운영에서 최종 실패 이벤트의 보관·재처리와
+  즉시 알림을 보장해야 할 때.
+- 검토안: SQS DLQ와 SQS OnFailure Destination 중 하나를 선택하고, Lambda `Errors`,
+  `AsyncEventsDropped`, `DestinationDeliveryFailures`, 실패 큐 적재량 경보 및 수동 재처리 runbook을
+  함께 설계한다. 큐만 만들고 소비·재처리 절차 없이 방치하지 않는다.
+- 관련 정본: `docs/spec/photo-upload-lambda-sse.md`, `docs/spec/api-spec/internal.md`,
+  `docs/prod-deploy-checklist.md`.
+
+---
+
+### [2026-08-20] 상위 `sdd/solo-habit` 현행화 — 초기 결정은 보존하고 변경 이력만 보강
+
+- 현재 API 정본은 `triagain-back/docs/spec/api-spec/habit.md`, 비즈니스 규칙은 `biz-logic.md`,
+  스키마는 `schema.md`다. 상위 `sdd/solo-habit/`은 최초 설계와 결정 이유를 보존하는 이력 문서로 둔다.
+- 문서 교차검증과 PostgreSQL Testcontainers 실측에서 확인한 현재 차이:
+  - 인증 더블탭은 동시·순차 모두 승자 `201`, 패자 `400 V002`다.
+    `impl-guards.md`의 “사이클 시작·인증 각각 409”는 현재 테스트와 다르다.
+  - `GlobalExceptionHandler`는 과거 substring 분기가 아니라 제약 이름 exact-match Map을 사용한다.
+  - `verificationContent`는 초기 범위 밖이었지만 V24에서 구현됐고, `HB010`도 이후 추가됐다.
+  - `step2-api.md`의 사이클 더블탭 설명에는 사전 조회 `409 HB002`와 제약 경합 후 기존 사이클
+    `200` 반환이 섞여 있으므로 두 경로를 분리해야 한다.
+- 수정 방식: 과거 문장을 삭제하거나 현재 상태로 덮어쓰지 않고, 각 정본 파일 상단의 역할 표시와
+  날짜가 있는 정정·변경 섹션을 추가한다. `.bak` 파일은 수정하지 않는다.
+- 대상: `step0-overview.md`, `step1-biz-logic.md`, `step2-api.md`, `impl-guards.md`.
+  `step3-schema.md`는 V23 설계 이력을 유지하고 현재 Flyway/JPA 제약 차이만 주의사항으로 보강한다.
+- 실행 조건: `sdd/`는 현재 백엔드 worktree 밖의 상위 저장소이므로 Claude 작업과 섞지 않는다.
+  문서 크로스체크 종료 후 상위 저장소용 별도 worktree·branch에서 최소 정정한다.
+
+---
+
 ### [2026-08-07] 인증 리액션 — 이관·알림·크루 중도 탈퇴·그룹 순서 4건
 
 - 맥락: 인증 리액션 v1 도입(`sdd/verification-reaction/`). 아래 4건은 **의식적으로 v1 범위 밖**으로 둔 것이다.
@@ -67,11 +104,11 @@
 - ~~이유: 기술 선택("JPA=CRUD/쓰기, MyBatis=복잡한 조회")의 경계 밖이지만 동작에 문제가 없고, 이관은 XML 매퍼 신설을 수반한다. 위 [2026-06-12] `CrewJpaAdapter` 항목과 같은 성격이라 함께 볼 것.~~
 - **해결**: MyBatis 미채택 확정 — 의존·설정을 제거해 **이관 목적지가 사라졌고**, 복잡 조회는 네이티브 쿼리가 실질 규칙이므로 현재 상태가 곧 정답이다. 근거: `triagain/revisions/17-mybatis-잔재-정리.md`
 
-### [2026-07-26] 부하서버 GC를 Serial → G1으로 전환할지 (측정 완료, 전환 보류)
+### [2026-07-26] ~~부하서버 GC를 Serial → G1으로 전환할지~~ ✅ RESOLVED 2026-07-26
 
 - 현재 상태: 부하서버 JVM = **Serial GC** (1GiB 에르고노믹스). 2026-07-13/14 Serial↔G1 통제쌍 실험 완료 — 8블록(2밤 × 2전략 PESS/COND × 2암 게이트 on/off). 정본: `load-test/results/0714/serial-vs-g1/` 통합비교 4쌍.
-- 결정 (2026-07-26, Issue #97 종결): **측정만 하고 전환 보류.** G1은 런중 Major GC 오염을 소멸시키나(전략 교차 2/2 확정), 체감 지연인 **완료 p95는 Serial ≈ G1**으로 밤간 노이즈 봉투 안(판정 유보) → 전환을 정당화할 개선이 안 보임.
-- 필요 시점: 부하가 커져 런중 Major GC 오염이 실제 p95를 흔드는 규모에 도달하거나, 힙을 키워 Serial STW가 문제되는 시점. 그때 재평가.
+- **최종 결정 (2026-07-26, Issue #97 종결): Serial GC를 유지하고 G1으로 전환하지 않는다.** G1은 런중 Major GC 오염을 소멸시키나(전략 교차 2/2 확정), 체감 지연인 **완료 p95는 Serial ≈ G1**으로 확인되어 전환을 정당화할 개선이 없었다.
+- 이번 항목은 결정 완료로 닫는다. 부하 규모나 힙 구성이 크게 바뀌어 GC 전략을 다시 선택해야 할 때는 새 측정 항목으로 등록한다.
 - 근거 상세: `load-test/results/0714/serial-vs-g1/Serial-vs-G1_통합비교-4쌍.md` §7 — ①오염 소멸=확정, ④기저 p95 우열=유보, ⑤커널 SYN drop=GC 독립, ⑥할당 불변식 0.46~0.51MB/도달 8/8.
 
 ### [2026-07-11] 솔로 인증 마감 검증을 사이클-끝 → 슬롯별 마감으로 정렬 (deadlineTime FE 노출 시)
@@ -108,11 +145,13 @@
 - 필요 시점: 공개 경로가 다음에 또 추가될 때 (그 PR에서 함께 처리)
 - 이유: `PUBLIC_PATHS` 공유 상수 추출은 작은 리팩토링이지만, feedback-link PR은 지시서가 "기존 보안 설정 변경 금지 — 항목만 추가"라 범위 외였음. 추출 시 permitAll 검증 테스트(공개 경로 무토큰 200/302, 보호 경로 401) 추가도 함께 검토.
 
-### [2026-06-11] 문의/건의는 `/feedback` → 외부 구글폼 302로 수집 — 인앱 피드백 도메인 미도입
+### [2026-06-11] ~~문의/건의는 `/feedback` → 외부 구글폼 302로 수집~~ ✅ RESOLVED 2026-06-11
 
-- 현재 상태: `GET /feedback`(공개, permitAll 단일 경로)이 `application.yml`의 `triagain.feedback-form-url`로 302 리다이렉트. 앱은 고정 URL(`triagain.kr/feedback`)만 가리키고, 폼 교체는 설정값 변경 + 재배포로 끝(앱 릴리스 불필요). 응답은 구글 시트에서 수동 확인.
-- 필요 시점: 피드백 유입량 증가 시
-- 이유: 인앱 피드백 도메인(테이블·입력 폼·이메일 인프라)은 수십 명 규모 출시 앱에 오버엔지니어링. 유입 늘면 인앱 도메인 도입 재검토 (중복 설계 방지용 기록 — sdd/feedback-link)
+- **최종 결정**: `GET /feedback`(공개, permitAll 단일 경로)는 `application.yml`의
+  `triagain.feedback-form-url`로 302 리다이렉트하고, 응답은 외부 구글폼·구글 시트에서 관리한다.
+  폼 교체는 설정값 변경과 재배포로 처리하며 앱 릴리스는 필요하지 않다.
+- **범위 결정**: 인앱 피드백 테이블·입력 폼·이메일 도메인은 도입하지 않는다. 이 항목은 외부 구글폼
+  운영 방식을 확정한 기록으로 닫는다. (근거: `sdd/feedback-link`)
 
 ### [2026-06-10] crews 날짜 역전 방지 — DB CHECK 제약 추가 보류 (데이터 정리 후 별도)
 
@@ -120,11 +159,17 @@
 - 필요 시점: 위반 데이터 정리(진단 0건) 완료 직후 별도 PR. 시드/직접 insert로 역전 데이터가 재유입되면 우선순위↑.
 - 이유: ① CHECK 마이그레이션은 적용 시 기존 전 행을 검사 → 위반 행이 남아 있으면 `ADD CONSTRAINT` 실패로 부팅/배포가 깨짐(정리 0건 선행 필수). ② `/implement` 자동 루프는 삭제 vs 보정 결정에서 못 멈춰, 데이터 정리/CHECK를 자동 run에 넣으면 위험. ③ 기능(탭/성취)과 무관한 순수 재발 방지라 미뤄도 화면 영향 0. (범위는 `end_date > start_date`만; 최소 +6일은 레거시 호환 위해 앱 `validateDates`로만 유지.)
 
-### [2026-06-10] 홈 완료 크루 성취 표시 — 달성률(%) 지표 보류 (분모 정의 미합의)
+### [2026-06-10] 홈 완료 크루의 **개인 성취 표시** — 개인 달성률(%) 지표 보류 (분모 정의 미합의)
 
-- 현재 상태: `home-crew-tabs` SDD에서 완료 크루 카드 성취 표시는 양수 지표(`successCount` 작심삼일 N회, `verifiedDayCount` 총 N일 인증)만 노출하기로 확정. 달성률(%)은 이번 범위에서 제외.
-- 필요 시점: 완료 크루에 "비율형" 성취를 보여줄 니즈가 생기거나 성취 프레이밍을 강화할 때
-- 이유: 달성률의 분모 정의가 갈린다 — (a) 전체 챌린지 사이클 수 대비 SUCCESS 비율, (b) 크루 전체 기간 일수 대비 인증 일수, (c) 가입~종료 사이 인증 가능일 대비 등. 특히 가입만 하고 인증 0인 유저는 어떤 분모로도 0%가 되어 "작심삼일도 괜찮아" 컨셉과 충돌(실패 박제). 분모·표기 정책(0% 비노출 여부 포함)을 먼저 합의한 뒤 추가해야 안전. v1은 양수 지표만으로 동기부여한다. (성취 0회 크루는 성취 라인 자체를 미렌더링 — SDD step1 §4)
+- 현재 상태: `home-crew-tabs` SDD의 완료 크루 카드 성취 표시는 **요청자 본인 기준**이다.
+  `successCount`(본인이 달성한 작심삼일 N회)와 `verifiedDayCount`(본인의 총 인증 N일)만 노출하며,
+  크루 전체 합산 성취율을 표시하는 계약은 없다. 개인 달성률(%)은 이번 범위에서 제외했다.
+- 필요 시점: 요청자 개인의 비율형 성취를 보여줄 니즈가 생기거나 성취 프레이밍을 강화할 때
+- 이유: 개인 달성률의 분모 정의가 갈린다 — (a) 본인의 전체 챌린지 사이클 수 대비 SUCCESS 비율,
+  (b) 크루 기간 중 본인의 인증 가능 일수 대비 인증 일수, (c) 가입일 이후 본인 참여 가능일 대비 등.
+  가입만 하고 인증 0인 유저는 어떤 분모로도 0%가 되어 "작심삼일도 괜찮아" 컨셉과 충돌할 수 있다.
+  분모·표기 정책(0% 비노출 여부 포함)을 먼저 합의한 뒤 추가한다. v1은 양수 지표만으로 동기부여한다.
+  (성취 0회 크루는 성취 라인 자체를 미렌더링 — SDD step1 §4)
 
 ### [2026-06-09] 혼자 크루장 크루 삭제 — 게이트가 "크루 전체 기준"이라 유령 멤버 기록 시 솔로 리더가 삭제 불가
 
@@ -183,16 +228,20 @@
 - ~~D-C1: UserCrewMembershipAdapter (User Context)가 Crew Context의 JPA 인프라를 직접 import~~ ✅ **2026-04-09 해결 (최소 침습)**: 어댑터를 `crew.infra.adapter.UserCrewMembershipAdapter`로 이동. `CrewMembershipPort`는 `user.port.out`에 그대로 두고 Crew BC가 구현하는 형태(다른 BC가 Output Port 구현 — 헥사고날 정당 패턴). **권장 옵션**(`UserWithdrawnEvent` 발행 → 각 BC 자체 정리)는 후속 PR로 분리.
 - 현재 상태:
   - D-C2: NotificationAdapter, VerificationNotificationAdapter가 Support Context의 Notification 도메인 모델을 직접 생성
+- **2026-08-20 문서 교차검증 보강**:
+  - 두 Adapter는 Support Domain뿐 아니라 `NotificationRepositoryPort`, `NotificationSendPort`,
+    `FcmTokenCleanupPort` 등 Support의 Outbound Port와 UserRepositoryPort까지 직접 사용한다.
+  - 현재 패키지 컴파일 의존에는 Crew↔Verification, Verification↔Habit, Crew↔Support의 양방향이 있다.
+    런타임 순환 호출로 단정하지 말고, Adapter 소유권·Inbound UseCase 경계·이벤트 대체 가능성을 별도 분석한다.
 - 필요 시점: Phase 2 또는 마이크로서비스 분리 시
 - 이유: 모노리스 단일 배포이므로 Phase 1에서는 실질적 문제 없음. 리팩토링 범위가 크고 기능 변경 없으므로 별도 PR로 분리
 
 ---
 
-### [2026-03-27] 부하 테스트 우선순위
+### [2026-03-27] ~~부하 테스트 우선순위~~ ✅ RESOLVED 2026-08-20
 
-- 현재 상태: Phase 1 (500명, TPS 50 목표), 부하 테스트 미실시
-- 필요 시점: Phase 1 출시 전 (1~3번), 데이터 축적 후 (4~5번)
-- 우선순위:
+- **해결**: 아래 Phase 1 주요 부하 시나리오는 모두 실행했다. 이 표는 실행 전 우선순위와
+  시나리오를 보존한 기록이며, 현재 미실시 작업 목록으로 해석하지 않는다.
 
 | 순위 | 대상 | 핵심 이유 | 테스트 시나리오 |
 |------|------|----------|---------------|
@@ -204,12 +253,10 @@
 
 ---
 
-### [2026-03-27] CreateVerificationService — 트랜잭션 내 FCM 동기 호출 분리
+### [2026-03-27] ~~CreateVerificationService — 트랜잭션 내 FCM 동기 호출 분리~~ ✅ RESOLVED
 
-- 현재 상태: `CreateVerificationService.createVerification()`이 `@Transactional` 내부에서 `verificationNotificationPort.sendChallengeSuccessNotification()`을 동기 호출. 이 안에서 FCM 발송(`FcmAdapter.send()`)이 `@Retryable` 3회(1s+2s+4s, 최악 7초) 블로킹되며, 그동안 DB 커넥션을 점유
-- 필요 시점: Phase 2 또는 트래픽 증가 시
-- 이유: CLAUDE.md Anti-Pattern "트랜잭션 안에 외부 API 호출 금지" 위반. Phase 1(TPS 50, 500명)에서는 커넥션 풀 고갈 가능성 낮으나, 트래픽 증가 시 인증 API 응답 지연 + 커넥션 풀 고갈 위험. 해결 방향: (1) `@Async` + 스레드 풀로 FCM 비동기 분리, (2) 트랜잭션 커밋 후 이벤트(`@TransactionalEventListener`)로 FCM 발송, (3) 스케줄러처럼 트랜잭션 밖으로 FCM 호출 이동
-- 검증: 리팩토링 전후로 `POST /verifications` 부하 테스트 실시하여 응답 시간 및 커넥션 풀 사용량 비교 필요
+- 해결 상태: `CreateVerificationService`는 `ChallengeSuccessEvent`만 발행하도록 변경되어 트랜잭션 내 FCM 동기 호출이 제거됐다. 현재 `ChallengeSuccessEventListener` 처리 메서드는 주석 처리돼 있어 성공 알림 자체는 미발송 상태다.
+- 과거 위험이었던 트랜잭션 내 외부 FCM 호출과 DB 커넥션 장기 점유는 현재 코드에 남아 있지 않다.
 
 ---
 
@@ -236,11 +283,13 @@
 
 ---
 
-### [2026-03-20] CloudWatch 로그 연동
+### [2026-03-20] ~~CloudWatch 로그 연동~~ ✅ RESOLVED 2026-08-20
 
-- 현재 상태: EC2 서버 로컬 로그만 존재
-- 필요 시점: 출시 후 운영 모니터링 시
-- 참고: 청천님 사례 — 중요 로그만 CloudWatch에 기록
+- ~~현재 상태: EC2 서버 로컬 로그만 존재~~
+- **해결**: `.github/workflows/deploy.yml`의 컨테이너 실행 시 Docker `awslogs` 드라이버로
+  CloudWatch Logs 그룹 `/triagain/app`, 스트림 `triagain`에 전송하도록 설정되어 있다.
+- **남은 운영 확인**: EC2 Instance Profile의 CloudWatch Logs 권한과 실제 로그 유입은 저장소 밖
+  운영 환경에서 확인한다. 로그 알림·Lambda 실패·Dead Letter 경보 정의는 별도 보류 항목이다.
 
 ---
 
@@ -261,11 +310,9 @@
 
 ---
 
-### [2026-03-13] Moderation Context BC 경계 위반 수정
+### [2026-03-13] ~~Moderation Context BC 경계 위반 수정~~ ✅ RESOLVED
 
-- 현재 상태: `moderation/infra/CrewClientAdapter.java`가 `crew.domain.model.Crew`, `crew.domain.model.CrewMember`, `crew.port.out.CrewRepositoryPort`를 직접 import. Verification → Crew 경계 수정과 동일 패턴의 위반
-- 필요 시점: 다음 Moderation Context 관련 작업 시
-- 이유: 이번 PR은 Verification → Crew 경계만 수정 범위. Moderation도 동일하게 `CrewQueryUseCase` (Input Port) 도입 후 어댑터가 UseCase만 의존하도록 변경 필요
+- 해결 상태: `moderation/infra/CrewClientAdapter.java`는 현재 Crew Domain·Repository가 아니라 `CrewMembershipQueryUseCase` Inbound Port를 호출한다.
 
 ---
 
@@ -277,18 +324,13 @@
 
 ---
 
-### [2026-03-11] 썸네일 생성은 Phase 2로 보류
+### [2026-03-11] 썸네일 생성은 현재 도입하지 않음
 
-- 현재 상태: 클라이언트 압축 이미지 1장만 업로드. 썸네일 미생성. COMPLETED = "원본 1장 업로드 완료"
-- 필요 시점: Phase 2 (피드 성능 최적화 시)
-- 이유: 지금 도입하면 아래 결정이 추가로 필요하여 업로드 플로우 안정화가 지연됨
-  - 썸네일 생성 완료까지를 업로드 완료로 볼지
-  - thumbnailUrl 저장 위치 (upload_session? verification?)
-  - 피드/상세 응답 분기 방법
-  - 썸네일 생성 실패 시 fallback 처리
-- Phase 2 확장 방향:
-  - thumbnailUrl 필드 추가 (피드: 썸네일, 상세: 원본)
-  - 현재 imageUrl 중심 구조에서 thumbnailUrl만 추가하면 큰 변경 없이 확장 가능
+- **현재 결정**: 클라이언트가 압축한 이미지 1장만 업로드하고, 서버 썸네일은 생성하지 않는다.
+  `COMPLETED`는 원본 1장 업로드 완료를 의미한다.
+- 따라서 Phase 2의 기본 작업 목록에 썸네일 생성을 포함하지 않는다. 피드 성능 문제 등으로
+  별도 요구가 실제로 생길 때에만 `thumbnailUrl` 저장 위치, 완료 기준, 응답 분기,
+  생성 실패 fallback을 새로 결정한다.
 
 ---
 
@@ -318,8 +360,12 @@
 ### [2026-03-04 21:50] 챌린지 Lazy 생성 — 실패 후 미재도전 유저 알림
 
 - 현재 상태: 챌린지 생성을 Eager(크루 활성화/참여 시) → Lazy(첫 인증 시 자동 생성)로 변경. 스케줄러는 FAILED 처리만 수행, 새 챌린지 자동 생성 제거.
-- 필요 시점: Phase 2 (알림 시스템 도입 시)
-- 이유: Lazy 생성이므로 실패 후 재도전하지 않는 유저는 챌린지가 없는 상태로 남음. 리마인더 푸시("다시 도전해보세요!")가 필요하지만 Phase 1에서는 알림 시스템 미구현.
+- 현재 보완 상태: 알림 도메인과 마감 임박 리마인더 스케줄러는 구현되어 있다. 다만 FCM 기본 활성화 여부,
+  사용자별 알림 시점·옵트인 정책, 실패 재시도는 별도 운영·제품 결정으로 남아 있다. 챌린지 성공 알림 리스너는
+  현재 비활성 상태다.
+- 필요 시점: 사용자별 리마인더 정책을 확정하거나, 실패 후 미재도전 유저 대상의 별도 재도전 알림을 채택할 때
+- 이유: Lazy 생성에서는 실패 후 재도전하지 않는 유저가 챌린지 없는 상태로 남는다는 구조적 사실은 그대로다.
+  현재 구현된 마감 임박 리마인더와 "다시 도전해보세요!" 성격의 후속 알림은 대상·시점이 다르므로 별도 결정이 필요하다.
 
 ---
 
@@ -360,11 +406,7 @@
 
 ---
 
-### [2026-03-03 11:12] `/internal/**` Lambda 인증 필터 추가 필요
+### [2026-03-03 11:12] ~~`/internal/**` Lambda 인증 필터 추가 필요~~ ✅ RESOLVED
 
-- 맥락: `/internal/**` 엔드포인트가 `permitAll`로 열려있어 보안 위험 → prod에서 `denyAll`로 임시 차단
-- 지금 한 것: `SecurityConfig`(prod)에서 `denyAll`로 변경, `DevSecurityConfig`(!prod)는 `permitAll` 유지
-- 추후 고려: Lambda 연동 시 시크릿 키 헤더 검증 필터 추가
-  - Lambda 요청에 `X-Internal-Secret` 등의 헤더를 포함하고, Spring Security 필터에서 검증
-  - 필터 추가 후 dev/prod 설정 통일 (`denyAll` → 필터 기반 인증으로 전환)
-  - VPC 내부 통신만 허용하는 네트워크 레벨 제한도 병행 검토
+- 해결 상태: prod에서 `InternalApiKeyFilter`가 모든 `/internal/**` 요청의 `X-Internal-Api-Key`를 검증한다. Security matcher의 `permitAll`은 필터 우회를 뜻하지 않는다. `!prod`에는 이 필터가 없다.
+- 네트워크 레벨 제한(VPC·Security Group)은 저장소 밖 운영 설정 확인 대상이다.
