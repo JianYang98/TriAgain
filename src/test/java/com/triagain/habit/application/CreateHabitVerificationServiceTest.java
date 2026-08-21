@@ -361,9 +361,14 @@ class CreateHabitVerificationServiceTest {
 				.isEqualTo(ErrorCode.VERIFICATION_DEADLINE_EXCEEDED);
 	}
 
+	/**
+	 * #167 회귀 가드 — 서비스가 제약 위반을 삼키면 제약명 정보가 사라져 V015·HB010이 V003으로 뭉개진다.
+	 * 제약명 → 에러코드 매핑은 {@code GlobalExceptionHandler.CONSTRAINT_ERRORS} 한 곳이 담당하고,
+	 * 그 매핑의 실DB 검증은 {@code ConstraintErrorCodeMappingIntegrationTest} M1-4·M1-5가 한다.
+	 */
 	@Test
-	@DisplayName("더블탭(유니크 제약 위반) — VERIFICATION_ALREADY_EXISTS(V003)로 명시 매핑된다(G2)")
-	void doubleTapUniqueViolation_mapsToV003() {
+	@DisplayName("저장 중 유니크 제약 위반이 나면 삼키지 않고 그대로 전파한다(제약명 매핑은 핸들러 담당)")
+	void saveUniqueViolation_propagatesWithoutSwallowing() {
 		// Given
 		givenHabit(HabitVerificationType.TEXT, HabitStatus.ACTIVE);
 		HabitCycle cycle = cycleOf(TODAY, 0, FIXED_NOW.plusDays(1));
@@ -371,14 +376,12 @@ class CreateHabitVerificationServiceTest {
 				.willReturn(Optional.of(cycle));
 		given(habitVerificationRepositoryPort.existsByHabitIdAndTargetDate(HABIT_ID, TODAY)).willReturn(false);
 		given(habitVerificationRepositoryPort.save(any()))
-				.willThrow(new DataIntegrityViolationException("UK violation"));
+				.willThrow(new DataIntegrityViolationException("uk_habit_verifications_habit_date"));
 
 		// When & Then
 		assertThatThrownBy(() -> service.createVerification(
 				new CreateHabitVerificationCommand(USER_ID, HABIT_ID, null, "텍스트")))
-				.isInstanceOf(BusinessException.class)
-				.extracting(e -> ((BusinessException) e).getErrorCode())
-				.isEqualTo(ErrorCode.VERIFICATION_ALREADY_EXISTS);
+				.isInstanceOf(DataIntegrityViolationException.class);
 	}
 
 	// --- 헬퍼 메서드 ---
