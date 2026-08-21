@@ -129,11 +129,8 @@ Authorization: Bearer <access-token>
 
 | HTTP | 코드 | 조건 |
 |---|---|---|
+| 400 | C001 | `isRead`, `page`, `size` query parameter 바인딩 실패 |
 | 401 | A003 | 미인증 또는 유효하지 않은 Access Token |
-
-> **현행 입력 처리 공백:** `page=abc`처럼 정수로 변환할 수 없는 값과 잘못된 boolean 값은
-> 별도 타입 변환 예외 핸들러가 없어 `500 C002`로 귀결될 수 있다. 이는 원하는 계약으로
-> 확정한 것이 아니라 현재 코드에서 확인한 차이다.
 
 ---
 

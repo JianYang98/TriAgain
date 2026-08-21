@@ -106,13 +106,11 @@ upload-sessions/{userId}/{uuid}.{extension}
 
 | HTTP | 코드 | 메시지 | 조건 |
 |---|---|---|---|
+| 400 | C001 | 잘못된 입력값입니다. | `imageKey` query parameter 누락 또는 바인딩 실패 |
 | 400 | V014 | PENDING 상태의 세션만 처리할 수 있습니다. | 세션이 `EXPIRED` |
 | 403 | FORBIDDEN | Invalid internal API key | 운영에서 내부 API 키 누락·불일치 |
 | 404 | V004 | 업로드 세션을 찾을 수 없습니다. | `imageKey`에 해당하는 세션 없음 |
 
-> **현행 입력 처리 공백:** `imageKey` 쿼리 파라미터를 누락하면 별도
-> `MissingServletRequestParameterException` 처리가 없어 `500 C002`로 귀결될 수 있다.
-> 이는 확정하려는 계약이 아니라 현재 코드에서 확인한 차이다.
 
 ---
 
@@ -181,10 +179,11 @@ FCM 재시도는 최초 시도를 포함해 최대 3회이며 대기 시간은 1
 
 | HTTP | 코드 | 조건 |
 |---|---|---|
+| 400 | C001 | `fcmToken` query parameter 누락 또는 바인딩 실패 |
 | 403 | FORBIDDEN | 운영에서 내부 API 키 누락·불일치 |
 
-> **현행 입력·보안 공백:** `fcmToken`에는 blank·길이 검증이 없고, 파라미터 누락은 별도 예외
-> 처리 없이 `500 C002`가 될 수 있다. 또한 토큰을 query string으로 전달하므로 프록시·접근 로그
+> **현행 입력·보안 공백:** `fcmToken`에는 blank·길이 검증이 없다. 또한 토큰을 query string으로
+> 전달하므로 프록시·접근 로그
 > 설정에 따라 민감한 토큰이 URL에 남을 수 있다.
 >
 > Controller 미등록 시 의도상 사용할 수 없는 경로지만, “항상 404”라는 프로젝트 계약을 보장하는

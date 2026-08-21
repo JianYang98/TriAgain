@@ -13,8 +13,10 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.triagain.common.response.ApiResponse;
 
@@ -88,6 +90,19 @@ public class GlobalExceptionHandler {
 		return ResponseEntity
 				.badRequest()
 				.body(ApiResponse.fail(ErrorCode.INVALID_INPUT, message));
+	}
+
+	/** Query 파라미터 바인딩 예외 — 누락·타입 오류를 C001로 반환 */
+	@ExceptionHandler({
+		MissingServletRequestParameterException.class,
+		MethodArgumentTypeMismatchException.class
+	})
+	protected ResponseEntity<ApiResponse<Void>> handleRequestParameterException(
+			Exception e, HttpServletRequest request) {
+		log.warn("[{} {}] 요청 파라미터 바인딩 실패 [{}]",
+				request.getMethod(), request.getRequestURI(), e.getClass().getSimpleName());
+		String message = resolveMessage(ErrorCode.INVALID_INPUT, null);
+		return ResponseEntity.badRequest().body(ApiResponse.fail(ErrorCode.INVALID_INPUT, message));
 	}
 
 	@ExceptionHandler(DataIntegrityViolationException.class)

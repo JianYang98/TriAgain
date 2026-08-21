@@ -355,9 +355,7 @@
 
 기본 `crew.search.min-remaining-days`는 코드의 `@Value` 기준 `6`이며, 결과는 `createdAt DESC`다.
 
-> **현재 구현 공백:** `category` enum 또는 `page`, `size` 숫자의 HTTP 바인딩 자체가 실패하면
-> `GlobalExceptionHandler`에 전용 type-mismatch 처리가 없어 일반 `500 C002`로 처리될 수 있다.
-> 의도한 `400 C001` 계약으로 맞추려면 Java 예외 매핑을 별도로 수정해야 한다.
+잘못된 `category`, `page`, `size` query parameter 바인딩은 `400 C001`이다.
 
 **성공: `200 OK`**
 
