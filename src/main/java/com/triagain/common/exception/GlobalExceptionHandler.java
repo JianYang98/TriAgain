@@ -92,7 +92,7 @@ public class GlobalExceptionHandler {
 				.body(ApiResponse.fail(ErrorCode.INVALID_INPUT, message));
 	}
 
-	/** Query 파라미터 바인딩 예외 — 누락·타입 오류를 C001로 반환 */
+	/** 요청 파라미터 누락 및 요청 인자 타입 변환 오류를 C001로 반환 */
 	@ExceptionHandler({
 		MissingServletRequestParameterException.class,
 		MethodArgumentTypeMismatchException.class
