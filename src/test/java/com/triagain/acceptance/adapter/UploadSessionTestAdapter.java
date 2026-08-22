@@ -30,4 +30,24 @@ public class UploadSessionTestAdapter extends BaseTestAdapter {
 				.log().ifError()
 				.extract();
 	}
+
+	/** 업로드 세션 상태 조회 — GET /upload-sessions/{id} */
+	public ExtractableResponse<Response> getUploadSessionStatus(String userId, Long id) {
+		return givenAuthRequest(userId)
+				.when()
+				.get("/upload-sessions/" + id)
+				.then()
+				.log().ifError()
+				.extract();
+	}
+
+	/** 토큰 없이 업로드 세션 상태 조회 — 401 검증용 */
+	public ExtractableResponse<Response> getUploadSessionStatusWithoutAuth(Long id) {
+		return givenRequest()
+				.when()
+				.get("/upload-sessions/" + id)
+				.then()
+				.log().ifError()
+				.extract();
+	}
 }
