@@ -77,16 +77,22 @@ flowchart LR
 | `deleted_at` | soft delete 시각, 활성 사용자는 null |
 | `token_version` | 탈퇴·재가입 전후 기존 JWT 무효화 기준 |
 
-닉네임은 2~12자의 한글·영문·숫자·언더스코어만 허용한다 (`^[가-힣a-zA-Z0-9_]{2,12}$`). 문자열 중간의 공백은 어느 경로에서도 허용되지 않는다.
+닉네임은 2~12자의 한글·영문·숫자·언더스코어만 허용한다 (`^[가-힣a-zA-Z0-9_]{2,12}$`). 앞뒤 공백은 트림한 뒤 검증·저장하지만 `String.trim()` 기준이라 **U+0020 이하만** 잘린다. 가입(`POST /auth/signup`·`POST /auth/apple-signup`)과 `PATCH /users/me/nickname`은 모두 application 층에서 `String.trim()`으로 다듬은 **같은 값**을 같은 `User.validateNickname()`에 넘기므로 **모든 경로에서 동일하게 동작한다.**
 
-**앞뒤 공백 처리는 경로마다 다르다.**
+| 입력 | 결과 |
+|---|---|
+| `""` · `"  "` — 빈 문자열·ASCII 공백만 | 400 `C001` (요청 DTO `@NotBlank`) |
+| `"　"` — `Character.isWhitespace`가 true인 비ASCII 공백만 | 400 `U004` (`validateNickname()`의 blank 검사) |
+| `"  가나  "` | 성공, `"가나"`로 트림 저장 |
+| `"　가나　"` · `"가 나"` · `"a"` | 400 `U007` (트림되지 않은 공백·중간 공백·길이 미달로 패턴 불일치) |
 
-| 경로 | 앞뒤 공백 | 근거 |
-|---|---|---|
-| 가입 (`POST /auth/signup`, `POST /auth/apple-signup`) | **트림 후 검증·저장** — `"  닉네임  "`은 `"닉네임"`으로 성공 | `SignupService`·`AppleSignupService`가 `trim()` 후 `User.validateNickname()` 호출 |
-| 닉네임 변경 (`PATCH /users/me/nickname`) | **400 `U007`로 거부** — 트림하지 않는다 | 요청 DTO의 `@Pattern`이 `@Valid` 단계에서 걸러 도메인에 도달하지 않음 |
+`validateNickname()`에 트림한 값을 넘기느냐 원문을 넘기느냐가 결과를 가르는 입력군이 하나 있다. `String.trim()`(U+0020 이하 제거)과
+`String.isBlank()`(`Character.isWhitespace` 기준) 중 한쪽만 공백으로 보는 **C0 제어문자**
+(U+0000–U+0008, U+000E–U+001B)가 섞인 경우다. 예를 들어 전각공백 + NUL(`U+3000` + `U+0000`)은
+트림하면 전각공백만 남아 `U004`, 트림 전 원문 그대로면 blank가 아니라 패턴 검사로 넘어가 `U007`이 된다.
+세 경로 모두 트림한 값을 넘기므로 이 입력도 `U004`로 같다.
 
-도메인 규칙(`User.validateNickname()`)은 트림 후 패턴을 검사하므로 가입 쪽이 도메인 규칙과 일치하고, 닉네임 변경 경로만 DTO 검증이 앞서 트림 기회를 막는다. 이 차이는 의도된 것으로 확정된 바 없다 — 정렬 여부는 후속 판단 대상이다.
+`U004`가 나는 비ASCII 공백은 `Character.isWhitespace`가 true인 15개다 — U+1680, U+2000–2006, U+2008–200A, U+2028, U+2029, U+205F, U+3000. NBSP(U+00A0)·U+2007·U+202F는 `isWhitespace`가 false라 여기 해당하지 않고 패턴 검사로 넘어가 `U007`이 된다.
 
 ---
 

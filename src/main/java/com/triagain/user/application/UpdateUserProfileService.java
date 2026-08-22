@@ -27,7 +27,15 @@ public class UpdateUserProfileService implements UpdateUserProfileUseCase {
 		User user = userRepositoryPort.findById(command.userId())
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-		user.updateProfile(command.nickname(), command.profileImageUrl());
+		// updateProfile() 안에서 또 불리지만 중복이 아니다 — 그 안의 !isBlank() 가드는
+		// 공백만으로 된 닉네임(Character.isWhitespace 기준, 전각공백 U+3000 등)에서 검증 블록을
+		// 통째로 건너뛴다. 호출 시점을 앞당겨 가입 경로와 동일하게 U004를 낸다.
+		// 넘기는 값도 SignupService와 같은 trim() 후여야 한다 — raw를 넘기면 trim()(≤U+0020 제거)과
+		// isBlank()(Character.isWhitespace 기준)의 경계가 어긋나는 C0 제어문자에서 U004/U007로 갈린다.
+		// null 방어는 @NotBlank가 아니라 유스케이스 포트 직접 호출자용 — NPE 대신 U004를 낸다.
+		String trimmedNickname = command.nickname() != null ? command.nickname().trim() : null;
+		User.validateNickname(trimmedNickname);
+		user.updateProfile(trimmedNickname, command.profileImageUrl());
 		User saved = userRepositoryPort.save(user);
 
 		return toResult(saved);

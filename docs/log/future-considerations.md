@@ -6,6 +6,48 @@
 
 ---
 
+### [2026-08-22] BE #168 후속 검토 후보 — 현재 보류
+
+- 현재 상태: BE #168(`fix/168-query-parameter-error-mapping`, 쿼리 바인딩 예외 C001 매핑) 리뷰 중
+  범위 밖으로 확인된 항목들. 착수 결정 없이 후보만 기록한다.
+  - malformed JSON: BE 입력 예외 검토 — FE·외부 연동(Webhook 등)이 스키마 검증 없는 JSON을 보내는
+    새 경로가 생기거나, malformed 요청으로 인한 500이 로그에서 관측될 때
+  - 미등록 경로: 404 라우팅 계약 검토 — FE가 "항상 404" 계약에 의존하는 로직(라우팅 폴백 등)을
+    만들거나, 미등록 경로 접근이 운영에서 다수 관측될 때
+  - 빈 query parameter: 입력 계약 결정 필요 — `imageKey`/`fcmToken` 빈 문자열 유입이 실제 관측되거나,
+    다운스트림(S3 조회·FCM 발송)이 빈 값 때문에 알기 어려운 예외로 죽는 게 확인될 때
+  - fcmToken query 노출: 보안/API 변경 검토 — 보안 감사·PII 정책이 강화되거나, `firebase.enabled=true`가
+    운영 기본값으로 바뀌어 이 경로가 상시 노출될 때
+  - Lambda 4xx 재시도: Lambda 별도 트랙 — Lambda 트랙 작업([2026-08-20] SQS DLQ 검토 항목 등) 착수 시 함께
+  - notification/fcm-test: 문서 계약 테스트 보강 후보 — 인증 토큰 테스트 fixture가 준비되거나,
+    이 두 엔드포인트에서 별도 회귀 버그가 발생할 때
+- 이유: BE #168 리뷰 시점엔 전부 기존 갭이거나 판단이 갈리는 항목이라 해당 PR 범위에 넣지 않음
+
+---
+
+### [2026-08-21] `User.updateProfile()`의 `!isBlank()` 스킵 분기 제거 — Tier 3
+
+- 발견 경위: PR #170(닉네임 트림 통일) 최종 리뷰.
+- 현재 상태: `User.updateProfile()`은 `if (nickname != null && !nickname.isBlank())`로 감싸여 있어,
+  공백만으로 된 닉네임(`Character.isWhitespace` 기준 — 전각공백 U+3000 등)이 오면 검증 블록을 통째로
+  건너뛴다. 예외도 없고 값도 안 바뀌어 **조용한 무변경 200**이 된다. 이게 근본 원인이다.
+- 현재 결정: **이번 PR에서 제거하지 않는다.** 도메인 엔티티 변경이라 Tier 3이고, PR #170의 범위 밖이다.
+  대신 `UpdateUserProfileService.updateProfile()`이 `user.updateProfile(...)` 직전에
+  `User.validateNickname(trimmedNickname)`을 무조건 호출해 application 층에서 막는다.
+- 안전한 이유와 그 유효기간: `User.updateProfile()`의 호출자가 `UpdateUserProfileService` **하나뿐**이라
+  현재는 빠져나갈 경로가 없다. **호출자가 하나라도 늘면 그 경로에서 조용한 200이 그대로 재발한다.**
+- 재검토 시점: `User.updateProfile()` 호출자가 늘어날 때, 또는 도메인 정리 작업을 Tier 3으로 잡을 때.
+- 검토안: 스킵 분기를 제거하고 `updateProfile()`이 항상 `validateNickname()`을 태우게 한다.
+  그러면 application 층의 선행 검증도 불필요해지므로 **함께 제거**한다(둘 중 하나만 남기는 게 요점이다).
+- 함께 볼 것: `UserTest`에 `updateProfile()`을 직접 태우는 테스트가 **0건**이다
+  (닉네임과 무관한 `updateProfileImage()` 2건만 있다 — 서비스 층 `UpdateUserProfileServiceTest`의
+  `updateProfileImage` 5건도 도메인 분기를 건드리지 않는다). 스킵 분기를 건드릴 때 도메인 테스트부터 채운다.
+- 관련 파일: `src/main/java/com/triagain/user/domain/model/User.java`,
+  `src/main/java/com/triagain/user/application/UpdateUserProfileService.java`,
+  `src/test/java/com/triagain/user/domain/model/UserTest.java`, `docs/spec/user.md`.
+
+---
+
 ### [2026-08-20] Lambda 업로드 완료 최종 실패 보관·경보 — SQS 도입 여부 추후 결정
 
 - 현재 상태: S3 `ObjectCreated:Put`이 `upload-complete` Lambda를 비동기로 호출하고, handler는
