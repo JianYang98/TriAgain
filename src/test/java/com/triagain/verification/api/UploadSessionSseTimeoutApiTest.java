@@ -68,6 +68,9 @@ class UploadSessionSseTimeoutApiTest extends E2eTestBase {
 		assertThat(lines).isEmpty();
 	}
 
+	// 의도적 중복: ①NO(UploadSession.of()는 positional 생성자라 필드 추가 시 양쪽 다 컴파일 에러로 드러난다)
+	// ②NO(두 테스트가 검증하는 시나리오가 달라 각자 독립적으로 바뀔 수 있다) ③NO(계약이 아니라 픽스처 생성 코드)
+	// — 판정 3문 전부 NO (대응 위치: UploadSessionSseApiTest.createSession)
 	private UploadSession createSession(String userId, UploadSessionStatus status) {
 		LocalDateTime now = LocalDateTime.now();
 		UploadSession session = UploadSession.of(
