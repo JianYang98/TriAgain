@@ -6,6 +6,21 @@
 
 ---
 
+### [2026-08-22] BE #168 후속 검토 후보 — 현재 보류
+
+- 현재 상태: BE #168(`fix/168-query-parameter-error-mapping`, 쿼리 바인딩 예외 C001 매핑) 리뷰 중
+  범위 밖으로 확인된 항목들. 착수 결정 없이 후보만 기록한다.
+  - malformed JSON: BE 입력 예외 검토
+  - 미등록 경로: 404 라우팅 계약 검토
+  - 빈 query parameter: 입력 계약 결정 필요
+  - fcmToken query 노출: 보안/API 변경 검토
+  - Lambda 4xx 재시도: Lambda 별도 트랙
+  - notification/fcm-test: 문서 계약 테스트 보강 후보
+- 필요 시점: 각 항목 재검토 필요성이 실제로 대두될 때 (현재는 보류)
+- 이유: BE #168 리뷰 시점엔 전부 기존 갭이거나 판단이 갈리는 항목이라 해당 PR 범위에 넣지 않음
+
+---
+
 ### [2026-08-21] `User.updateProfile()`의 `!isBlank()` 스킵 분기 제거 — Tier 3
 
 - 발견 경위: PR #170(닉네임 트림 통일) 최종 리뷰.
