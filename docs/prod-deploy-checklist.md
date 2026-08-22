@@ -164,6 +164,9 @@
 - [x] `/health`, `/actuator/health` 공개
 - [x] Swagger UI와 `/v3/api-docs/**` 운영 공개
 - [x] `/upload-sessions/*/events` **인증 필수** — `permitAll()` 제거됨, 요청자 소유 세션만 구독 가능(BE #165)
+- [x] `dispatcherTypeMatchers(ASYNC, ERROR).permitAll()` — SSE `emitter.complete()`가 트리거하는 ASYNC
+      재디스패치를 `AuthorizationFilter`가 재평가해 **정상 소유자에게 401**을 주던 문제 방지(BE #165 실측).
+      REQUEST 디스패치 인가는 그대로라 무인증 접근은 여전히 401 A003
 - [x] `server.forward-headers-strategy: framework` 설정됨
 - [x] Spring 전역 CORS 설정 없음
 
