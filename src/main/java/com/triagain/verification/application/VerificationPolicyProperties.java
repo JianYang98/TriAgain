@@ -14,4 +14,7 @@ public class VerificationPolicyProperties {
 	private Integer cancelCutoffMinutes;
 
 	private Integer slotAttemptLimit;
+
+	/** 업로드 세션 SSE 구독의 서버측 타임아웃(ms) — 기본 60000 유지, 테스트에서만 단축 오버라이드 */
+	private Long sseTimeoutMs;
 }

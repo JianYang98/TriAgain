@@ -14,13 +14,21 @@ import org.junit.jupiter.api.Test;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import com.triagain.verification.application.VerificationPolicyProperties;
+
 class SseEmitterAdapterTest {
 
 	private SseEmitterAdapter sseEmitterAdapter;
 
 	@BeforeEach
 	void setUp() {
-		sseEmitterAdapter = new SseEmitterAdapter();
+		sseEmitterAdapter = new SseEmitterAdapter(policyProperties());
+	}
+
+	private static VerificationPolicyProperties policyProperties() {
+		VerificationPolicyProperties properties = new VerificationPolicyProperties();
+		properties.setSseTimeoutMs(60_000L);
+		return properties;
 	}
 
 	@Test
@@ -80,7 +88,7 @@ class SseEmitterAdapterTest {
 	void staleCallbacks_doNotEvictCurrentEmitter() throws Exception {
 		for (String callback : List.of("completionCallback", "timeoutCallback", "errorCallback")) {
 			// Given — 네트워크 끊김 등으로 같은 세션이 재구독한 상황
-			SseEmitterAdapter adapter = new SseEmitterAdapter();
+			SseEmitterAdapter adapter = new SseEmitterAdapter(policyProperties());
 			Long sessionId = 1L;
 			SseEmitter stale = (SseEmitter) adapter.subscribe(sessionId);
 			SseEmitter current = (SseEmitter) adapter.subscribe(sessionId);
@@ -97,24 +105,16 @@ class SseEmitterAdapterTest {
 		}
 	}
 
-	@Test
-	@DisplayName("타임아웃 콜백이 발화하면 해당 emitter가 정상 종료된다 — AsyncRequestTimeoutException 방지")
-	void onTimeout_completesEmitter() throws Exception {
-		// Given
-		SseEmitterAdapter adapter = new SseEmitterAdapter();
-		SseEmitter emitter = (SseEmitter) adapter.subscribe(1L);
-
-		// When — 타임아웃 콜백 발화
-		fireCallback(emitter, "timeoutCallback");
-
-		// Then — complete() 가 불려 emitter 가 이미 종료된 상태다
-		assertThatThrownBy(() -> emitter.send("x")).isInstanceOf(IllegalStateException.class);
-	}
-
 	/**
-	 * SseEmitter의 lifecycle 콜백은 서블릿 비동기 계층이 호출하므로 단위 테스트에서 자연 발화하지 않는다.
-	 * 등록된 실제 프로덕션 람다를 그대로 실행시키기 위해 콜백 홀더를 꺼내 돌린다.
-	 * Spring 내부 필드명에 의존하므로, 업그레이드로 이름이 바뀌면 이 테스트가 시끄럽게 깨진다(의도된 것).
+	 * 타임아웃 시 emitter.complete()가 실제로 AsyncRequestTimeoutException·500을 막는지는 순수 단위
+	 * 테스트로 관측 불가능하다(Handler는 package-private, ResponseBodyEmitter 바이트코드 확인 완료 —
+	 * 2026-08-23). 그 증명은 실제 서블릿 비동기 계층을 태우는
+	 * {@link com.triagain.verification.api.UploadSessionSseTimeoutApiTest}가 맡는다
+	 * (emitter.complete() 삭제 시 500으로 레드 확인됨 — M6).
+	 *
+	 * <p>아래 {@code fireCallback}은 SseEmitter의 lifecycle 콜백이 서블릿 비동기 계층에서만 자연
+	 * 발화하는 것을 등록된 실제 프로덕션 람다를 직접 실행시켜 우회한다. Spring 내부 필드명에
+	 * 의존하므로, 업그레이드로 이름이 바뀌면 이 테스트가 시끄럽게 깨진다(의도된 것).
 	 */
 	@SuppressWarnings("unchecked")
 	private void fireCallback(SseEmitter emitter, String fieldName) throws Exception {
