@@ -46,3 +46,4 @@ triagain:
   verification:
     cancel-cutoff-minutes: 5  # 마감 임박 취소 차단 구간(G2, 분)
     slot-attempt-limit: 3     # 슬롯당 최대 제출 회차(G5)
+    sse-timeout-ms: 60000     # 업로드 세션 SSE 구독 타임아웃(ms) — 운영 거동 불변, 테스트에서만 오버라이드
