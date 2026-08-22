@@ -196,9 +196,12 @@ Spring ApplicationEvent는 현재 프로세스 안에서만 동작하며 메시�
 |---|---|
 | `/auth/**` | `permitAll`; 로그인·가입·refresh·no-op logout |
 | `/internal/**` | Security matcher는 permitAll이지만 `InternalApiKeyFilter`가 `X-Internal-Api-Key` 검증 |
-| `/upload-sessions/*/events` | 현재 permitAll |
 | `/crews/search`, `/invite/**`, health·정적 경로 | permitAll |
-| 나머지 | Bearer Access JWT + DB `tokenVersion` 검증 |
+| 나머지 (`/upload-sessions/*/events` 포함) | Bearer Access JWT + DB `tokenVersion` 검증 — 요청자 소유 세션만 구독 가능(404 V004) |
+
+`DispatcherType.ASYNC`·`ERROR` 재디스패치는 위 매처보다 먼저 `permitAll`이다 — SSE `emitter.complete()`가
+트리거하는 ASYNC 재디스패치에서 `AuthorizationFilter`가 빈 SecurityContext로 재평가해 정상 소유자에게
+401을 주는 문제를 막는다. 클라이언트가 직접 보내는 REQUEST 디스패치의 인가는 그대로다.
 
 ### 비운영 (`!prod`)
 
