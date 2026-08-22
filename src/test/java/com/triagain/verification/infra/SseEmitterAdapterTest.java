@@ -97,6 +97,20 @@ class SseEmitterAdapterTest {
 		}
 	}
 
+	@Test
+	@DisplayName("타임아웃 콜백이 발화하면 해당 emitter가 정상 종료된다 — AsyncRequestTimeoutException 방지")
+	void onTimeout_completesEmitter() throws Exception {
+		// Given
+		SseEmitterAdapter adapter = new SseEmitterAdapter();
+		SseEmitter emitter = (SseEmitter) adapter.subscribe(1L);
+
+		// When — 타임아웃 콜백 발화
+		fireCallback(emitter, "timeoutCallback");
+
+		// Then — complete() 가 불려 emitter 가 이미 종료된 상태다
+		assertThatThrownBy(() -> emitter.send("x")).isInstanceOf(IllegalStateException.class);
+	}
+
 	/**
 	 * SseEmitter의 lifecycle 콜백은 서블릿 비동기 계층이 호출하므로 단위 테스트에서 자연 발화하지 않는다.
 	 * 등록된 실제 프로덕션 람다를 그대로 실행시키기 위해 콜백 홀더를 꺼내 돌린다.
