@@ -163,7 +163,7 @@
 - [x] `/internal/**`는 운영에서 `InternalApiKeyFilter`가 `X-Internal-Api-Key` 검증
 - [x] `/health`, `/actuator/health` 공개
 - [x] Swagger UI와 `/v3/api-docs/**` 운영 공개
-- [x] `/upload-sessions/*/events` 운영 공개 — 현재 SSE 인증·소유권 구현 전
+- [x] `/upload-sessions/*/events` **인증 필수** — `permitAll()` 제거됨, 요청자 소유 세션만 구독 가능(BE #165)
 - [x] `server.forward-headers-strategy: framework` 설정됨
 - [x] Spring 전역 CORS 설정 없음
 
@@ -172,7 +172,7 @@
 - [ ] Lambda와 백엔드에 동일한 `INTERNAL_API_KEY` 주입
 - [ ] `/internal/**`에 네트워크/WAF/rate-limit 등 추가 접근 제한이 필요한지 결정
 - [ ] Swagger·OpenAPI 운영 공개 유지 여부 결정
-- [ ] SSE JWT 인증·세션 소유권 확인 구현 전 공개 경로 위험 수용 여부 확인
+- [ ] 배포 직후 SSE 구독이 토큰 만료 경계에서 재구독되는지 실기기 확인 (`ResponseType.stream` 401→refresh 재시도)
 - [ ] nginx/ALB가 `X-Forwarded-Proto`, `X-Forwarded-Host`를 올바르게 전달하는지 확인
 - [ ] Flutter Web 또는 브라우저 클라이언트를 제공할 때만 Spring·S3 CORS 허용 origin 확정
 

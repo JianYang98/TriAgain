@@ -12,7 +12,6 @@
 |---|---|
 | 현재 구현 | 저장소 코드와 설정에 존재하고 호출 경로가 연결됨 |
 | 조건부 구현 | 코드가 있으나 설정값에 따라 NoOp 또는 비활성화됨 |
-| 확정 계약·구현 대기 | 문서 계약은 확정됐지만 Java가 아직 따라오지 않음 |
 | 기반만 존재 | Domain·Port·Adapter 일부만 있고 사용자 호출 경로가 없음 |
 
 Redis, SQS, OpenAI Adapter는 현재 런타임 구성요소가 아니다. 도입 검토는
@@ -56,7 +55,7 @@ flowchart TB
     S3 -->|"ObjectCreated"| Lambda
     Lambda -->|"PUT /internal/upload-sessions/complete"| Security
     Verification -->|"SSE 현재 구현"| Flutter
-    Flutter -.->|"GET 상태 폴링 계약·구현 대기"| Verification
+    Flutter -->|"GET 상태 폴링 현재 구현"| Verification
     User --> Social
     Support --> FCM
     App --> PG
@@ -207,10 +206,8 @@ Spring ApplicationEvent는 현재 프로세스 안에서만 동작하며 메시�
 - `/internal/**`에는 운영용 InternalApiKeyFilter를 설치하지 않는다.
 - 따라서 비운영 인증 동작을 운영 계약으로 간주하면 안 된다.
 
-### 확정 계약과 구현 공백
+### SSE emitter 저장의 구조적 한계
 
-- `GET /upload-sessions/{id}`는 JWT 인증·소유자 전용 계약이 확정됐지만 Controller 구현이 없다.
-- SSE도 JWT 인증·소유자 전용으로 계약을 바꿨지만 현재 Security와 Controller는 적용 전이다.
 - `SseEmitterAdapter`는 `Map<sessionId, emitter>` 하나만 저장하므로 같은 세션의 재연결·다중 연결이
   이전 emitter를 덮어쓴다.
 
@@ -233,7 +230,7 @@ sequenceDiagram
     L->>BE: PUT /internal/upload-sessions/complete?imageKey=...
     BE->>BE: PENDING → COMPLETED
     BE-->>FE: SSE completed
-    FE-->>BE: GET /upload-sessions/{id} 2초 폴링 (구현 대기)
+    FE-->>BE: GET /upload-sessions/{id} 2초 폴링
     FE->>BE: POST /verifications
 ```
 
