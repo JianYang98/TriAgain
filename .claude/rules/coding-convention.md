@@ -28,7 +28,7 @@ com.triagain.verification
 ├── port/
 │   ├── in/            // UseCase 인터페이스
 │   └── out/           // Repository Port, External Port
-└── infra/             // JPA, MyBatis, S3, SSE Adapter
+└── infra/             // JPA, S3, SSE Adapter
 ```
 
 ## 계층별 규약

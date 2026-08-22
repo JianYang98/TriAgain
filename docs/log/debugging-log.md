@@ -5,6 +5,107 @@
 
 ---
 
+### [2026-08-22] 우회책이 원인 수정보다 오래 살았다 — habit 인증 저장의 무조건 catch (#167)
+
+- 상황: `CreateHabitVerificationService.saveVerification()`이 `DataIntegrityViolationException`을
+  제약명 구분 없이 잡아 전부 `V003`으로 바꾸고 있었다. PR #164 리뷰가 "V015·HB010을 뭉갠다"로 보고
+- 내 판단: **분기를 추가하지 않고 catch를 지운다.** 이 catch는 매핑 누락이 아니라 **해소된 우회책의
+  잔재**였다 — `2a33b73`(07-11) habit BC 구현 시점의 `GlobalExceptionHandler`는 `contains()`
+  부분매칭이었고, `sdd/solo-habit/impl-guards.md` G2가 *"매처에 의존하지 마라 … 서비스 레이어에서
+  catch해 명시 매핑 … 그럼 애초에 핸들러까지 안 감"* 이라고 이 catch를 지시했다. 그런데
+  `af52fc0`(07-24)가 매처를 정확매칭 Map으로 교체했고 `23694b3`(07-25)가 habit 제약 2건을 등록했다.
+  **07-25부터 우회책은 중복이자 정확매칭을 가로막는 쪽**이 됐고, 07-11의 지시서 문구만 남아 4주를 더 살았다.
+  분기를 추가하면 제약명→에러코드 표가 두 곳이 되고, application 레이어가 Hibernate 타입을 import하게 된다
+- AI 역할: 세 커밋의 시간순 대조로 "매핑 버그"가 아니라 "잔재"임을 특정. `HabitVerificationJpaAdapter`에
+  flush가 없다는 대조군(crew는 `saveMemberAndFlush` 명시)으로 catch 도달 여부 자체가 불확실함을 확인 —
+  삭제하면 서비스 안에서 터지든 commit 시점에 터지든 같은 코드가 나가므로 그 불확실성이 함께 사라진다
+- 배운 점: **우회책에는 전제가 붙어 있고, 전제가 사라져도 코드는 안 사라진다.** 원인을 고치는 커밋
+  (`af52fc0`)은 자기가 무효화한 우회책을 찾아 지우는 것까지가 범위다. 특히 그 우회책이 SDD 가드 문서에
+  적혀 있으면 문서가 코드를 되살리는 압력으로 남는다. `[2026-03-03] DataIntegrityViolation 기본
+  에러코드 V003 하드코딩` 항목의 *"기본 fallback은 범용 코드, 구체 매핑은 명시적 분기"* 판단을
+  서비스 레이어가 다시 덮고 있던 셈이다
+
+---
+
+### [2026-08-22] 쿼리 파라미터 바인딩 예외가 500 C002로 매핑된 문제
+
+- 상황: `@RequestParam` 누락·타입 변환 실패가 전용 예외 핸들러 없이 catch-all `Exception` 핸들러로 흘러 `500 C002`를 반환했다.
+- 내 판단: `MissingServletRequestParameterException`과 `MethodArgumentTypeMismatchException`을 `GlobalExceptionHandler` 한 곳에서 `400 C001`로 매핑했다. malformed JSON과 미등록 경로는 별도 예외이므로 이번 수정에서 제외했다.
+- AI 역할: 내부 API·크루 검색·알림 query 바인딩 호출자를 전수 확인하고, 공통 핸들러와 실제 HTTP API 테스트 2건으로 범위를 좁혔다.
+- 배운 점: Spring MVC 바인딩 예외는 Bean Validation 예외와 별도 경로이므로, 공통 예외 처리기 변경 시 query 누락과 타입 변환 호출자를 함께 점검해야 한다.
+
+---
+
+### [2026-08-22] CREW_ACCESS_DENIED(CR009) 메시지 일반화 — 공용 에러코드의 메시지 문자열이 조건 하나에만 고정돼 있었다
+
+- 상황: 이슈 #166 — 크루 멤버(비리더)가 `PATCH/DELETE /crews/{id}`를 호출하면 403과 함께 "크루
+  멤버만 조회할 수 있습니다."를 받는다. 실제로는 멤버인데 "멤버가 아니다"라는 사유를 받는 모순.
+  코드를 확인하니 `CREW_ACCESS_DENIED`(CR009)가 5곳에서 던져지고 있었고, 그중 3곳
+  (`EditCrewService`·`DeleteCrewService`의 `!member.isLeader()` 분기,
+  `VerificationMutationGuard.requireOwner`)은 "비멤버 조회"와 무관한 조건인데도 같은 메시지
+  문자열을 그대로 재사용하고 있었다
+- 내 판단: 조건별 에러코드 분리 대신, `error-messages.properties`의 값 하나를
+  조건-불가지론적인 일반 권한 문구("이 작업을 수행할 권한이 없습니다.")로 바꿨다 — `ErrorCode`
+  enum·throw 지점·HTTP 상태코드는 전부 무변경. 구현 전에 `ApiResponse`·`ErrorResponse`·
+  `GlobalExceptionHandler`를 먼저 읽어 응답 JSON에 `error.message`가 실제로 존재하는지 확인했다
+  (레코드가 `code`·`message` 두 필드뿐이라 jsonPath `error.message`가 맞았다). CR009(CREW_ACCESS_DENIED)
+  메시지를 단언하는 테스트는 지금까지 없었다는 걸 확인한 뒤(기존 `에러 코드는 {string}이다` 스텝은
+  `ErrorCode.valueOf().getCode()`만 비교) 새 스텝을 추가했고, crew-detail·crew-edit 두 시나리오에만
+  붙였다 — crew-delete는 `DeleteCrewService`가 `EditCrewService`와 동일한 `!isLeader()` 패턴이라
+  회귀 감지 목적상 중복이라 판단해 생략했다
+- AI 역할: Cucumber 실행 결과(JUnit XML + cucumber-report.html)를 직접 파싱해 새로 추가한 두
+  단언이 UNDEFINED·FAILED 없이 실제로 매칭·통과했는지 확인했고, 726개 테스트 중 skip 26건이
+  기존 스케줄러·Apple 인증 시나리오(변경 전부터 스킵 대상)였지 이번 변경으로 새로 생긴 스킵이
+  아님을 테스트케이스명으로 대조했다. `/simplify`의 4개 병렬 리뷰(재사용·단순화·효율·고도)에서
+  지적 0건
+- 배운 점: 공용 에러코드가 서로 무관한 조건에 재사용될 때, 메시지 문자열은 코드와 달리 조건
+  하나에만 맞게 "우연히" 고정될 수 있다 — 코드(`CR009`) 재사용 자체는 설계 의도(docs §2.8)였지만,
+  메시지가 조건-불가지론적이어야 한다는 요구는 별도로 지켜야 했다. 그리고 이 버그가 지금까지
+  안 잡힌 이유는 "CR009 메시지를 단언한 테스트가 없어서"였다 — 응답 바디의 필드 중 어떤
+  것도 검증하지 않으면 그 필드는 회귀해도 그린으로 남는다
+
+---
+
+### [2026-08-13] 비관적 락의 발행 SQL은 `FOR UPDATE`가 아니라 `FOR NO KEY UPDATE`였다
+
+- 상황: 문서 8곳이 비관적 락을 `SELECT FOR UPDATE`로 기술했으나, SQL 로그 실측 결과 발행되는 건
+  `SELECT … FOR NO KEY UPDATE`였다. 설계가 바뀐 게 아니라 **최초 커밋부터 어긋나 있었다** —
+  문서를 SQL 어휘로 먼저 쓰고(`bc48920` 02:47), 2시간 20분 뒤 구현을 JPA 어휘로 썼다
+  (`edcc15f` 05:07, 그 시점 파일에 이미 `@Lock(LockModeType.PESSIMISTIC_WRITE)`). JPA엔 락 절의 SQL
+  텍스트를 지정할 수단이 없고, Hibernate 6 `PostgreSQLSqlAstTranslator.getForUpdate()`가
+  `" for no key update"`를 하드코딩한다. 최초 커밋부터 Boot 3.4.13(Hibernate 6)이라 `for update`가 나간 적이 없다
+- 내 판단: **문서만 고치고 코드는 둔다.** 두 락의 유일한 차이는 FK 참조가 취하는 `FOR KEY SHARE`와의
+  충돌 여부인데 마이그레이션 전체에 FK 제약이 0건이라 동작이 동일하다 — 네이티브 쿼리나 dialect
+  커스터마이즈로 진짜 `FOR UPDATE`를 내보내면 얻는 것 없이 동시성 핵심 경로를 만지는 위험만 진다.
+  이 로그 **[2026-06-12] crew-solo-delete 2번의 `SELECT … FOR UPDATE` 표기도 같은 오류지만,
+  그 시점의 판단 기록이라 소급 수정하지 않고 이 항목으로 정정한다**
+- AI 역할: 임시 프로브로 두 가입 진입점의 SQL 시퀀스 실측(락 보유 구간 비관 6문장 / 조건부 3문장),
+  `PostgreSQLSqlAstTranslator` 바이트코드까지 생성 지점 추적, `git log -S`로 네이티브 `FOR UPDATE` 부재 확인,
+  커밋 시각으로 문서-코드 선후 확정
+- 배운 점: **ORM이 생성하는 SQL을 문서에 적을 땐 관측하고 적는다.** JPA 어휘(`PESSIMISTIC_WRITE`)와
+  SQL 어휘(`FOR UPDATE`)는 1:1이 아니며 번역은 dialect·Hibernate 버전이 정한다.
+  **증상이 0인 불일치는 테스트로 잡히지 않는다** — 전 구간 그린인 채 6개월 살아남았다
+
+---
+
+### [2026-08-11] MyBatis 폐기 확정 — 6개월 미사용 의존을 걷고 문서를 실태에 맞췄다
+
+- 상황: 초기 셋업(`668eff1`, 2026-02-22)이 "JPA=CRUD/쓰기, MyBatis=복잡한 조회" 계획으로 스타터·`@MapperScan`·`mybatis:` 블록을 넣었는데 매퍼 XML 0건·`@Mapper` 0건·`SqlSession` 0건인 채 6개월이 지났다 — `mapper-locations`가 가리키는 `mybatis/mapper/` 디렉토리는 만들어진 적도 없다. 실사용은 네이티브 쿼리 11파일 33곳. 같은 커밋의 `default_batch_fetch_size: 100`도 무효였다: 연관관계 애너테이션(`@OneToMany`·`@JoinColumn`·`FetchType` 등)이 src 전체 0건이고 `@Entity` 14개가 FK를 원시 ID 필드로 들고 있어 지연 로딩 자체가 없다. 문서는 8곳이 아직 현행 기술로 기술 중이었고, 그중 `CODEX.md`의 포트-어댑터 표는 **실존한 적 없는 `VerificationMyBatisAdapter`**를 외부 리뷰어에게 내보내고 있었다(이 파일은 `.gitignore` 대상이라 PR 밖 로컬에서 고쳤다)
+- 내 판단: 폐기 확정. `default_batch_fetch_size`도 같이 걷었다 — 지금 무효인데 남겨두면 "N+1 대비가 되어 있다"는 반대 신호를 준다. `future-considerations`의 MyBatis 이관 항목은 미루기가 아니라 **종결**로 처리했다. 이관의 목적지가 사라졌으므로 현재 상태가 곧 정답이다
+- AI 역할: 지시서 주장을 라인번호까지 전량 재실측(전부 일치)하고 지시서가 놓친 셋을 찾았다 — ① 문서 2곳(`coding-convention.md`·`CODEX.md`)은 경로를 나열한 grep이 못 봤다 ② "`./gradlew test`가 E2E까지 함께 판정한다"는 서술이 사실이 아니다(`excludeTags 'e2e'`) ③ yml 3줄 삭제가 flyway 좌표를 21-23→18-20으로 밀어 규칙 파일 2곳의 인용을 낡게 만든다
+- 배운 점: **삭제의 검증은 "소스에 문자열이 없다"가 아니라 "런타임에서 빠졌다"로 한다.** 정적 grep 0건은 스타터가 클래스패스에 남아 있어도 참이다 — 제거 전 테스트 XML의 `No MyBatis mapper was found` WARN 16개(test·e2eTest 계열)를 양성 대조로 먼저 잡아두고, 제거 후 같은 명령이 0건인 것으로 판정했다. 그리고 **잔재 grep은 경로를 나열하지 말고 저장소 루트를 훑는다** — 나열식이 같은 문서 2곳을 두 번 놓쳤다
+
+---
+
+### [2026-08-11] 게이트 두 곳이 헛돌고 있었다 — e2eTest 0건 통과 · /pr-review 범위
+
+- 상황: (1) `e2eTest` 는 `@Tag("e2e")` 가 하나도 안 맞으면 결과 XML 도 없이 `BUILD SUCCESSFUL` 을 낸다 — main 의 required check `E2E Tests` 가 아무것도 안 돌린 채 초록불이 된다(Gradle 8.12 엔 `failOnNoDiscoveredTests` 가 없다). (2) `/pr-review` 의 `git diff main..HEAD` 는 PR 변경분이 아니라 develop↔main 누적 델타를 잡는다 — 8파일짜리 PR 이 **425파일**로 나왔다. 363은 로컬 main 이 132커밋 낡아서, 54는 base 가 main 이라서 — 원인이 둘이고 pull 로는 앞엣것만 사라진다
+- 내 판단: (1) 0건 가드는 `afterTest` 카운트로. **부분 `@Disabled` 는 일부러 안 막았다** — "최소 N개" 임계값은 테스트가 늘 때마다 손대야 하는 숫자다. (2) 기준점은 **박지 않고 PR 방향에서 가져온다** — 어느 값을 박아도 한쪽 PR 은 틀리고, 정본은 GitHub 의 `baseRefName` 이다
+- AI 역할: **Codex 가 내가 못 본 결함 둘을 잡았다** — ① `afterTest` 가 `@Disabled` 에도 불려 전부 스킵이면 가드가 통과(실측 `tests="1" skipped="1"`) ② `origin/develop` 하드코딩이 릴리스 PR 을 0파일로 만드는 **내가 심은 회귀**(구 명령 55 → 0). **CodeRabbit 제안은 거부했다** — description 에 "만료"를 추가하라는 건데 새 카테고리마다 낡는다. 같은 세션에서 `test-strategy.md` 의 "7클래스/16테스트"를 그 이유로 걷어낸 참이라 열거 자체를 없앴다
+- 배운 점: **AI 리뷰는 관찰과 처방을 분리해서 받는다** — 관찰이 맞아도 처방이 저장소 규칙과 충돌할 수 있다. 그리고 **고친 게 맞바꾸기가 아닌지 반대 케이스로 재본다** — 하드코딩을 다른 하드코딩으로 바꾼 건 고친 게 아니었다
+
+---
+
 ### [2026-08-03] tabify 주석 함정 차단 — 트리거 지난 추후고려 항목이 실은 미확인 사고였다
 
 - 상황: `future-considerations.md`의 `[2026-07-31] scripts/tabify.py` 항목이 "필요 시점: **`src/test`에 tabify를 다시 돌리기 전**"이라 적혀 있었는데, 그 실행이 이미 `4acf044`(PR #133, 08-01)로 끝나 있었다. 문구 정리가 아니라 사고 조사가 먼저였다. 조사 결과 **피해 0** — 당시 부분 가드(`b8ae0ae`)가 이미 들어가 있었고, `src/test`의 유일한 텍스트블록 보유 파일 `AppleOAuthAdapterTest.java`의 본문이 보존돼 있었다. 다만 구멍은 살아 있었다: `convert()`가 `"""`를 볼 때마다 `inside`를 토글만 해서 **주석 안 `"""`가 짝수 개면 무경고로 통과**하고 텍스트블록 본문이 탭화된다. 스페이스 4가 탭 1이 되며 상대 들여쓰기가 압축돼 **문자열 값이 실제로 바뀐다**(`javac`로 컴파일해 확인)
@@ -230,3 +331,5 @@
   4. **후속 조치** — (a) FCM 스모크 테스트 엔드포인트 `/internal/fcm-test` 신설(Tier 2, BE 에이전트 지시 전달 완료). (b) 스케줄러 요약 로그를 FCM 발송 결과와 DB 저장 결과로 분리. (c) 배포 게이트 키 유효성 검증 보강 검토 중
 - AI 역할: 3겹 탐지 공백(배포 게이트·`GoogleCredentials` lazy 검증·요약 로그 설계) 분석, FCM 에러코드(`UNAUTHENTICATED` vs `UNREGISTERED`) 구분으로 토큰 안전 여부 판정
 - 배운 점: `GoogleCredentials.fromStream()`은 구조 파싱만 하고 Google과 실제 통신은 하지 않는다. 키 교체 후에는 반드시 온디맨드 `send()` 호출로 발송 인증까지 확인해야 한다. 스케줄러 요약 로그는 처리 대상 카운트와 외부 I/O 결과를 분리해서 집계해야 거짓 초록불을 막는다
+- 후속 결과 (2026-08-20): `/internal/fcm-test`가 `firebase.enabled=true`에서만 활성화되도록 구현되었고,
+  성공·영구 토큰 무효·발송 오류를 별도 상태로 반환한다. 관련 단위 테스트 3건이 통과했다.

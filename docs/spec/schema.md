@@ -1,528 +1,330 @@
-# Schema - ERD 및 데이터 설계
+# Schema — 현행 데이터 모델
 
-## 1. ERD (Entity Relationship Diagram)
+> 운영 물리 스키마의 정본은 `src/main/resources/db/migration/V*.sql`이다. 이 문서는 모든 Flyway
+> 마이그레이션이 적용된 결과를 요약한다. JPA 매핑은 런타임 모델이며 운영 DDL의 정본이 아니다.
+
+---
+
+## 1. 스키마 원칙
+
+- PostgreSQL 운영 스키마에는 **물리 FK 제약이 없다**. 아래 ERD의 관계선과 `*_id`는 논리 참조다.
+- 삭제·정합성은 애플리케이션 서비스와 명시적 삭제 쿼리가 책임진다.
+- 대부분의 Enum은 `VARCHAR`에 문자열로 저장하며 DB CHECK로 제한하지 않는다.
+- 예외적으로 `notifications.type`만 `notifications_type_check`가 허용값을 제한한다.
+- 운영은 Flyway를 사용한다. `ddl-auto=create-drop`, Flyway off인 일부 테스트는 JPA 어노테이션으로
+  별도 스키마를 생성하므로 양쪽 제약이 갈라질 수 있다.
+
+---
+
+## 2. 논리 ERD
 
 ```mermaid
 erDiagram
+    users ||--o{ crews : "생성"
     users ||--o{ crew_members : "참여"
     crews ||--o{ crew_members : "보유"
-    
+    users ||--o{ challenges : "수행"
     crews ||--o{ challenges : "생성"
-    
-    challenges ||--o{ verifications : "포함"
-    verifications |o--o| upload_session : "0..1"
-
     users ||--o{ verifications : "작성"
-    
+    crews ||--o{ verifications : "보유"
+    challenges ||--o{ verifications : "포함"
+    users ||--o{ upload_session : "발급"
+    crews |o--o{ upload_session : "선택 연결"
+    habits |o--o{ upload_session : "선택 연결"
+    upload_session |o--o| verifications : "선택 사용"
+    upload_session |o--o| habit_verifications : "선택 사용"
+
     verifications ||--o{ reports : "신고됨"
     users ||--o{ reports : "신고함"
-    
     reports ||--o{ reviews : "검토됨"
     users ||--o{ reviews : "검토함"
-    
     users ||--o{ notifications : "받음"
-    
-    verifications ||--o{ reactions : "반응"
+    verifications ||--o{ reactions : "반응 대상"
     users ||--o{ reactions : "남김"
 
     users ||--o{ habits : "등록"
     habits ||--o{ habit_cycles : "생성"
+    users ||--o{ habit_cycles : "수행"
     habit_cycles ||--o{ habit_verifications : "포함"
-    habit_verifications |o--o| upload_session : "0..1"
+    habits ||--o{ habit_verifications : "인증 대상"
+    users ||--o{ habit_verifications : "작성"
 
     users {
-        string id PK "소셜 고유 ID — VARCHAR(64)"
-        string provider "KAKAO | APPLE"
-        string email "nullable"
-        string nickname
-        string profile_image_url
-        string fcm_token "nullable — FCM 디바이스 토큰, VARCHAR(500)"
-        string apple_refresh_token "nullable — Apple OAuth refresh_token (AES-256-GCM 암호화, v1: prefix), VARCHAR(1024). APPLE provider만 저장. 탈퇴 시 Apple revoke 호출에 사용"
-        int token_version "NOT NULL DEFAULT 0 — 토큰 무효화용 버전"
-        timestamp created_at
-        timestamp terms_agreed_at "nullable — 약관 동의 일시 (NULL이면 기존 유저)"
-        timestamp deleted_at "nullable — 탈퇴 일시 (null이면 활성)"
+        varchar_64 id PK
+        varchar_20 provider "NOT NULL, DB DEFAULT LOCAL"
+        varchar_255 email "nullable"
+        varchar_255 nickname "NOT NULL"
+        varchar_255 profile_image_url "nullable"
+        varchar_500 fcm_token "nullable"
+        varchar_1024 apple_refresh_token "nullable, 암호화 저장"
+        int token_version "NOT NULL DEFAULT 0"
+        timestamp created_at "NOT NULL"
+        timestamp terms_agreed_at "nullable"
+        timestamptz deleted_at "nullable"
     }
-    
+
     crews {
-        string id PK
-        string creator_id FK
-        string name
-        string goal
-        string verification_content "인증 내용 설명 (최대 50자)"
-        enum verification_type "TEXT / PHOTO"
-        boolean allow_late_join "크루장이 중간 가입 허용 여부 설정"
-        int min_members "DEFAULT 1"
-        int max_members
-        int current_members
-        enum status
-        date start_date
-        date end_date
-        time deadline_time "마감 시간 (DEFAULT 23:59:59)"
-        string invite_code UK
-        string category "크루 카테고리 — VARCHAR(20) NULL"
-        string visibility "공개 설정 — VARCHAR(10) NOT NULL DEFAULT 'PRIVATE'"
-        bigint version "낙관적 락 버전 — NOT NULL DEFAULT 0"
-        timestamp created_at
+        varchar_36 id PK
+        varchar_64 creator_id "논리 참조 users.id"
+        varchar_255 name "NOT NULL"
+        varchar_255 goal "NOT NULL"
+        varchar_50 verification_content "NOT NULL"
+        varchar_255 verification_type "TEXT, PHOTO"
+        boolean allow_late_join "NOT NULL"
+        int min_members "NOT NULL DEFAULT 1"
+        int max_members "NOT NULL"
+        int current_members "NOT NULL"
+        varchar_255 status "NOT NULL"
+        date start_date "NOT NULL"
+        date end_date "NOT NULL"
+        time deadline_time "NOT NULL DEFAULT 23:59:59"
+        varchar_6 invite_code UK
+        varchar_20 category "nullable"
+        varchar_10 visibility "NOT NULL DEFAULT PRIVATE"
+        bigint version "NOT NULL DEFAULT 0"
+        timestamp created_at "NOT NULL"
     }
-    
+
     crew_members {
-        string id PK
-        string user_id FK
-        string crew_id FK
-        enum role
-        timestamp joined_at
+        varchar_36 id PK
+        varchar_64 user_id "논리 참조 users.id"
+        varchar_36 crew_id "논리 참조 crews.id"
+        varchar_255 role "LEADER, MEMBER"
+        timestamp joined_at "NOT NULL"
     }
-    %% (crew_id, user_id) UNIQUE 제약 — V22 (uq_crew_members_crew_id_user_id, 전략 C 동시성 안전망)
-    
+
     challenges {
-        string id PK
-        string user_id FK
-        string crew_id FK
-        int cycle_number
-        int target_days
-        int completed_days
-        enum status
-        date start_date
-        timestamp deadline
-        timestamp created_at
+        varchar_36 id PK
+        varchar_64 user_id "논리 참조 users.id"
+        varchar_36 crew_id "논리 참조 crews.id"
+        int cycle_number "NOT NULL"
+        int target_days "NOT NULL"
+        int completed_days "NOT NULL"
+        varchar_255 status "NOT NULL"
+        date start_date "NOT NULL"
+        timestamp deadline "NOT NULL"
+        timestamp created_at "NOT NULL"
     }
-    
-    verifications {
-        string id PK
-        string challenge_id FK
-        string user_id FK
-        string crew_id FK
-        string upload_session_id FK "nullable, 사진 인증 시에만"
-        string image_url
-        varchar(500) text_content "최대 500자"
-        enum status
-        int report_count
-        date target_date
-        int attempt_number
-        int slot_attempt
-        enum review_status
-        timestamp created_at
-    }
-    
-    reports {
-        string id PK
-        string verification_id FK
-        string reporter_id FK
-        enum reason
-        enum status
-        string description
-        timestamp created_at
-    }
-    
-    reviews {
-        string id PK
-        string report_id FK
-        string reviewer_id FK
-        enum reviewer_type
-        enum decision
-        string comment
-        timestamp created_at
-    }
-    
-    notifications {
-        string id PK
-        string user_id FK
-        enum type
-        string title
-        varchar(500) content "최대 500자"
-        boolean is_read "DEFAULT FALSE"
-        enum target_type "CREW | VERIFICATION | CHALLENGE — nullable"
-        string target_id "nullable — 대상 리소스 ID"
-        timestamp created_at
-    }
-    
-    reactions {
-        string id PK
-        string verification_id FK
-        string user_id FK
-        string emoji
-        timestamp created_at
-    }
-    
+
     upload_session {
-        bigint id PK
-        varchar(64) user_id FK
-        varchar(36) crew_id FK "nullable — 크루 연결 (cross-crew 검증용)"
-        varchar(36) habit_id FK "nullable — 습관 연결 (솔로 세션의 발급 컨텍스트 바인딩, crew_id와 XOR, V23)"
-        varchar image_key
-        varchar content_type
-        varchar status "PENDING / COMPLETED / EXPIRED"
-        timestamp requested_at
-        timestamp created_at
+        bigint id PK "IDENTITY"
+        varchar_64 user_id "논리 참조 users.id"
+        varchar_36 crew_id "nullable"
+        varchar_36 habit_id "nullable"
+        varchar_255 image_key "NOT NULL"
+        varchar_255 content_type "nullable"
+        varchar_255 status "NOT NULL"
+        timestamp requested_at "NOT NULL"
+        timestamp created_at "NOT NULL"
+    }
+
+    verifications {
+        varchar_36 id PK
+        varchar_36 challenge_id "논리 참조 challenges.id"
+        varchar_64 user_id "논리 참조 users.id"
+        varchar_36 crew_id "논리 참조 crews.id"
+        bigint upload_session_id "nullable, UNIQUE"
+        varchar_255 image_url "nullable"
+        varchar_500 text_content "nullable"
+        varchar_255 status "NOT NULL"
+        int report_count "NOT NULL"
+        date target_date "NOT NULL"
+        int attempt_number "NOT NULL"
+        int slot_attempt "NOT NULL DEFAULT 1"
+        varchar_255 review_status "NOT NULL"
+        timestamp created_at "NOT NULL"
+    }
+
+    reports {
+        varchar_36 id PK
+        varchar_36 verification_id "논리 참조 verifications.id"
+        varchar_64 reporter_id "논리 참조 users.id"
+        varchar_255 reason "NOT NULL"
+        varchar_255 status "NOT NULL"
+        varchar_255 description "nullable"
+        timestamp created_at "NOT NULL"
+    }
+
+    reviews {
+        varchar_36 id PK
+        varchar_36 report_id "논리 참조 reports.id"
+        varchar_64 reviewer_id "논리 참조 users.id"
+        varchar_255 reviewer_type "NOT NULL"
+        varchar_255 decision "NOT NULL"
+        varchar_255 comment "nullable"
+        timestamp created_at "NOT NULL"
+    }
+
+    notifications {
+        varchar_36 id PK
+        varchar_64 user_id "논리 참조 users.id"
+        varchar_50 type "NOT NULL, CHECK"
+        varchar_255 title "NOT NULL"
+        varchar_500 content "NOT NULL"
+        boolean is_read "NOT NULL DEFAULT false"
+        varchar_50 target_type "nullable"
+        varchar_36 target_id "nullable, 다형 참조"
+        timestamp created_at "NOT NULL"
+    }
+
+    reactions {
+        varchar_36 id PK
+        varchar_36 verification_id "논리 참조 verifications.id"
+        varchar_64 user_id "논리 참조 users.id"
+        varchar_255 emoji "NOT NULL"
+        timestamp created_at "NOT NULL"
     }
 
     dead_letters {
-        varchar(36) id PK
-        varchar(30) task_type "CHALLENGE_FAIL / CREW_ACTIVATE / CREW_COMPLETE / SESSION_EXPIRE / CREW_START_NOTIFICATION / REMINDER / CHALLENGE_NOTIFICATION / HABIT_CYCLE_FAIL"
-        varchar(36) target_id "실패 대상 엔티티 ID"
+        varchar_36 id PK
+        varchar_30 task_type "NOT NULL"
+        varchar_36 target_id "NOT NULL, 다형 참조"
         text error_message "nullable"
-        varchar(20) status "PENDING / RESOLVED / ABANDONED"
-        int retry_count "DEFAULT 0"
-        int max_retries "DEFAULT 3"
+        varchar_20 status "NOT NULL DEFAULT PENDING"
+        int retry_count "NOT NULL DEFAULT 0"
+        int max_retries "NOT NULL DEFAULT 3"
         timestamp next_retry_at "nullable"
-        timestamp created_at
-        timestamp updated_at
+        timestamp created_at "NOT NULL DEFAULT now"
+        timestamp updated_at "NOT NULL DEFAULT now"
     }
 
     habits {
-        varchar(36) id PK
-        varchar(64) user_id FK
-        varchar(50) name
-        varchar(100) verification_content "nullable — 인증 안내 문구, 인증 화면 가이드 노출 (V24)"
-        enum verification_type "TEXT / PHOTO"
-        time deadline_time "DEFAULT 23:59:59"
-        enum status "ACTIVE / PAUSED / ENDED"
-        timestamp created_at
-        timestamp ended_at "nullable — status=ENDED일 때 set, 지난기록 정렬 축"
+        varchar_36 id PK
+        varchar_64 user_id "논리 참조 users.id"
+        varchar_50 name "NOT NULL"
+        varchar_100 verification_content "nullable"
+        varchar_255 verification_type "TEXT, PHOTO"
+        time deadline_time "NOT NULL DEFAULT 23:59:59"
+        varchar_255 status "NOT NULL"
+        timestamp created_at "NOT NULL"
+        timestamp ended_at "nullable"
     }
 
     habit_cycles {
-        varchar(36) id PK
-        varchar(36) habit_id FK
-        varchar(64) user_id FK
-        int cycle_number
-        int target_days "DEFAULT 3"
-        int completed_days
-        enum status "IN_PROGRESS / SUCCESS / FAILED"
-        date start_date
-        timestamp deadline "startDate+3일 — 캡 없음(크루 endDate 캡과 차이)"
-        timestamp created_at
+        varchar_36 id PK
+        varchar_36 habit_id "논리 참조 habits.id"
+        varchar_64 user_id "논리 참조 users.id"
+        int cycle_number "NOT NULL"
+        int target_days "NOT NULL"
+        int completed_days "NOT NULL"
+        varchar_255 status "NOT NULL"
+        date start_date "NOT NULL"
+        timestamp deadline "NOT NULL"
+        timestamp created_at "NOT NULL"
     }
 
     habit_verifications {
-        varchar(36) id PK
-        varchar(36) habit_cycle_id FK
-        varchar(36) habit_id FK
-        varchar(64) user_id FK
-        bigint upload_session_id FK "nullable, 사진 인증 시에만"
-        varchar image_url "nullable"
-        varchar(500) text_content "nullable, 최대 500자"
-        date target_date
-        int attempt_number
-        timestamp created_at
+        varchar_36 id PK
+        varchar_36 habit_cycle_id "논리 참조 habit_cycles.id"
+        varchar_36 habit_id "논리 참조 habits.id"
+        varchar_64 user_id "논리 참조 users.id"
+        bigint upload_session_id "nullable, UNIQUE"
+        varchar_255 image_url "nullable"
+        varchar_500 text_content "nullable"
+        date target_date "NOT NULL"
+        int attempt_number "NOT NULL"
+        timestamp created_at "NOT NULL"
     }
 ```
 
-## 2. 주요 관계 설명
+`upload_session.crew_id`와 `habit_id`의 XOR은 DB CHECK가 아니다. 세션 생성 서비스가 요청에서
+둘 중 정확히 하나만 선택하도록 검증한다.
 
-| 관계 | 설명 |
-|------|------|
-| users ↔ crew_members | 유저가 여러 크루에 참여 가능 |
-| crews ↔ crew_members | 크루가 여러 멤버 보유 |
-| crews ↔ challenges | 크루 내 여러 챌린지 사이클 |
-| challenges ↔ verifications | 챌린지당 여러 인증 기록 |
-| verifications ↔ upload_session | 사진 인증 시에만 0..1 관계 (nullable FK) |
-| verifications ↔ reports | 인증에 대한 신고 |
-| reports ↔ reviews | 신고에 대한 검토 |
-| users ↔ habits | 유저가 여러 습관(솔로 모드) 등록 가능 (V23) |
-| habits ↔ habit_cycles | 습관당 여러 작심 사이클(3일 단위) — `Challenge` 경량 복제, 기간 캡 없음 |
-| habit_cycles ↔ habit_verifications | 사이클당 여러 인증 기록 |
-| habit_verifications ↔ upload_session | 사진 인증 시에만 0..1 관계 (`upload_session.habit_id`로 발급 컨텍스트 바인딩, crew_id와 XOR) |
+---
 
-## 3. 상태(Enum) 정의
+## 3. Enum 저장값
 
-### crews.status
-| 값 | 의미 |
-|----|------|
-| RECRUITING | 모집 중 |
-| ACTIVE | 진행 중 |
-| COMPLETED | 완료 |
+| 컬럼 | 허용하는 애플리케이션 값 |
+|---|---|
+| `users.provider` | `KAKAO`, `APPLE` |
+| `crews.status` | `RECRUITING`, `ACTIVE`, `COMPLETED` |
+| `crews.category` | `EXERCISE`, `STUDY`, `LIFESTYLE`, `SELF_DEV`, `ETC` |
+| `crews.visibility` | `PUBLIC`, `PRIVATE` |
+| `crews.verification_type` | `TEXT`, `PHOTO` |
+| `crew_members.role` | `LEADER`, `MEMBER` |
+| `challenges.status` | `IN_PROGRESS`, `SUCCESS`, `FAILED`, `ENDED` |
+| `verifications.status` | `APPROVED`, `REPORTED`, `HIDDEN`, `REJECTED`, `CANCELLED` |
+| `verifications.review_status` | `NOT_REQUIRED`, `PENDING`, `IN_REVIEW`, `COMPLETED` |
+| `upload_session.status` | `PENDING`, `COMPLETED`, `EXPIRED` |
+| `reports.reason` | `SPAM`, `INAPPROPRIATE`, `FAKE`, `COPYRIGHT`, `OTHER` |
+| `reports.status` | `PENDING`, `APPROVED`, `REJECTED`, `EXPIRED` |
+| `reviews.reviewer_type` | `AUTO`, `CREW_LEADER`, `AI`, `ADMIN` |
+| `reviews.decision` | `APPROVE`, `REJECT`, `PENDING` |
+| `notifications.type` | `VERIFICATION_APPROVED`, `VERIFICATION_REJECTED`, `CHALLENGE_SUCCESS`, `CHALLENGE_FAILED`, `CREW_INVITE`, `REPORT_RECEIVED`, `REVIEW_COMPLETED`, `UPLOAD_COMPLETED`, `REMINDER`, `CREW_STARTED`, `CREW_FIRST_VERIFICATION` |
+| `notifications.target_type` | `CREW`, `VERIFICATION`, `CHALLENGE` |
+| `reactions.emoji` | Enum: `LIKE`, `FIRE`, `CLAP`, `HEART`, `LAUGH`; v1 요청 허용값: `LIKE` |
+| `dead_letters.status` | `PENDING`, `RESOLVED`, `ABANDONED` |
+| `dead_letters.task_type` | `CHALLENGE_FAIL`, `CREW_ACTIVATE`, `CREW_COMPLETE`, `SESSION_EXPIRE`, `CREW_START_NOTIFICATION`, `REMINDER`, `CHALLENGE_NOTIFICATION`, `HABIT_CYCLE_FAIL` |
+| `habits.status` | `ACTIVE`, `PAUSED`, `ENDED` |
+| `habits.verification_type` | `TEXT`, `PHOTO` |
+| `habit_cycles.status` | `IN_PROGRESS`, `SUCCESS`, `FAILED` |
 
-### crews.category
-| 값 | 의미 |
-|----|------|
-| EXERCISE | 운동 |
-| STUDY | 공부 |
-| LIFESTYLE | 생활습관 |
-| SELF_DEV | 자기개발 |
-| ETC | 기타 |
+`users.provider`의 애플리케이션 값은 KAKAO/APPLE이지만 물리 컬럼의 기본값은 과거 데이터 이관을
+위해 `LOCAL`로 남아 있다. DB CHECK는 없으므로 물리적으로는 다른 문자열도 저장할 수 있다.
 
-### crews.visibility
-| 값 | 의미 |
-|----|------|
-| PUBLIC | 공개 (검색 노출) |
-| PRIVATE | 비공개 (초대코드만) |
+---
 
-### crews.verification_type
-| 값 | 의미 |
-|----|------|
-| TEXT | 텍스트 인증 (텍스트 필수) |
-| PHOTO | 사진 인증 (사진 필수 + 텍스트 선택) |
+## 4. 유니크·CHECK 제약
 
-### crew_members 제약
-| 제약 | 컬럼 | 설명 |
-|------|------|------|
-| UNIQUE | (crew_id, user_id) | 동일 유저가 같은 크루에 2번 이상 가입 불가 — V22(uq_crew_members_crew_id_user_id), 전략 C 동시성 안전망 |
+| 이름 | 대상 | 역할 |
+|---|---|---|
+| `uk_crews_invite_code` | `crews(invite_code)` | 초대 코드 중복 방지 |
+| `uq_crew_members_crew_id_user_id` | `crew_members(crew_id, user_id)` | 같은 크루 중복 가입 방지 |
+| `uk_challenges_user_crew_in_progress` | `challenges(user_id, crew_id) WHERE status='IN_PROGRESS'` | 사용자·크루별 진행 중 챌린지 1개 |
+| `uk_verifications_upload_session` | `verifications(upload_session_id)` | 업로드 세션 1회 사용, null 중복 허용 |
+| `uk_verifications_user_crew_date_active` | `verifications(user_id, crew_id, target_date) WHERE status<>'CANCELLED'` | 취소되지 않은 일일 인증 1개 |
+| `uk_reports_verification_reporter` | `reports(verification_id, reporter_id)` | 동일 인증 중복 신고 방지 |
+| `uk_reactions_verification_user` | `reactions(verification_id, user_id)` | 사용자별 인증 반응 1개, upsert 충돌 대상 |
+| `notifications_type_check` | `notifications.type` | 현재 NotificationType 값만 허용 |
+| `uk_habit_cycles_in_progress` | `habit_cycles(habit_id) WHERE status='IN_PROGRESS'` | 습관별 진행 중 사이클 1개 |
+| `uk_habit_verifications_habit_date` | `habit_verifications(habit_id, target_date)` | 습관별 일일 인증 1개 |
+| `uk_habit_verifications_upload_session` | `habit_verifications(upload_session_id)` | 솔로 업로드 세션 1회 사용, null 중복 허용 |
 
-### crew_members.role
-| 값 | 의미 |
-|----|------|
-| LEADER | 크루장 |
-| MEMBER | 일반 멤버 |
+부분 유니크 인덱스는 JPA `@UniqueConstraint`로 표현할 수 없으므로 Flyway 적용 여부가 중요하다.
+`uk_reactions_verification_user`는 네이티브 `ON CONFLICT`의 충돌 대상이므로 운영 Flyway와
+테스트용 `ReactionJpaEntity` 양쪽에 같은 제약이 필요하다.
 
-### challenges.status
-| 값 | 의미 |
-|----|------|
-| IN_PROGRESS | 진행 중 |
-| SUCCESS | 3일 연속 성공 |
-| FAILED | 실패 (재시작 가능) |
-| ENDED | 크루 기간 종료로 인한 챌린지 종료 |
+---
 
-### verifications.status
-| 값 | 의미 |
-|----|------|
-| APPROVED | 정상 인증 (기본값) |
-| REPORTED | 신고 접수됨 (3건 이상) |
-| HIDDEN | 검토 중 숨김 처리 |
-| REJECTED | 검토 후 반려됨 |
-| CANCELLED | 유저가 마감 전 취소/수정하여 무효화됨 (soft delete, 통계·피드 제외) |
+## 5. 조회 인덱스
 
-### verifications.review_status
-| 값 | 의미 |
-|----|------|
-| NOT_REQUIRED | 검토 불필요 (신고 없음) |
-| PENDING | 검토 대기 (신고 3건) |
-| IN_REVIEW | 검토 중 |
-| COMPLETED | 검토 완료 |
+| 이름 | 대상·조건 | 사용 목적 |
+|---|---|---|
+| `idx_verifications_crew_created` | `verifications(crew_id, created_at DESC)` | 크루 피드 |
+| `idx_verifications_report_count` | `verifications(report_count) WHERE report_count>=3` | 신고 임계치 조회 |
+| `idx_verifications_review_status` | `verifications(review_status, created_at DESC) WHERE review_status='PENDING'` | 검토 대기 목록 |
+| `idx_reviews_reviewer` | `reviews(reviewer_id, created_at DESC)` | 검토자 이력 |
+| `idx_reports_status` | `reports(status, created_at DESC) WHERE status='PENDING'` | 신고 대기 목록 |
+| `idx_upload_session_image_key` | `upload_session(image_key)` | Lambda 완료 세션 조회 |
+| `idx_crew_search` | `crews(visibility, status, created_at DESC) WHERE visibility='PUBLIC'` | 공개 크루 검색 |
+| `idx_notification_user_created` | `notifications(user_id, created_at DESC)` | 사용자별 최신 알림 |
+| `idx_notification_created` | `notifications(created_at)` | 생성일 기준 조회·정리 |
+| `idx_notification_user_is_read` | `notifications(user_id, is_read)` | 읽음 필터·전체 읽음 |
+| `idx_dead_letters_status_retry` | `dead_letters(status, next_retry_at)` | 재시도 대상 조회 |
+| `idx_dead_letters_task_type` | `dead_letters(task_type)` | 작업 유형별 조회 |
+| `idx_habits_user` | `habits(user_id) WHERE status<>'ENDED'` | 활성·중지 습관 홈 목록 |
 
-### upload_session.status
-| 값 | 의미 |
-|----|------|
-| PENDING | presignedUrl 발급, S3 업로드 대기 |
-| COMPLETED | S3 업로드 완료 (verification 생성 가능) |
-| EXPIRED | 시간 초과 / 만료 |
+유니크 인덱스는 4절에만 기재한다.
 
-### reports.reason
-| 값 | 의미 |
-|----|------|
-| SPAM | 스팸/도배 |
-| INAPPROPRIATE | 부적절한 내용 |
-| FAKE | 거짓 인증 |
-| COPYRIGHT | 저작권 침해 |
-| OTHER | 기타 |
+---
 
-### reports.status
-| 값 | 의미 |
-|----|------|
-| PENDING | 검토 대기 |
-| APPROVED | 승인 (조치 완료) |
-| REJECTED | 기각 |
-| EXPIRED | 7일 미검토 자동 승인 |
+## 6. 삭제와 정합성
 
-### reviews.reviewer_type
-| 값 | 의미 |
-|----|------|
-| AUTO | 자동 (신고 3건) |
-| CREW_LEADER | 크루장 |
-| AI | AI 검토 (Phase 2+) |
-| ADMIN | 관리자 (Phase 3+) |
+- FK cascade가 없으므로 하드 삭제 경로는 연관 테이블을 명시적으로 정리해야 한다.
+- 회원탈퇴는 `users`를 삭제하지 않고 익명화·soft delete하므로 기존 인증·반응 이력은 남는다.
+- 크루 하드 삭제는 멤버십, 챌린지, 인증, 신고·검토·반응 등 연관 데이터를 서비스에서 정리한다.
+- `notifications.target_id`와 `dead_letters.target_id`는 다형 참조이며 DB 무결성 검증이 없다.
+- `verifications`는 조회 편의를 위해 user, crew, challenge ID를 함께 저장한다. DB FK가 없으므로
+  생성 서비스가 세 값의 일치와 소유 관계를 검증해야 한다.
 
-### reviews.decision
-| 값 | 의미 |
-|----|------|
-| APPROVE | 승인 (문제 없음) |
-| REJECT | 반려 (부적절) |
-| PENDING | 보류 (추가 검토 필요) |
+---
 
-### dead_letters.status
-| 값 | 의미 |
-|----|------|
-| PENDING | 재시도 대기 |
-| RESOLVED | 수동 해결 완료 |
-| ABANDONED | 재시도 포기 (max_retries 초과) |
+## 7. 확인된 스키마 경계
 
-### dead_letters.task_type
-| 값 | 의미 |
-|----|------|
-| CHALLENGE_FAIL | 챌린지 실패 처리 |
-| CREW_ACTIVATE | 크루 활성화 (RECRUITING → ACTIVE) |
-| CREW_COMPLETE | 크루 종료 (ACTIVE → COMPLETED) |
-| SESSION_EXPIRE | 업로드 세션 만료 (PENDING → EXPIRED) |
-| CREW_START_NOTIFICATION | 크루 시작 알림 |
-| REMINDER | 미인증 리마인더 알림 |
-| CHALLENGE_NOTIFICATION | 챌린지 성공/실패 알림 |
-| HABIT_CYCLE_FAIL | 습관(솔로) 작심 사이클 실패 처리 (V23) |
-
-### habits.status
-| 값 | 의미 |
-|----|------|
-| ACTIVE | 진행 가능 |
-| PAUSED | 일시 중지 (재개 가능, IN_PROGRESS 사이클 없을 때만 진입) |
-| ENDED | 종료 (터미널, 지난기록으로 이동. 기존 소프트삭제 deleted_at 대체) |
-
-### habits.verification_type
-| 값 | 의미 |
-|----|------|
-| TEXT | 텍스트 인증 |
-| PHOTO | 사진 인증 |
-
-### habit_cycles.status
-| 값 | 의미 |
-|----|------|
-| IN_PROGRESS | 진행 중 |
-| SUCCESS | 3일 연속 성공 (터미널) |
-| FAILED | 마감+유예 초과 미인증 (터미널, 재시작 가능) |
-
-### notifications.type
-| 값 | 의미 |
-|----|------|
-| VERIFICATION_APPROVED | 인증 승인 |
-| VERIFICATION_REJECTED | 인증 반려 |
-| CHALLENGE_SUCCESS | 챌린지 성공 |
-| CHALLENGE_FAILED | 챌린지 실패 |
-| CREW_INVITE | 크루 초대 |
-| REPORT_RECEIVED | 신고 접수 |
-| REVIEW_COMPLETED | 검토 완료 |
-| UPLOAD_COMPLETED | 이미지 업로드 완료 |
-| REMINDER | 인증 리마인더 (스케줄러) |
-| CREW_STARTED | 크루 시작 알림 |
-| CREW_FIRST_VERIFICATION | 크루 첫 인증 알림 |
-
-### notifications.target_type
-| 값 | 의미 |
-|----|------|
-| CREW | 크루 대상 알림 |
-| VERIFICATION | 인증 대상 알림 |
-| CHALLENGE | 챌린지 대상 알림 |
-
-## 4. 인덱스 설계
-
-### 핵심 인덱스
-
-```sql
--- 크루 피드 조회 (인증 목록)
-CREATE INDEX idx_verifications_crew_created
-ON verifications(crew_id, created_at DESC);
-
--- 하루 1인증 (취소된 인증은 슬롯을 점유하지 않음)
--- Flyway V25에서 교체 (기존 uk_verifications_user_crew_date 제약 대체)
-CREATE UNIQUE INDEX uk_verifications_user_crew_date_active
-ON verifications(user_id, crew_id, target_date) WHERE status <> 'CANCELLED';
-
--- 동시 챌린지 생성 방지 (유저·크루당 IN_PROGRESS 1개만 허용)
--- Flyway V6에서 추가
-CREATE UNIQUE INDEX uk_challenges_user_crew_in_progress
-ON challenges(user_id, crew_id)
-WHERE status = 'IN_PROGRESS';
-
--- 신고 중복 방지
-CREATE UNIQUE INDEX uk_reports_verification_reporter
-ON reports(verification_id, reporter_id);
-
--- 크루 중복 가입 방지 (유저·크루당 멤버십 1개만 허용)
--- Flyway V22에서 추가 (전략 C 조건부 UPDATE의 동시성 안전망)
-CREATE UNIQUE INDEX uq_crew_members_crew_id_user_id
-ON crew_members(crew_id, user_id);
-
--- 습관당 IN_PROGRESS 사이클 1개 (더블탭 방어) — uk_challenges_user_crew_in_progress 대응
--- Flyway V23에서 추가
-CREATE UNIQUE INDEX uk_habit_cycles_in_progress
-ON habit_cycles(habit_id)
-WHERE status = 'IN_PROGRESS';
-
--- 습관별 하루 1인증 (습관은 단일 소유자라 habit_id 축으로 충분)
--- Flyway V23에서 추가
-CREATE UNIQUE INDEX uk_habit_verifications_habit_date
-ON habit_verifications(habit_id, target_date);
-
--- 세션 1회 사용 강제 (NULL은 UNIQUE 중복 허용 — TEXT 인증 다수 무해)
--- Flyway V23에서 추가
-CREATE UNIQUE INDEX uk_habit_verifications_upload_session
-ON habit_verifications(upload_session_id);
-
--- 홈 목록 조회 (종료 안 된 습관만)
--- Flyway V23에서 추가
-CREATE INDEX idx_habits_user
-ON habits(user_id)
-WHERE status <> 'ENDED';
-```
-
-### 크루 검색 인덱스
-
-```sql
--- 크루 검색 (공개 + 모집중/중간가입 가능)
-CREATE INDEX idx_crew_search
-ON crews(visibility, status, created_at DESC)
-WHERE visibility = 'PUBLIC';
-```
-
-### Moderation 관련 인덱스
-
-```sql
--- 신고 횟수 조회 (3건 → REPORTED)
-CREATE INDEX idx_verifications_report_count
-ON verifications(report_count) 
-WHERE report_count >= 3;
-
--- 검토 대기 목록 조회
-CREATE INDEX idx_verifications_review_status
-ON verifications(review_status, created_at DESC)
-WHERE review_status = 'PENDING';
-
--- 검토자별 검토 이력
-CREATE INDEX idx_reviews_reviewer
-ON reviews(reviewer_id, created_at DESC);
-
--- 신고 상태별 조회
-CREATE INDEX idx_reports_status
-ON reports(status, created_at DESC)
-WHERE status = 'PENDING';
-
--- Lambda의 imageKey 기반 업로드 세션 조회 (Flyway V7)
-CREATE INDEX idx_upload_session_image_key
-ON upload_session (image_key);
-```
-
-### 알림 관련 인덱스
-
-```sql
--- 사용자별 알림 최신순 조회 (Flyway V11)
-CREATE INDEX idx_notification_user_created
-ON notifications (user_id, created_at DESC);
-
--- 알림 생성일 기준 조회/정리 (Flyway V11)
-CREATE INDEX idx_notification_created
-ON notifications (created_at);
-```
-
-### Dead Letter 관련 인덱스
-
-```sql
--- 재시도 대상 조회 (상태 + 다음 재시도 시각 기준, Flyway V14)
-CREATE INDEX idx_dead_letters_status_retry
-ON dead_letters (status, next_retry_at);
-
--- 작업 유형별 조회 (Flyway V14)
-CREATE INDEX idx_dead_letters_task_type
-ON dead_letters (task_type);
-```
-
-## 5. 설계 트레이드오프: Verification의 3-way FK
-
-Verification이 User, Crew, Challenge를 직접 참조하는 구조를 선택했다.
-
-### 선택 이유
-
-**유연성 관점:**
-- 낮은 결합도 (조회 경로 분산)
-- 독립적인 도메인 유지
-- 변경 영향도 최소화
-
-**성능 관점:**
-- 단일 테이블 조회 가능
-- JOIN 최소화
-- 인덱스 최적화 용이
-
-### 대안 (Crew → Challenge → Verification 계층 구조)
-- 인증이 챌린지에 종속
-- JOIN 필수 (복잡도 증가)
-- 조회 경로 제한
-
-### 결론
-3-way FK 구조를 유지하되, Moderation 추가에 따른 인덱스 보강으로 성능을 보완한다.
+- 운영 스키마에는 `uk_habit_verifications_upload_session`이 있지만
+  `HabitVerificationJpaEntity`에는 같은 유니크 선언이 없다. Flyway off + create-drop 테스트 스키마는
+  운영과 다르게 중복 upload_session_id를 허용한다.
+- `users.deleted_at`은 Flyway에서 `TIMESTAMPTZ`, JPA에서는 `LocalDateTime`으로 매핑한다.
+  운영 DB 세션 시간대에 따른 변환 여부를 별도로 검증해야 한다.
+- `users.id`는 카카오 ID와 Apple `sub`가 공유하는 단일 PK다. provider별 별도 ID 공간이나
+  `(provider, provider_id)` 복합 유니크 구조는 현재 없다.

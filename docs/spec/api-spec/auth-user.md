@@ -1,329 +1,313 @@
 # API 명세 — 인증/유저 (Auth / User)
 
-> 전체 인덱스: [`../api-spec.md`](../api-spec.md) · 이 문서가 API 계약 정본이다. 코드보다 이 문서를 먼저 수정한다.
+> 전체 인덱스: [`../api-spec.md`](../api-spec.md) · 이 문서가 Auth/User API 계약 정본이다.
+> User Context 개요는 [`../user.md`](../user.md)를 참고한다.
 
 ---
 
-### POST /auth/kakao (카카오 로그인)
+## 1. 공통 계약
 
-카카오 Access Token으로 기존 유저 여부를 확인한다.
-- **기존 유저** → JWT 발급 (로그인 완료). **email·profileImageUrl 모두 동기화하지 않음** (최초 가입 시에만 저장, 이후 유저가 직접 관리)
-- **신규 유저** → `isNewUser=true` + 카카오 프로필 반환 (JWT 미발급, 유저 미생성)
+### 응답 형식
 
-**요청 (Request)**
-```
-POST /auth/kakao HTTP/1.1
-Content-Type: application/json
-```
-```json
-{
-  "kakaoAccessToken": "카카오_SDK에서_받은_access_token"
-}
-```
+성공:
 
-**시나리오 1: 기존 유저 로그인 성공 (200 OK)**
 ```json
 {
   "success": true,
-  "data": {
-    "isNewUser": false,
-    "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
-    "refreshToken": "eyJhbGciOiJIUzI1NiJ9...",
-    "accessTokenExpiresIn": 1800,
-    "user": {
-      "id": "1234567890",
-      "nickname": "김철수",
-      "profileImageUrl": "https://img.kakao.com/profile.jpg"
-    },
-    "kakaoId": null,
-    "kakaoProfile": null
-  },
+  "data": {},
   "error": null
 }
 ```
 
-**시나리오 2: 신규 유저 — 회원가입 필요 (200 OK)**
+실패:
+
 ```json
 {
-  "success": true,
-  "data": {
-    "isNewUser": true,
-    "accessToken": null,
-    "refreshToken": null,
-    "accessTokenExpiresIn": null,
-    "user": null,
-    "kakaoId": "1234567890",
-    "kakaoProfile": {
-      "nickname": "카카오닉네임",
-      "email": "user@kakao.com",
-      "profileImageUrl": "https://img.kakao.com/profile.jpg"
-    }
-  },
-  "error": null
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "A003",
+    "message": "인증이 필요합니다."
+  }
 }
 ```
 
-**프론트 분기 로직:**
-```
-1. POST /auth/kakao 호출
-2. if (data.isNewUser == false):
-     → accessToken/refreshToken 저장 → 메인 화면 이동
-3. if (data.isNewUser == true):
-     → data.kakaoId, data.kakaoProfile 저장
-     → 약관 동의 + 닉네임 입력 화면 이동
-     → POST /auth/signup 호출
-```
+### 인증
 
-**에러 응답**
-| HTTP | 코드 | 메시지 |
-|------|------|--------|
-| 401 | A001 | 유효하지 않은 카카오 토큰입니다. |
-| 502 | A002 | 카카오 API 호출 중 오류가 발생했습니다. |
+| 범위 | 현행 인증 |
+|---|---|
+| `/auth/**` | `permitAll` |
+| `/users/**` | `Authorization: Bearer <accessToken>` 필수 |
+
+- 운영 환경에서 `/users/**`는 유효한 Access Token과 현재 `token_version`이 일치해야 한다.
+- `/users/**`의 인증 실패는 `401 A003`이다.
+- `!prod` 환경만 개발·테스트를 위해 `X-User-Id` fallback을 지원한다.
+- 요청 body의 필수 필드 누락·blank·타입 오류 등 Bean Validation 실패는 별도 매핑이 없으면
+  `400 C001`로 응답한다.
 
 ---
 
-### POST /auth/signup (회원가입)
+## 2. 인증 API
 
-카카오 인증 + 약관 동의 + 닉네임으로 신규 유저를 생성하고 JWT를 발급한다.
+### POST /auth/kakao
 
-**요청 (Request)**
-```
-POST /auth/signup HTTP/1.1
-Content-Type: application/json
-```
+카카오 Access Token으로 사용자를 확인한다. 활성 사용자는 JWT를 받고, 신규·탈퇴 사용자는
+가입에 필요한 카카오 정보만 받는다. 신규·탈퇴 사용자는 이 API에서 생성·재활성화되지 않는다.
+
+**인증**: 불필요
+
+**요청**
+
 ```json
 {
-  "kakaoAccessToken": "카카오_SDK에서_받은_access_token",
+  "kakaoAccessToken": "카카오 SDK에서 받은 access token"
+}
+```
+
+**기존 사용자 응답 — 200 OK (`data`)**
+
+```json
+{
+  "isNewUser": false,
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "accessTokenExpiresIn": 1800,
+  "user": {
+    "id": "1234567890",
+    "nickname": "김철수",
+    "profileImageUrl": "https://example.com/profile.jpg"
+  },
+  "kakaoId": null,
+  "kakaoProfile": null
+}
+```
+
+**신규·탈퇴 사용자 응답 — 200 OK (`data`)**
+
+```json
+{
+  "isNewUser": true,
+  "accessToken": null,
+  "refreshToken": null,
+  "accessTokenExpiresIn": null,
+  "user": null,
+  "kakaoId": "1234567890",
+  "kakaoProfile": {
+    "nickname": "카카오닉네임",
+    "email": "user@kakao.com",
+    "profileImageUrl": "https://example.com/profile.jpg"
+  }
+}
+```
+
+- 기존 사용자 로그인에서는 email과 profileImageUrl을 동기화하지 않는다.
+- 카카오 Access Token은 사용자 확인에만 사용하고 저장하지 않는다.
+
+| HTTP | 코드 | 조건 |
+|---|---|---|
+| 400 | C001 | `kakaoAccessToken` 누락·blank |
+| 401 | A001 | 카카오 토큰 무효·만료 |
+| 502 | A002 | 카카오 API 호출 실패 |
+
+### POST /auth/signup
+
+카카오 신규 가입 또는 탈퇴 계정 재활성화를 수행하고 JWT를 발급한다.
+
+**인증**: 불필요
+
+**요청**
+
+```json
+{
+  "kakaoAccessToken": "카카오 SDK에서 받은 access token",
   "kakaoId": "1234567890",
   "nickname": "내닉네임",
   "termsAgreed": true
 }
 ```
 
-**필드 설명:**
-- `kakaoAccessToken`: (필수) 카카오 SDK에서 받은 Access Token
-- `kakaoId`: (필수) POST /auth/kakao 응답의 `kakaoId` 값
-- `nickname`: (필수) 2~12자, 한글/영문/숫자/언더스코어만 허용
-- `termsAgreed`: (필수) 약관 동의 여부 (true만 허용)
+- `kakaoId`는 `/auth/kakao`에서 받은 값이며 토큰의 실제 소유자 ID와 일치해야 한다.
+- `nickname`은 2~12자의 한글·영문·숫자·언더스코어만 허용하고, 앞뒤 공백은 `String.trim()` 기준(U+0020 이하)으로 트림한 뒤 검증·저장한다 — `"  닉네임  "`은 `"닉네임"`이 된다. 공백만으로 된 값과 비ASCII 공백의 판정은 `docs/spec/user.md`의 닉네임 표를 따르며, 가입 두 경로와 `PATCH /users/me/nickname`이 동일하게 동작한다.
+- `termsAgreed`는 반드시 true여야 한다.
 
-**성공 응답 (201 Created)**
+**응답 — 201 Created (`data`)**
+
 ```json
 {
-  "success": true,
-  "data": {
-    "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
-    "refreshToken": "eyJhbGciOiJIUzI1NiJ9...",
-    "accessTokenExpiresIn": 1800,
-    "user": {
-      "id": "1234567890",
-      "nickname": "내닉네임",
-      "profileImageUrl": "https://img.kakao.com/profile.jpg"
-    }
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "accessTokenExpiresIn": 1800,
+  "user": {
+    "id": "1234567890",
+    "nickname": "내닉네임",
+    "profileImageUrl": "https://example.com/profile.jpg"
+  }
+}
+```
+
+| HTTP | 코드 | 조건 |
+|---|---|---|
+| 400 | C001 | 필수 필드 누락·blank |
+| 400 | U004 | `nickname`이 `Character.isWhitespace` 기준 비ASCII 공백(U+3000 등)만으로 구성 |
+| 400 | U005 | `termsAgreed=false` |
+| 400 | U007 | 닉네임 형식 불일치 |
+| 400 | U008 | `kakaoId`와 토큰 소유자 불일치 |
+| 401 | A001 | 카카오 토큰 무효·만료 |
+| 409 | U006 | 이미 가입된 활성 사용자 |
+| 502 | A002 | 카카오 API 호출 실패 |
+
+### POST /auth/apple
+
+Apple Identity Token으로 사용자를 확인한다. 활성 사용자는 JWT를 받고, 신규·탈퇴 사용자는
+가입에 필요한 Apple 정보만 받는다.
+
+**인증**: 불필요
+
+**요청**
+
+```json
+{
+  "identityToken": "Apple SDK에서 받은 identity token",
+  "authorizationCode": "Apple SDK에서 받은 authorization code"
+}
+```
+
+- `identityToken`은 필수다.
+- `authorizationCode`는 선택이다. 기존 사용자가 보내면 Apple refresh token backfill을
+  best-effort로 시도하며 실패해도 로그인은 계속한다.
+- 신규·탈퇴 사용자 분기에서는 backfill하지 않고 회원가입 시 처리한다.
+
+**기존 사용자 응답 — 200 OK (`data`)**
+
+```json
+{
+  "isNewUser": false,
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "accessTokenExpiresIn": 1800,
+  "user": {
+    "id": "001234.abcdef.5678",
+    "nickname": "유저닉네임",
+    "profileImageUrl": null
   },
-  "error": null
+  "appleId": null,
+  "email": null
 }
 ```
 
-**에러 응답**
-| HTTP | 코드 | 메시지 | 설명 |
-|------|------|--------|------|
-| 400 | U005 | 약관에 동의해야 회원가입이 가능합니다. | termsAgreed=false |
-| 400 | U004 | 닉네임은 필수입니다. | 빈값/null |
-| 400 | U007 | 닉네임은 2~12자의 한글, 영문, 숫자, 언더스코어만 사용할 수 있습니다. | 형식 불일치 |
-| 400 | U008 | 카카오 계정 정보가 일치하지 않습니다. | kakaoId 불일치 |
-| 401 | A001 | 유효하지 않은 카카오 토큰입니다. | 만료/잘못된 토큰 |
-| 409 | U006 | 이미 가입된 사용자입니다. | 중복 가입 |
+**신규·탈퇴 사용자 응답 — 200 OK (`data`)**
 
----
-
-### POST /auth/apple (Apple 로그인)
-
-Apple Identity Token으로 기존 유저 여부를 확인한다.
-- **기존 유저** → JWT 발급 (로그인 완료)
-- **신규 유저** → `isNewUser=true` + appleId/email 반환 (JWT 미발급, 유저 미생성)
-
-**요청 (Request)**
-```
-POST /auth/apple HTTP/1.1
-Content-Type: application/json
-```
 ```json
 {
-  "identityToken": "Apple_SDK에서_받은_identity_token",
-  "authorizationCode": "Apple_SDK에서_받은_authorization_code"
+  "isNewUser": true,
+  "accessToken": null,
+  "refreshToken": null,
+  "accessTokenExpiresIn": null,
+  "user": null,
+  "appleId": "001234.abcdef.5678",
+  "email": "user@privaterelay.appleid.com"
 }
 ```
 
-**필드 설명:**
-- `identityToken`: (필수) Apple SDK에서 받은 Identity Token (JWT)
-- `authorizationCode`: (옵셔널) Apple SDK에서 받은 authorization code. 기존 사용자가 함께 보내면 서버가 Apple `/auth/token`과 교환하여 refresh_token을 backfill 저장 (회원탈퇴 시 revoke에 사용). 누락해도 로그인은 정상 진행. **가능하면 항상 전송 권장**.
+- Apple은 email을 최초 인증에서만 제공할 수 있으며 프로필 이미지는 제공하지 않는다.
+- 기존 사용자 로그인에서 Apple이 email을 제공한 경우에만 저장된 email을 동기화한다.
 
-**시나리오 1: 기존 유저 로그인 성공 (200 OK)**
+| HTTP | 코드 | 조건 |
+|---|---|---|
+| 400 | C001 | `identityToken` 누락·blank |
+| 401 | A005 | Apple 토큰 무효·만료 |
+| 502 | A006 | Apple 토큰 검증 과정 실패 |
+
+### POST /auth/apple-signup
+
+Apple 신규 가입 또는 탈퇴 계정 재활성화를 수행하고 JWT를 발급한다.
+
+**인증**: 불필요
+
+**요청**
+
 ```json
 {
-  "success": true,
-  "data": {
-    "isNewUser": false,
-    "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
-    "refreshToken": "eyJhbGciOiJIUzI1NiJ9...",
-    "accessTokenExpiresIn": 1800,
-    "user": {
-      "id": "001234.abcdef.5678",
-      "nickname": "유저닉네임",
-      "profileImageUrl": null
-    },
-    "appleId": null,
-    "email": null
-  },
-  "error": null
-}
-```
-
-**시나리오 2: 신규 유저 — 회원가입 필요 (200 OK)**
-```json
-{
-  "success": true,
-  "data": {
-    "isNewUser": true,
-    "accessToken": null,
-    "refreshToken": null,
-    "accessTokenExpiresIn": null,
-    "user": null,
-    "appleId": "001234.abcdef.5678",
-    "email": "user@privaterelay.appleid.com"
-  },
-  "error": null
-}
-```
-
-**프론트 분기 로직:**
-```
-1. POST /auth/apple 호출
-2. if (data.isNewUser == false):
-     → accessToken/refreshToken 저장 → 메인 화면 이동
-3. if (data.isNewUser == true):
-     → data.appleId 저장
-     → 약관 동의 + 닉네임 입력 화면 이동
-     → POST /auth/apple-signup 호출
-```
-
-**참고:**
-- Apple은 email을 최초 로그인 시에만 제공. 재로그인 시 email은 null일 수 있음
-- Apple은 프로필 이미지를 제공하지 않음 (profileImageUrl은 항상 null)
-- `authorizationCode` backfill: 기존 사용자가 보내면 서버가 Apple `/auth/token` 교환으로 refresh_token 발급·저장. 교환 실패해도 로그인 자체는 성공 처리(WARN 로그). **신규 유저 응답 분기에서는 backfill을 시도하지 않는다** (회원가입 시점에 처리).
-
-**에러 응답**
-| HTTP | 코드 | 메시지 |
-|------|------|--------|
-| 401 | A005 | 유효하지 않은 애플 토큰입니다. |
-| 502 | A006 | 애플 토큰 검증 중 오류가 발생했습니다. |
-
----
-
-### POST /auth/apple-signup (Apple 회원가입)
-
-Apple 인증 + 약관 동의 + 닉네임으로 신규 유저를 생성하고 JWT를 발급한다.
-
-**요청 (Request)**
-```
-POST /auth/apple-signup HTTP/1.1
-Content-Type: application/json
-```
-```json
-{
-  "identityToken": "Apple_SDK에서_받은_identity_token",
+  "identityToken": "Apple SDK에서 받은 identity token",
   "appleId": "001234.abcdef.5678",
   "nickname": "내닉네임",
   "termsAgreed": true,
-  "authorizationCode": "Apple_SDK에서_받은_authorization_code"
+  "authorizationCode": "Apple SDK에서 받은 authorization code"
 }
 ```
 
-**필드 설명:**
-- `identityToken`: (필수) Apple SDK에서 받은 Identity Token (JWT)
-- `appleId`: (필수) POST /auth/apple 응답의 `appleId` 값
-- `nickname`: (필수) 2~12자, 한글/영문/숫자/언더스코어만 허용
-- `termsAgreed`: (필수) 약관 동의 여부 (true만 허용)
-- `authorizationCode`: **(필수)** Apple SDK에서 받은 authorization code. 서버가 Apple `/auth/token`과 교환하여 refresh_token을 발급받아 저장한다. 회원탈퇴 시 Apple `/auth/revoke` 호출에 사용 (App Store 5.1.1(v) 요건). 1회용이므로 로그인 화면에서 받은 값을 회원가입 화면까지 state로 전달해야 한다.
+- `appleId`는 `/auth/apple`에서 받은 값이며 identity token의 `sub`와 일치해야 한다.
+- `nickname`은 2~12자의 한글·영문·숫자·언더스코어만 허용하고, 앞뒤 공백은 `String.trim()` 기준(U+0020 이하)으로 트림한 뒤 검증·저장한다 — `"  닉네임  "`은 `"닉네임"`이 된다. 공백만으로 된 값과 비ASCII 공백의 판정은 `docs/spec/user.md`의 닉네임 표를 따르며, 가입 두 경로와 `PATCH /users/me/nickname`이 동일하게 동작한다.
+- `authorizationCode`는 필수이며 1회용이다. Apple refresh token으로 교환한 뒤 암호화하여 저장한다.
+- authorization code 교환이 실패하면 사용자 생성·재활성화를 진행하지 않는다.
 
-**성공 응답 (201 Created)**
+**응답 — 201 Created (`data`)**
+
 ```json
 {
-  "success": true,
-  "data": {
-    "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
-    "refreshToken": "eyJhbGciOiJIUzI1NiJ9...",
-    "accessTokenExpiresIn": 1800,
-    "user": {
-      "id": "001234.abcdef.5678",
-      "nickname": "내닉네임",
-      "profileImageUrl": null
-    }
-  },
-  "error": null
+  "accessToken": "eyJ...",
+  "refreshToken": "eyJ...",
+  "accessTokenExpiresIn": 1800,
+  "user": {
+    "id": "001234.abcdef.5678",
+    "nickname": "내닉네임",
+    "profileImageUrl": null
+  }
 }
 ```
 
-**에러 응답**
-| HTTP | 코드 | 메시지 | 설명 |
-|------|------|--------|------|
-| 400 | U005 | 약관에 동의해야 회원가입이 가능합니다. | termsAgreed=false |
-| 400 | U004 | 닉네임은 필수입니다. | 빈값/null |
-| 400 | U007 | 닉네임은 2~12자의 한글, 영문, 숫자, 언더스코어만 사용할 수 있습니다. | 형식 불일치 |
-| 400 | U009 | 애플 계정 정보가 일치하지 않습니다. | appleId 불일치 |
-| 401 | A005 | 유효하지 않은 애플 토큰입니다. | 만료/잘못된 토큰 |
-| 409 | U006 | 이미 가입된 사용자입니다. | 중복 가입 |
-| 502 | A007 | 애플 인증 코드 교환 중 오류가 발생했습니다. | authorizationCode → refresh_token 교환 실패. 회원가입 차단 |
+| HTTP | 코드 | 조건 |
+|---|---|---|
+| 400 | C001 | 필수 필드 누락·blank |
+| 400 | U004 | `nickname`이 `Character.isWhitespace` 기준 비ASCII 공백(U+3000 등)만으로 구성 |
+| 400 | U005 | `termsAgreed=false` |
+| 400 | U007 | 닉네임 형식 불일치 |
+| 400 | U009 | `appleId`와 identity token의 `sub` 불일치 |
+| 401 | A005 | Apple 토큰 무효·만료 |
+| 409 | U006 | 이미 가입된 활성 사용자 |
+| 502 | A006 | Apple 토큰 검증 과정 실패 |
+| 502 | A007 | authorization code 교환 실패 |
 
----
+### POST /auth/refresh
 
-### POST /auth/refresh (토큰 갱신)
+Refresh Token으로 새 Access Token만 발급한다. Refresh Token rotation은 하지 않는다.
 
-Refresh Token으로 새 Access Token을 발급한다.
+**인증**: 불필요
 
-**요청 (Request)**
-```
-POST /auth/refresh HTTP/1.1
-Content-Type: application/json
-```
+**요청**
+
 ```json
 {
-  "refreshToken": "eyJhbGciOiJIUzI1NiJ9..."
+  "refreshToken": "eyJ..."
 }
 ```
 
-**성공 응답 (200 OK)**
+**응답 — 200 OK (`data`)**
+
 ```json
 {
-  "success": true,
-  "data": {
-    "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
-    "accessTokenExpiresIn": 1800
-  },
-  "error": null
+  "accessToken": "eyJ...",
+  "accessTokenExpiresIn": 1800
 }
 ```
 
-**에러 응답**
-| HTTP | 코드 | 메시지 |
-|------|------|--------|
-| 401 | A004 | 유효하지 않은 리프레시 토큰입니다. |
-| 404 | U001 | 사용자를 찾을 수 없습니다. |
+| HTTP | 코드 | 조건 |
+|---|---|---|
+| 400 | C001 | `refreshToken` 누락·blank |
+| 401 | A004 | 토큰 무효·만료·타입 불일치 또는 `token_version` 불일치 |
+| 404 | U001 | 활성 사용자를 찾을 수 없음 |
 
----
+### POST /auth/logout
 
-### POST /auth/logout (로그아웃)
+Phase 1 로그아웃은 서버 상태를 변경하지 않는 no-op이다. 클라이언트가 로컬 Access·Refresh Token을
+삭제해야 한다.
 
-Phase 1에서는 서버 no-op. 클라이언트가 로컬 토큰을 삭제하여 로그아웃 처리한다.
-Phase 2에서 Redis 기반 토큰 블랙리스트 도입 예정.
+**인증**: 불필요 — 현재 `/auth/**`가 `permitAll`이고 Controller도 인증 사용자를 받지 않는다.
 
-**요청 (Request)**
-```
-POST /auth/logout HTTP/1.1
-Authorization: Bearer <token>
-```
+**요청 body**: 없음
 
-**성공 응답 (200 OK)**
+**응답 — 200 OK**
+
 ```json
 {
   "success": true,
@@ -332,95 +316,66 @@ Authorization: Bearer <token>
 }
 ```
 
-**프론트 처리:**
-1. `POST /auth/logout` 호출
-2. 로컬 저장소에서 accessToken, refreshToken 삭제
-3. 로그인 화면으로 이동
-
 ---
 
-### GET /users/me (내 프로필 조회)
+## 3. 사용자 API
 
-인증된 사용자의 프로필 정보를 조회한다.
+이 절의 모든 API는 Bearer Access Token 인증이 필요하며 인증 실패 시 `401 A003`을 반환한다.
 
-**요청 (Request)**
-```
-GET /users/me HTTP/1.1
-Authorization: Bearer <token>
-```
+### GET /users/me
 
-**성공 응답 (200 OK)**
+내 프로필을 조회한다.
+
+**응답 — 200 OK (`data`)**
+
 ```json
 {
-  "success": true,
-  "data": {
-    "id": "1234567890",
-    "nickname": "내닉네임",
-    "profileImageUrl": "https://img.kakao.com/profile.jpg",
-    "email": "user@kakao.com"
-  },
-  "error": null
+  "id": "1234567890",
+  "nickname": "내닉네임",
+  "profileImageUrl": "https://example.com/profile.jpg",
+  "email": "user@kakao.com"
 }
 ```
 
-**에러 응답**
-| HTTP | 코드 | 메시지 |
-|------|------|--------|
-| 401 | A003 | 인증이 필요합니다. |
+`profileImageUrl`과 `email`은 null일 수 있다.
 
----
-
-### PATCH /users/me/nickname (닉네임 변경)
+### PATCH /users/me/nickname
 
 닉네임을 변경하고 변경된 전체 프로필을 반환한다.
 
-**요청 (Request)**
-```
-PATCH /users/me/nickname HTTP/1.1
-Authorization: Bearer <token>
-Content-Type: application/json
-```
+**요청**
+
 ```json
 {
   "nickname": "새닉네임"
 }
 ```
 
-**필드 설명:**
-- `nickname`: (필수) 2~12자, 한글/영문/숫자/언더스코어만 허용
+- `nickname`은 2~12자의 한글·영문·숫자·언더스코어만 허용하고, 앞뒤 공백은 `String.trim()` 기준(U+0020 이하)으로 트림한 뒤 검증·저장한다 — `"  닉네임  "`은 `"닉네임"`이 된다. 공백만으로 된 값과 비ASCII 공백의 판정은 `docs/spec/user.md`의 닉네임 표를 따르며, 가입 두 경로와 `PATCH /users/me/nickname`이 동일하게 동작한다.
 
-**성공 응답 (200 OK)**
+**응답 — 200 OK (`data`)**
+
 ```json
 {
-  "success": true,
-  "data": {
-    "id": "1234567890",
-    "nickname": "새닉네임",
-    "profileImageUrl": "https://img.kakao.com/profile.jpg",
-    "email": "user@kakao.com"
-  },
-  "error": null
+  "id": "1234567890",
+  "nickname": "새닉네임",
+  "profileImageUrl": "https://example.com/profile.jpg",
+  "email": "user@kakao.com"
 }
 ```
 
-**에러 응답**
-| HTTP | 코드 | 메시지 |
-|------|------|--------|
-| 400 | U007 | 닉네임은 2~12자의 한글, 영문, 숫자, 언더스코어만 사용할 수 있습니다. |
-| 401 | A003 | 인증이 필요합니다. |
+| HTTP | 코드 | 조건 |
+|---|---|---|
+| 400 | C001 | `nickname` 누락·blank |
+| 400 | U004 | `nickname`이 `Character.isWhitespace` 기준 비ASCII 공백(U+3000 등)만으로 구성 |
+| 400 | U007 | 2~12자 한글·영문·숫자·언더스코어 규칙 불일치 |
 
----
+### POST /users/me/profile-image/upload-session
 
-### POST /users/me/profile-image/upload-session (프로필 이미지 업로드 세션)
+프로필 이미지를 S3에 직접 업로드할 presigned URL을 발급한다.
 
-프로필 이미지를 S3에 직접 업로드할 수 있도록 Presigned URL을 발급한다.
+**요청**
 
-**요청 (Request)**
-```
-POST /users/me/profile-image/upload-session HTTP/1.1
-Authorization: Bearer <token>
-Content-Type: application/json
-```
 ```json
 {
   "fileName": "profile.jpg",
@@ -429,102 +384,77 @@ Content-Type: application/json
 }
 ```
 
-**필드 설명:**
-- `fileName`: (필수) 파일명
-- `fileType`: (필수) MIME 타입 — image/jpeg, image/png, image/webp만 허용
-- `fileSize`: (필수) 파일 크기 (바이트) — 최대 5MB
+- `fileType`: `image/jpeg`, `image/png`, `image/webp`만 허용
+- `fileSize`: 1 byte 이상 5 MiB 이하
+- `fileName`: 필수 입력이지만 현재 저장 키 생성에는 사용하지 않는다.
 
-**성공 응답 (201 Created)**
+**응답 — 201 Created (`data`)**
+
 ```json
 {
-  "success": true,
-  "data": {
-    "presignedUrl": "https://s3.amazonaws.com/bucket/profiles/user_456/abc123.jpg?X-Amz-Algorithm=...",
-    "imageUrl": "https://s3.amazonaws.com/bucket/profiles/user_456/abc123.jpg",
-    "expiresAt": "2026-04-14T15:00:00"
-  },
-  "error": null
+  "presignedUrl": "https://bucket.example/profiles/1234567890/uuid.jpg?...",
+  "imageUrl": "https://bucket.example/profiles/1234567890/uuid.jpg",
+  "expiresAt": "2026-08-20T15:00:00"
 }
 ```
 
-**에러 응답**
-| HTTP | 코드 | 메시지 |
-|------|------|--------|
-| 400 | V007 | 지원하지 않는 파일 형식입니다. |
-| 400 | V008 | 파일 크기가 너무 큽니다. |
-| 401 | A003 | 인증이 필요합니다. |
+- presigned URL 유효기간은 15분이다.
+- 저장 키는 서버가 `profiles/{userId}/{uuid}.{ext}` 형식으로 생성한다.
 
-**제약 사항:**
-- 최대 크기: 5MB
-- 허용 타입: JPEG, PNG, WebP
-- Presigned URL 유효기간: 15분
-- S3 경로: profiles/{userId}/{uuid}.{ext}
+| HTTP | 코드 | 조건 |
+|---|---|---|
+| 400 | C001 | 필수 필드 누락·blank 또는 타입 오류 |
+| 400 | V007 | 지원하지 않는 MIME 타입 |
+| 400 | V008 | 파일 크기가 0 이하 또는 5 MiB 초과 |
 
----
+### PATCH /users/me/profile-image
 
-### PATCH /users/me/profile-image (프로필 이미지 변경 확정)
+S3 업로드 후 이미지 URL을 내 프로필에 반영한다.
 
-S3 업로드 완료 후 프로필 이미지 URL을 DB에 반영한다.
+**요청**
 
-**요청 (Request)**
-```
-PATCH /users/me/profile-image HTTP/1.1
-Authorization: Bearer <token>
-Content-Type: application/json
-```
 ```json
 {
-  "imageUrl": "https://s3.amazonaws.com/bucket/profiles/user_456/abc123.jpg"
+  "imageUrl": "https://bucket.example/profiles/1234567890/uuid.jpg"
 }
 ```
 
-**필드 설명:**
-- `imageUrl`: (nullable) 이미지 URL — null이면 기본 이미지로 리셋, 값이 있으면 S3 버킷 + profiles/{userId}/ 경로 검증
+- `imageUrl=null`이면 기본 이미지 상태로 초기화한다.
+- 값이 있으면 설정된 S3 버킷 도메인, `profiles/{userId}/` 소유 경로,
+  UUID 형식 키와 `jpg|png|webp` 확장자를 검증한다.
 
-**성공 응답 (200 OK)**
+**응답 — 200 OK (`data`)**
+
 ```json
 {
-  "success": true,
-  "data": {
-    "id": "user_456",
-    "nickname": "지안",
-    "profileImageUrl": "https://s3.amazonaws.com/bucket/profiles/user_456/abc123.jpg",
-    "email": "user@kakao.com"
-  },
-  "error": null
+  "id": "1234567890",
+  "nickname": "내닉네임",
+  "profileImageUrl": "https://bucket.example/profiles/1234567890/uuid.jpg",
+  "email": "user@kakao.com"
 }
 ```
 
-**에러 응답**
-| HTTP | 코드 | 메시지 |
-|------|------|--------|
-| 400 | U011 | 유효하지 않은 이미지 URL입니다. |
-| 401 | A003 | 인증이 필요합니다. |
+| HTTP | 코드 | 조건 |
+|---|---|---|
+| 400 | U011 | 허용된 S3 사용자 경로가 아닌 이미지 주소 |
 
-**검증 규칙:**
-- imageUrl이 null이면 기본 이미지로 리셋 (profileImageUrl = null → FE에서 기본 아바타 표시)
-- imageUrl이 값이 있으면: 우리 S3 버킷 경로인지 확인 + 해당 유저의 profiles/{userId}/ 경로인지 확인
+### PATCH /users/me/fcm-token
 
----
+앱 실행·로그인 시 사용자의 FCM 토큰을 등록하거나 덮어쓴다.
 
-### DELETE /users/me (회원탈퇴)
+**요청**
 
-회원을 탈퇴 처리한다. 개인정보를 초기화하고 기존 토큰을 무효화한다.
-
-**인증**: Bearer Token 필수
-
-**요청 (Request)**
-```
-DELETE /users/me HTTP/1.1
-Authorization: Bearer <token>
+```json
+{
+  "fcmToken": "fcm-token-abc123"
+}
 ```
 
-**처리 흐름:**
-1. 검증: USER_NOT_FOUND, USER_WITHDRAWN
-2. **Apple 연결 해제** (provider=APPLE && apple_refresh_token != null): Apple `/auth/revoke` 호출 (트랜잭션 밖, 실패해도 graceful 진행)
-3. 트랜잭션: 크루 정리(LEADER+혼자 → 하드 삭제 / LEADER+멤버≥1 → 가장 오래된 멤버에게 자동 위임 후 본인 제거 / MEMBER → 제거) → 개인정보 초기화 → tokenVersion++ → apple_refresh_token=null
+- `fcmToken`은 blank가 아니어야 하며 최대 500자다.
+- 사용자별로 현재 토큰 하나를 저장한다.
 
-**성공 응답 (200 OK)**
+**응답 — 200 OK**
+
 ```json
 {
   "success": true,
@@ -533,15 +463,35 @@ Authorization: Bearer <token>
 }
 ```
 
-**참고:**
-- Apple 사용자 탈퇴 시 Apple `/auth/revoke` 호출 결과는 응답에 영향을 주지 않는다 (성공/실패 모두 200 OK)
-- App Store Review Guideline 5.1.1(v) 요건: Sign in with Apple 사용자는 탈퇴 시 Apple 연결 해제 호출이 필수
-- backfill 안 된 기존 Apple 사용자(`apple_refresh_token == null`)는 Apple 측 연결이 그대로 남는다 — 다음 로그인 backfill 후 재탈퇴하거나, 사용자가 직접 Apple ID 설정에서 해제 필요
+| HTTP | 코드 | 조건 |
+|---|---|---|
+| 400 | C001 | `fcmToken` 누락·blank 또는 500자 초과 |
 
-**에러 응답**
-| HTTP | 코드 | 메시지 | 설명 |
-|------|------|--------|------|
-| 403 | U010 | 탈퇴한 사용자입니다. | deleted_at이 이미 설정됨 |
+### DELETE /users/me
 
----
+사용자를 soft delete하고 개인정보·크루 멤버십을 정리하며 기존 JWT를 무효화한다.
 
+**요청 body**: 없음
+
+**처리**
+
+1. Apple 사용자이고 저장된 Apple refresh token이 있으면 트랜잭션 밖에서 revoke를 시도한다.
+2. revoke 실패는 경고로 남기고 탈퇴는 계속한다.
+3. 모든 활성 챌린지를 종료하고 크루 멤버십을 정리한다.
+4. 혼자인 크루장은 크루를 삭제하고, 멤버가 있는 크루장은 가장 오래된 멤버에게 위임한다.
+5. 개인정보와 FCM·Apple refresh token을 비우고 `deleted_at`을 기록한다.
+6. `token_version`을 증가시켜 기존 Access·Refresh Token을 무효화한다.
+
+**응답 — 200 OK**
+
+```json
+{
+  "success": true,
+  "data": null,
+  "error": null
+}
+```
+
+- 이미 탈퇴한 사용자는 활성 사용자 조회에서 제외된다. 기존 JWT로 재요청하면 운영에서는
+  인증 필터에서 `401 A003`, `!prod`의 `X-User-Id` fallback에서는 서비스에서 `404 U001`로
+  처리된다. `U010`은 정의되어 있지만 현재 Controller 경로에서는 도달하지 않는다.

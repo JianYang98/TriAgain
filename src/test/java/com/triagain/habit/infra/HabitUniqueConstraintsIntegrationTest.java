@@ -36,7 +36,7 @@ import com.triagain.habit.port.out.HabitVerificationRepositoryPort;
  * <p>
  * 전용 TestContainers + Flyway ON({@code ddl-auto=validate})으로 V23 마이그레이션의 실제 partial index를
  * 적용해 검증한다. H2({@code test} 프로파일, create-drop)는 partial index를 재현하지 않으므로
- * H2 그린을 제약 검증 완료로 오인하면 안 된다(impl-guards G4). {@code NotificationTypeCheckConstraintTest}(T8)
+ * H2 그린을 제약 검증 완료로 오인하면 안 된다(impl-guards G4). {@code NotificationTypeCheckConstraintIntegrationTest}(T8)
  * 패턴을 답습 — 전용 컨테이너로 공유 CucumberSpringContext(create-drop)와 충돌 회피.
  */
 @SpringBootTest

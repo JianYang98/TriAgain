@@ -47,7 +47,7 @@
 ### Tech Stack
 
 - **Backend:** Java 17, Spring Boot 3.4 (최신 patch)
-- **ORM:** Spring Data JPA (CRUD/쓰기) + MyBatis (복잡한 조회)
+- **ORM:** Spring Data JPA — 복잡한 조회는 네이티브 쿼리(@Query nativeQuery / EntityManager.createNativeQuery)
 - **Database:** PostgreSQL 16
 - **Storage:** AWS S3 (Pre-signed URL)
 - **Serverless:** AWS Lambda (S3 업로드 완료 감지 → session COMPLETED 처리)
@@ -135,13 +135,13 @@ skill 파일을 읽지 않고 작업하는 것은 규칙 위반이다.
 |---|---|---|
 | 서버 **Java 구현**(Spring·JPA·도메인·쿼리 작성) | `.claude/rules/lessons-learned.md` | `src/**/*.java` 작업 시 |
 | **DB 마이그레이션·스키마** | `.claude/rules/db-migration.md` | `src/main/resources/db/migration/**` 작업 시 |
+| **설정·배포**(yml·워크플로·Dockerfile) | `.claude/rules/config-deploy.md` | `application*.yml`·`.github/workflows/**`·`Dockerfile` 작업 시 |
 | Dart/Flutter | `../triagain-front/.claude/rules/lessons-learned.md` (정본) | FE 세션 |
 | iOS 네이티브(설정·빌드·배포) | `../triagain-front/.claude/rules/lessons-learned-ios.md` (정본) | FE 세션 |
 
 > FE 경로는 **이 저장소 기준 형제 디렉토리**(`triagain/triagain-back` ↔ `triagain/triagain-front`)다.
 >
-> ⚠️ **아직 규칙이 붙지 않은 영역**: `application*.yml`, `Dockerfile`, `.github/workflows/deploy.yml`.
-> 전부 tier-policy Tier 3 대상인데 로드되는 규칙이 0개다 — 이 영역에서 실수가 나오면 **위 표의 기존
-> 파일에 끼워 넣지 말고 전용 규칙 신설을 먼저 검토**한다(`db-migration.md`가 그 첫 사례).
+> ⚠️ 규칙이 **아직 없는 영역**에서 실수가 나오면 위 표의 기존 파일에 끼워 넣지 말고 **전용 규칙 신설을
+> 먼저 검토**한다 — `db-migration.md`(2026-07-27)·`config-deploy.md`(2026-08-11)가 그 사례다.
 
 교훈이 양쪽에 다 걸려도 **각자의 정본에만** 쓴다. 양쪽에 복사하면 한쪽만 갱신되며 갈라진다.

@@ -27,11 +27,10 @@ Thumbs.db
 # Backup files
 *.bak
 *.bak.md
-CODEX.md
 .claude/memory/
 .claude/*.txt
 /agent
- 
+
 # Personal docs
 docs/intellij-shortcuts-guide.md
 docs/java7-to-17-guide.md
@@ -61,6 +60,10 @@ docs/guide/
 
 # Blog (기술 블로그 초안 — 로컬 전용)
 docs/blog/
+
+# Tasks (작업 지시서·핸드오프·세션 기록 — 로컬 전용)
+# ⚠️ 평문 시크릿 포함(task-load-test-day6.md). 2026-08-18 유출 사고 후 등록
+docs/tasks/
 
 # Lambda build artifacts
 lambda/.aws-sam/

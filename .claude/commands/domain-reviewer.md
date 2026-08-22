@@ -162,7 +162,7 @@ record CrewVerificationWindowInfo(
 | 인증 시간 기준 | upload_session.requested_at (서버 기록, 조작 불가) | Domain |
 | 하루 1회 | 같은 user_id + crew_id + target_date 중복 불가 | DB UNIQUE + 코드 검증 |
 | 닉네임 | 2~12자, 한글/영문/숫자/언더스코어, 앞뒤 공백 트림 | Domain (VO 또는 검증) |
-| 크루 정원 | max_members 초과 시 가입 불가, min_members 기본 1 | Domain + SELECT FOR UPDATE |
+| 크루 정원 | max_members 초과 시 가입 불가, min_members 기본 1 | DB predicate (조건부 UPDATE) |
 | 크루 기간 | 시작일: 내일 이후, 종료일: 시작일+6일 이상, 최대 crew.max-duration-days(기본 30일) | Domain |
 | 중간 가입 | allow_late_join=true면 크루 시작 후 참여 가능 (단, 종료 3일 전까지) | Domain |
 | 초대코드 | 6자리 영숫자, 0/O/I/L 제외, 크루 생성 시 자동 발급 | Domain |
@@ -344,7 +344,7 @@ public void expire() {
 
 **검증 항목:**
 - 멱등성 체크가 락보다 먼저 오는지 (Fast Fail 원칙)
-- 비관적 락(SELECT FOR UPDATE) 사용이 적절한지
+- 락 전략 선택이 적절한지 (비관·낙관·조건부)
 - Partial Unique Index로 "존재하지 않는 행"의 동시 생성 방어
 - catch-retry 패턴이 UK 위반 시 적용되는지
 
@@ -357,7 +357,7 @@ public void expire() {
 **실행 순서:**
 ```
 1. 멱등성 체크 (Idempotency-Key 존재?) → Fast Fail
-2. 비관적 락 (SELECT FOR UPDATE) → 있는 행 보호
+2. 비관적 락 (SELECT … FOR NO KEY UPDATE) → 있는 행 보호
 3. Partial Unique Index → 없는 행 보호 (Lazy 생성 대비)
 4. catch-retry → UK 위반 시 재조회
 ```
@@ -425,10 +425,22 @@ public void createVerification(Request req) {
 ### 6. 크루 정원 관리 (동시성)
 
 **검증 항목:**
-- 크루 가입 시 SELECT FOR UPDATE로 current_members 보호
-- max_members 초과 검증 후 가입 처리
+- 정원 초과가 구조적으로 불가능한지 — **강제 지점이 선택된 전략과 일치**하는지 (아래 표)
+- 중복 가입이 `CREW_ALREADY_JOINED(CR004)`로 거부되는지 — `(crew_id, user_id)` 유니크 제약(V22)이 전 전략 공통 안전망
 - 중간 가입(allow_late_join) 조건 확인
 - 크루 종료 3일 전까지만 가입 허용
+
+| 전략 (`triagain.crew.lock-strategy`) | 정원 강제 지점 | 초과·충돌 응답 |
+|------|------|------|
+| `CONDITIONAL` (기본) | DB predicate `current_members < max_members` | affected rows 0 → `CREW_FULL(CR002)` |
+| `PESSIMISTIC` | 행 락 선취득 + `Crew.addMember()`의 `isFull()` | `CREW_FULL(CR002)` |
+| `OPTIMISTIC` | `Crew.addMember()` + `WHERE version = ?` CAS | 정원 `CR002` / 재시도 소진 `CREW_JOIN_CONFLICT(CR023)` |
+
+> ⚠️ **한쪽 전략의 기준으로 다른 쪽을 지적하지 마라.** 기본은 조건부 원자적 UPDATE(`CONDITIONAL`,
+> 정의는 `docs/spec/biz-logic.md` §4.1)이고, 이 경로의 `Crew.addMemberSkipCapacityCheck()`가
+> `isFull()`을 의도적으로 제외하는 건 "락 누락"·"검증 누락"이 아니다. 반대로 비관·낙관 경로가
+> `Crew.addMember()`로 정원을 검사하는 것도 정상이다 — **테스트 프로파일 2개가 `PESSIMISTIC`이다.**
+> 탈퇴·삭제는 전략과 무관하게 항상 비관 락.
 
 **biz-logic.md 규칙:**
 ```
@@ -505,6 +517,9 @@ public void createVerification(Request req) {
 
 리뷰 완료 후 결과를 `docs/review-comment/domain-review-comment.md`에 저장합니다.
 기존 파일이 있으면 덮어씁니다.
+파일 머리말에 `review_head: <git rev-parse HEAD의 전체 SHA>`와
+`review_branch: <git branch --show-current>`를 기록합니다.
+둘 중 하나라도 없으면 `/pr-review-fix domain`과 `/pr-review-check domain`은 오래된 결과로 보고 중단합니다.
 이 파일은 `/pr-review-fix domain` 커맨드에서 읽어서 수정 플랜을 세우는 데 사용됩니다.
 
 ---

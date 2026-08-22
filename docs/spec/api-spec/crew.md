@@ -1,508 +1,183 @@
 # API 명세 — 크루 (Crew)
 
-> 전체 인덱스: [`../api-spec.md`](../api-spec.md) · 이 문서가 API 계약 정본이다. 코드보다 이 문서를 먼저 수정한다.
+> 전체 인덱스: [`../api-spec.md`](../api-spec.md) · 이 문서가 크루 관련 HTTP 계약의 정본이다.
 
----
+## 1. 공통 계약
 
-### GET /crews/{crewId}/feed (크루 피드 조회)
+- 별도 표기가 없으면 `Authorization: Bearer <accessToken>`이 필요하다.
+- JSON 성공 응답은 `{"success":true,"data":...,"error":null}` 형식이다.
+- 실패 응답은 `{"success":false,"data":null,"error":{"code":"...","message":"..."}}` 형식이다.
+- 인증이 필요한 API의 토큰 누락·실패는 `401 A003`이다.
+- Request Body의 필수값, 길이, enum 형식 등 Bean Validation 실패는 `400 C001`이다.
+- 날짜·시각은 각각 ISO-8601 `yyyy-MM-dd`, `yyyy-MM-dd'T'HH:mm:ss` 형식이다.
 
-크루원들의 인증 목록과 나의 챌린지 현황을 조회한다.
+## 2. 응답 필드 계약
 
-**요청 (Request)**
-```
-GET /crews/{crewId}/feed?page=0&size=20 HTTP/1.1
-Authorization: Bearer <token>
-```
+아래 표의 nullable이 `아니요`인 필드는 성공 응답에서 항상 존재한다. 배열은 결과가 없으면
+`null`이 아니라 `[]`이다.
 
-**쿼리 파라미터:**
-- `page`: (선택) 페이지 번호 (기본값 0)
-- `size`: (선택) 페이지 크기 (기본값 20, 최대 50)
+### 2.1 크루 기본 필드
 
-**성공 응답 (200 OK) — 활성 챌린지 있는 경우**
-```json
-{
-  "success": true,
-  "data": {
-    "verifications": [
-      {
-        "id": "ver_789",
-        "userId": "user_456",
-        "nickname": "김철수",
-        "profileImageUrl": "https://img.kakao.com/profile.jpg",
-        "imageUrl": "https://s3.../image.jpg",
-        "textContent": "오늘도 달리기 완료!",
-        "targetDate": "2026-03-04",
-        "slotAttempt": 1,
-        "createdAt": "2026-03-04T14:30:00"
-      }
-    ],
-    "myProgress": {
-      "challengeId": "chal_123",
-      "status": "IN_PROGRESS",
-      "completedDays": 1,
-      "targetDays": 3
-    },
-    "hasNext": false
-  },
-  "error": null
-}
-```
+아래는 여러 크루 응답에서 반복되는 필드의 뜻이다. 모든 응답이 표의 필드를 전부 반환한다는
+뜻은 아니며, 각 API의 정확한 필드 집합은 해당 성공 응답 JSON과 전용 모델 표를 따른다.
 
-**성공 응답 (200 OK) — 활성 챌린지 없는 경우 (myProgress: null)**
-```json
-{
-  "success": true,
-  "data": {
-    "verifications": [],
-    "myProgress": null,
-    "hasNext": false
-  },
-  "error": null
-}
-```
+| 필드 | JSON 타입 | nullable | 의미·허용값 |
+|---|---|---|---|
+| `id` / `crewId` | string | 아니요 | 크루 ID. 생성·수정 결과만 `crewId`, 조회 결과는 `id` |
+| `creatorId` | string | 아니요 | 크루를 만든 사용자 ID |
+| `name` | string | 아니요 | 크루 이름 |
+| `goal` | string | 아니요 | 크루 목표 |
+| `verificationContent` | string | 아니요 | 크루장이 정한 인증 내용 |
+| `verificationType` | string | 아니요 | `TEXT`, `PHOTO` |
+| `maxMembers` | number | 아니요 | 최대 인원, 백엔드 허용 범위 `1~10` |
+| `currentMembers` | number | 아니요 | 현재 멤버 수 |
+| `status` | string | 아니요 | `RECRUITING`, `ACTIVE`, `COMPLETED` |
+| `startDate` | string(date) | 아니요 | 크루 시작일 |
+| `endDate` | string(date) | 아니요 | 크루 종료일 |
+| `allowLateJoin` | boolean | 아니요 | `ACTIVE` 이후 중간 가입 허용 여부 |
+| `inviteCode` | string | 아니요 | 6자리 초대코드 |
+| `createdAt` | string(date-time) | 아니요 | 크루 생성 시각 |
+| `deadlineTime` | string(time) | 아니요 | 일일 인증 마감 시각 |
+| `category` | string | 예 | `EXERCISE`, `STUDY`, `LIFESTYLE`, `SELF_DEV`, `ETC`; 과거 데이터는 null 가능 |
+| `visibility` | string | 아니요 | `PUBLIC`, `PRIVATE` |
 
-**필드 설명:**
-- `verifications`: 크루 인증 목록 (최신순 정렬)
-  - `id`: 인증 ID
-  - `userId`: 작성자 ID
-  - `nickname`: 작성자 닉네임
-  - `profileImageUrl`: 작성자 프로필 이미지 (nullable)
-  - `imageUrl`: 인증 이미지 URL (nullable — 텍스트 인증 크루)
-  - `textContent`: 인증 텍스트 (nullable — 사진 인증 크루에서 텍스트 미입력 시)
-  - `targetDate`: 인증 대상 날짜
-  - `slotAttempt`: 해당 슬롯의 제출 회차 (취소·수정 이력 포함). `_FeedCard`의 ⋯ 메뉴(수정/취소) 활성 여부 판단에 사용
-  - `createdAt`: 인증 생성 시각
-- `myProgress`: 나의 챌린지 현황 (**nullable** — 활성 챌린지가 없으면 null)
-  - `challengeId`: 챌린지 ID
-  - `status`: 챌린지 상태 (IN_PROGRESS, SUCCESS, FAILED, ENDED)
-  - `completedDays`: 완료한 일수
-  - `targetDays`: 목표 일수 (3)
-- `hasNext`: 다음 페이지 존재 여부
+### 2.2 목록 모델 `CrewSummaryResult`
 
-**에러 응답**
-| HTTP | 코드 | 메시지 | 설명 |
-|------|------|--------|------|
-| 401 | A003 | 인증이 필요합니다. | 미인증 |
-| 403 | CREW_ACCESS_DENIED | 크루 멤버만 조회할 수 있습니다. | 크루 미참여 |
-| 404 | CREW_NOT_FOUND | 존재하지 않는 크루입니다. | 크루 없음 |
+`GET /crews`의 배열 원소다.
 
----
+| 필드 | JSON 타입 | nullable | 의미 |
+|---|---|---|---|
+| `id` | string | 아니요 | 크루 ID |
+| `name` | string | 아니요 | 크루 이름 |
+| `goal` | string | 아니요 | 크루 목표 |
+| `verificationContent` | string | 아니요 | 인증 내용 |
+| `verificationType` | string | 아니요 | `TEXT`, `PHOTO` |
+| `currentMembers` | number | 아니요 | 현재 멤버 수 |
+| `maxMembers` | number | 아니요 | 최대 멤버 수 |
+| `status` | string | 아니요 | 크루 상태 |
+| `startDate` | string(date) | 아니요 | 시작일 |
+| `endDate` | string(date) | 아니요 | 종료일 |
+| `createdAt` | string(date-time) | 아니요 | 생성 시각 |
+| `category` | string | 예 | 크루 카테고리. 과거 데이터는 null 가능 |
+| `visibility` | string | 아니요 | 공개 범위 |
+| `todayVerified` | boolean | 아니요 | `ACTIVE` 크루의 오늘 승인 인증 여부. 그 외 상태는 `false` |
+| `successCount` | number | 아니요 | 요청자의 성공 챌린지 수. `COMPLETED`만 집계하며 그 외 상태의 `0`은 미집계 |
+| `verifiedDayCount` | number | 아니요 | 요청자의 승인 인증일 수. `COMPLETED`만 집계하며 그 외 상태의 `0`은 미집계 |
+| `inviteCode` | string | 아니요 | 요청자가 멤버이므로 반환하는 초대코드 |
+| `challengeProgress` | object | 예 | 요청자의 `IN_PROGRESS` 챌린지. 없으면 null |
 
-### GET /crews/{crewId}/my-verifications (내 인증 현황 조회)
+### 2.3 챌린지 진행 모델
 
-크루 내 내 인증 날짜, 연속 스트릭, 작심삼일 달성 횟수를 조회한다.
+| 필드 | JSON 타입 | nullable | 의미 |
+|---|---|---|---|
+| `challengeId` | string | 아니요 | 피드·내 인증 응답에서만 반환하는 챌린지 ID |
+| `challengeStatus` / `status` | string | 아니요 | 현재 조회는 활성 챌린지만 대상으로 하므로 `IN_PROGRESS` |
+| `completedDays` | number | 아니요 | 현재 사이클의 승인 인증 일수 |
+| `targetDays` | number | 아니요 | 목표 일수, 현재 `3` |
 
-**요청 (Request)**
-```
-GET /crews/{crewId}/my-verifications HTTP/1.1
-Authorization: Bearer <token>
-```
+크루 목록·상세는 상태 필드명이 `challengeStatus`이고, 피드·내 인증은 `status`다.
+피드·내 인증만 `challengeId`를 포함한다.
 
-**성공 응답 (200 OK)**
-```json
-{
-  "success": true,
-  "data": {
-    "verifiedDates": ["2026-03-01", "2026-03-02", "2026-03-03"],
-    "streakCount": 3,
-    "completedChallenges": 2,
-    "myProgress": {
-      "challengeId": "chg_abc123",
-      "status": "IN_PROGRESS",
-      "completedDays": 2,
-      "targetDays": 3
-    },
-    "todaySlot": {
-      "verificationId": "ver_789",
-      "slotAttempt": 1,
-      "textContent": "오늘도 달리기 완료!",
-      "imageUrl": null
-    }
-  },
-  "error": null
-}
-```
+### 2.4 멤버와 미리보기 모델
 
-**필드 설명:**
-- `verifiedDates`: APPROVED 인증 날짜 목록 (크루 기간 범위 내, ASC 정렬). **타입·의미 불변** — 취소·수정 기능 추가와 무관하게 유지된다 (FE 캘린더가 그대로 사용)
-- `streakCount`: 최근 날짜부터 역방향 연속 인증 일수
-- `completedChallenges`: challenges.status = SUCCESS 개수 (작심삼일 달성 횟수)
-- `todaySlot`: 오늘 슬롯의 인증 현황 (**nullable** — 오늘 인증이 없으면 null)
-  - `verificationId`: 오늘 슬롯의 유효(비-CANCELLED) 인증 ID
-  - `slotAttempt`: 오늘 슬롯의 제출 회차 — FE가 수정/취소 가능 여부·잔여 횟수(상한 대비)를 판단하는 데 사용. 과거 날짜의 `slotAttempt`는 노출하지 않는다(캘린더는 `verifiedDates`만 사용)
-  - `textContent`: 인증 텍스트 (nullable — 사진 인증 크루에서 텍스트 미입력 시). 수정 다이얼로그 프리필용
-  - `imageUrl`: 인증 이미지 URL (nullable — 텍스트 인증 크루). 수정 다이얼로그 프리필용
-- `myProgress`: 나의 현재 챌린지 현황 (**nullable** — 활성 챌린지가 없으면 null)
-  - `challengeId`: 챌린지 ID
-  - `status`: 챌린지 상태 (IN_PROGRESS, SUCCESS, FAILED, ENDED)
-  - `completedDays`: 완료한 일수
-  - `targetDays`: 목표 일수 (3)
+| 필드 | JSON 타입 | nullable | 의미 |
+|---|---|---|---|
+| `members` | array | 아니요 | 현재 크루 멤버 목록 |
+| `members[].userId` | string | 아니요 | 멤버 사용자 ID |
+| `members[].nickname` | string | 예 | User 프로필 조회 결과가 없으면 null |
+| `members[].profileImageUrl` | string | 예 | 프로필 이미지가 없으면 null |
+| `members[].role` | string | 아니요 | `LEADER`, `MEMBER` |
+| `members[].joinedAt` | string(date-time) | 아니요 | 가입 시각 |
+| `members[].successCount` | number | 아니요 | 상세 응답에만 존재. 해당 크루의 성공 챌린지 수 |
+| `members[].challengeProgress` | object | 예 | 상세 응답에만 존재. 활성 챌린지가 없으면 null |
+| `joinable` | boolean | 아니요 | 미리보기 응답에만 존재. 현재 요청자의 가입 가능 여부 |
+| `joinBlockedReason` | string | 예 | 미리보기 응답에만 존재. 가입 가능하면 null |
 
-**에러 응답**
-| HTTP | 코드 | 메시지 | 설명 |
-|------|------|--------|------|
-| 401 | A003 | 인증이 필요합니다. | 미인증 |
-| 403 | CR009 | 크루 멤버만 조회할 수 있습니다. | 크루 미참여 |
-| 404 | CR001 | 크루를 찾을 수 없습니다. | 크루 없음 |
+### 2.5 피드 모델
 
----
+| 필드 | JSON 타입 | nullable | 의미 |
+|---|---|---|---|
+| `verifications` | array | 아니요 | `APPROVED` 인증의 최신순 목록 |
+| `verifications[].id` | string | 아니요 | 인증 ID |
+| `verifications[].userId` | string | 아니요 | 작성자 ID |
+| `verifications[].nickname` | string | 아니요 | 작성자 닉네임 |
+| `verifications[].profileImageUrl` | string | 예 | 작성자 프로필 이미지 |
+| `verifications[].imageUrl` | string | 예 | 사진 인증 이미지. 텍스트 인증은 null |
+| `verifications[].textContent` | string | 예 | 인증 텍스트. 사진 인증에서 미입력 가능 |
+| `verifications[].targetDate` | string(date) | 아니요 | 인증 대상 날짜 |
+| `verifications[].slotAttempt` | number | 아니요 | 해당 날짜 슬롯의 제출 회차 |
+| `verifications[].createdAt` | string(date-time) | 아니요 | 현재 인증 행 생성 시각 |
+| `verifications[].reactions` | array | 아니요 | 이모지별 반응 요약. 없으면 `[]` |
+| `reactions[].emojiType` | string | 아니요 | v1 노출값 `LIKE` |
+| `reactions[].count` | number | 아니요 | 해당 이모지를 남긴 사용자 수 |
+| `reactions[].reactedByMe` | boolean | 아니요 | 요청자가 해당 이모지를 남겼는지 여부 |
+| `reactions[].users` | array | 아니요 | 반응 사용자 전원. 없으면 그룹 자체가 반환되지 않음 |
+| `users[].userId` | string | 아니요 | 반응 사용자 ID |
+| `users[].nickname` | string | 아니요 | 반응 사용자 닉네임 |
+| `myProgress` | object | 예 | 요청자의 활성 챌린지. 없으면 null |
+| `hasNext` | boolean | 아니요 | 다음 페이지 존재 여부 |
 
-### GET /crews/invite/{inviteCode} (초대코드로 크루 미리보기)
+### 2.6 내 인증 모델
 
-초대코드로 크루 정보를 미리 조회한다. 가입하지 않고 조회만 수행하며, 가입 가능 여부(joinable)와 차단 사유(joinBlockedReason)를 함께 반환한다.
+| 필드 | JSON 타입 | nullable | 의미 |
+|---|---|---|---|
+| `verifiedDates` | array(string) | 아니요 | 크루 기간의 승인 인증일, 오름차순. 없으면 `[]` |
+| `streakCount` | number | 아니요 | 가장 최근 승인일부터 역방향으로 연속된 날짜 수 |
+| `completedChallenges` | number | 아니요 | 해당 크루의 `SUCCESS` 챌린지 수 |
+| `myProgress` | object | 예 | 요청자의 활성 챌린지. 없으면 null |
+| `todaySlot` | object | 예 | 오늘 비취소 인증. 없으면 null |
+| `todaySlot.verificationId` | string | 아니요 | 오늘 활성 인증 ID |
+| `todaySlot.slotAttempt` | number | 아니요 | 오늘 슬롯의 제출 회차 |
+| `todaySlot.textContent` | string | 예 | 인증 텍스트 |
+| `todaySlot.imageUrl` | string | 예 | 인증 이미지 URL |
 
-**요청 (Request)**
-```
-GET /crews/invite/ABC123 HTTP/1.1
-Authorization: Bearer <token>
-```
+### 2.7 가입 결과 모델
 
-**성공 응답 (200 OK)**
-```json
-{
-  "success": true,
-  "data": {
-    "id": "crew_123",
-    "creatorId": "user_001",
-    "name": "작심삼일 크루",
-    "goal": "매일 운동하기",
-    "verificationContent": "운동 완료 인증샷 찍기",
-    "verificationType": "PHOTO",
-    "maxMembers": 10,
-    "currentMembers": 3,
-    "status": "RECRUITING",
-    "startDate": "2026-03-10",
-    "endDate": "2026-03-24",
-    "allowLateJoin": true,
-    "deadlineTime": "23:59:59",
-    "createdAt": "2026-03-01T10:00:00",
-    "category": "EXERCISE",
-    "visibility": "PUBLIC",
-    "members": [
-      {
-        "userId": "user_001",
-        "nickname": "크루장닉네임",
-        "profileImageUrl": "https://...",
-        "role": "LEADER",
-        "joinedAt": "2026-03-01T10:00:00"
-      },
-      {
-        "userId": "user_002",
-        "nickname": "멤버닉네임",
-        "profileImageUrl": null,
-        "role": "MEMBER",
-        "joinedAt": "2026-03-02T14:00:00"
-      }
-    ],
-    "joinable": true,
-    "joinBlockedReason": null
-  },
-  "error": null
-}
-```
+| 필드 | JSON 타입 | nullable | 의미 |
+|---|---|---|---|
+| `userId` | string | 아니요 | 가입한 사용자 ID |
+| `crewId` | string | 아니요 | 가입한 크루 ID |
+| `role` | string | 아니요 | 항상 `MEMBER` |
+| `currentMembers` | number | 아니요 | 가입 반영 후 멤버 수 |
+| `joinedAt` | string(date-time) | 아니요 | 가입 시각 |
 
-**필드 설명:**
-- `joinable`: 현재 유저가 이 크루에 가입 가능한지 여부
-- `joinBlockedReason`: 가입 불가 시 사유 (joinable=true이면 null)
+### 2.8 에러 코드와 메시지
 
-**joinBlockedReason 값:**
+엔드포인트별 표에는 발생 조건을 적고, 실제 기본 메시지는 이 표를 공통으로 사용한다.
 
-| 값 | 설명 |
-|------|------|
-| `ALREADY_MEMBER` | 이미 가입한 크루 |
-| `CREW_ENDED` | 크루가 종료(COMPLETED)됨 |
-| `CREW_FULL` | 정원 초과 |
-| `LATE_JOIN_NOT_ALLOWED` | 중간 가입 비허용 (ACTIVE 크루) |
-| `CREW_JOIN_DEADLINE_PASSED` | 참여 마감 기한 초과 |
+| HTTP | 코드 | 기본 메시지 |
+|---|---|---|
+| 400 | C001 | 잘못된 입력값입니다. 또는 필드 검증 메시지 |
+| 401 | A003 | 인증이 필요합니다. |
+| 404 | CR001 | 크루를 찾을 수 없습니다. |
+| 409 | CR002 | 크루 정원이 가득 찼습니다. |
+| 400 | CR003 | 모집 중인 크루가 아닙니다. |
+| 409 | CR004 | 이미 참여 중인 크루입니다. |
+| 404 | CR006 | 유효하지 않은 초대 코드입니다. |
+| 400 | CR008 | 크루 참여 마감 기한이 지났습니다. |
+| 403 | CR009 | 이 작업을 수행할 권한이 없습니다. |
+| 400 | CR011 | 시작일은 내일 이후여야 합니다. |
+| 400 | CR012 | 종료일은 시작일 이후여야 합니다. |
+| 400 | CR016 | 크루 기간은 최대 `{N}`일까지 가능합니다. |
+| 400 | CR017 | 수정할 필드가 없습니다. |
+| 400 | CR018 | 유효하지 않은 값입니다. |
+| 409 | CR019 | 크루원이 있는 크루는 삭제할 수 없습니다. |
+| 403 | CR020 | 크루장은 탈퇴할 수 없습니다. |
+| 404 | CR021 | 해당 크루의 멤버가 아닙니다. |
+| 400 | CR022 | 공개 크루가 아닙니다. |
+| 409 | CR023 | 동시 요청 충돌이 발생했습니다. 다시 시도해주세요. |
+| 400 | CR024 | 크루 기간은 최소 7일 이상이어야 합니다. |
+| 400 | CR025 | 진행 중인 크루는 챌린지를 시작하지 않은 멤버만 탈퇴할 수 있습니다. |
+| 400 | CR026 | 인증을 시작한 크루는 삭제할 수 없습니다. |
 
-**에러 응답**
-| HTTP | 코드 | 메시지 | 설명 |
-|------|------|--------|------|
-| 404 | CR006 | 유효하지 않은 초대 코드입니다. | 존재하지 않는 초대코드 |
+## 3. 조회
 
----
+### GET /crews
 
-### GET /crews/{crewId}/preview (공개 크루 미리보기)
+내가 참여 중인 크루 목록을 조회한다. 결과가 없으면 `data`는 `[]`이다.
 
-크루 ID로 공개 크루 정보를 미리 조회한다.
-검색 결과에서 상세를 확인할 때 사용하며, 초대코드 미리보기(GET /crews/invite/{inviteCode})와 동일한 응답을 반환한다.
-PUBLIC 크루만 조회 가능하다.
+**성공: `200 OK`**
 
-**요청 (Request)**
-```
-GET /crews/{crewId}/preview HTTP/1.1
-Authorization: Bearer <token>
-```
-
-**성공 응답 (200 OK)**
-```json
-{
-  "success": true,
-  "data": {
-    "id": "crew_123",
-    "creatorId": "user_001",
-    "name": "작심삼일 크루",
-    "goal": "매일 운동하기",
-    "verificationContent": "운동 완료 인증샷 찍기",
-    "verificationType": "PHOTO",
-    "maxMembers": 10,
-    "currentMembers": 3,
-    "status": "RECRUITING",
-    "startDate": "2026-03-10",
-    "endDate": "2026-03-24",
-    "allowLateJoin": true,
-    "deadlineTime": "23:59:59",
-    "createdAt": "2026-03-01T10:00:00",
-    "category": "EXERCISE",
-    "visibility": "PUBLIC",
-    "members": [
-      {
-        "userId": "user_001",
-        "nickname": "크루장닉네임",
-        "profileImageUrl": "https://...",
-        "role": "LEADER",
-        "joinedAt": "2026-03-01T10:00:00"
-      }
-    ],
-    "joinable": true,
-    "joinBlockedReason": null
-  },
-  "error": null
-}
-```
-
-**필드 설명:**
-- `joinable`: 현재 유저가 이 크루에 가입 가능한지 여부
-- `joinBlockedReason`: 가입 불가 시 사유 (joinable=true이면 null)
-
-**joinBlockedReason 값:**
-
-| 값 | 설명 |
-|------|------|
-| `ALREADY_MEMBER` | 이미 가입한 크루 |
-| `CREW_ENDED` | 크루가 종료(COMPLETED)됨 |
-| `CREW_FULL` | 정원 초과 |
-| `LATE_JOIN_NOT_ALLOWED` | 중간 가입 비허용 (ACTIVE 크루) |
-| `CREW_JOIN_DEADLINE_PASSED` | 참여 마감 기한 초과 |
-
-**에러 응답**
-
-| HTTP | 코드 | 메시지 | 설명 |
-|------|------|--------|------|
-| 400 | CR022 | 공개 크루가 아닙니다. | PRIVATE 크루에 접근 시도 |
-| 404 | CR001 | 크루를 찾을 수 없습니다. | 존재하지 않는 crewId |
-
----
-
-### POST /crews/join (초대코드로 크루 참여)
-
-초대코드를 사용하여 크루에 참여한다. 크루가 RECRUITING 상태이고, 정원이 남아있는 경우에만 참여 가능.
-
-**요청 (Request)**
-```
-POST /crews/join HTTP/1.1
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-```json
-{
-  "inviteCode": "ABC123"
-}
-```
-
-**필드 설명:**
-- `inviteCode`: (필수) 크루 초대코드 (6자리)
-
-**성공 응답 (201 Created)**
-```json
-{
-  "success": true,
-  "data": {
-    "userId": "1234567890",
-    "crewId": "crew_123",
-    "role": "MEMBER",
-    "currentMembers": 3,
-    "joinedAt": "2026-03-04T10:00:00Z"
-  },
-  "error": null
-}
-```
-
-**에러 응답**
-| HTTP | 코드 | 메시지 | 설명 |
-|------|------|--------|------|
-| 400 | CR003 | 모집 중인 크루가 아닙니다. | 크루 상태가 RECRUITING이 아님 |
-| 400 | CR008 | 크루 참여 마감 기한이 지났습니다. | 중간 가입 불가 시 기한 초과 |
-| 404 | CR006 | 유효하지 않은 초대 코드입니다. | 존재하지 않는 초대코드 |
-| 409 | CR002 | 크루 정원이 가득 찼습니다. | 정원 초과 |
-| 409 | CR004 | 이미 참여 중인 크루입니다. | 중복 참여 |
-| 409 | CR023 | 동시 요청 충돌이 발생했습니다. 다시 시도해주세요. | 낙관적 락 재시도 3회 실패 |
-
----
-
-### GET /crews/{crewId} (크루 상세 조회)
-
-크루 멤버가 상세 화면을 볼 때 사용한다. 멤버가 아니면 403.
-
-**요청 (Request)**
-```
-GET /crews/{crewId} HTTP/1.1
-Authorization: Bearer {accessToken}
-```
-
-**응답 (Response)**
-```json
-{
-  "success": true,
-  "data": {
-    "id": "crew-uuid",
-    "creatorId": "user-uuid",
-    "name": "새벽 러닝 크루",
-    "goal": "매일 아침 5km 러닝",
-    "verificationContent": "러닝 완료 후 기록 인증",
-    "verificationType": "PHOTO",
-    "maxMembers": 5,
-    "currentMembers": 3,
-    "status": "ACTIVE",
-    "startDate": "2026-03-10",
-    "endDate": "2026-03-24",
-    "allowLateJoin": true,
-    "inviteCode": "ABC123",
-    "createdAt": "2026-03-01T10:00:00",
-    "deadlineTime": "23:59:59",
-    "category": "EXERCISE",
-    "visibility": "PUBLIC",
-    "members": [
-      {
-        "userId": "user-uuid-1",
-        "nickname": "크루장닉네임",
-        "profileImageUrl": "https://...",
-        "role": "LEADER",
-        "joinedAt": "2026-03-01T10:00:00",
-        "successCount": 2,
-        "challengeProgress": {
-          "challengeStatus": "IN_PROGRESS",
-          "completedDays": 1,
-          "targetDays": 3
-        }
-      },
-      {
-        "userId": "user-uuid-2",
-        "nickname": "멤버닉네임",
-        "profileImageUrl": null,
-        "role": "MEMBER",
-        "joinedAt": "2026-03-02T14:00:00",
-        "successCount": 0,
-        "challengeProgress": null
-      }
-    ]
-  },
-  "error": null
-}
-```
-
-**필드 설명:**
-- `successCount`: 해당 크루에서의 작심삼일(3일 연속 인증) 달성 횟수. 활성 챌린지 유무와 무관하게 항상 표시
-- `challengeProgress`: 현재 활성(IN_PROGRESS) 챌린지 진행 상황. 활성 챌린지가 없으면 `null`
-  - `challengeStatus`: 챌린지 상태 (IN_PROGRESS, SUCCESS, FAILED, ENDED)
-  - `completedDays`: 완료한 일수
-  - `targetDays`: 목표 일수 (3)
-
-**에러 응답**
-| HTTP | 코드 | 메시지 | 설명 |
-|------|------|--------|------|
-| 403 | CR009 | 크루 멤버만 조회할 수 있습니다. | 비멤버 접근 |
-| 404 | CR001 | 크루를 찾을 수 없습니다. | 존재하지 않는 crewId |
-
----
-
-### POST /crews (크루 생성)
-
-새로운 크루를 생성한다. 생성자는 자동으로 LEADER 역할의 첫 번째 멤버로 추가된다.
-
-**요청 (Request)**
-```
-POST /crews HTTP/1.1
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-```json
-{
-  "name": "새벽 러닝 크루",
-  "goal": "매일 아침 5km 러닝",
-  "verificationContent": "러닝 완료 후 기록 인증",
-  "verificationType": "PHOTO",
-  "maxMembers": 5,
-  "startDate": "2026-03-10",
-  "endDate": "2026-03-24",
-  "allowLateJoin": true,
-  "deadlineTime": "23:59:59",
-  "category": "EXERCISE",
-  "visibility": "PUBLIC"
-}
-```
-
-**필드 설명:**
-- `name`: (필수) 크루 이름
-- `goal`: (필수) 크루 목표
-- `verificationContent`: (필수) 인증 내용 (최대 50자)
-- `verificationType`: (필수) 인증 방식 — `TEXT` / `PHOTO`
-- `maxMembers`: (필수) 최대 정원 (1~10)
-- `startDate`: (필수) 크루 시작일 (오늘+1 이후)
-- `endDate`: (필수) 크루 종료일 (시작일 + 최소 6일 = 최소 7일 기간 / 최대 `crew.max-duration-days`일, 기본 30일)
-- `allowLateJoin`: (선택) 중간 가입 허용 여부 (기본값 false)
-- `deadlineTime`: (선택) 일일 인증 마감 시간 (기본값 23:59:59)
-- `category`: (필수) 크루 카테고리 — `EXERCISE` / `STUDY` / `LIFESTYLE` / `SELF_DEV` / `ETC`
-- `visibility`: (선택) 공개 설정 — `PUBLIC` / `PRIVATE` (기본값 `PRIVATE`)
-
-**성공 응답 (201 Created)**
-```json
-{
-  "success": true,
-  "data": {
-    "crewId": "crew_123",
-    "creatorId": "user_456",
-    "name": "새벽 러닝 크루",
-    "goal": "매일 아침 5km 러닝",
-    "verificationContent": "러닝 완료 후 기록 인증",
-    "verificationType": "PHOTO",
-    "maxMembers": 5,
-    "currentMembers": 1,
-    "status": "RECRUITING",
-    "startDate": "2026-03-10",
-    "endDate": "2026-03-24",
-    "allowLateJoin": true,
-    "inviteCode": "ABC123",
-    "createdAt": "2026-03-09T10:00:00",
-    "deadlineTime": "23:59:59",
-    "category": "EXERCISE",
-    "visibility": "PUBLIC"
-  },
-  "error": null
-}
-```
-
-**에러 응답**
-| HTTP | 코드 | 메시지 | 설명 |
-|------|------|--------|------|
-| 400 | CR011 | 시작일은 내일 이후여야 합니다. | startDate가 오늘 이전 |
-| 400 | CR012 | 종료일은 시작일 이후여야 합니다. | endDate ≤ startDate |
-| 400 | CR024 | 크루 기간은 최소 7일 이상이어야 합니다. | (endDate - startDate) < 6일 |
-| 400 | CR016 | 크루 기간은 최대 {N}일까지 가능합니다. | (endDate - startDate) > `crew.max-duration-days` |
-
----
-
-### GET /crews (내 크루 목록 조회)
-
-내가 참여 중인 크루 목록을 조회한다. 홈 화면에서 사용한다.
-
-**요청 (Request)**
-```
-GET /crews HTTP/1.1
-Authorization: Bearer <token>
-```
-
-**성공 응답 (200 OK)**
 ```json
 {
   "success": true,
@@ -522,8 +197,8 @@ Authorization: Bearer <token>
       "category": "EXERCISE",
       "visibility": "PUBLIC",
       "todayVerified": false,
-      "successCount": 2,
-      "verifiedDayCount": 8,
+      "successCount": 0,
+      "verifiedDayCount": 0,
       "inviteCode": "A1B2C3",
       "challengeProgress": {
         "challengeStatus": "IN_PROGRESS",
@@ -536,186 +211,154 @@ Authorization: Bearer <token>
 }
 ```
 
-**필드 설명:**
-- `id`: 크루 ID
-- `name`: 크루 이름
-- `goal`: 크루 목표
-- `verificationContent`: 인증 내용
-- `verificationType`: 인증 방식 (`TEXT` / `PHOTO`)
-- `currentMembers`: 현재 멤버 수
-- `maxMembers`: 최대 정원
-- `status`: 크루 상태 (`RECRUITING`, `ACTIVE`, `COMPLETED`)
-- `startDate`: 크루 시작일
-- `endDate`: 크루 종료일
-- `createdAt`: 크루 생성 시각
-- `category`: 크루 카테고리 (nullable — 기존 크루는 null)
-- `visibility`: 공개 설정 (`PUBLIC` / `PRIVATE`)
-- `todayVerified`: 오늘 인증 완료 여부 (boolean)
-- `successCount` (int): 요청자가 이 크루에서 달성한 작심삼일(연속 3일 인증 성공) 횟수. `COMPLETED` 크루만 실집계, `RECRUITING`/`ACTIVE`는 `0`(미집계) — ACTIVE 크루의 `0`을 "달성 0회"로 오해 금지(미집계 ≠ 0회 달성).
-- `verifiedDayCount` (int): 요청자가 이 크루에서 `APPROVED` 인증을 한 총 일수. `COMPLETED` 크루만 실집계, `RECRUITING`/`ACTIVE`는 `0`(미집계) — ACTIVE 크루의 `0`을 "달성 0회"로 오해 금지(미집계 ≠ 0회 달성).
-- `inviteCode`: 크루 초대코드 (6자리 — 본인이 멤버인 크루 목록이므로 노출 안전)
-- `challengeProgress` (nullable): 요청자의 현재 진행 중인 챌린지 진행도. 활성(IN_PROGRESS) 챌린지 없으면 `null`.
-  - `challengeStatus`: 챌린지 상태 (`IN_PROGRESS`)
-  - `completedDays`: 완료한 인증 일수 (0 ~ targetDays-1 — 목표 도달 시 챌린지가 SUCCESS로 전환되어 목록엔 미노출)
-  - `targetDays`: 목표 일수 (현재 항상 3)
+- `status`: `RECRUITING`, `ACTIVE`, `COMPLETED`
+- `verificationType`: `TEXT`, `PHOTO`
+- `category`: `EXERCISE`, `STUDY`, `LIFESTYLE`, `SELF_DEV`, `ETC`
+- `visibility`: `PUBLIC`, `PRIVATE`
+- `todayVerified`: `ACTIVE` 크루에서 오늘 승인된 인증이 있는지 나타낸다. 그 외 상태에서는 `false`다.
+- `successCount`, `verifiedDayCount`: `COMPLETED` 크루만 집계한다. 다른 상태의 `0`은 미집계 값이다.
+- `inviteCode`: 본인이 멤버인 크루이므로 포함한다.
+- `challengeProgress`: 요청자의 `IN_PROGRESS` 챌린지가 없으면 `null`이다.
 
-**에러 응답**
-| HTTP | 코드 | 메시지 | 설명 |
-|------|------|--------|------|
-| 401 | A003 | 인증이 필요합니다. | 미인증 |
+### GET /crews/{crewId}
 
----
+크루 멤버가 상세와 멤버별 챌린지 현황을 조회한다.
 
-### PATCH /crews/{crewId} (크루 수정)
+**성공: `200 OK`**
 
-크루장이 RECRUITING 상태 크루의 정보를 부분 수정한다. 최소 1개 이상 필드가 포함되어야 한다.
-
-**요청 (Request)**
-```json
-PATCH /crews/{crewId} HTTP/1.1
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "name": "수정된 이름",
-  "goal": "수정된 목표",
-  "verificationContent": "수정된 인증내용",
-  "category": "STUDY",
-  "visibility": "PUBLIC"
-}
-```
-
-**필드 설명:**
-- `name`: (선택) 크루 이름
-- `goal`: (선택) 크루 목표
-- `verificationContent`: (선택) 인증 내용
-- `category`: (선택) 크루 카테고리 — `EXERCISE` / `STUDY` / `LIFESTYLE` / `SELF_DEV` / `ETC`
-- `visibility`: (선택) 공개 설정 — `PUBLIC` / `PRIVATE`
-- 5개 필드 모두 optional (PATCH 시맨틱), 최소 1개 이상 필수
-- 빈 문자열("") 또는 공백만 있는 값은 거부
-
-**성공 응답 (200 OK)**
 ```json
 {
   "success": true,
   "data": {
-    "crewId": "crew_123",
-    "creatorId": "user_456",
-    "name": "수정된 이름",
-    "goal": "수정된 목표",
-    "verificationContent": "수정된 인증내용",
+    "id": "crew_123",
+    "creatorId": "user_001",
+    "name": "새벽 러닝 크루",
+    "goal": "매일 아침 5km 러닝",
+    "verificationContent": "러닝 완료 후 기록 인증",
     "verificationType": "PHOTO",
     "maxMembers": 5,
-    "currentMembers": 1,
-    "status": "RECRUITING",
+    "currentMembers": 2,
+    "status": "ACTIVE",
     "startDate": "2026-03-10",
     "endDate": "2026-03-24",
     "allowLateJoin": true,
     "inviteCode": "ABC123",
-    "createdAt": "2026-03-09T10:00:00",
+    "createdAt": "2026-03-01T10:00:00",
     "deadlineTime": "23:59:59",
-    "category": "STUDY",
-    "visibility": "PUBLIC"
+    "category": "EXERCISE",
+    "visibility": "PUBLIC",
+    "members": [
+      {
+        "userId": "user_001",
+        "nickname": "지안",
+        "profileImageUrl": null,
+        "role": "LEADER",
+        "joinedAt": "2026-03-01T10:00:00",
+        "successCount": 2,
+        "challengeProgress": {
+          "challengeStatus": "IN_PROGRESS",
+          "completedDays": 1,
+          "targetDays": 3
+        }
+      }
+    ]
   },
   "error": null
 }
 ```
 
-**에러 응답**
-| HTTP | 코드 | 메시지 | 설명 |
-|------|------|--------|------|
-| 400 | CR003 | 모집 중인 크루가 아닙니다. | RECRUITING 상태가 아님 |
-| 400 | CR017 | 수정할 필드가 없습니다. | 빈 body / 모든 필드 null |
-| 400 | CR018 | 유효하지 않은 값입니다. | 빈 문자열 또는 공백만 있는 값 |
-| 403 | CR009 | 크루장만 수정할 수 있습니다. | LEADER가 아님 |
-| 404 | CR001 | 크루를 찾을 수 없습니다. | 존재하지 않는 crewId |
-| 404 | CR021 | 해당 크루의 멤버가 아닙니다. | 크루 미참여 |
+- `nickname`, `profileImageUrl`: User 조회 결과가 없거나 이미지가 없으면 `null`일 수 있다.
+- `successCount`: 해당 크루에서 멤버가 성공한 챌린지 수다.
+- `challengeProgress`: 해당 멤버의 `IN_PROGRESS` 챌린지가 없으면 `null`이다.
 
----
+| HTTP | 코드 | 조건 |
+|---|---|---|
+| 403 | CR009 | 요청자가 크루 멤버가 아님 |
+| 404 | CR001 | 크루 없음 |
 
-### DELETE /crews/{crewId} (크루 삭제)
+### GET /crews/invite/{inviteCode}
 
-크루장이 혼자이고 인증을 시작하지 않은 크루를 삭제한다. hard delete (DB에서 완전 삭제, FK-safe).
+초대코드로 가입 전 크루를 미리 본다. **인증이 필요하다.** 조회 자체로 가입되지는 않는다.
 
-**처리 정책**
-- RECRUITING + 혼자(멤버 1명) → 삭제 가능 (기존)
-- ACTIVE + 혼자 + 인증 전(`challenges`에 `crew_id` 레코드 없음) → 삭제 가능 (신규)
-- ACTIVE + 인증 시작(`challenges`에 `crew_id` 레코드 존재) → 거부 (`CR026`)
-- COMPLETED → 거부 (`CR026`)
-- 멤버 2명 이상 → 거부 (`CR019`)
-- **검증 순서**: 상태 게이트(`CR026`)가 멤버 수 체크(`CR019`)보다 먼저
+### GET /crews/{crewId}/preview
 
-**요청 (Request)**
-```
-DELETE /crews/{crewId} HTTP/1.1
-Authorization: Bearer <token>
-```
+검색 결과에서 `PUBLIC` 크루를 미리 본다. **인증이 필요하다.**
 
-**성공 응답 (204 No Content)**
+두 API의 성공 응답 `data`는 다음과 같이 같다.
 
-응답 body 없음.
-
-**에러 응답**
-| HTTP | 코드 | 메시지 | 설명 |
-|------|------|--------|------|
-| 400 | CR026 | 인증을 시작한 크루는 삭제할 수 없습니다. | ACTIVE+인증시작 / COMPLETED 등 삭제 불가 상태 |
-| 403 | CR009 | 크루장만 삭제할 수 있습니다. | LEADER가 아님 |
-| 404 | CR001 | 크루를 찾을 수 없습니다. | 존재하지 않는 crewId |
-| 404 | CR021 | 해당 크루의 멤버가 아닙니다. | 크루 미참여 |
-| 409 | CR019 | 크루원이 있는 크루는 삭제할 수 없습니다. | 멤버가 LEADER 본인 외에 존재 |
-
----
-
-### DELETE /crews/{crewId}/members/me (크루 탈퇴)
-
-크루원(MEMBER)이 크루에서 탈퇴한다. RECRUITING은 무조건 가능, ACTIVE는 챌린지를 한 번도 시작하지 않은 멤버만 가능. LEADER는 탈퇴 불가 (크루 삭제 또는 회원탈퇴 시 자동 위임 사용).
-
-**요청 (Request)**
-```
-DELETE /crews/{crewId}/members/me HTTP/1.1
-Authorization: Bearer <token>
+```json
+{
+  "id": "crew_123",
+  "creatorId": "user_001",
+  "name": "작심삼일 크루",
+  "goal": "매일 운동하기",
+  "verificationContent": "운동 완료 인증샷",
+  "verificationType": "PHOTO",
+  "maxMembers": 10,
+  "currentMembers": 3,
+  "status": "RECRUITING",
+  "startDate": "2026-03-10",
+  "endDate": "2026-03-24",
+  "allowLateJoin": true,
+  "deadlineTime": "23:59:59",
+  "createdAt": "2026-03-01T10:00:00",
+  "category": "EXERCISE",
+  "visibility": "PUBLIC",
+  "members": [
+    {
+      "userId": "user_001",
+      "nickname": "크루장",
+      "profileImageUrl": null,
+      "role": "LEADER",
+      "joinedAt": "2026-03-01T10:00:00"
+    }
+  ],
+  "joinable": true,
+  "joinBlockedReason": null
+}
 ```
 
-**처리 정책:**
-- RECRUITING → 무조건 탈퇴 가능
-- ACTIVE + 챌린지 미시작(`challenges` 테이블에 (user_id, crew_id) 레코드 없음) → 탈퇴 가능
-- ACTIVE + 챌린지 시작 / COMPLETED / FAILED → 거부 (`CR025`)
+`joinBlockedReason`은 가입 가능하면 `null`, 불가능하면 아래 값 중 하나다. 서버 검사 순서상
+여러 사유가 겹치면 표의 위쪽 값이 반환된다.
 
-**성공 응답 (204 No Content)**
+| 값 | 조건 |
+|---|---|
+| `ALREADY_MEMBER` | 이미 가입함 |
+| `CREW_ENDED` | `COMPLETED` 크루 |
+| `CREW_FULL` | 정원 도달 |
+| `LATE_JOIN_NOT_ALLOWED` | `ACTIVE`이고 중간 가입을 허용하지 않음 |
+| `CREW_JOIN_DEADLINE_PASSED` | 오늘이 `endDate - 3일`보다 늦음 |
 
-응답 body 없음.
+| API | HTTP | 코드 | 조건 |
+|---|---|---|---|
+| 초대코드 미리보기 | 404 | CR006 | 유효한 초대코드가 아님 |
+| 공개 미리보기 | 400 | CR022 | `PRIVATE` 크루 |
+| 공개 미리보기 | 404 | CR001 | 크루 없음 |
 
-**에러 응답**
-| HTTP | 코드 | 메시지 | 설명 |
-|------|------|--------|------|
-| 400 | CR025 | 진행 중인 크루는 챌린지를 시작하지 않은 멤버만 탈퇴할 수 있습니다. | ACTIVE + 챌린지 시작 / COMPLETED / FAILED |
-| 403 | CR020 | 크루장은 탈퇴할 수 없습니다. | LEADER 탈퇴 시도 |
-| 404 | CR001 | 크루를 찾을 수 없습니다. | 존재하지 않는 crewId |
-| 404 | CR021 | 해당 크루의 멤버가 아닙니다. | crew_member 레코드 없음 |
+### GET /crews/search
 
----
+인증 없이 `PUBLIC` 크루를 검색한다.
 
-### GET /crews/search (크루 검색)
+**Query**
 
-공개(PUBLIC) 크루를 검색한다. 비로그인 사용자도 조회 가능 (permitAll).
+| 이름 | 필수 | 기본값 | 규칙 |
+|---|---|---|---|
+| `keyword` | 아니요 | 없음 | 이름·목표의 대소문자 무시 부분 검색 |
+| `category` | 아니요 | 없음 | Crew category enum |
+| `page` | 아니요 | `0` | 음수이면 `0` |
+| `size` | 아니요 | `20` | `1~50`; 범위를 벗어나면 `20` |
 
-**요청 (Request)**
-```
-GET /crews/search?keyword=러닝&category=EXERCISE&page=0&size=20 HTTP/1.1
-```
+검색 대상은 `PUBLIC`이면서 다음 중 하나인 크루다.
 
-**쿼리 파라미터:**
-- `keyword`: (선택) 검색어 — 크루 이름, 목표에서 LIKE 검색
-- `category`: (선택) 카테고리 필터 — `EXERCISE` / `STUDY` / `LIFESTYLE` / `SELF_DEV` / `ETC`
-- `page`: (선택) 페이지 번호 (기본값 0)
-- `size`: (선택) 페이지 크기 (기본값 20, 최대 50)
+- `RECRUITING`
+- `ACTIVE`, `allowLateJoin=true`, `endDate >= 오늘 + crew.search.min-remaining-days`
 
-**검색 조건:**
-- `visibility = PUBLIC`
-- AND (`status = RECRUITING` OR (`status = ACTIVE` AND `allowLateJoin = true` AND `endDate - today >= 6`))
-- 정렬: `createdAt DESC`
+기본 `crew.search.min-remaining-days`는 코드의 `@Value` 기준 `6`이며, 결과는 `createdAt DESC`다.
 
-**성공 응답 (200 OK)**
+잘못된 `category`, `page`, `size` query parameter 바인딩은 `400 C001`이다.
+
+**성공: `200 OK`**
+
 ```json
 {
   "success": true,
@@ -743,100 +386,290 @@ GET /crews/search?keyword=러닝&category=EXERCISE&page=0&size=20 HTTP/1.1
 }
 ```
 
-**필드 설명:**
-- `crews`: 검색 결과 크루 목록
-  - `id`: 크루 ID
-  - `name`: 크루 이름
-  - `goal`: 크루 목표
-  - `verificationContent`: 인증 내용
-  - `category`: 크루 카테고리
-  - `verificationType`: 인증 방식 (`TEXT` / `PHOTO`)
-  - `allowLateJoin`: 중간 가입 허용 여부
-  - `currentMembers`: 현재 멤버 수
-  - `maxMembers`: 최대 정원
-  - `status`: 크루 상태 (`RECRUITING`, `ACTIVE`)
-  - `startDate`: 크루 시작일
-  - `endDate`: 크루 종료일
-  - `createdAt`: 크루 생성 시각
-- `hasNext`: 다음 페이지 존재 여부
+### GET /crews/{crewId}/feed
 
----
+크루 멤버가 승인된 인증 피드와 자신의 진행 중 챌린지를 조회한다.
 
-### POST /crews/{crewId}/join (공개 크루 가입)
+**Query:** `page` 기본 `0`, `size` 기본 `20`. `page < 0`은 `0`, `size`가 `1~50` 밖이면 `20`이다.
 
-공개 크루에 직접 가입한다. 비공개 크루는 초대코드(POST /crews/join)로만 가입 가능.
+**성공: `200 OK`**
 
-**요청 (Request)**
-```
-POST /crews/{crewId}/join HTTP/1.1
-Authorization: Bearer <token>
-```
-
-**성공 응답 (201 Created)**
 ```json
 {
   "success": true,
   "data": {
-    "userId": "1234567890",
-    "crewId": "crew_123",
-    "role": "MEMBER",
-    "currentMembers": 4,
-    "joinedAt": "2026-03-04T10:00:00Z"
+    "verifications": [
+      {
+        "id": "ver_789",
+        "userId": "user_456",
+        "nickname": "김철수",
+        "profileImageUrl": null,
+        "imageUrl": "https://s3.example/image.jpg",
+        "textContent": "오늘도 완료!",
+        "targetDate": "2026-03-04",
+        "slotAttempt": 1,
+        "createdAt": "2026-03-04T14:30:00",
+        "reactions": [
+          {
+            "emojiType": "LIKE",
+            "count": 2,
+            "reactedByMe": true,
+            "users": [{"userId": "user_222", "nickname": "지안"}]
+          }
+        ]
+      }
+    ],
+    "myProgress": {
+      "challengeId": "chal_123",
+      "status": "IN_PROGRESS",
+      "completedDays": 1,
+      "targetDays": 3
+    },
+    "hasNext": false
   },
   "error": null
 }
 ```
 
-**비즈니스 규칙:**
-- `visibility = PUBLIC`인 크루만 직접 가입 가능
-- `status = RECRUITING` 또는 (`status = ACTIVE` AND `allowLateJoin = true` AND 참여 마감 기한 이내)
-- 정원 미초과, 중복 참여 불가
+- 피드는 `APPROVED` 인증을 최신순으로 반환한다.
+- `profileImageUrl`, `imageUrl`, `textContent`는 인증 방식과 사용자 설정에 따라 `null`일 수 있다.
+- `reactions`는 없으면 `[]`이며, 사용자 순서는 서버의 `created_at`, `user_id` 정렬을 따른다.
+- 취소된 인증은 피드에서 사라진다. 수정은 새 인증 행이므로 이전 행의 반응을 승계하지 않는다.
+- `myProgress`는 `IN_PROGRESS` 챌린지가 없으면 `null`이다.
 
-**에러 응답**
-| HTTP | 코드 | 메시지 | 설명 |
-|------|------|--------|------|
-| 400 | CR022 | 공개 크루가 아닙니다. | visibility=PRIVATE인 크루 |
-| 400 | CR003 | 모집 중인 크루가 아닙니다. | 크루 상태가 가입 불가 |
-| 400 | CR008 | 크루 참여 마감 기한이 지났습니다. | 중간 가입 기한 초과 |
-| 404 | CR001 | 크루를 찾을 수 없습니다. | 존재하지 않는 crewId |
-| 409 | CR002 | 크루 정원이 가득 찼습니다. | 정원 초과 |
-| 409 | CR004 | 이미 참여 중인 크루입니다. | 중복 참여 |
-| 409 | CR023 | 동시 요청 충돌이 발생했습니다. 다시 시도해주세요. | 낙관적 락 재시도 3회 실패 |
+| HTTP | 코드 | 조건 |
+|---|---|---|
+| 403 | CR009 | 요청자가 크루 멤버가 아님 |
+| 404 | CR001 | 멤버십 검증 중 크루 없음 |
 
----
+### GET /crews/{crewId}/my-verifications
 
-### GET /invite/{inviteCode} (초대 링크 랜딩 페이지)
+크루 안에서 요청자의 인증 날짜, 스트릭, 챌린지 현황과 오늘 슬롯을 조회한다.
 
-초대코드를 포함한 HTML 랜딩 페이지를 반환한다. 인증 불필요.
+**성공: `200 OK`**
 
-**요청 (Request)**
+```json
+{
+  "success": true,
+  "data": {
+    "verifiedDates": ["2026-03-01", "2026-03-02", "2026-03-03"],
+    "streakCount": 3,
+    "completedChallenges": 2,
+    "myProgress": {
+      "challengeId": "chal_123",
+      "status": "IN_PROGRESS",
+      "completedDays": 2,
+      "targetDays": 3
+    },
+    "todaySlot": {
+      "verificationId": "ver_789",
+      "slotAttempt": 1,
+      "textContent": "오늘도 완료!",
+      "imageUrl": null
+    }
+  },
+  "error": null
+}
 ```
-GET /invite/ABC123 HTTP/1.1
-Host: triagain.kr
-Accept: text/html
+
+- `verifiedDates`: 크루 기간 안의 `APPROVED` 인증일을 오름차순으로 반환한다.
+- `streakCount`: `verifiedDates`의 가장 최근 날짜부터 역방향으로 연속된 날짜 수다.
+- `completedChallenges`: 해당 크루에서 `SUCCESS`인 챌린지 수다.
+- `myProgress`: `IN_PROGRESS` 챌린지가 없으면 `null`이다.
+- `todaySlot`: 오늘의 비취소 인증이 없으면 `null`이다. 내용 수정 화면의 초기값으로 사용한다.
+
+| HTTP | 코드 | 조건 |
+|---|---|---|
+| 403 | CR009 | 요청자가 크루 멤버가 아님 |
+| 404 | CR001 | 멤버십·기간 조회 중 크루 없음 |
+
+## 4. 생성·수정
+
+### POST /crews
+
+크루를 만들고 요청자를 `LEADER` 멤버로 등록한다.
+
+**Request**
+
+```json
+{
+  "name": "새벽 러닝 크루",
+  "goal": "매일 아침 5km 러닝",
+  "verificationContent": "러닝 완료 후 기록 인증",
+  "verificationType": "PHOTO",
+  "maxMembers": 5,
+  "startDate": "2026-03-10",
+  "endDate": "2026-03-24",
+  "allowLateJoin": true,
+  "deadlineTime": "23:59:59",
+  "category": "EXERCISE",
+  "visibility": "PUBLIC"
+}
 ```
 
-**경로 파라미터:**
-- `inviteCode`: 6자리 초대코드 (URL에서 추출, DB 검증 없음)
+| 필드 | 필수 | 규칙 |
+|---|---|---|
+| `name` | 예 | 공백 불가, 최대 50자 |
+| `goal` | 예 | 공백 불가, 최대 500자 |
+| `verificationContent` | 예 | 공백 불가, 최대 50자 |
+| `verificationType` | 예 | `TEXT`, `PHOTO` |
+| `maxMembers` | 예 | `1~10` |
+| `startDate` | 예 | 오늘보다 미래 |
+| `endDate` | 예 | 시작일부터 최소 7일 기간, 최대 `crew.max-duration-days` |
+| `allowLateJoin` | 아니요 | 누락 시 Java boolean 기본값 `false` |
+| `deadlineTime` | 아니요 | 누락 시 `23:59:59` |
+| `category` | 예 | Crew category enum |
+| `visibility` | 아니요 | 누락 시 `PRIVATE` |
 
-**성공 응답 (200 OK)**
+`crew.max-duration-days`의 현재 설정값은 `30`이다. 기간 계산은 `startDate`와 `endDate`의
+날짜 차이이며 최소 `6`, 최대 `30`이어야 한다.
+
+**성공: `201 Created`**
+
+```json
+{
+  "success": true,
+  "data": {
+    "crewId": "crew_123",
+    "creatorId": "user_456",
+    "name": "새벽 러닝 크루",
+    "goal": "매일 아침 5km 러닝",
+    "verificationContent": "러닝 완료 후 기록 인증",
+    "verificationType": "PHOTO",
+    "maxMembers": 5,
+    "currentMembers": 1,
+    "status": "RECRUITING",
+    "startDate": "2026-03-10",
+    "endDate": "2026-03-24",
+    "allowLateJoin": true,
+    "inviteCode": "ABC123",
+    "createdAt": "2026-03-09T10:00:00",
+    "deadlineTime": "23:59:59",
+    "category": "EXERCISE",
+    "visibility": "PUBLIC"
+  },
+  "error": null
+}
 ```
-Content-Type: text/html;charset=UTF-8
 
-[HTML 랜딩 페이지 — Thymeleaf 렌더링]
+| HTTP | 코드 | 조건 |
+|---|---|---|
+| 400 | C001 | 요청 필수값·길이·형식 검증 실패 |
+| 400 | CR011 | `startDate`가 오늘보다 미래가 아님 |
+| 400 | CR012 | `endDate`가 `startDate`보다 늦지 않음 |
+| 400 | CR024 | 날짜 차이가 6일 미만 |
+| 400 | CR016 | 날짜 차이가 설정된 최대 일수 초과 |
+
+### PATCH /crews/{crewId}
+
+`LEADER`가 `RECRUITING` 크루의 일부 정보를 수정한다.
+
+**Request:** `name`, `goal`, `verificationContent`, `category`, `visibility` 중 하나 이상.
+문자열은 공백만 보낼 수 없고 각각 생성 요청과 같은 최대 길이를 적용한다.
+
+**성공: `200 OK`** — `POST /crews`의 `data`와 같은 필드를 갱신된 값으로 반환한다.
+
+| HTTP | 코드 | 조건 |
+|---|---|---|
+| 400 | C001 | 필드 길이·enum 형식 검증 실패 |
+| 400 | CR003 | `RECRUITING` 상태가 아님 |
+| 400 | CR017 | 모든 수정 필드가 `null` 또는 없음 |
+| 400 | CR018 | 문자열 필드가 빈 문자열 또는 공백뿐임 |
+| 403 | CR009 | 요청자가 `LEADER`가 아님 |
+| 404 | CR001 | 크루 없음 |
+| 404 | CR021 | 요청자가 크루 멤버가 아님 |
+
+## 5. 가입
+
+### POST /crews/join
+
+초대코드로 `PUBLIC`·`PRIVATE` 크루에 가입한다.
+
+```json
+{"inviteCode":"ABC123"}
 ```
 
-**보안:**
-- Spring Security `permitAll()` 적용: `/invite/**`, `/images/**`, `/css/**`, `/feedback`
-- 기존 API 인증 흐름에 영향 없음
+### POST /crews/{crewId}/join
 
-**정적 리소스:**
-- `/images/logo.png` — TriAgain 로고 (frontend에서 복사)
+검색한 `PUBLIC` 크루에 직접 가입한다. Request Body는 없다.
 
-**참고:**
-- DB 조회 없음 — URL의 inviteCode를 그대로 Thymeleaf Model에 담아 템플릿에 전달
-- 잘못된 코드 별도 검증 없음 — 앱에서 입력 시 검증됨
-- Phase 2: 딥링크(App Links / Universal Links) 추가 예정
+두 API 모두 성공 시 `201 Created`와 다음 `data`를 반환한다.
 
----
+```json
+{
+  "userId": "user_123",
+  "crewId": "crew_123",
+  "role": "MEMBER",
+  "currentMembers": 4,
+  "joinedAt": "2026-03-04T10:00:00"
+}
+```
 
+가입 가능 상태는 `RECRUITING`, 또는 `ACTIVE && allowLateJoin=true`다.
+오늘이 `endDate - 3일`보다 늦으면 가입할 수 없다.
+
+| API | HTTP | 코드 | 조건 |
+|---|---|---|---|
+| 초대코드 | 400 | C001 | `inviteCode` 누락·공백 |
+| 초대코드 | 404 | CR006 | 유효한 초대코드가 아님 |
+| 공개 가입 | 400 | CR022 | `PRIVATE` 크루 |
+| 공개 가입 | 404 | CR001 | 크루 없음 |
+| 공통 | 400 | CR003 | 가입 가능한 상태가 아님 |
+| 공통 | 400 | CR008 | 참여 마감 기한 경과 |
+| 공통 | 409 | CR002 | 정원 도달 |
+| 공통 | 409 | CR004 | 이미 가입함 |
+| 공통 | 409 | CR023 | `OPTIMISTIC` 전략에서 설정된 재시도를 모두 소진함 |
+
+현재 기본 `triagain.crew.lock-strategy`는 `CONDITIONAL`이다. 이 전략은
+`current_members < max_members` 조건부 원자적 UPDATE로 정원을 지키고,
+`(crew_id, user_id)` 유니크 제약 위반을 `CR004`로 변환한다. 별도 Idempotency-Key나
+응답 캐시는 사용하지 않는다. `CR023`은 설정을 `OPTIMISTIC`으로 바꿨을 때만 발생 가능한 계약이다.
+
+## 6. 삭제·탈퇴
+
+### DELETE /crews/{crewId}
+
+`LEADER`가 삭제 가능한 크루를 hard delete한다.
+
+- `RECRUITING`이고 리더 혼자이면 가능
+- `ACTIVE`이고 해당 크루의 챌린지 행이 하나도 없으며 리더 혼자이면 가능
+- 상태 검증을 멤버 수 검증보다 먼저 수행
+
+**성공: `204 No Content`** — 응답 Body 없음.
+
+| HTTP | 코드 | 조건 |
+|---|---|---|
+| 400 | CR026 | `ACTIVE`에서 챌린지가 존재하거나 삭제 불가 상태 |
+| 403 | CR009 | 요청자가 `LEADER`가 아님 |
+| 404 | CR001 | 크루 없음 |
+| 404 | CR021 | 요청자가 크루 멤버가 아님 |
+| 409 | CR019 | 리더 외 멤버가 존재함 |
+
+### DELETE /crews/{crewId}/members/me
+
+`MEMBER`가 크루에서 탈퇴한다.
+
+- `RECRUITING`: 탈퇴 가능
+- `ACTIVE`: 요청자의 `(user_id, crew_id)` 챌린지 행이 없을 때만 가능
+- `LEADER`, 챌린지를 시작한 `ACTIVE` 멤버, 그 밖의 상태는 탈퇴 불가
+
+**성공: `204 No Content`** — 응답 Body 없음.
+
+| HTTP | 코드 | 조건 |
+|---|---|---|
+| 400 | CR025 | 진행 중 챌린지가 있거나 탈퇴 불가 상태 |
+| 403 | CR020 | `LEADER`가 탈퇴를 요청함 |
+| 404 | CR001 | 크루 없음 |
+| 404 | CR021 | 요청자가 크루 멤버가 아님 |
+
+## 7. 초대 링크 랜딩
+
+### GET /invite/{inviteCode}
+
+인증 없이 `text/html;charset=UTF-8` 랜딩 페이지를 반환한다.
+
+- DB에서 초대코드를 검증하지 않는다.
+- URL의 `inviteCode`를 Thymeleaf model에 전달한다.
+- 현재 요청의 base URL로 `ogImageUrl`과 `ogUrl`을 만든다.
+- `/invite/**`, `/images/**`, `/css/**`는 Spring Security `permitAll`이다.
+- 실제 초대코드 검증은 앱이 `GET /crews/invite/{inviteCode}`를 호출할 때 수행한다.

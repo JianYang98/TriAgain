@@ -151,7 +151,7 @@ Content-Type: application/json
   "data": null,
   "error": {
     "code": "CR009",
-    "message": "크루 멤버만 조회할 수 있습니다."
+    "message": "이 작업을 수행할 권한이 없습니다."
   }
 }
 
@@ -338,7 +338,7 @@ Content-Type: application/json
   "data": null,
   "error": {
     "code": "CR009",
-    "message": "크루 멤버만 조회할 수 있습니다."
+    "message": "이 작업을 수행할 권한이 없습니다."
   }
 }
 
@@ -430,7 +430,7 @@ Authorization: Bearer <token>
 | 400 | V021 | 오늘은 더 이상 인증을 수정하거나 취소할 수 없습니다. | 슬롯당 상한(기본 3회) 초과 |
 | 400 | CR013 | 진행 중인 챌린지만 처리할 수 있습니다. | 취소 역연산 CAS 실패(희귀 레이스) — 트랜잭션 전체 롤백, 재조회 후 재시도 |
 | 409 | V023 | 신고 검토 중인 인증은 수정하거나 취소할 수 없습니다. | 대상이 `REPORTED`/`HIDDEN`/`REJECTED` |
-| 403 | CR009 | 크루 멤버만 조회할 수 있습니다. | 남의 인증 (`CREW_ACCESS_DENIED` 재사용, 전용 코드 없음) |
+| 403 | CR009 | 이 작업을 수행할 권한이 없습니다. | 남의 인증 (`CREW_ACCESS_DENIED` 재사용, 전용 코드 없음) |
 | 404 | V001 | 인증을 찾을 수 없습니다. | 존재하지 않는 인증 |
 
 ---
@@ -509,20 +509,77 @@ Content-Type: application/json
 | 409 | V015 | 이미 사용된 업로드 세션입니다. | 세션 이미 사용됨 |
 | 409 | V022 | 이미 취소되었거나 수정된 인증입니다. | 대상이 이미 `CANCELLED` (취소됐거나 수정으로 치환되어 id가 낡음) |
 | 409 | V023 | 신고 검토 중인 인증은 수정하거나 취소할 수 없습니다. | 대상이 `REPORTED`/`HIDDEN`/`REJECTED` |
-| 403 | CR009 | 크루 멤버만 조회할 수 있습니다. | 남의 인증 (`CREW_ACCESS_DENIED` 재사용, 전용 코드 없음) |
+| 403 | CR009 | 이 작업을 수행할 권한이 없습니다. | 남의 인증 (`CREW_ACCESS_DENIED` 재사용, 전용 코드 없음) |
 | 404 | V001 | 인증을 찾을 수 없습니다. | 존재하지 않는 인증 |
 
 **공통 참고:** 취소·수정 마감/컷오프는 `triagain.verification` 설정값(기본 `cancel-cutoff-minutes: 5`, `slot-attempt-limit: 3`)을 따르며, 판정 시 `DeadlinePolicy.isWithinDeadline()`(grace 5분 포함)이 아닌 **grace 미포함 순수 비교**를 사용한다.
 
 ---
 
+### GET /upload-sessions/{id} (업로드 세션 상태 조회)
+
+> ⚠️ **계약 확정·구현 대기.** 아래는 목표 계약이며 **현재 백엔드에 이 라우트가 없다**
+> (`UploadSessionController`에는 `POST /upload-sessions`와 `GET /upload-sessions/{id}/events` 두 개만 존재).
+> 지금 호출하면 아래 에러표의 `404 V004` 봉투가 아니라 **라우트 미존재 404**가 돌아온다.
+> 응용 계층 `UploadSessionQueryService.findByIdAndUserId(id, userId)`는 이미 소유권 필터를 포함해 존재한다.
+
+SSE 이벤트 누락·연결 실패에 대비해 업로드 세션의 현재 상태를 조회하는 폴링 API.
+**호출 순서** — 클라이언트는 S3 업로드 **전에** SSE를 구독하고, **S3 업로드 후** 이 API의 2초 간격 폴링을 시작한다.
+두 채널 중 먼저 `COMPLETED` 또는 `EXPIRED`를 확인한 결과를 사용하고 나머지 대기를 종료한다.
+
+**인증:** 필요 (본인이 생성한 업로드 세션만 조회 가능) — 목표 계약
+
+**요청 (Request)**
+```http
+GET /upload-sessions/123 HTTP/1.1
+Authorization: Bearer <token>
+```
+
+**파라미터:**
+- `id`: (필수) 업로드 세션 ID (Long)
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": {
+    "uploadSessionId": 123,
+    "status": "PENDING"
+  },
+  "error": null
+}
+```
+
+**필드 설명:**
+- `uploadSessionId`: 조회한 업로드 세션 ID
+- `status`: `PENDING`(처리 대기), `COMPLETED`(업로드 완료), `EXPIRED`(만료)
+
+**에러 응답**
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 401 | A003 | 로그인이 필요합니다. | 인증 토큰 없음·만료 |
+| 404 | V004 | 업로드 세션을 찾을 수 없습니다. | 세션이 없거나 요청자 소유가 아님 |
+
+---
+
 ### GET /upload-sessions/{id}/events (SSE 구독 — 업로드 완료 알림)
 
-업로드 세션의 상태 변경을 실시간으로 수신하는 SSE 엔드포인트. 클라이언트가 S3 업로드 후 Lambda가 세션을 COMPLETED로 변경하면 이벤트를 받는다.
+업로드 세션의 상태 변경을 실시간으로 수신하는 SSE 엔드포인트. Lambda가 세션을 COMPLETED로 변경하면 이벤트를 받는다.
+
+**구독 시점: S3 업로드(PUT) 전.** 서버는 미구독 세션의 완료 이벤트를 보관하지 않고 버리므로
+(`SseEmitterAdapter.send()`가 등록된 emitter가 없으면 그대로 반환), 구독 전에 Lambda 콜백이 도착하면 이벤트가 영구 유실된다.
+
+> ⚠️ **인증은 계약 확정·구현 대기.** 아래 "인증: 필요"와 `401 A003`은 **목표 계약**이며 현재 구현과 다르다.
+> 현재 이 엔드포인트는 `SecurityConfig`에서 `/upload-sessions/*/events`가 `permitAll()`이고
+> 컨트롤러가 인증 주체를 받지 않아(`subscribe(@PathVariable Long id)`) **소유권 검증이 없다.**
+> 세션 id만 알면 무인증 구독이 가능하다(노출 정보는 `COMPLETED` 문자열).
+
+**인증:** 필요 (본인이 생성한 업로드 세션만 구독 가능) — 목표 계약
 
 **요청 (Request)**
 ```
 GET /upload-sessions/{id}/events HTTP/1.1
+Authorization: Bearer <token>
 Accept: text/event-stream
 ```
 
@@ -535,9 +592,125 @@ event: upload-complete
 data: COMPLETED
 ```
 
+**에러 응답**
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 401 | A003 | 로그인이 필요합니다. | 인증 토큰 없음·만료 |
+| 404 | V004 | 업로드 세션을 찾을 수 없습니다. | 세션이 없거나 요청자 소유가 아님 |
+
 **제약 사항:**
 - SSE 타임아웃: 60초
-- 클라이언트는 fallback으로 폴링 대비 필요
+- 클라이언트는 SSE 이벤트 누락·연결 실패에 대비해 `GET /upload-sessions/{id}`를 **S3 업로드 후** 2초 간격으로 병렬 폴링한다 (해당 API는 구현 대기)
+- SSE와 폴링 중 먼저 `COMPLETED` 또는 `EXPIRED`를 확인한 결과를 사용하고 나머지 대기를 종료한다
 
 ---
 
+
+### PUT /verifications/{verificationId}/reactions (인증 좋아요 남기기)
+
+크루원이 인증에 이모지 반응을 남긴다. 유저당 인증 1개이며 **재요청은 교체**(멱등).
+
+**요청 (Request)**
+```json
+PUT /verifications/ver_789/reactions HTTP/1.1
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "emojiType": "LIKE"
+}
+```
+
+**파라미터:**
+- `emojiType`: (필수) **v1은 `"LIKE"`만 허용**. 서버는 `LIKE`·`FIRE`·`CLAP`·`HEART`·`LAUGH`를 정의하되 활성 세트 밖 값은 400으로 거부한다 (구버전 클라이언트가 렌더할 수 없는 값의 저장 차단)
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": {
+    "verificationId": "ver_789",
+    "reactions": [
+      {
+        "emojiType": "LIKE",
+        "count": 2,
+        "reactedByMe": true,
+        "users": [
+          {"userId": "user_222", "nickname": "지안"},
+          {"userId": "user_333", "nickname": "영희"}
+        ]
+      }
+    ]
+  },
+  "error": null
+}
+```
+
+**필드 설명:**
+- `reactions`: 해당 인증의 **갱신된 전체 요약** (이모지별 그룹, 없으면 `[]`) — FE가 피드 재조회 없이 카드를 갱신하는 데 사용
+  - `count`: 그 이모지를 남긴 인원 수
+  - `reactedByMe`: 요청자가 그 이모지를 남겼는지
+  - `users`: 남긴 사람 전원 (크루 정원 10명 → 본인 인증에도 남길 수 있어 최대 10명이라 전량 반환). 크루를 떠난 사람의 과거 리액션도 포함된다
+  - 표시 순서는 서버 정렬(`created_at`, `user_id`)을 따른다
+
+**제약 사항:**
+- 같은 유저가 다른 이모지로 재요청하면 **교체**된다 (행이 늘지 않는다). 같은 이모지 재요청도 200 — 상태가 같은 값으로 수렴한다
+- 좋아요 **취소는 이 API가 아니라 DELETE**다 (같은 이모지 재탭 = 취소는 클라이언트가 DELETE로 구현)
+- 본인 인증에도 남길 수 있다
+
+**에러 응답**
+
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 400 | S003 | 이모지는 필수입니다. | `emojiType` 누락·공백 |
+| 400 | S006 | 지원하지 않는 이모지입니다. | 정의 밖 값 또는 활성 세트 밖 이모지 |
+| 403 | CR009 | 이 작업을 수행할 권한이 없습니다. | 해당 크루의 현재 멤버가 아님 (`CREW_ACCESS_DENIED` 재사용 — 취소 API 선례) |
+| 404 | CR001 | 크루를 찾을 수 없습니다. | 인증이 속한 크루 없음 |
+| 404 | S005 | 반응을 남길 인증을 찾을 수 없습니다. | 인증 미존재 **또는** 노출 상태(`APPROVED`)가 아님 — 취소·신고 숨김 등. 서버는 이 둘을 구분하지 않는다 (원자 처리) |
+
+---
+
+### DELETE /verifications/{verificationId}/reactions (내 좋아요 취소)
+
+요청자가 그 인증에 남긴 반응을 제거한다. **멱등** — 남긴 반응이 없어도 200이다.
+
+**요청 (Request)**
+```
+DELETE /verifications/ver_789/reactions HTTP/1.1
+Authorization: Bearer <token>
+```
+본문 없음. (이모지를 지정하지 않는다 — 유저당 1개이므로 대상이 유일하다)
+
+**성공 응답 (200 OK)** — PUT과 동일 구조
+```json
+{
+  "success": true,
+  "data": {
+    "verificationId": "ver_789",
+    "reactions": [
+      {
+        "emojiType": "LIKE",
+        "count": 1,
+        "reactedByMe": false,
+        "users": [{"userId": "user_333", "nickname": "영희"}]
+      }
+    ]
+  },
+  "error": null
+}
+```
+
+**제약 사항:**
+- 마지막 반응이 사라지면 `reactions`는 `[]`
+- **취소된 인증에 대한 DELETE도 200**이다 (비노출 데이터 제거라 무해). 이때 `reactions`는 항상 `[]` — 노출 상태가 아닌 인증의 요약은 어떤 응답에도 실리지 않는다
+- 응답의 `reactions`는 PUT과 같은 조회를 쓰므로 위 규칙이 두 API에 동일하게 적용된다
+
+**에러 응답**
+
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 403 | CR009 | 이 작업을 수행할 권한이 없습니다. | 해당 크루의 현재 멤버가 아님 |
+| 404 | CR001 | 크루를 찾을 수 없습니다. | 인증이 속한 크루 없음 |
+| 404 | S005 | 반응을 남길 인증을 찾을 수 없습니다. | 인증 미존재 (취소된 인증은 **에러가 아니다** — 위 참조) |
+
+---

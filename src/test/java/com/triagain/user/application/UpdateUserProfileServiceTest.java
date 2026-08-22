@@ -19,6 +19,7 @@ import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
 import com.triagain.common.port.out.StoragePort;
 import com.triagain.user.domain.model.User;
+import com.triagain.user.port.in.UpdateUserProfileUseCase.UpdateProfileCommand;
 import com.triagain.user.port.out.UserRepositoryPort;
 
 @ExtendWith(MockitoExtension.class)
@@ -107,5 +108,21 @@ class UpdateUserProfileServiceTest {
 				"user-1", "https://s3.com/profiles/other-user/550e8400-e29b-41d4-a716-446655440000.jpg"))
 				.isInstanceOf(BusinessException.class)
 				.extracting("errorCode").isEqualTo(ErrorCode.INVALID_IMAGE_URL);
+	}
+
+	@Test
+	@DisplayName("닉네임 변경 — trim()과 isBlank()의 경계가 어긋나는 C0 제어문자도 가입 경로와 같은 U004")
+	void updateProfile_c0ControlCharAfterFullWidthSpace_throwsNicknameRequired() {
+		// Given — U+3000(전각공백) + U+0000(NUL). trim()은 NUL만 잘라 전각공백 1글자만 남지만,
+		// raw 그대로는 isBlank()가 false라 패턴 검사로 넘어가 U007이 났었다. 가입 경로는 U004다.
+		User user = User.of("user-1", "KAKAO", "test@test.com", "테스트", null,
+				null, null, LocalDateTime.now(), LocalDateTime.now(), null, 0);
+		given(userRepositoryPort.findById("user-1")).willReturn(Optional.of(user));
+
+		// When & Then
+		assertThatThrownBy(() -> updateUserProfileService.updateProfile(
+				new UpdateProfileCommand("user-1", "\u3000\u0000", null)))
+				.isInstanceOf(BusinessException.class)
+				.extracting("errorCode").isEqualTo(ErrorCode.NICKNAME_REQUIRED);
 	}
 }

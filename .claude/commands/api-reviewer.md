@@ -253,7 +253,7 @@ public ResponseEntity<ApiResponse<VerificationResponse>> create(
 - `BusinessException` + `ErrorCode` enum 사용
 - `GlobalExceptionHandler` 일관된 에러 응답
 - 명확한 에러 코드 (클라이언트가 분기 처리 가능)
-- 에러 메시지는 `MessageSource`(`messages.properties`)로 관리
+- 에러 메시지는 `MessageSource`(`error-messages.properties`)로 관리
 
 **ErrorCode 패턴 (TriAgain):**
 ```java
@@ -311,7 +311,7 @@ public class GlobalExceptionHandler {
 
     private final MessageSource messageSource;
 
-    /** ErrorCode → messages.properties 메시지 resolve */
+    /** ErrorCode → error-messages.properties 메시지 resolve */
     private String resolveMessage(ErrorCode errorCode, Object[] args) {
         return messageSource.getMessage(
                 errorCode.name(), args, errorCode.name(), Locale.getDefault());
@@ -506,6 +506,9 @@ api-spec.md의 에러코드가 → ErrorCode enum에 존재하는지
 
 리뷰 완료 후 결과를 `docs/review-comment/api-review-comment.md`에 저장합니다.
 기존 파일이 있으면 덮어씁니다.
+파일 머리말에 `review_head: <git rev-parse HEAD의 전체 SHA>`와
+`review_branch: <git branch --show-current>`를 기록합니다.
+둘 중 하나라도 없으면 `/pr-review-fix api`와 `/pr-review-check api`는 오래된 결과로 보고 중단합니다.
 이 파일은 `/pr-review-fix api` 커맨드에서 읽어서 수정 플랜을 세우는 데 사용됩니다.
 
 ---

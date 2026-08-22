@@ -40,3 +40,4 @@ Feature: 크루 상세 조회
     When "user_002"가 크루 상세를 조회한다
     Then 응답 코드는 403이다
     And 에러 코드는 "CREW_ACCESS_DENIED"이다
+    And 에러 메시지는 "이 작업을 수행할 권한이 없습니다."이다

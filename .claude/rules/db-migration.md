@@ -55,7 +55,7 @@ paths: "src/main/resources/db/migration/**"
 
 ## 6. 운영은 baseline 위에서 돈다 — V6 이전은 존재하지 않는 것으로 취급된다
 
-- 사실: `src/main/resources/application.yml:21-23`이 **`baseline-on-migrate: true` / `baseline-version: 6`**이다. 기존 DB에 Flyway를 도입하며 설정한 값이다(`docs/log/debugging-log.md` 2026-03-08 — baseline 없이 붙였다가 V2부터 재실행되며 `column already exists`로 실패한 기록).
+- 사실: `src/main/resources/application.yml:18-20`이 **`baseline-on-migrate: true` / `baseline-version: 6`**이다. 기존 DB에 Flyway를 도입하며 설정한 값이다(`docs/log/debugging-log.md` 2026-03-08 — baseline 없이 붙였다가 V2부터 재실행되며 `column already exists`로 실패한 기록).
 - 함의: 운영 DB는 V6 시점 스키마를 출발점으로 삼는다. **V1~V5를 고쳐도 운영에 반영되지 않는다** — 그 파일들은 이력 재현용이다.
 - 규칙: 운영에 나가야 하는 변경은 반드시 **새 버전**으로 만든다. 과거 파일을 고쳐 반영하려는 시도는 1번(체크섬) 위반이자 여기서도 무효다.
 
@@ -74,5 +74,5 @@ paths: "src/main/resources/db/migration/**"
 
 **어디에 쓸지 헷갈릴 때**: 마이그레이션 파일을 *쓰는 사람*이 알아야 하면 여기, Java 코드를 *쓰는 사람*이 알아야 하면 `lessons-learned.md`. 양쪽 다 걸리면 **한쪽에만 쓰고 반대편에서 가리킨다**(3번이 그 예다).
 
-> 아직 규칙이 없는 인접 영역: `application*.yml`, `Dockerfile`, `.github/workflows/deploy.yml`.
-> 전부 Tier 3 대상인데 로드되는 규칙이 0개다 — 그쪽에서 사건이 쌓이면 같은 방식으로 전용 규칙을 만든다.
+> 인접 영역 `application*.yml`·`Dockerfile`·`.github/workflows/**` 는 `config-deploy.md`가 맡는다
+> (2026-08-11 신설). 프로파일별 flyway 레인 표는 그쪽 3번에 있다.

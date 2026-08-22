@@ -1,5 +1,11 @@
 # PR Review: feat/s3-lambda-presigned-url
 
+> **역사 기록**: 2026-03-11 당시 PR의 리뷰 내용과 판단을 보존한다.
+> 아래의 상태·경로·멱등성 표현은 당시 변경분 기준이며 현재 API 계약이나 현재 보안 설정의 정본이
+> 아니다. 현재 계약은 [`api-spec/verification.md`](../spec/api-spec/verification.md),
+> [`api-spec/internal.md`](../spec/api-spec/internal.md), 운영 경계는
+> [`photo-upload-lambda-sse.md`](../spec/photo-upload-lambda-sse.md)를 참조한다.
+
 > 리뷰 일자: 2026-03-11
 > 브랜치: `feat/s3-lambda-presigned-url`
 > 커밋: 3건 (380fc1c → 6f76012 → 4335002)
