@@ -14,21 +14,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import com.triagain.verification.application.VerificationPolicyProperties;
-
 class SseEmitterAdapterTest {
+
+	private static final long DEFAULT_TIMEOUT_MS = 60_000L;
 
 	private SseEmitterAdapter sseEmitterAdapter;
 
 	@BeforeEach
 	void setUp() {
-		sseEmitterAdapter = new SseEmitterAdapter(policyProperties());
-	}
-
-	private static VerificationPolicyProperties policyProperties() {
-		VerificationPolicyProperties properties = new VerificationPolicyProperties();
-		properties.setSseTimeoutMs(60_000L);
-		return properties;
+		sseEmitterAdapter = new SseEmitterAdapter(DEFAULT_TIMEOUT_MS);
 	}
 
 	@Test
@@ -88,7 +82,7 @@ class SseEmitterAdapterTest {
 	void staleCallbacks_doNotEvictCurrentEmitter() throws Exception {
 		for (String callback : List.of("completionCallback", "timeoutCallback", "errorCallback")) {
 			// Given — 네트워크 끊김 등으로 같은 세션이 재구독한 상황
-			SseEmitterAdapter adapter = new SseEmitterAdapter(policyProperties());
+			SseEmitterAdapter adapter = new SseEmitterAdapter(DEFAULT_TIMEOUT_MS);
 			Long sessionId = 1L;
 			SseEmitter stale = (SseEmitter) adapter.subscribe(sessionId);
 			SseEmitter current = (SseEmitter) adapter.subscribe(sessionId);
