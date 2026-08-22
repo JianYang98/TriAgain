@@ -177,7 +177,6 @@ emitter 하나만 저장하므로 타인의 구독과 emitter 덮어쓰기 가�
 
 - Habit용 upload session은 `crewId=null`인데 Crew 인증 검증이 이를 거부하지 않는 비대칭이 있다.
 - 같은 upload session이 크루 인증 테이블과 Habit 인증 테이블에서 각각 한 번 사용될 수 있다.
-- 일부 잘못된 query parameter 타입은 전용 변환 예외 처리가 없어 `500 C002`가 될 수 있다.
 - Notification 업무키 유니크 제약이 없어 스케줄러 다중 실행 시 중복 알림 가능성이 있다.
 - 오래된 알림 삭제 Repository 메서드는 있으나 호출 스케줄러가 없다.
 - Crew·Verification의 알림 Adapter가 Support 내부 타입과 Port를 직접 import한다.

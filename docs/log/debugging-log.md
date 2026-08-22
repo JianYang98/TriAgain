@@ -27,6 +27,15 @@
 
 ---
 
+### [2026-08-22] 쿼리 파라미터 바인딩 예외가 500 C002로 매핑된 문제
+
+- 상황: `@RequestParam` 누락·타입 변환 실패가 전용 예외 핸들러 없이 catch-all `Exception` 핸들러로 흘러 `500 C002`를 반환했다.
+- 내 판단: `MissingServletRequestParameterException`과 `MethodArgumentTypeMismatchException`을 `GlobalExceptionHandler` 한 곳에서 `400 C001`로 매핑했다. malformed JSON과 미등록 경로는 별도 예외이므로 이번 수정에서 제외했다.
+- AI 역할: 내부 API·크루 검색·알림 query 바인딩 호출자를 전수 확인하고, 공통 핸들러와 실제 HTTP API 테스트 2건으로 범위를 좁혔다.
+- 배운 점: Spring MVC 바인딩 예외는 Bean Validation 예외와 별도 경로이므로, 공통 예외 처리기 변경 시 query 누락과 타입 변환 호출자를 함께 점검해야 한다.
+
+---
+
 ### [2026-08-22] CREW_ACCESS_DENIED(CR009) 메시지 일반화 — 공용 에러코드의 메시지 문자열이 조건 하나에만 고정돼 있었다
 
 - 상황: 이슈 #166 — 크루 멤버(비리더)가 `PATCH/DELETE /crews/{id}`를 호출하면 403과 함께 "크루
