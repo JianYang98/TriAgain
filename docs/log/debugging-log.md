@@ -5,6 +5,36 @@
 
 ---
 
+### [2026-08-22] CREW_ACCESS_DENIED(CR009) 메시지 일반화 — 공용 에러코드의 메시지 문자열이 조건 하나에만 고정돼 있었다
+
+- 상황: 이슈 #166 — 크루 멤버(비리더)가 `PATCH/DELETE /crews/{id}`를 호출하면 403과 함께 "크루
+  멤버만 조회할 수 있습니다."를 받는다. 실제로는 멤버인데 "멤버가 아니다"라는 사유를 받는 모순.
+  코드를 확인하니 `CREW_ACCESS_DENIED`(CR009)가 5곳에서 던져지고 있었고, 그중 3곳
+  (`EditCrewService`·`DeleteCrewService`의 `!member.isLeader()` 분기,
+  `VerificationMutationGuard.requireOwner`)은 "비멤버 조회"와 무관한 조건인데도 같은 메시지
+  문자열을 그대로 재사용하고 있었다
+- 내 판단: 조건별 에러코드 분리 대신, `error-messages.properties`의 값 하나를
+  조건-불가지론적인 일반 권한 문구("이 작업을 수행할 권한이 없습니다.")로 바꿨다 — `ErrorCode`
+  enum·throw 지점·HTTP 상태코드는 전부 무변경. 구현 전에 `ApiResponse`·`ErrorResponse`·
+  `GlobalExceptionHandler`를 먼저 읽어 응답 JSON에 `error.message`가 실제로 존재하는지 확인했다
+  (레코드가 `code`·`message` 두 필드뿐이라 jsonPath `error.message`가 맞았다). CR009(CREW_ACCESS_DENIED)
+  메시지를 단언하는 테스트는 지금까지 없었다는 걸 확인한 뒤(기존 `에러 코드는 {string}이다` 스텝은
+  `ErrorCode.valueOf().getCode()`만 비교) 새 스텝을 추가했고, crew-detail·crew-edit 두 시나리오에만
+  붙였다 — crew-delete는 `DeleteCrewService`가 `EditCrewService`와 동일한 `!isLeader()` 패턴이라
+  회귀 감지 목적상 중복이라 판단해 생략했다
+- AI 역할: Cucumber 실행 결과(JUnit XML + cucumber-report.html)를 직접 파싱해 새로 추가한 두
+  단언이 UNDEFINED·FAILED 없이 실제로 매칭·통과했는지 확인했고, 726개 테스트 중 skip 26건이
+  기존 스케줄러·Apple 인증 시나리오(변경 전부터 스킵 대상)였지 이번 변경으로 새로 생긴 스킵이
+  아님을 테스트케이스명으로 대조했다. `/simplify`의 4개 병렬 리뷰(재사용·단순화·효율·고도)에서
+  지적 0건
+- 배운 점: 공용 에러코드가 서로 무관한 조건에 재사용될 때, 메시지 문자열은 코드와 달리 조건
+  하나에만 맞게 "우연히" 고정될 수 있다 — 코드(`CR009`) 재사용 자체는 설계 의도(docs §2.8)였지만,
+  메시지가 조건-불가지론적이어야 한다는 요구는 별도로 지켜야 했다. 그리고 이 버그가 지금까지
+  안 잡힌 이유는 "CR009 메시지를 단언한 테스트가 없어서"였다 — 응답 바디의 필드 중 어떤
+  것도 검증하지 않으면 그 필드는 회귀해도 그린으로 남는다
+
+---
+
 ### [2026-08-13] 비관적 락의 발행 SQL은 `FOR UPDATE`가 아니라 `FOR NO KEY UPDATE`였다
 
 - 상황: 문서 8곳이 비관적 락을 `SELECT FOR UPDATE`로 기술했으나, SQL 로그 실측 결과 발행되는 건
