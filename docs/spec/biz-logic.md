@@ -54,6 +54,18 @@
 - 설정으로 `PESSIMISTIC`, `OPTIMISTIC` 전략을 선택할 수 있다.
 - 낙관적 전략은 `version`과 최대 3회 재시도를 사용한다.
 
+설정 key와 클래스 이름은 `triagain.crew.lock-strategy`, `CrewLockProperties`, `LockStrategy`를 유지한다.
+네 전략을 명시적으로 분기하며, 나머지 값을 OPTIMISTIC으로 처리하지 않는다.
+`REDIS_ASYNC`는 Phase 1의 미구현 값이다. 공개·초대 가입 모두 가입 DB 트랜잭션·조회·쓰기 전에
+`IllegalStateException`으로 거부하며 기존 `500 / C002`로 응답한다. Redis 연결·승인·Queue·worker는 아직 구현하지 않는다.
+
+`Crew.validateJoinable()`은 상태 → 마감만 검사하고 멤버 목록·인원 수를 변경하지 않는다.
+기존 DB 가입은 이 검증을 재사용하되 순서를 유지한다.
+
+- PESSIMISTIC/OPTIMISTIC: 정원 → 상태 → 마감 → 중복 → 멤버 추가.
+- CONDITIONAL: 상태 → 마감 → 중복 → 멤버 추가 → DB 정원 조건부 UPDATE → 멤버 저장.
+- 정원과 상태가 모두 불가하면 앞의 두 전략은 CR002, CONDITIONAL은 CR003이다.
+
 상세 순서: [`sequence/crew-join.md`](./sequence/crew-join.md)
 
 ### 1.3 검색·조회

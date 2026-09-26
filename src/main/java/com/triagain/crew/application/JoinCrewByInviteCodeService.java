@@ -1,5 +1,7 @@
 package com.triagain.crew.application;
 
+import java.util.Objects;
+
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -27,15 +29,14 @@ public class JoinCrewByInviteCodeService
 	@Override
 	public JoinByInviteCodeResult joinByInviteCode(
 			JoinByInviteCodeCommand command) {
-		if (lockProperties.isPessimistic()) {
-			return txTemplate.execute(
-				status -> doJoinPessimistic(command));
-		}
-		if (lockProperties.isConditional()) {
-			return txTemplate.execute(
-				status -> doJoinConditional(command));
-		}
-		return joinWithOptimisticRetry(command);
+		return switch (Objects.requireNonNull(lockProperties.getLockStrategy(),
+				"triagain.crew.lock-strategy must be configured")) {
+			case PESSIMISTIC -> txTemplate.execute(status -> doJoinPessimistic(command));
+			case OPTIMISTIC -> joinWithOptimisticRetry(command);
+			case CONDITIONAL -> txTemplate.execute(status -> doJoinConditional(command));
+			case REDIS_ASYNC -> throw new IllegalStateException(
+				"REDIS_ASYNC crew join is not implemented in Phase 1");
+		};
 	}
 
 	private JoinByInviteCodeResult joinWithOptimisticRetry(

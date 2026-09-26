@@ -1,6 +1,8 @@
 
 package com.triagain.crew.application;
 
+import java.util.Objects;
+
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -22,18 +24,17 @@ public class JoinCrewService implements JoinCrewUseCase {
 	private final CrewLockProperties lockProperties;
 	private final TransactionTemplate txTemplate;
 
-	/** 크루 가입 — 설정에 따라 비관적/낙관적/조건부 락 전략 분기 */
+	/** 크루 가입 — 설정의 네 전략을 명시적으로 선택하며 Redis 미구현 경로는 거부 */
 	@Override
 	public JoinCrewResult joinCrew(JoinCrewCommand command) {
-		if (lockProperties.isPessimistic()) {
-			return txTemplate.execute(
-				status -> doJoinPessimistic(command));
-		}
-		if (lockProperties.isConditional()) {
-			return txTemplate.execute(
-				status -> doJoinConditional(command));
-		}
-		return joinWithOptimisticRetry(command);
+		return switch (Objects.requireNonNull(lockProperties.getLockStrategy(),
+				"triagain.crew.lock-strategy must be configured")) {
+			case PESSIMISTIC -> txTemplate.execute(status -> doJoinPessimistic(command));
+			case OPTIMISTIC -> joinWithOptimisticRetry(command);
+			case CONDITIONAL -> txTemplate.execute(status -> doJoinConditional(command));
+			case REDIS_ASYNC -> throw new IllegalStateException(
+				"REDIS_ASYNC crew join is not implemented in Phase 1");
+		};
 	}
 
 	private JoinCrewResult joinWithOptimisticRetry(

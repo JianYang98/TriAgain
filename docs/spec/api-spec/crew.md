@@ -625,6 +625,12 @@
 `(crew_id, user_id)` 유니크 제약 위반을 `CR004`로 변환한다. 별도 Idempotency-Key나
 응답 캐시는 사용하지 않는다. `CR023`은 설정을 `OPTIMISTIC`으로 바꿨을 때만 발생 가능한 계약이다.
 
+`REDIS_ASYNC`는 Phase 1에서 아직 미구현이다. 이 값을 선택하면 인증·요청 유효성 검증을
+통과한 공개 직접 가입과 초대코드 가입 모두 Service 진입 시 `IllegalStateException`으로 즉시 거부한다.
+기존 `GlobalExceptionHandler`가 `500 / C002`로 처리하며 신규 ErrorCode나 메시지는 추가하지 않는다.
+기존 DB 전략으로 fallback하지 않고 가입 DB 조회·저장·트랜잭션을 실행하지 않는다.
+Redis 비동기 가입의 성공 응답 계약은 후속 단계에서 추가한다.
+
 ## 6. 삭제·탈퇴
 
 ### DELETE /crews/{crewId}
