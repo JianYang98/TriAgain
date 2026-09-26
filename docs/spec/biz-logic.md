@@ -51,7 +51,7 @@
 - 정원은 `current_members < max_members` 조건부 원자적 UPDATE로 보호한다.
 - 중복 가입은 `(crew_id, user_id)` 유니크 제약으로 보호한다.
 - 조건부 전략은 재시도하지 않는다.
-- 설정으로 `PESSIMISTIC`, `OPTIMISTIC` 전략을 선택할 수 있다.
+- 설정으로 `PESSIMISTIC`, `OPTIMISTIC`, `CONDITIONAL`, `REDIS_ASYNC` 중 하나를 선택한다.
 - 낙관적 전략은 `version`과 최대 3회 재시도를 사용한다.
 
 설정 key와 클래스 이름은 `triagain.crew.lock-strategy`, `CrewLockProperties`, `LockStrategy`를 유지한다.
