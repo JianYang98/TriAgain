@@ -64,6 +64,10 @@ public abstract class E2eTestBase {
 		registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
 		registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
 		registry.add("spring.flyway.enabled", () -> "false");
+		// Redis 부재를 보장한다(아무것도 listen하지 않는 포트) — 로컬에 Redis가 떠 있어도 DB 전략 결과가 바뀌지 않게.
+		// Redis가 필요한 테스트는 자기 @DynamicPropertySource로 덮어쓴다.
+		registry.add("spring.data.redis.host", () -> "localhost");
+		registry.add("spring.data.redis.port", () -> "1");
 	}
 
 	@BeforeEach

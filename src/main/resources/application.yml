@@ -19,6 +19,19 @@ spring:
     baseline-on-migrate: true
     baseline-version: 6
 
+  # Redis는 lock-strategy=REDIS_ASYNC에서만 사용. host/port/auth는 표준 키를 환경별로 지정한다.
+  data:
+    redis:
+      connect-timeout: 1s
+      timeout: 2s
+
+# Boot 기본 Redis health를 끈다 — 켜 두면 DB 전략에서도 Redis 부재로 /actuator/health가 503(실측).
+# REDIS_ASYNC는 CrewJoinRedisConfiguration이 같은 이름의 indicator를 직접 등록한다.
+management:
+  health:
+    redis:
+      enabled: false
+
 jwt:
   secret: ${JWT_SECRET:dGVzdC1zZWNyZXQta2V5LWZvci1sb2NhbC1kZXZlbG9wbWVudC1vbmx5LXRyaWFnYWlu}
   access-token-expiration: 1800000
