@@ -689,6 +689,7 @@
   init은 첫 Lua 실행 전에 공용 pending이 비었는지 확인한다. 크루별 DB snapshot(`max_members`, `current_members`, 멤버 집합)을
   읽어 멤버 수≠`current_members`·중복·N∉1..capacity면 거부하고 위 Lua를 실행한 뒤 pre-flight를 한다.
   cleanup은 해당 run prefix key만 지운다(FLUSHDB 없음).
+  init이 여러 크루 중 중간에 실패하면 앞 크루는 초기화된 채 남으므로(rollback 없음) 해당 run을 cleanup한 뒤 다시 준비한다.
   종료 코드 0 성공 / 1 사용법 / 2 CONNECTION / 3 NOT_INITIALIZED / 4 INVALID_STATE(재초기화 거부 포함) / 5 DB snapshot 불일치.
 
 ## 6. 삭제·탈퇴

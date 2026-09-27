@@ -5,6 +5,7 @@
 #   preflight <namespace> <runId> <crewId>...  연결 → 크루별 준비 상태 → 새 run pending 비어 있음 확인
 #   cleanup   <namespace> <runId>              해당 run prefix의 key만 삭제 (FLUSHDB 안 씀)
 #
+# init이 여러 크루 중 중간에 실패하면 앞 크루는 초기화된 채 남는다 — 해당 run을 cleanup하고 다시 준비한다.
 # 요청을 멈춘 상태에서만 실행한다. DB/Redis 접근 명령은 환경변수로 바꿀 수 있다:
 #   PSQL      (기본: docker compose exec -T postgres psql -U triagain -d triagain)
 #   REDIS_CLI (기본: docker compose exec -T redis redis-cli)
