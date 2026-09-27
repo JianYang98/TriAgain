@@ -3,7 +3,10 @@ package com.triagain.crew.infra.redis;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -21,6 +24,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.data.redis.connection.DataType;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
+import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -229,10 +233,132 @@ class CrewJoinRedisAdapterIntegrationTest {
 		assertThat(redis.opsForHash().get(key("meta"), "seq")).isEqualTo("1");
 	}
 
+	@Test
+	@DisplayName("순차 승인 A→B→C의 pending은 왼쪽부터 C,B,A이고 오른쪽 기준(향후 RIGHT 소비 순서)으로 A,B,C다")
+	void pending_isLpushFifoLayout() throws Exception {
+		// Given
+		initCrew(5, "u-leader");
+
+		// When
+		for (String user : List.of("u-A", "u-B", "u-C")) {
+			assertThat(adapter.approve(CREW, user, CONFIRMED_AT).status()).isEqualTo(Status.JOIN_SUCCESS);
+		}
+
+		// Then: 소비 명령 없이 LRANGE로만 본다
+		List<String> leftToRight = new ArrayList<>();
+		for (String raw : redis.opsForList().range(pendingKey(), 0, -1)) {
+			leftToRight.add((String)objectMapper.readValue(raw, Map.class).get("userId"));
+		}
+		assertThat(leftToRight).containsExactly("u-C", "u-B", "u-A");
+		List<String> rightToLeft = new ArrayList<>(leftToRight);
+		Collections.reverse(rightToLeft);
+		assertThat(rightToLeft).containsExactly("u-A", "u-B", "u-C");
+	}
+
+	@Test
+	@DisplayName("초기 N이 다른 크루 3개를 한 run에서 승인하면 crew별 payload 수=K, run LLEN=ΣK, 예상 밖 crew가 없다")
+	void sharedPending_perCrewCountsAndRunTotal() {
+		// Given: N=1·2·3
+		Map<String, List<String>> initial = Map.of(
+			"CREW-A", List.of("a-1"),
+			"CREW-B", List.of("b-1", "b-2"),
+			"CREW-C", List.of("c-1", "c-2", "c-3"));
+		initial.forEach((crewId, users) -> initCrew(crewId, 6, users.toArray(String[]::new)));
+		Map<String, Integer> joins = Map.of("CREW-A", 3, "CREW-B", 1, "CREW-C", 2);
+
+		// When: 크루를 번갈아 승인
+		for (int i = 0; i < 3; i++) {
+			for (Map.Entry<String, Integer> entry : joins.entrySet()) {
+				if (i < entry.getValue()) {
+					adapter.approve(entry.getKey(), entry.getKey() + "-new-" + i, CONFIRMED_AT);
+				}
+			}
+		}
+
+		// Then
+		for (Map.Entry<String, List<String>> entry : initial.entrySet()) {
+			assertThat(CrewJoinRunConsistency.assertCrew(redis, prefix(), entry.getKey(), entry.getValue()))
+				.hasSize(joins.get(entry.getKey()));
+		}
+		CrewJoinRunConsistency.assertNoUnexpectedCrew(redis, prefix(), initial.keySet());
+		assertThat(redis.opsForList().size(pendingKey())).isEqualTo(6L);
+	}
+
+	@Test
+	@DisplayName("최종 정합성 검사는 정상 run에서 통과하고, pending 한 건을 지우면 실패하며 자동으로 되살리지 않는다")
+	void consistencyCheck_detectsLostPending() {
+		// Given: 정상 run — N=2, 신규 3명
+		List<String> initialMembers = List.of("u-a", "u-b");
+		initCrew(6, initialMembers.toArray(String[]::new));
+		for (String user : List.of("u-x", "u-y", "u-z")) {
+			adapter.approve(CREW, user, CONFIRMED_AT);
+		}
+		assertThat(CrewJoinRunConsistency.assertCrew(redis, prefix(), CREW, initialMembers))
+			.containsExactly("u-x", "u-y", "u-z");
+
+		// When: 테스트에서 pending 한 건 유실을 만든다 (members에는 남아 있음)
+		String lost = redis.opsForList().index(pendingKey(), 0);
+		assertThat(redis.opsForList().remove(pendingKey(), 1, lost)).isEqualTo(1L);
+
+		// Then: 같은 검사가 실패하고, 유실분은 재생성되지 않는다
+		assertThatThrownBy(() -> CrewJoinRunConsistency.assertCrew(redis, prefix(), CREW, initialMembers))
+			.isInstanceOf(AssertionError.class)
+			.hasMessageContaining("pending 건수 = K");
+		assertThat(redis.opsForList().size(pendingKey())).isEqualTo(2L);
+		assertThat(adapter.approve(CREW, "u-x", CONFIRMED_AT)).isEqualTo(new Approval(Status.ALREADY_JOINED, 0));
+		assertThat(redis.opsForList().size(pendingKey())).isEqualTo(2L);
+	}
+
+	@Test
+	@DisplayName("명령 timeout은 제한시간 안에 TIMEOUT_OR_UNKNOWN으로 끝나고, 결과는 미확정이다(서버가 뒤늦게 적용할 수 있다)")
+	void approve_commandTimeout_resultUnknown() throws Exception {
+		// Given: command timeout 500ms 전용 연결 + 다른 연결에서 쓰기 명령을 1500ms 멈춘다
+		initCrew(5, "u-a");
+		LettuceConnectionFactory shortTimeout = new LettuceConnectionFactory(
+			new RedisStandaloneConfiguration(RedisTestContainer.getHost(), RedisTestContainer.getPort()),
+			LettuceClientConfiguration.builder().commandTimeout(Duration.ofMillis(500)).build());
+		shortTimeout.afterPropertiesSet();
+		CrewJoinRedisAdapter slow = new CrewJoinRedisAdapter(
+			new StringRedisTemplate(shortTimeout), new CrewJoinRedisProperties("test", runId), objectMapper);
+		// 스크립트 캐시를 미리 채운다 — 비어 있으면 pause 해제 후 EVALSHA가 NOSCRIPT로 끝나 적용 여부가 실행 순서에 좌우된다
+		assertThat(slow.approve("CREW-WARM", "u-warm", CONFIRMED_AT).status()).isEqualTo(Status.NOT_INITIALIZED);
+		redis.execute((RedisCallback<Object>)connection ->
+			connection.execute("CLIENT", "PAUSE".getBytes(), "1500".getBytes(), "WRITE".getBytes()));
+
+		// When & Then
+		try {
+			long started = System.nanoTime();
+			assertThatThrownBy(() -> slow.approve(CREW, "u-late", CONFIRMED_AT))
+				.isExactlyInstanceOf(IllegalStateException.class)
+				.hasMessageStartingWith("TIMEOUT_OR_UNKNOWN");
+			assertThat(Duration.ofNanos(System.nanoTime() - started)).isLessThan(Duration.ofMillis(1500));
+			// pause가 풀리면 서버는 이미 받은 스크립트를 실행한다 → timeout은 "미가입"의 증거가 아니다
+			// (연결을 먼저 닫으면 서버가 대기 명령을 버리므로 확인 뒤에 닫는다)
+			assertThat(waitForMember("u-late")).isTrue();
+			assertThat(redis.opsForList().size(pendingKey())).isEqualTo(1L);
+		} finally {
+			shortTimeout.destroy();
+		}
+	}
+
+	private boolean waitForMember(String userId) throws InterruptedException {
+		for (int i = 0; i < 40; i++) {
+			if (redis.opsForZSet().score(key("members"), userId) != null) {
+				return true;
+			}
+			Thread.sleep(100);
+		}
+		return false;
+	}
+
 	private void initCrew(int capacity, String... sortedUsers) {
+		initCrew(CREW, capacity, sortedUsers);
+	}
+
+	private void initCrew(String crewId, int capacity, String... sortedUsers) {
 		try {
 			String users = objectMapper.writeValueAsString(sortedUsers);
-			List<String> keys = List.of(key("members"), key("meta"));
+			List<String> keys = List.of(crewKey(crewId, "members"), crewKey(crewId, "meta"));
 			assertThat(redis.execute(INIT_SCRIPT, keys, String.valueOf(capacity), users))
 				.isEqualTo("OK");
 		} catch (com.fasterxml.jackson.core.JsonProcessingException e) {
@@ -275,10 +401,18 @@ class CrewJoinRedisAdapterIntegrationTest {
 	}
 
 	private String key(String suffix) {
-		return "triagain:crew-join:{test:" + runId + "}:crew:" + CREW + ":" + suffix;
+		return crewKey(CREW, suffix);
+	}
+
+	private String crewKey(String crewId, String suffix) {
+		return prefix() + ":crew:" + crewId + ":" + suffix;
+	}
+
+	private String prefix() {
+		return "triagain:crew-join:{test:" + runId + "}";
 	}
 
 	private String pendingKey() {
-		return "triagain:crew-join:{test:" + runId + "}:pending";
+		return prefix() + ":pending";
 	}
 }
