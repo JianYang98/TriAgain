@@ -98,6 +98,34 @@ class CrewJoinRedisConfigurationTest {
 			});
 	}
 
+	@Test
+	@DisplayName("REDIS_ASYNC를 relaxed 표기(redis-async)로 써도 enum 바인딩과 같게 기동 게이트·Redis health가 등록된다")
+	void redisAsync_relaxedSpellingRegistersStartupCheckAndHealth() {
+		// Given — CrewLockProperties는 enum을 lenient 바인딩하므로 redis-async도 JoinCrewService를 Redis 경로로 보낸다
+		runner.withPropertyValues(
+				"triagain.crew.lock-strategy=redis-async",
+				"triagain.crew.redis.namespace=test",
+				"triagain.crew.redis.run-id=run-a")
+			.withPropertyValues(redisAddress())
+			// When / Then — 설정도 같은 판단으로 켜져야 한다
+			.run(context -> {
+				assertThat(context).hasNotFailed();
+				assertThat(context).hasSingleBean(CrewJoinRedisStartupCheck.class);
+				assertThat(context).hasBean("redisHealthIndicator");
+			});
+	}
+
+	@Test
+	@DisplayName("DB 전략을 relaxed 표기(pessimistic)로 써도 기동 게이트·Redis health가 없다")
+	void dbStrategy_relaxedSpellingDoesNotRegisterRedisWiring() {
+		runner.withPropertyValues("triagain.crew.lock-strategy=pessimistic", CLOSED_PORT)
+			.run(context -> {
+				assertThat(context).hasNotFailed();
+				assertThat(context).doesNotHaveBean(CrewJoinRedisStartupCheck.class);
+				assertThat(context).doesNotHaveBean("redisHealthIndicator");
+			});
+	}
+
 	private static String[] redisAsync(String runId) {
 		return new String[] {
 			"triagain.crew.lock-strategy=REDIS_ASYNC",
