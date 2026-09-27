@@ -22,6 +22,7 @@ redis() { $REDIS_CLI "$@" </dev/null; }
 key_part() { [[ "$1" =~ ^[A-Za-z0-9_-]+$ ]] || die 1 "invalid $2: '$1' (allowed [A-Za-z0-9_-]+)"; }
 
 # 크루 1건의 일관된 읽기 snapshot (단일 SELECT) → "max|current|count|distinct|json"
+# json 배열은 user_id 바이트 순서(COLLATE "C")로 결정적이다 — score 1..N 배치 재현용. Lua는 순서를 검사하지 않는다
 snapshot() {
 	$PSQL -X -q -At -F '|' -v ON_ERROR_STOP=1 -v crew="$1" <<'SQL'
 SELECT c.max_members,

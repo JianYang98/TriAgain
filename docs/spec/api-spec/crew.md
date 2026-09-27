@@ -680,7 +680,9 @@
   Adapter는 연결 실패·timeout·스크립트 오류·직렬화 실패·예상 밖 반환을 `IllegalStateException`
   (`CONNECTION:`/`TIMEOUT_OR_UNKNOWN:`/`SCRIPT_ERROR:`/`SERIALIZATION:` + namespace·runId·crewId)으로 올린다 → 500 / C002.
 - **initialize-crew-join.lua** (준비 도구 전용, 가입 요청 경로에서 호출하지 않음): `KEYS` = members, meta /
-  `ARGV` = capacity(DB `max_members`), 초기 멤버 userId JSON 배열(바이트 오름차순·중복 없음·1..capacity개).
+  `ARGV` = capacity(DB `max_members`), 초기 멤버 userId JSON 배열(비어 있지 않은 문자열·중복 없음·1..capacity개).
+  score는 배열 순서대로 `1..N`이다. 재현 가능한 배치를 위해 준비 도구가 결정적 순서(DB `user_id COLLATE "C"`)로 배열을 만들고,
+  Lua는 배열 순서를 불변식으로 검사하지 않으며 유효성·중복 없음·멤버 수 범위만 검증한다.
   반환 `OK` | `ALREADY_EXISTS_OR_PARTIAL`(두 key 중 하나라도 존재 — 덮어쓰지 않음) | `INVALID_INPUT`.
   성공 시 멤버에 score `1..N`을 주고 마지막에 meta `capacity`, `seq=N`, `initialized=1`을 쓴다. pending에는 접근하지 않는다.
 - **준비 도구** `scripts/crew-join-redis.sh init|preflight <namespace> <runId> <crewId>… | cleanup <namespace> <runId>`:

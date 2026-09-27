@@ -2,7 +2,9 @@
 -- KEYS[1] = <prefix>:crew:<crewId>:members (ZSET)
 -- KEYS[2] = <prefix>:crew:<crewId>:meta    (HASH)
 -- ARGV[1] = capacity (DB max_members, 양의 정수)
--- ARGV[2] = 초기 멤버 userId JSON 배열 (바이트 오름차순 정렬, 중복 없음, 1..capacity개)
+-- ARGV[2] = 초기 멤버 userId JSON 배열 (비어 있지 않은 문자열, 중복 없음, 1..capacity개)
+--           score는 배열 순서대로 1..N. 재현 가능한 배치를 위해 결정적 순서로 배열을 만드는 것은
+--           준비 도구 책임이며, 이 스크립트는 배열 순서를 불변식으로 검사하지 않는다.
 -- 반환: 'OK' | 'ALREADY_EXISTS_OR_PARTIAL' | 'INVALID_INPUT'
 -- 모든 검증은 첫 쓰기 전에 끝낸다. pending에는 접근하지 않는다.
 
@@ -32,15 +34,17 @@ end
 if entries ~= n or n < 1 or n > capacity then
 	return 'INVALID_INPUT'
 end
+local seen = {}
 for i = 1, n do
 	local user = users[i]
 	if type(user) ~= 'string' or user == '' then
 		return 'INVALID_INPUT'
 	end
-	-- 엄격한 오름차순이면 중복도 함께 배제된다
-	if i > 1 and not (users[i - 1] < user) then
+	-- 순서는 검사하지 않는다(Lua 문자열 비교는 locale 의존). 중복만 배제한다
+	if seen[user] then
 		return 'INVALID_INPUT'
 	end
+	seen[user] = true
 end
 
 if redis.call('EXISTS', KEYS[1]) == 1 or redis.call('EXISTS', KEYS[2]) == 1 then

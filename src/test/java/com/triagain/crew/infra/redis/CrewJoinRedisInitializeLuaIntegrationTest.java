@@ -73,6 +73,22 @@ class CrewJoinRedisInitializeLuaIntegrationTest {
 	}
 
 	@Test
+	@DisplayName("정렬되지 않은 배열도 받아들이고 score는 배열 순서를 따른다 — 순서 결정은 준비 도구 책임")
+	void init_acceptsUnsortedAndScoresFollowArrayOrder() {
+		// Given
+		Keys keys = keys(newPrefix(), "CREW-1");
+
+		// When
+		String result = init(keys, "5", "[\"u-b\",\"u-a\"]");
+
+		// Then
+		assertThat(result).isEqualTo("OK");
+		assertThat(redis.opsForZSet().score(keys.members(), "u-b")).isEqualTo(1.0);
+		assertThat(redis.opsForZSet().score(keys.members(), "u-a")).isEqualTo(2.0);
+		assertThat(redis.opsForHash().get(keys.meta(), "seq")).isEqualTo("2");
+	}
+
+	@Test
 	@DisplayName("이미 초기화된 크루를 다시 초기화하면 ALREADY_EXISTS_OR_PARTIAL이고 상태가 바뀌지 않는다")
 	void init_rejectsReseed() {
 		// Given: 초기화 후 신규 승인 한 건이 반영된 상태를 흉내 낸다 (seq·members가 DB보다 앞섬)
@@ -119,11 +135,11 @@ class CrewJoinRedisInitializeLuaIntegrationTest {
 		"5|{\"u\":\"u-a\"}",
 		"5|[1,2]",
 		"5|[\"\"]",
-		"5|[\"u-b\",\"u-a\"]",
 		"5|[\"u-a\",\"u-a\"]",
+		"5|[\"u-a\",\"u-b\",\"u-a\"]",
 		"2|[\"u-a\",\"u-b\",\"u-c\"]"
 	})
-	@DisplayName("잘못된 capacity·멤버 목록(빈 목록·비문자열·미정렬·중복·정원 초과)은 INVALID_INPUT이고 key를 만들지 않는다")
+	@DisplayName("잘못된 capacity·멤버 목록(빈 목록·비문자열·인접/비인접 중복·정원 초과)은 INVALID_INPUT이고 key를 만들지 않는다")
 	void init_rejectsInvalidInput(String capacity, String usersJson) {
 		// Given
 		String prefix = newPrefix();
