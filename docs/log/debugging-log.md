@@ -8,8 +8,8 @@
 ### [2026-09-27] PR #181 REDIS_ASYNC 표기 차이로 기동 게이트가 빠짐
 
 - 상황: 서비스의 `CrewLockProperties.LockStrategy`는 `redis-async`를 `REDIS_ASYNC`로 바인딩하지만, `CrewJoinRedisConfiguration`의 기존 `@ConditionalOnProperty(havingValue="REDIS_ASYNC")`는 문자열을 비교했다. 따라서 같은 설정에서 가입 경로는 Redis를 쓰면서 기동 PING과 Redis health indicator는 등록되지 않았다.
-- 내 판단: `d25b421`에서 설정 조건도 `Binder`로 같은 enum에 바인딩하고, `redis-async`와 Redis 연결 실패를 함께 검증하는 회귀 테스트를 추가했다.
-- AI 역할: 가입 전략 선택과 설정 조건을 대조해 표기 차이를 발견하고 실패하는 회귀 테스트로 재현했다.
+- 내 판단: `d25b421`에서 설정 조건도 `Binder`로 같은 enum에 바인딩하고, `redis-async`에서 게이트·health가 등록되고 `pessimistic`에서 등록되지 않는 테스트 2건을 추가했다. Redis 연결 실패 테스트는 기존 테스트를 유지했다.
+- AI 역할: 리뷰에서 가입 전략 선택과 설정 조건을 대조해 표기 차이를 발견하고, 수정 전 HEAD에서 relaxed 표기 회귀 테스트의 실패를 확인했다. 수정 커밋은 별도 작업 세션에서 작성했다.
 - 배운 점: 하나의 설정값을 여러 계층에서 해석할 때는 문자열 조건과 타입 바인딩을 섞지 않는다.
 
 ---
