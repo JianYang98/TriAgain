@@ -194,6 +194,7 @@ class CrewJoinRedisAdapterIntegrationTest {
 			assertThatThrownBy(() -> unreachable.approve(CREW, "u-new", CONFIRMED_AT))
 				.isExactlyInstanceOf(IllegalStateException.class)
 				.hasMessageStartingWith("CONNECTION")
+				.hasMessageContaining("namespace=test, runId=" + runId + ", crewId=" + CREW)
 				.hasCauseInstanceOf(RedisConnectionFailureException.class);
 		} finally {
 			closed.destroy();
@@ -213,6 +214,7 @@ class CrewJoinRedisAdapterIntegrationTest {
 			assertThatThrownBy(() -> adapter.approve(CREW, "u-new", CONFIRMED_AT))
 				.isExactlyInstanceOf(IllegalStateException.class)
 				.hasMessageStartingWith("SCRIPT_ERROR")
+				.hasMessageContaining("runId=" + runId)
 				.rootCause().hasMessageContaining("OOM");
 		} finally {
 			configSet("maxmemory", "0");

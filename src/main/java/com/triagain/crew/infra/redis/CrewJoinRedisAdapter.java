@@ -44,53 +44,56 @@ public class CrewJoinRedisAdapter implements CrewJoinRedisPort {
 	/** 승인 Lua 1회 실행 — 업무 결과는 Status, 인프라·직렬화·예상 밖 반환은 IllegalStateException */
 	@Override
 	public Approval approve(String crewId, String userId, OffsetDateTime confirmedAt) {
-		String confirmedAtText = formatConfirmedAt(confirmedAt);
-		String payload = serialize(new PendingPayload(crewId, userId, confirmedAtText));
+		// 실행 오류 뒤 상태 검사는 run 단위라 모든 내부 실패 메시지에 namespace/runId/crewId를 남긴다
+		String where = " (namespace=" + properties.namespace() + ", runId=" + properties.runId()
+			+ ", crewId=" + crewId + ")";
+		String confirmedAtText = formatConfirmedAt(confirmedAt, where);
+		String payload = serialize(new PendingPayload(crewId, userId, confirmedAtText), where);
 		String prefix = "triagain:crew-join:{" + properties.namespace() + ":" + properties.runId() + "}";
 		String crewKey = prefix + ":crew:" + crewId;
 		List<String> keys = List.of(crewKey + ":members", crewKey + ":meta", prefix + ":pending");
-		return interpret(execute(keys, crewId, userId, confirmedAtText, payload));
+		return interpret(execute(keys, where, crewId, userId, confirmedAtText, payload), where);
 	}
 
-	private List<Object> execute(List<String> keys, String... args) {
+	private List<Object> execute(List<String> keys, String where, String... args) {
 		try {
 			return redisTemplate.execute(APPROVE_SCRIPT, keys, (Object[])args);
 		} catch (RedisConnectionFailureException e) {
-			throw new IllegalStateException("CONNECTION: crew join Redis unavailable", e);
+			throw new IllegalStateException("CONNECTION: crew join Redis unavailable" + where, e);
 		} catch (QueryTimeoutException e) {
-			throw new IllegalStateException("TIMEOUT_OR_UNKNOWN: crew join Redis result unknown", e);
+			throw new IllegalStateException("TIMEOUT_OR_UNKNOWN: crew join Redis result unknown" + where, e);
 		} catch (DataAccessException e) {
-			throw new IllegalStateException("SCRIPT_ERROR: crew join approve script failed", e);
+			throw new IllegalStateException("SCRIPT_ERROR: crew join approve script failed" + where, e);
 		}
 	}
 
-	private static Approval interpret(List<Object> reply) {
+	private static Approval interpret(List<Object> reply, String where) {
 		if (reply == null || reply.size() != 2
 				|| !(reply.get(0) instanceof Long code) || !(reply.get(1) instanceof Long members)
 				|| code < 0 || code >= CODES.length) {
-			throw new IllegalStateException("SCRIPT_ERROR: unexpected approve reply " + reply);
+			throw new IllegalStateException("SCRIPT_ERROR: unexpected approve reply " + reply + where);
 		}
 		Status status = CODES[code.intValue()];
 		boolean success = status == Status.JOIN_SUCCESS;
 		if (success ? members <= 0 : members != 0) {
-			throw new IllegalStateException("SCRIPT_ERROR: unexpected member count " + reply);
+			throw new IllegalStateException("SCRIPT_ERROR: unexpected member count " + reply + where);
 		}
 		return new Approval(status, members.intValue());
 	}
 
-	private static String formatConfirmedAt(OffsetDateTime confirmedAt) {
+	private static String formatConfirmedAt(OffsetDateTime confirmedAt, String where) {
 		// XXX는 UTC면 'Z'를 낸다 — pending 계약은 +09:00 고정이라 다른 offset은 받지 않는다
 		if (!SEOUL_OFFSET.equals(confirmedAt.getOffset())) {
-			throw new IllegalStateException("SERIALIZATION: confirmedAt must be +09:00 but was " + confirmedAt);
+			throw new IllegalStateException("SERIALIZATION: confirmedAt must be +09:00 but was " + confirmedAt + where);
 		}
 		return CONFIRMED_AT_FORMAT.format(confirmedAt);
 	}
 
-	private String serialize(PendingPayload payload) {
+	private String serialize(PendingPayload payload, String where) {
 		try {
 			return objectMapper.writeValueAsString(payload);
 		} catch (JsonProcessingException e) {
-			throw new IllegalStateException("SERIALIZATION: crew join payload", e);
+			throw new IllegalStateException("SERIALIZATION: crew join payload" + where, e);
 		}
 	}
 
