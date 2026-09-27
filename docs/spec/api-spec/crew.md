@@ -646,8 +646,47 @@
   Redis에 이미 승인됐을 수 있고, 이때 재요청은 `CR004`다(첫 응답을 재생하지 않는다).
 - 초대코드 가입(`POST /crews/join`)은 이 전략에서 지원하지 않는다. 유효한 요청도 `IllegalStateException` →
   `500 / C002`로 거부하며 가입 DB·Redis를 호출하지 않는다.
-- 신규 ErrorCode·메시지는 없다. Redis key·pending payload·Lua 반환 계약은 오케스트레이션 저장소의 `sdd/redis-async-join-2/redis-lua-contract.md`이 정본이고,
-  구현은 `src/main/resources/redis/crew-join/`에 있다.
+- 신규 ErrorCode·메시지는 없다. Redis 내부 계약은 아래 요약이 이 저장소의 정본이다.
+
+##### Redis key·payload·Lua 계약 (내부, HTTP에 노출되지 않음)
+
+구현: `CrewJoinRedisAdapter`, `src/main/resources/redis/crew-join/{approve,initialize-crew-join}.lua`, `scripts/crew-join-redis.sh`.
+
+| key | 자료형 | 내용 |
+|---|---|---|
+| `triagain:crew-join:{<namespace>:<runId>}:crew:<crewId>:members` | ZSET | member=userId, score=승인 순번 |
+| `triagain:crew-join:{<namespace>:<runId>}:crew:<crewId>:meta` | HASH | `capacity`, `seq`, `initialized` |
+| `triagain:crew-join:{<namespace>:<runId>}:pending` | LIST | 신규 승인 payload, `LPUSH`(왼쪽 추가). run 내 모든 크루 공용 |
+| `triagain:crew-join:{<namespace>:<runId>}:processing` | — | 이름만 예약(Phase 3). 현재 코드는 생성·사용하지 않는다 |
+
+- 중괄호는 실제 key에 포함된다. `namespace`·`runId`는 서버 설정 `triagain.crew.redis.namespace`·`run-id`이며
+  `[A-Za-z0-9_-]+`만 허용, 비면 `REDIS_ASYNC` 기동이 실패한다. TTL 없음.
+- **pending payload**: JSON String 필드 3개만 — `{"crewId":"…","userId":"…","confirmedAt":"2026-09-27T14:05:23.481+09:00"}`.
+  `confirmedAt`은 `yyyy-MM-dd'T'HH:mm:ss.SSSXXX`, offset `+09:00` 고정(다른 offset은 직렬화 전에 거부).
+- **approve.lua**: `KEYS` = members, meta, pending / `ARGV` = crewId, userId, confirmedAt, payload JSON.
+  반환은 항상 `{code, currentMembers}`:
+
+  | code | 결과 | API |
+  |---|---|---|
+  | 0 | JOIN_SUCCESS (`currentMembers`=승인 후 인원) | 201 |
+  | 1 | ALREADY_JOINED | 409 / CR004 |
+  | 2 | CREW_FULL | 409 / CR002 |
+  | 3 | NOT_INITIALIZED (meta·members 둘 다 없음) | 500 / C002 |
+  | 4 | INVALID_STATE (인수·key 이름·payload·key type·`initialized`/`capacity`/`seq`·`seq=ZCARD=최대 score` 불일치) | 500 / C002 |
+
+  1~4는 첫 쓰기 전 판정이며 어떤 key도 바꾸지 않는다. 판정 순서: 입력·payload → key type → 초기화 상태 → 중복 → 정원.
+  성공 시 `HINCRBY meta seq 1` → `ZADD members NX <seq> <userId>` → `LPUSH pending <payload>`.
+  첫 쓰기 이후의 예상 밖 결과는 code가 아니라 error reply(`CREW_JOIN_WRITE_FAILED: …`)이며 이전 쓰기는 rollback되지 않는다.
+  Adapter는 연결 실패·timeout·스크립트 오류·직렬화 실패·예상 밖 반환을 `IllegalStateException`
+  (`CONNECTION:`/`TIMEOUT_OR_UNKNOWN:`/`SCRIPT_ERROR:`/`SERIALIZATION:` + namespace·runId·crewId)으로 올린다 → 500 / C002.
+- **initialize-crew-join.lua** (준비 도구 전용, 가입 요청 경로에서 호출하지 않음): `KEYS` = members, meta /
+  `ARGV` = capacity(DB `max_members`), 초기 멤버 userId JSON 배열(바이트 오름차순·중복 없음·1..capacity개).
+  반환 `OK` | `ALREADY_EXISTS_OR_PARTIAL`(두 key 중 하나라도 존재 — 덮어쓰지 않음) | `INVALID_INPUT`.
+  성공 시 멤버에 score `1..N`을 주고 마지막에 meta `capacity`, `seq=N`, `initialized=1`을 쓴다. pending에는 접근하지 않는다.
+- **준비 도구** `scripts/crew-join-redis.sh init|preflight <namespace> <runId> <crewId>… | cleanup <namespace> <runId>`:
+  init은 크루별 DB snapshot(`max_members`, `current_members`, 멤버 집합)을 읽어 멤버 수≠`current_members`·중복·N∉1..capacity면
+  거부하고 위 Lua를 실행한 뒤 pre-flight를 한다. cleanup은 해당 run prefix key만 지운다(FLUSHDB 없음).
+  종료 코드 0 성공 / 1 사용법 / 2 CONNECTION / 3 NOT_INITIALIZED / 4 INVALID_STATE(재초기화 거부 포함) / 5 DB snapshot 불일치.
 
 ## 6. 삭제·탈퇴
 

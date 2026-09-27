@@ -8,16 +8,19 @@
 
 ### [2026-09-27] Redis 선착순 가입 — 운영 적용 전 미결 설계
 
-- 현재 상태: Phase 1(PR #180)은 `LockStrategy.REDIS_ASYNC`를 알려진 값으로 두되, 공개·초대 가입 모두
-  가입 DB 트랜잭션·조회·쓰기 전에 `IllegalStateException`으로 거부한다(기존 `500 / C002`).
-  Redis 연결·승인·Queue·worker는 구현하지 않았고, 운영 기본값은 `CONDITIONAL` 그대로다.
-- 필요 시점: Phase 2 구현 후 운영 전환을 검토할 때. 아래가 정해지기 전에는 운영 값으로 쓰지 않는다.
-  - Redis 연결·Lua 실행 실패와 미초기화 상태의 오류코드·HTTP 매핑 — DB 전략 fallback은 금지라 별도 계약이 필요하다
+- 현재 상태: Phase 2(PR #181)에서 공개 가입(`POST /crews/{crewId}/join`)만 Redis Lua 승인 + pending 등록까지
+  구현했다. 로컬 실험 전용이며 운영 기본값은 `CONDITIONAL` 그대로다. 초대 가입은 계속 `500 / C002`로 거부한다.
+  - 오류 매핑은 정해졌다: 중복 `409 / CR004`, 정원 `409 / CR002`, 미초기화·상태 불일치·연결·timeout·스크립트·직렬화
+    실패는 신규 ErrorCode 없이 `500 / C002`, DB 전략 fallback 없음 (`docs/spec/api-spec/crew.md` REDIS_ASYNC 절)
+  - pending을 소비하는 worker가 없어 DB 멤버·`current_members`에는 반영되지 않는다
+- 필요 시점: 운영 전환을 검토할 때. 아래가 정해지기 전에는 운영 값으로 쓰지 않는다.
+  - pending 소비 worker와 DB 반영(processing 이동·커밋 후 ACK) — Phase 3
+  - 재기동 시 pending/processing 복구(startup recovery)·재처리 — Phase 4
+  - Redis와 DB의 reconciliation (도입 여부 미정)
   - 201의 의미가 "Redis 확정 + pending 등록"이라 DB 반영에 시차가 생긴다. 가입 직후 DB 멤버 존재를
     전제하는 흐름(챌린지 생성·크루 조회 등)의 정합성
-  - 재기동 시 pending 복구(startup recovery)
   - FE 대응 — Phase 1·2 모두 FE 작업을 포함하지 않았다
-- 이유: Phase 1의 목적은 전략 분기 정리이고, 위 항목은 Redis 경로가 실제로 들어온 뒤에야 계약을 정할 수 있다.
+- 이유: Phase 2는 승인·pending 생산의 정확성 검증까지가 범위이고, 소비·복구는 별도 Phase로 나눴다.
 
 ---
 

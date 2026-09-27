@@ -14,7 +14,7 @@ class ActuatorHealthWithoutRedisE2eTest extends E2eTestBase {
 	@Test
 	@DisplayName("DB 전략에서 Redis가 없어도 /actuator/health는 200 UP이다")
 	void health_isUpWithoutRedis() {
-		// Given: E2eTestBase가 Redis를 닫힌 포트로 지정 (integration 프로필 = PESSIMISTIC)
+		// Given: application-integration.yml이 Redis를 닫힌 포트(port: 1)로 지정 (integration 프로필 = PESSIMISTIC)
 
 		// When
 		ExtractableResponse<Response> response = givenRequest().when().get("/actuator/health").then().extract();
