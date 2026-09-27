@@ -35,7 +35,7 @@ public class JoinCrewByInviteCodeService
 			case OPTIMISTIC -> joinWithOptimisticRetry(command);
 			case CONDITIONAL -> txTemplate.execute(status -> doJoinConditional(command));
 			case REDIS_ASYNC -> throw new IllegalStateException(
-				"REDIS_ASYNC crew join is not implemented in Phase 1");
+				"REDIS_ASYNC crew join by invite code is not supported");
 		};
 	}
 

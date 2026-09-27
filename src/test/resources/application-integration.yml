@@ -2,6 +2,13 @@
 spring:
   jpa:
     show-sql: false
+  # Redis 부재 기본값 — 아무것도 listen하지 않는 포트. 로컬에 Redis가 떠 있어도 DB 전략 결과가 바뀌지 않게 한다.
+  # Redis가 필요한 테스트는 @DynamicPropertySource로 덮는다(동적 속성이 이 파일보다 우선. 부모 클래스의
+  # @DynamicPropertySource에 두면 자식의 값을 덮어버린다 — 2026-09-27 실측).
+  data:
+    redis:
+      host: localhost
+      port: 1
 
 triagain:
   crew:
