@@ -5,6 +5,24 @@
 
 ---
 
+### [2026-09-27] PR #181 REDIS_ASYNC 표기 차이로 기동 게이트가 빠짐
+
+- 상황: 서비스의 `CrewLockProperties.LockStrategy`는 `redis-async`를 `REDIS_ASYNC`로 바인딩하지만, `CrewJoinRedisConfiguration`의 기존 `@ConditionalOnProperty(havingValue="REDIS_ASYNC")`는 문자열을 비교했다. 따라서 같은 설정에서 가입 경로는 Redis를 쓰면서 기동 PING과 Redis health indicator는 등록되지 않았다.
+- 내 판단: `d25b421`에서 설정 조건도 `Binder`로 같은 enum에 바인딩하고, `redis-async`와 Redis 연결 실패를 함께 검증하는 회귀 테스트를 추가했다.
+- AI 역할: 가입 전략 선택과 설정 조건을 대조해 표기 차이를 발견하고 실패하는 회귀 테스트로 재현했다.
+- 배운 점: 하나의 설정값을 여러 계층에서 해석할 때는 문자열 조건과 타입 바인딩을 섞지 않는다.
+
+---
+
+### [2026-09-27] PR #181 Redis 준비 도구가 pending 검사 전에 크루 키를 생성
+
+- 상황: `scripts/crew-join-redis.sh init`은 크루별 `initialize-crew-join.lua`를 실행한 뒤에야 공용 pending을 검사했다. 기존 pending이 남은 runId를 재사용하면 종료 코드 4로 실패하면서도 앞선 크루의 Redis 키는 생성됐다. mock Redis에서 pending `LLEN=1`일 때 수정 전 `EVAL` 1회가 호출되는 것을 확인했다.
+- 내 판단: 첫 쓰기 전 `check_pending_empty`를 호출하고, 기존 마지막 검사도 유지한다. 앞의 검사는 이미 부적합한 run에 대한 부분 초기화를 막고, 뒤의 검사는 준비 중 유입된 pending을 탐지한다. 요청 중지 전제와 크루 간 원자성은 기존 계약 그대로다.
+- AI 역할: PR diff와 정본의 새 run `pending=0` 조건을 대조하고, mock Redis/DB 재현으로 EVAL 순서를 확인한 뒤 순서를 수정했다.
+- 배운 점: 여러 key를 준비하는 도구의 전역 사전조건은 첫 번째 쓰기 전에 검사한다. 마지막 pre-flight만으로는 실패 시 상태가 보존되지 않는다.
+
+---
+
 ### [2026-08-22] 우회책이 원인 수정보다 오래 살았다 — habit 인증 저장의 무조건 catch (#167)
 
 - 상황: `CreateHabitVerificationService.saveVerification()`이 `DataIntegrityViolationException`을

@@ -684,8 +684,9 @@
   반환 `OK` | `ALREADY_EXISTS_OR_PARTIAL`(두 key 중 하나라도 존재 — 덮어쓰지 않음) | `INVALID_INPUT`.
   성공 시 멤버에 score `1..N`을 주고 마지막에 meta `capacity`, `seq=N`, `initialized=1`을 쓴다. pending에는 접근하지 않는다.
 - **준비 도구** `scripts/crew-join-redis.sh init|preflight <namespace> <runId> <crewId>… | cleanup <namespace> <runId>`:
-  init은 크루별 DB snapshot(`max_members`, `current_members`, 멤버 집합)을 읽어 멤버 수≠`current_members`·중복·N∉1..capacity면
-  거부하고 위 Lua를 실행한 뒤 pre-flight를 한다. cleanup은 해당 run prefix key만 지운다(FLUSHDB 없음).
+  init은 첫 Lua 실행 전에 공용 pending이 비었는지 확인한다. 크루별 DB snapshot(`max_members`, `current_members`, 멤버 집합)을
+  읽어 멤버 수≠`current_members`·중복·N∉1..capacity면 거부하고 위 Lua를 실행한 뒤 pre-flight를 한다.
+  cleanup은 해당 run prefix key만 지운다(FLUSHDB 없음).
   종료 코드 0 성공 / 1 사용법 / 2 CONNECTION / 3 NOT_INITIALIZED / 4 INVALID_STATE(재초기화 거부 포함) / 5 DB snapshot 불일치.
 
 ## 6. 삭제·탈퇴

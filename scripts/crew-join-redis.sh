@@ -88,6 +88,7 @@ case "$cmd" in
 	init)
 		[[ $# -ge 1 ]] || die 1 "init needs crewId"
 		check_connection
+		check_pending_empty
 		script="$(cat "$INIT_LUA")"
 		for crew in "$@"; do
 			load_snapshot "$crew"
