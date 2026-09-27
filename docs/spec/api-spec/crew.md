@@ -625,11 +625,29 @@
 `(crew_id, user_id)` 유니크 제약 위반을 `CR004`로 변환한다. 별도 Idempotency-Key나
 응답 캐시는 사용하지 않는다. `CR023`은 설정을 `OPTIMISTIC`으로 바꿨을 때만 발생 가능한 계약이다.
 
-`REDIS_ASYNC`는 Phase 1에서 아직 미구현이다. 이 값을 선택하면 인증·요청 유효성 검증을
-통과한 공개 직접 가입과 초대코드 가입 모두 Service 진입 시 `IllegalStateException`으로 즉시 거부한다.
-기존 `GlobalExceptionHandler`가 `500 / C002`로 처리하며 신규 ErrorCode나 메시지는 추가하지 않는다.
-기존 DB 전략으로 fallback하지 않고 가입 DB 조회·저장·트랜잭션을 실행하지 않는다.
-Redis 비동기 가입의 성공 응답 계약은 후속 단계에서 추가한다.
+#### `REDIS_ASYNC` (Phase 2 — 로컬 실험 전용, 운영 비활성)
+
+공개 직접 가입(`POST /crews/{crewId}/join`)만 Redis 승인으로 처리한다. 요청·응답 형태는 위와 같다.
+
+- **201의 의미**: Redis에 신규 가입 승인(순번·멤버 기록)과 DB 반영용 pending 작업 등록이 끝났다는 뜻이다.
+  **DB 멤버·`current_members`에는 반영되지 않는다.** pending을 소비하는 worker가 아직 없으므로
+  조회 API·챌린지 흐름이 이 가입을 인식한다는 보장은 없다.
+- `currentMembers`: 이번 승인 직후 Redis 멤버 수. `role`: `MEMBER`.
+- `joinedAt`: pending에 기록한 가입 확인 시각과 같은 순간의 Asia/Seoul `LocalDateTime` (기존 타입 유지).
+
+| 조건 | HTTP | 코드 |
+|---|---|---|
+| 크루 없음 / PRIVATE / 가입 불가 상태 / 마감 경과 | 404 / 400 / 400 / 400 | CR001 / CR022 / CR003 / CR008 (Redis 호출 전) |
+| Redis에 이미 멤버 | 409 | CR004 (정원보다 먼저 판정) |
+| Redis 정원 도달 | 409 | CR002 |
+| 크루 Redis 상태 미준비·불일치, 연결 실패·timeout·스크립트 오류 | 500 | C002 |
+
+- 기존 DB 전략으로 fallback하지 않는다. 500이나 응답 유실은 "가입 안 됨"의 증거가 아니다 —
+  Redis에 이미 승인됐을 수 있고, 이때 재요청은 `CR004`다(첫 응답을 재생하지 않는다).
+- 초대코드 가입(`POST /crews/join`)은 이 전략에서 지원하지 않는다. 유효한 요청도 `IllegalStateException` →
+  `500 / C002`로 거부하며 가입 DB·Redis를 호출하지 않는다.
+- 신규 ErrorCode·메시지는 없다. Redis key·pending payload·Lua 반환 계약은 오케스트레이션 저장소의 `sdd/redis-async-join-2/redis-lua-contract.md`이 정본이고,
+  구현은 `src/main/resources/redis/crew-join/`에 있다.
 
 ## 6. 삭제·탈퇴
 

@@ -59,9 +59,17 @@
 설정 값이 없으면(null) 공개·초대 가입 모두 가입 DB 트랜잭션·조회·쓰기 전에
 `NullPointerException`으로 거부하며 기존 `500 / C002`로 응답한다.
 세 DB 전략은 동시성 처리 방식을 비교하려고 함께 유지하며, 운영 기본값은 `CONDITIONAL`이다.
-`REDIS_ASYNC`는 Phase 1의 미구현 값이다. 공개·초대 가입 모두 가입 DB 트랜잭션·조회·쓰기 전에
-`IllegalStateException`으로 거부하며 기존 `500 / C002`로 응답한다. Redis 연결·승인·Queue·worker는 아직 구현하지 않는다.
-Redis 경로는 로컬 실험 범위이며, 운영 적용 전 미결 설계는 [추후 고려 사항](../log/future-considerations.md)에 있다.
+`REDIS_ASYNC`(Phase 2)는 **로컬 실험 전용**이며 운영 가입 기능으로 활성화하지 않는다.
+
+- 공개 가입만: DB 조회 → PUBLIC → `validateJoinable()`(상태 → 마감) → Redis Lua 한 번에 준비 상태 → 중복 → 정원을
+  판단하고, 신규 승인이면 순번(`seq`)·멤버·pending 작업을 함께 기록한다. 오류 순서는 **중복 → 정원**이다.
+- 이 경로는 DB에 쓰지 않는다(TransactionTemplate·멤버 저장·인원 증가 없음). pending 소비(DB 반영)는 Phase 3이다.
+- 크루별 Redis 상태는 실험 전 DB snapshot으로 **명시적으로 초기화**한다(`scripts/crew-join-redis.sh`, 기존 멤버 score 1..N,
+  seq=N). 가입 요청 중 lazy 초기화는 없고, 미초기화 크루의 가입은 그 요청만 `500 / C002`다.
+- 미초기화·상태 불일치·연결·timeout·스크립트 실패는 `500 / C002`, DB fallback·자동 재시도·보상 없음.
+  Lua는 원자 실행이지만 실행 오류 시 이전 쓰기를 rollback하지 않는다 — 부분 상태는 실험 실패로 판정한다.
+- 초대 가입은 이 전략에서 계속 `IllegalStateException` → `500 / C002`로 거부한다.
+- 운영 적용 전 미결 설계는 [추후 고려 사항](../log/future-considerations.md)에 있다.
 
 `Crew.validateJoinable()`은 상태 → 마감만 검사하고 멤버 목록·인원 수를 변경하지 않는다.
 기존 DB 가입은 이 검증을 재사용하되 순서를 유지한다.

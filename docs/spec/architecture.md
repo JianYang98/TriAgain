@@ -15,8 +15,9 @@
 | 확정 계약·구현 대기 | 문서 계약은 확정됐지만 Java가 아직 따라오지 않음 |
 | 기반만 존재 | Domain·Port·Adapter 일부만 있고 사용자 호출 경로가 없음 |
 
-Redis, SQS, OpenAI Adapter는 현재 런타임 구성요소가 아니다. 도입 검토는
-[`future-considerations.md`](../log/future-considerations.md)에서만 관리한다.
+SQS, OpenAI Adapter는 현재 런타임 구성요소가 아니다. Redis는 `triagain.crew.lock-strategy=REDIS_ASYNC`일 때만
+쓰는 **조건부 구현**(로컬 가입 실험 전용, 운영 비활성)이다. 도입 검토는
+[`future-considerations.md`](../log/future-considerations.md)에서 관리한다.
 
 ---
 
@@ -71,6 +72,7 @@ flowchart TB
 | S3 | 사진 인증과 프로필 이미지 원본 저장 |
 | Lambda | S3 ObjectCreated를 받아 내부 완료 API 호출 |
 | FCM | `firebase.enabled=true`일 때 활성, false면 NoOp Adapter |
+| Redis | `REDIS_ASYNC` 전략에서만 공개 가입 승인·pending 등록. 로컬 Compose `redis` 프로필(opt-in) |
 | Kakao·Apple | 소셜 사용자 검증, Apple token 교환·revoke |
 
 운영 AWS의 실제 S3 이벤트 필터, Lambda retry·DLQ, IAM, 경보 값은 저장소 밖 설정 확인이 필요하다.
@@ -254,6 +256,10 @@ sequenceDiagram
 - ChallengeSuccessEvent 리스너는 현재 비활성이다.
 - 스케줄러는 ChunkProcessor로 50건 단위 트랜잭션을 사용하고 최종 실패를 Dead Letter로 남긴다.
 - 서버 시작 보정 Runner가 밀린 크루·챌린지·업로드 세션·습관 사이클 상태를 복구한다.
+- Redis 가입(`REDIS_ASYNC`): `CrewJoinRedisPort` → `crew.infra.redis.CrewJoinRedisAdapter`(Lua 원자 승인).
+  Adapter Bean은 모든 전략에 존재하지만 생성 시 네트워크를 쓰지 않는다. 기동 게이트(`CrewJoinRedisStartupCheck`,
+  싱글턴 초기화 직후·포트 오픈 전 PING)와 Redis health indicator는 `REDIS_ASYNC`에서만 등록되고,
+  공통 설정 `management.health.redis.enabled=false`로 DB 전략의 health는 Redis와 무관하다.
 
 ---
 
@@ -268,5 +274,6 @@ sequenceDiagram
 | 폴링 | 계약만 있고 Controller 없음 | 상태 조회 API 구현 |
 | FCM | 코드 존재, 환경 설정에 따라 NoOp | 운영 `FIREBASE_ENABLED`와 자격증명 확인 |
 | AWS 운영 | retry·DLQ·경보 값을 저장소에서 확정 불가 | 배포 환경에서 확인 |
+| Redis 가입 | 승인·pending 생산만 있고 소비자·DB 반영 없음 | Phase 3 worker 설계 |
 
 상세 후속 과제는 [`future-considerations.md`](../log/future-considerations.md)에 기록한다.
