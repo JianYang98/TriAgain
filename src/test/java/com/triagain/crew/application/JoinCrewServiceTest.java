@@ -6,7 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -29,6 +30,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
+import com.triagain.crew.application.CrewLockProperties.LockStrategy;
 import com.triagain.crew.domain.model.Crew;
 import com.triagain.crew.domain.model.CrewMember;
 import com.triagain.crew.domain.vo.CrewRole;
@@ -60,7 +62,7 @@ class JoinCrewServiceTest {
 
 		@BeforeEach
 		void setUp() {
-			given(lockProperties.isPessimistic()).willReturn(true);
+			given(lockProperties.getLockStrategy()).willReturn(LockStrategy.PESSIMISTIC);
 			given(txTemplate.execute(any())).willAnswer(invocation -> {
 				TransactionCallback<?> cb = invocation.getArgument(0);
 				return cb.doInTransaction(null);
@@ -89,6 +91,8 @@ class JoinCrewServiceTest {
 			// Then
 			assertThat(result.role()).isEqualTo(CrewRole.MEMBER);
 			assertThat(result.userId()).isEqualTo("user-1");
+			verify(crewRepositoryPort).findByIdWithLock("CREW-001");
+			verify(crewRepositoryPort).saveMember(any());
 		}
 
 		@Test
@@ -220,7 +224,7 @@ class JoinCrewServiceTest {
 
 		@BeforeEach
 		void setUp() {
-			given(lockProperties.isPessimistic()).willReturn(false);
+			given(lockProperties.getLockStrategy()).willReturn(LockStrategy.OPTIMISTIC);
 			given(lockProperties.getMaxRetry()).willReturn(3);
 			given(txTemplate.execute(any())).willAnswer(invocation -> {
 				TransactionCallback<?> cb = invocation.getArgument(0);
@@ -254,6 +258,7 @@ class JoinCrewServiceTest {
 			assertThat(result.role()).isEqualTo(CrewRole.MEMBER);
 			assertThat(result.userId()).isEqualTo("user-1");
 			assertThat(result.currentMembers()).isEqualTo(2);
+			verify(crewRepositoryPort).updateCurrentMembersWithVersion("CREW-001", 2, 0L);
 		}
 
 		@Test
@@ -315,8 +320,7 @@ class JoinCrewServiceTest {
 
 		@BeforeEach
 		void setUp() {
-			given(lockProperties.isPessimistic()).willReturn(false);
-			given(lockProperties.isConditional()).willReturn(true);
+			given(lockProperties.getLockStrategy()).willReturn(LockStrategy.CONDITIONAL);
 			given(txTemplate.execute(any())).willAnswer(invocation -> {
 				TransactionCallback<?> cb = invocation.getArgument(0);
 				return cb.doInTransaction(null);
@@ -346,6 +350,8 @@ class JoinCrewServiceTest {
 			// Then
 			assertThat(result.role()).isEqualTo(CrewRole.MEMBER);
 			assertThat(result.userId()).isEqualTo("user-1");
+			verify(crewRepositoryPort).incrementMembersIfNotFull("CREW-001");
+			verify(crewRepositoryPort).saveMemberAndFlush(any());
 		}
 
 		@Test
@@ -443,6 +449,32 @@ class JoinCrewServiceTest {
 					((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.CREW_JOIN_DEADLINE_PASSED);
 		}
+	}
+
+	@Test
+	@DisplayName("REDIS_ASYNC 공개 가입은 DB 작업 없이 즉시 거부한다")
+	void redisAsync_rejectsWithoutDatabaseAccess() {
+		// Given
+		given(lockProperties.getLockStrategy()).willReturn(LockStrategy.REDIS_ASYNC);
+
+		// When & Then
+		assertThatThrownBy(() -> joinCrewService.joinCrew(new JoinCrewCommand("user-1", "CREW-001")))
+			.isInstanceOf(IllegalStateException.class)
+			.hasMessageContaining("REDIS_ASYNC");
+		verifyNoInteractions(crewRepositoryPort, txTemplate);
+	}
+
+	@Test
+	@DisplayName("가입 전략이 null이면 기존 DB 전략으로 대체하지 않는다")
+	void missingStrategy_doesNotFallBack() {
+		// Given — 설정이 없는 Service 직접 호출
+		given(lockProperties.getLockStrategy()).willReturn(null);
+
+		// When & Then
+		assertThatThrownBy(() -> joinCrewService.joinCrew(new JoinCrewCommand("user-1", "CREW-001")))
+			.isInstanceOf(NullPointerException.class)
+			.hasMessageContaining("lock-strategy");
+		verifyNoInteractions(crewRepositoryPort, txTemplate);
 	}
 
 	// --- 헬퍼 메서드 ---

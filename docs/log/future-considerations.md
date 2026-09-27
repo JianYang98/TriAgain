@@ -6,6 +6,21 @@
 
 ---
 
+### [2026-09-27] Redis 선착순 가입 — 운영 적용 전 미결 설계
+
+- 현재 상태: Phase 1(PR #180)은 `LockStrategy.REDIS_ASYNC`를 알려진 값으로 두되, 공개·초대 가입 모두
+  가입 DB 트랜잭션·조회·쓰기 전에 `IllegalStateException`으로 거부한다(기존 `500 / C002`).
+  Redis 연결·승인·Queue·worker는 구현하지 않았고, 운영 기본값은 `CONDITIONAL` 그대로다.
+- 필요 시점: Phase 2 구현 후 운영 전환을 검토할 때. 아래가 정해지기 전에는 운영 값으로 쓰지 않는다.
+  - Redis 연결·Lua 실행 실패와 미초기화 상태의 오류코드·HTTP 매핑 — DB 전략 fallback은 금지라 별도 계약이 필요하다
+  - 201의 의미가 "Redis 확정 + pending 등록"이라 DB 반영에 시차가 생긴다. 가입 직후 DB 멤버 존재를
+    전제하는 흐름(챌린지 생성·크루 조회 등)의 정합성
+  - 재기동 시 pending 복구(startup recovery)
+  - FE 대응 — Phase 1·2 모두 FE 작업을 포함하지 않았다
+- 이유: Phase 1의 목적은 전략 분기 정리이고, 위 항목은 Redis 경로가 실제로 들어온 뒤에야 계약을 정할 수 있다.
+
+---
+
 ### [2026-08-22] BE #168 후속 검토 후보 — 현재 보류
 
 - 현재 상태: BE #168(`fix/168-query-parameter-error-mapping`, 쿼리 바인딩 예외 C001 매핑) 리뷰 중
