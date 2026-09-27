@@ -89,7 +89,7 @@ case "$cmd" in
 	init)
 		[[ $# -ge 1 ]] || die 1 "init needs crewId"
 		check_connection
-		check_pending_empty
+		check_pending_empty  # 재사용 run이면 첫 쓰기 전에 거부한다 (끝의 확인은 init 이후 상태용으로 유지)
 		script="$(cat "$INIT_LUA")"
 		for crew in "$@"; do
 			load_snapshot "$crew"
