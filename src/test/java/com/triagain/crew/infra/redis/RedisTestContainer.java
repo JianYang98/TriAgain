@@ -26,4 +26,9 @@ public final class RedisTestContainer {
 	public static int getPort() {
 		return REDIS.getMappedPort(6379);
 	}
+
+	/** 준비 스크립트를 docker exec로 이 컨테이너에 붙일 때 쓴다 */
+	public static String getContainerId() {
+		return REDIS.getContainerId();
+	}
 }

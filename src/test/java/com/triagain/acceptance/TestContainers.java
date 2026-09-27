@@ -28,4 +28,9 @@ public final class TestContainers {
 	public static String getPassword() {
 		return POSTGRES.getPassword();
 	}
+
+	/** 준비 스크립트를 docker exec로 이 컨테이너에 붙일 때 쓴다 */
+	public static String getContainerId() {
+		return POSTGRES.getContainerId();
+	}
 }
