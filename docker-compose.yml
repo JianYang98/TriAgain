@@ -11,5 +11,23 @@ services:
     volumes:
       - triagain-postgres-data:/var/lib/postgresql/data
 
+  # Redis 가입 실험 전용 — 명시 활성화만: `docker compose --profile redis up -d redis`
+  # 이미지 tag는 테스트(RedisTestContainer)와 같은 값으로 고정한다.
+  redis:
+    profiles: [redis]
+    image: redis:7.4.11-alpine
+    container_name: triagain-redis
+    command: ["redis-server", "--maxmemory-policy", "noeviction", "--appendonly", "yes", "--appendfsync", "everysec"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - triagain-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
 volumes:
   triagain-postgres-data:
+  triagain-redis-data:

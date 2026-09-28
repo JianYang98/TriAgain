@@ -8,7 +8,7 @@
 - 초대코드 가입: `POST /crews/join`
 - 기본 동시성 전략: `triagain.crew.lock-strategy=CONDITIONAL`
 - 기존 세 DB 전략에서 두 API 모두 가입 성공 시 `201 Created`를 반환한다
-- `Idempotency-Key`, Redis 분산 락, 응답 캐시는 사용하지 않는다
+- `Idempotency-Key`, Redis 분산 락, 응답 캐시는 사용하지 않는다 (`REDIS_ASYNC`는 락이 아니라 Lua 원자 승인 — 5절)
 
 공개 크루 직접 가입은 `visibility=PUBLIC`을 검증한다. 초대코드 가입은 유효한 초대코드 자체를 접근 권한으로 사용하므로 비공개 크루도 가입할 수 있다. 이후 상태·참여 마감·정원·중복 검증은 동일하다.
 
@@ -81,8 +81,40 @@ PostgreSQL은 경합한 UPDATE의 조건을 다시 평가하므로 `current_memb
 | `PESSIMISTIC` | 크루를 `SELECT … FOR NO KEY UPDATE`로 잠근 뒤 가입 | DB 행 락으로 직렬화 |
 | `OPTIMISTIC` | `version` 조건부 UPDATE | 최대 `triagain.crew.max-retry`회 재시도 후 `409 CR023` |
 | `CONDITIONAL` | 정원 조건부 UPDATE + 멤버 유니크 제약 | 재시도 없이 `CR002` 또는 `CR004` |
-| `REDIS_ASYNC` | Phase 1 미구현: 공개·초대 가입 모두 즉시 거부 | IllegalStateException → 기존 500/C002, DB fallback 없음 |
+| `REDIS_ASYNC` | 공개 가입만 Redis Lua 승인 + pending 등록, DB 미반영 (5절). 초대 가입은 즉시 거부 | Lua가 `CR004`/`CR002` 판정, 인프라·상태 실패는 500/C002, DB fallback 없음 |
 
 두 가입 Service는 `LockStrategy`의 네 값을 default 없는 switch로 처리한다.
-REDIS_ASYNC 거부는 가입 Repository 호출·TransactionTemplate 실행 전에 발생한다.
+REDIS_ASYNC 초대 가입 거부는 가입 Repository 호출·TransactionTemplate 실행 전에 발생한다.
 `Crew.validateJoinable()`은 상태·마감만 검사하며, 기존 addMember 경로의 정원/중복 검사 순서는 유지한다.
+
+## 5. `REDIS_ASYNC` 공개 가입 (Phase 2, 로컬 실험 전용)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant Service as JoinCrewService
+    participant DB as PostgreSQL
+    participant Redis as Redis (approve.lua)
+
+    Client->>Service: POST /crews/{crewId}/join
+    Service->>DB: findById (크루·멤버 조회만, 쓰기 없음)
+    Service->>Service: PUBLIC → validateJoinable() (상태 → 마감)
+    Service->>Service: confirmedAt = Clock 시각 → Asia/Seoul, 밀리초
+    Service->>Redis: EVAL approve (members, meta, pending)
+    Note over Redis: 쓰기 전 검증: 입력·key type → 초기화 상태 → 중복 → 정원
+    alt 신규 승인
+        Redis->>Redis: HINCRBY seq → ZADD NX → LPUSH pending
+        Redis-->>Service: [0, 승인 후 인원]
+        Service-->>Client: 201 (currentMembers=Redis 인원, joinedAt=confirmedAt)
+    else 중복 / 정원 도달
+        Redis-->>Service: [1|2, 0] (변경 없음)
+        Service-->>Client: 409 CR004 / CR002
+    else 미초기화·상태 불일치·연결/timeout/스크립트 오류
+        Service-->>Client: 500 C002 (DB fallback 없음)
+    end
+```
+
+- pending에 쌓인 작업을 DB에 반영하는 worker는 아직 없다(Phase 3). 따라서 201 이후에도 DB 인원·멤버는 그대로다.
+- 앱 기동: `REDIS_ASYNC`일 때만 웹 서버가 포트를 열기 전 Redis PING을 하고, 실패하면 기동이 중단된다.
+  DB 세 전략은 Redis 없이 기동하며 `/actuator/health`에 Redis가 포함되지 않는다.

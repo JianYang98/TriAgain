@@ -625,11 +625,74 @@
 `(crew_id, user_id)` 유니크 제약 위반을 `CR004`로 변환한다. 별도 Idempotency-Key나
 응답 캐시는 사용하지 않는다. `CR023`은 설정을 `OPTIMISTIC`으로 바꿨을 때만 발생 가능한 계약이다.
 
-`REDIS_ASYNC`는 Phase 1에서 아직 미구현이다. 이 값을 선택하면 인증·요청 유효성 검증을
-통과한 공개 직접 가입과 초대코드 가입 모두 Service 진입 시 `IllegalStateException`으로 즉시 거부한다.
-기존 `GlobalExceptionHandler`가 `500 / C002`로 처리하며 신규 ErrorCode나 메시지는 추가하지 않는다.
-기존 DB 전략으로 fallback하지 않고 가입 DB 조회·저장·트랜잭션을 실행하지 않는다.
-Redis 비동기 가입의 성공 응답 계약은 후속 단계에서 추가한다.
+#### `REDIS_ASYNC` (Phase 2 — 로컬 실험 전용, 운영 비활성)
+
+공개 직접 가입(`POST /crews/{crewId}/join`)만 Redis 승인으로 처리한다. 요청·응답 형태는 위와 같다.
+
+- **201의 의미**: Redis에 신규 가입 승인(순번·멤버 기록)과 DB 반영용 pending 작업 등록이 끝났다는 뜻이다.
+  **DB 멤버·`current_members`에는 반영되지 않는다.** pending을 소비하는 worker가 아직 없으므로
+  조회 API·챌린지 흐름이 이 가입을 인식한다는 보장은 없다.
+- `currentMembers`: 이번 승인 직후 Redis 멤버 수. `role`: `MEMBER`.
+- `joinedAt`: pending에 기록한 가입 확인 시각과 같은 순간의 Asia/Seoul `LocalDateTime` (기존 타입 유지).
+
+| 조건 | HTTP | 코드 |
+|---|---|---|
+| 크루 없음 / PRIVATE / 가입 불가 상태 / 마감 경과 | 404 / 400 / 400 / 400 | CR001 / CR022 / CR003 / CR008 (Redis 호출 전) |
+| Redis에 이미 멤버 | 409 | CR004 (정원보다 먼저 판정) |
+| Redis 정원 도달 | 409 | CR002 |
+| 크루 Redis 상태 미준비·불일치, 연결 실패·timeout·스크립트 오류 | 500 | C002 |
+
+- 기존 DB 전략으로 fallback하지 않는다. 500이나 응답 유실은 "가입 안 됨"의 증거가 아니다 —
+  Redis에 이미 승인됐을 수 있고, 이때 재요청은 `CR004`다(첫 응답을 재생하지 않는다).
+- 초대코드 가입(`POST /crews/join`)은 이 전략에서 지원하지 않는다. 유효한 요청도 `IllegalStateException` →
+  `500 / C002`로 거부하며 가입 DB·Redis를 호출하지 않는다.
+- 신규 ErrorCode·메시지는 없다. Redis 내부 계약은 아래 요약이 이 저장소의 정본이다.
+
+##### Redis key·payload·Lua 계약 (내부, HTTP에 노출되지 않음)
+
+구현: `CrewJoinRedisAdapter`, `src/main/resources/redis/crew-join/{approve,initialize-crew-join}.lua`, `scripts/crew-join-redis.sh`.
+
+| key | 자료형 | 내용 |
+|---|---|---|
+| `triagain:crew-join:{<namespace>:<runId>}:crew:<crewId>:members` | ZSET | member=userId, score=승인 순번 |
+| `triagain:crew-join:{<namespace>:<runId>}:crew:<crewId>:meta` | HASH | `capacity`, `seq`, `initialized` |
+| `triagain:crew-join:{<namespace>:<runId>}:pending` | LIST | 신규 승인 payload, `LPUSH`(왼쪽 추가). run 내 모든 크루 공용 |
+| `triagain:crew-join:{<namespace>:<runId>}:processing` | — | 이름만 예약(Phase 3). 현재 코드는 생성·사용하지 않는다 |
+
+- 중괄호는 실제 key에 포함된다. `namespace`·`runId`는 서버 설정 `triagain.crew.redis.namespace`·`run-id`이며
+  `[A-Za-z0-9_-]+`만 허용, 비면 `REDIS_ASYNC` 기동이 실패한다. TTL 없음.
+- **pending payload**: JSON String 필드 3개만 — `{"crewId":"…","userId":"…","confirmedAt":"2026-09-27T14:05:23.481+09:00"}`.
+  `confirmedAt`은 `yyyy-MM-dd'T'HH:mm:ss.SSSXXX`, offset `+09:00` 고정(다른 offset은 직렬화 전에 거부).
+- **approve.lua**: `KEYS` = members, meta, pending / `ARGV` = crewId, userId, confirmedAt, payload JSON.
+  반환은 항상 `{code, currentMembers}`:
+
+  | code | 결과 | API |
+  |---|---|---|
+  | 0 | JOIN_SUCCESS (`currentMembers`=승인 후 인원) | 201 |
+  | 1 | ALREADY_JOINED | 409 / CR004 |
+  | 2 | CREW_FULL | 409 / CR002 |
+  | 3 | NOT_INITIALIZED (meta·members 둘 다 없음) | 500 / C002 |
+  | 4 | INVALID_STATE (인수·key 이름·payload·key type·`initialized`/`capacity`/`seq`·`seq=ZCARD=최대 score` 불일치) | 500 / C002 |
+
+  1~4는 첫 쓰기 전 판정이며 어떤 key도 바꾸지 않는다. 판정 순서: 입력·payload → key type → 초기화 상태 → 중복 → 정원.
+  성공 시 `HINCRBY meta seq 1` → `ZADD members NX <seq> <userId>` → `LPUSH pending <payload>`.
+  첫 쓰기 이후의 예상 밖 결과는 code가 아니라 error reply(`CREW_JOIN_WRITE_FAILED: …`)이며 이전 쓰기는 rollback되지 않는다.
+  Adapter는 연결 실패·timeout·스크립트 오류·직렬화 실패·예상 밖 반환을 `IllegalStateException`
+  (`CONNECTION:`/`TIMEOUT_OR_UNKNOWN:`/`SCRIPT_ERROR:`/`SERIALIZATION:` + namespace·runId·crewId)으로 올린다 → 500 / C002.
+- **initialize-crew-join.lua** (준비 도구 전용, 가입 요청 경로에서 호출하지 않음): `KEYS` = members, meta /
+  `ARGV` = capacity(DB `max_members`), 초기 멤버 userId JSON 배열(비어 있지 않은 문자열·중복 없음·1..capacity개).
+  score는 배열 순서대로 `1..N`이다. 재현 가능한 배치를 위해 준비 도구가 결정적 순서(DB `user_id COLLATE "C"`)로 배열을 만들고,
+  Lua는 배열 순서를 불변식으로 검사하지 않으며 유효성·중복 없음·멤버 수 범위만 검증한다.
+  반환 `OK` | `ALREADY_EXISTS_OR_PARTIAL`(두 key 중 하나라도 존재 — 덮어쓰지 않음) | `INVALID_INPUT`.
+  성공 시 멤버에 score `1..N`을 주고 마지막에 meta `capacity`, `seq=N`, `initialized=1`을 쓴다. pending에는 접근하지 않는다.
+- **준비 도구** `scripts/crew-join-redis.sh init|preflight <namespace> <runId> <crewId>… | cleanup <namespace> <runId>`:
+  init은 첫 Lua 실행 전에 공용 pending이 비었는지 확인한다. 크루별 DB snapshot(`max_members`, `current_members`, 멤버 집합)을
+  읽어 멤버 수≠`current_members`·중복·N∉1..capacity면 거부하고 위 Lua를 실행한 뒤 pre-flight를 한다.
+  cleanup은 해당 run prefix key만 지운다(FLUSHDB 없음).
+  init이 여러 크루 중 중간에 실패하면 앞 크루는 초기화된 채 남으므로(rollback 없음) 해당 run을 cleanup한 뒤 다시 준비한다.
+  preflight는 부하테스트 시작 전 초기 상태 검증 전용이다. 가입 승인이 시작되면 Redis가 DB보다 앞서고 pending이 생기므로
+  실패(4)가 정상이며, 실험 중 정합성 점검 용도로 쓰지 않는다.
+  종료 코드 0 성공 / 1 사용법 / 2 CONNECTION / 3 NOT_INITIALIZED / 4 INVALID_STATE(재초기화 거부 포함) / 5 DB snapshot 불일치.
 
 ## 6. 삭제·탈퇴
 

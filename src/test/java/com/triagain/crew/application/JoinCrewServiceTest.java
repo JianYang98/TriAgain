@@ -8,10 +8,15 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -39,6 +44,9 @@ import com.triagain.crew.domain.vo.CrewVisibility;
 import com.triagain.crew.domain.vo.VerificationType;
 import com.triagain.crew.port.in.JoinCrewUseCase.JoinCrewCommand;
 import com.triagain.crew.port.in.JoinCrewUseCase.JoinCrewResult;
+import com.triagain.crew.port.out.CrewJoinRedisPort;
+import com.triagain.crew.port.out.CrewJoinRedisPort.Approval;
+import com.triagain.crew.port.out.CrewJoinRedisPort.Status;
 import com.triagain.crew.port.out.CrewRepositoryPort;
 
 @ExtendWith(MockitoExtension.class)
@@ -451,17 +459,122 @@ class JoinCrewServiceTest {
 		}
 	}
 
-	@Test
-	@DisplayName("REDIS_ASYNC 공개 가입은 DB 작업 없이 즉시 거부한다")
-	void redisAsync_rejectsWithoutDatabaseAccess() {
-		// Given
-		given(lockProperties.getLockStrategy()).willReturn(LockStrategy.REDIS_ASYNC);
+	@Nested
+	@DisplayName("Redis 선착순 승인 경로 (REDIS_ASYNC)")
+	class RedisAsync {
 
-		// When & Then
-		assertThatThrownBy(() -> joinCrewService.joinCrew(new JoinCrewCommand("user-1", "CREW-001")))
-			.isInstanceOf(IllegalStateException.class)
-			.hasMessageContaining("REDIS_ASYNC");
-		verifyNoInteractions(crewRepositoryPort, txTemplate);
+		/** UTC 존 Clock — 서비스가 JVM/Clock 존과 무관하게 Asia/Seoul로 변환·밀리초 절삭하는지 본다 */
+		private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-09-27T05:05:23.481999Z"), ZoneOffset.UTC);
+		private static final OffsetDateTime CONFIRMED_AT = OffsetDateTime.parse("2026-09-27T14:05:23.481+09:00");
+
+		@Mock
+		private CrewJoinRedisPort crewJoinRedisPort;
+
+		private JoinCrewService service;
+
+		@BeforeEach
+		void setUp() {
+			given(lockProperties.getLockStrategy()).willReturn(LockStrategy.REDIS_ASYNC);
+			service = new JoinCrewService(crewRepositoryPort, lockProperties, txTemplate, crewJoinRedisPort, CLOCK);
+		}
+
+		@Test
+		@DisplayName("Redis가 승인하면 DB에 쓰지 않고 Redis 인원과 같은 서울 시각으로 MEMBER 결과를 만든다")
+		void approved_returnsRedisCountWithoutDbWrite() {
+			// Given
+			given(crewRepositoryPort.findById("CREW-001")).willReturn(Optional.of(joinablePublicCrew()));
+			given(crewJoinRedisPort.approve("CREW-001", "user-1", CONFIRMED_AT))
+				.willReturn(new Approval(Status.JOIN_SUCCESS, 2));
+
+			// When
+			JoinCrewResult result = service.joinCrew(new JoinCrewCommand("user-1", "CREW-001"));
+
+			// Then
+			assertThat(result).isEqualTo(new JoinCrewResult("user-1", "CREW-001", CrewRole.MEMBER, 2,
+				LocalDateTime.parse("2026-09-27T14:05:23.481")));
+			verify(crewRepositoryPort).findById("CREW-001");
+			verifyNoMoreInteractions(crewRepositoryPort);
+			verifyNoInteractions(txTemplate);
+		}
+
+		@Test
+		@DisplayName("Redis가 중복이라 하면 CR004, 정원 초과라 하면 CR002로 거절한다")
+		void businessRejections_mapToExistingCodes() {
+			// Given
+			given(crewRepositoryPort.findById("CREW-001")).willReturn(Optional.of(joinablePublicCrew()));
+			given(crewJoinRedisPort.approve(anyString(), anyString(), any()))
+				.willReturn(new Approval(Status.ALREADY_JOINED, 0), new Approval(Status.CREW_FULL, 0));
+
+			// When & Then
+			assertErrorCode(ErrorCode.CREW_ALREADY_JOINED);
+			assertErrorCode(ErrorCode.CREW_FULL);
+			verifyNoInteractions(txTemplate);
+		}
+
+		@Test
+		@DisplayName("미초기화·상태 불일치는 사용자 오류(IllegalArgumentException)가 아닌 IllegalStateException이다")
+		void notInitializedOrInvalidState_isInternalFailure() {
+			// Given
+			given(crewRepositoryPort.findById("CREW-001")).willReturn(Optional.of(joinablePublicCrew()));
+			given(crewJoinRedisPort.approve(anyString(), anyString(), any()))
+				.willReturn(new Approval(Status.NOT_INITIALIZED, 0), new Approval(Status.INVALID_STATE, 0));
+
+			// When & Then
+			for (String reason : List.of("NOT_INITIALIZED", "INVALID_STATE")) {
+				assertThatThrownBy(() -> service.joinCrew(new JoinCrewCommand("user-1", "CREW-001")))
+					.isExactlyInstanceOf(IllegalStateException.class)
+					.hasMessageContaining(reason);
+			}
+			verifyNoMoreInteractions(crewRepositoryPort);
+			verifyNoInteractions(txTemplate);
+		}
+
+		@Test
+		@DisplayName("Redis 인프라 예외는 그대로 전파되고 DB 전략으로 fallback하지 않는다")
+		void redisFailure_doesNotFallBackToDb() {
+			// Given
+			given(crewRepositoryPort.findById("CREW-001")).willReturn(Optional.of(joinablePublicCrew()));
+			given(crewJoinRedisPort.approve(anyString(), anyString(), any()))
+				.willThrow(new IllegalStateException("CONNECTION: crew join Redis unavailable"));
+
+			// When & Then
+			assertThatThrownBy(() -> service.joinCrew(new JoinCrewCommand("user-1", "CREW-001")))
+				.isExactlyInstanceOf(IllegalStateException.class);
+			verify(crewRepositoryPort).findById("CREW-001");
+			verifyNoMoreInteractions(crewRepositoryPort);
+			verifyNoInteractions(txTemplate);
+		}
+
+		@Test
+		@DisplayName("크루 없음·비공개·가입 불가 상태·마감 경과는 기존 코드로 거절하고 Redis를 호출하지 않는다")
+		void preChecks_rejectBeforeRedis() {
+			// Given
+			LocalDate today = LocalDate.now();
+			given(crewRepositoryPort.findById("CREW-001")).willReturn(
+				Optional.empty(),
+				Optional.of(privateRecruitingCrew(today.plusDays(7), today.plusDays(30))),
+				Optional.of(publicCrewWithMembers(CrewStatus.COMPLETED, 10, 1,
+					today.minusDays(30), today.plusDays(30))),
+				Optional.of(publicRecruitingCrew(today.plusDays(1), today.plusDays(2))));
+
+			// When & Then
+			assertErrorCode(ErrorCode.CREW_NOT_FOUND);
+			assertErrorCode(ErrorCode.CREW_NOT_PUBLIC);
+			assertErrorCode(ErrorCode.CREW_NOT_RECRUITING);
+			assertErrorCode(ErrorCode.CREW_JOIN_DEADLINE_PASSED);
+			verifyNoInteractions(crewJoinRedisPort, txTemplate);
+		}
+
+		private void assertErrorCode(ErrorCode expected) {
+			assertThatThrownBy(() -> service.joinCrew(new JoinCrewCommand("user-1", "CREW-001")))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException)e).getErrorCode())
+				.isEqualTo(expected);
+		}
+
+		private Crew joinablePublicCrew() {
+			return publicRecruitingCrew(LocalDate.now().plusDays(7), LocalDate.now().plusDays(30));
+		}
 	}
 
 	@Test
