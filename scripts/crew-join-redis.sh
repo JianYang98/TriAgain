@@ -5,6 +5,8 @@
 #   preflight <namespace> <runId> <crewId>...  연결 → 크루별 준비 상태 → 새 run pending 비어 있음 확인
 #   cleanup   <namespace> <runId>              해당 run prefix의 key만 삭제 (FLUSHDB 안 씀)
 #
+# preflight는 부하테스트 시작 전 초기 상태 검증 전용이다 — 가입 승인이 시작되면 Redis가 DB보다 앞서고
+# pending이 생기므로 실패(4)가 정상이며, 실험 중 정합성 점검 용도로 쓰지 않는다.
 # init이 여러 크루 중 중간에 실패하면 앞 크루는 초기화된 채 남는다 — 해당 run을 cleanup하고 다시 준비한다.
 # 요청을 멈춘 상태에서만 실행한다. DB/Redis 접근 명령은 환경변수로 바꿀 수 있다:
 #   PSQL      (기본: docker compose exec -T postgres psql -U triagain -d triagain)

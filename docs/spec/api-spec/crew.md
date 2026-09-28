@@ -690,6 +690,8 @@
   읽어 멤버 수≠`current_members`·중복·N∉1..capacity면 거부하고 위 Lua를 실행한 뒤 pre-flight를 한다.
   cleanup은 해당 run prefix key만 지운다(FLUSHDB 없음).
   init이 여러 크루 중 중간에 실패하면 앞 크루는 초기화된 채 남으므로(rollback 없음) 해당 run을 cleanup한 뒤 다시 준비한다.
+  preflight는 부하테스트 시작 전 초기 상태 검증 전용이다. 가입 승인이 시작되면 Redis가 DB보다 앞서고 pending이 생기므로
+  실패(4)가 정상이며, 실험 중 정합성 점검 용도로 쓰지 않는다.
   종료 코드 0 성공 / 1 사용법 / 2 CONNECTION / 3 NOT_INITIALIZED / 4 INVALID_STATE(재초기화 거부 포함) / 5 DB snapshot 불일치.
 
 ## 6. 삭제·탈퇴
