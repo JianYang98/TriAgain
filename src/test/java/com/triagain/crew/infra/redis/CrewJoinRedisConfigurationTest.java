@@ -1,10 +1,13 @@
 package com.triagain.crew.infra.redis;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.actuate.autoconfigure.data.redis.RedisHealthContributorAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.data.redis.RedisReactiveHealthContributorAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.health.HealthContributorAutoConfiguration;
@@ -16,6 +19,11 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.RedisConnectionFailureException;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.triagain.crew.application.CrewJoinPendingWorker;
+import com.triagain.crew.port.out.CrewRepositoryPort;
 
 /**
  * 전략별 Redis wiring — DB 전략은 Redis 없이 기동·Redis health 미등록, REDIS_ASYNC는 PING 실패 시 기동 실패.
@@ -34,20 +42,25 @@ class CrewJoinRedisConfigurationTest {
 			RedisHealthContributorAutoConfiguration.class,
 			RedisReactiveHealthContributorAutoConfiguration.class))
 		.withUserConfiguration(PropertiesConfig.class, CrewJoinRedisConfiguration.class)
+		.withBean(ObjectMapper.class, ObjectMapper::new)
+		.withBean(CrewRepositoryPort.class, () -> mock(CrewRepositoryPort.class))
+		.withBean(TransactionTemplate.class, () -> mock(TransactionTemplate.class))
 		.withPropertyValues(
 			"spring.data.redis.connect-timeout=1s",
 			"spring.data.redis.timeout=2s",
 			"management.health.redis.enabled=false");
 
-	@Test
+	@ParameterizedTest
+	@ValueSource(strings = {"CONDITIONAL", "PESSIMISTIC", "OPTIMISTIC"})
 	@DisplayName("DB 전략은 Redis가 없어도 기동하고 기동 게이트·Redis health indicator가 없다")
-	void dbStrategy_startsWithoutRedis() {
+	void dbStrategy_startsWithoutRedis(String strategy) {
 		runner
-			.withPropertyValues("triagain.crew.lock-strategy=CONDITIONAL")
+			.withPropertyValues("triagain.crew.lock-strategy=" + strategy)
 			.withPropertyValues("spring.data.redis.host=localhost", CLOSED_PORT)
 			.run(context -> {
 				assertThat(context).hasNotFailed();
 				assertThat(context).doesNotHaveBean(CrewJoinRedisStartupCheck.class);
+				assertThat(context).doesNotHaveBean(CrewJoinPendingWorker.class);
 				assertThat(context).doesNotHaveBean("redisHealthIndicator");
 				assertThat(context).doesNotHaveBean("redisHealthContributor");
 			});
@@ -93,6 +106,8 @@ class CrewJoinRedisConfigurationTest {
 			.run(context -> {
 				assertThat(context).hasNotFailed();
 				assertThat(context).hasSingleBean(CrewJoinRedisStartupCheck.class);
+				assertThat(context).hasSingleBean(CrewJoinPendingWorker.class);
+				assertThat(context.getBean(CrewJoinPendingWorker.class).isRunning()).isTrue();
 				HealthIndicator health = context.getBean("redisHealthIndicator", HealthIndicator.class);
 				assertThat(health.health().getStatus()).isEqualTo(Status.UP);
 			});
@@ -111,6 +126,8 @@ class CrewJoinRedisConfigurationTest {
 			.run(context -> {
 				assertThat(context).hasNotFailed();
 				assertThat(context).hasSingleBean(CrewJoinRedisStartupCheck.class);
+				assertThat(context).hasSingleBean(CrewJoinPendingWorker.class);
+				assertThat(context.getBean(CrewJoinPendingWorker.class).isRunning()).isTrue();
 				assertThat(context).hasBean("redisHealthIndicator");
 			});
 	}
@@ -122,6 +139,7 @@ class CrewJoinRedisConfigurationTest {
 			.run(context -> {
 				assertThat(context).hasNotFailed();
 				assertThat(context).doesNotHaveBean(CrewJoinRedisStartupCheck.class);
+				assertThat(context).doesNotHaveBean(CrewJoinPendingWorker.class);
 				assertThat(context).doesNotHaveBean("redisHealthIndicator");
 			});
 	}

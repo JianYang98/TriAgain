@@ -33,10 +33,12 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.triagain.common.util.IdGenerator;
+import com.triagain.crew.application.CrewJoinPendingWorker;
 import com.triagain.crew.domain.model.Crew;
 import com.triagain.crew.domain.model.CrewMember;
 import com.triagain.crew.domain.vo.CrewStatus;
@@ -54,6 +56,10 @@ import io.restassured.response.Response;
  * Phase 2는 DB에 쓰지 않으므로 성공 후에도 DB 멤버·인원·version은 초기값이다.
  */
 class RedisCrewJoinApiTest extends E2eTestBase {
+
+	/** context 시작 전에 worker를 대체하여 Phase 2 pending-only 단언 보존 */
+	@MockitoBean
+	private CrewJoinPendingWorker isolatedWorker;
 
 	private static final String RUN_ID = "api-" + UUID.randomUUID();
 	private static final String PREFIX = "triagain:crew-join:{api:" + RUN_ID + "}";
