@@ -81,13 +81,13 @@ PostgreSQL은 경합한 UPDATE의 조건을 다시 평가하므로 `current_memb
 | `PESSIMISTIC` | 크루를 `SELECT … FOR NO KEY UPDATE`로 잠근 뒤 가입 | DB 행 락으로 직렬화 |
 | `OPTIMISTIC` | `version` 조건부 UPDATE | 최대 `triagain.crew.max-retry`회 재시도 후 `409 CR023` |
 | `CONDITIONAL` | 정원 조건부 UPDATE + 멤버 유니크 제약 | 재시도 없이 `CR002` 또는 `CR004` |
-| `REDIS_ASYNC` | 공개 가입만 Redis Lua 승인 + pending 등록, DB 미반영 (5절). 초대 가입은 즉시 거부 | Lua가 `CR004`/`CR002` 판정, 인프라·상태 실패는 500/C002, DB fallback 없음 |
+| `REDIS_ASYNC` | 공개 가입은 Redis 승인 + pending 등록, worker가 DB 비동기 반영 (5절). 초대 가입은 즉시 거부 | Lua가 `CR004`/`CR002` 판정, 인프라·상태 실패는 500/C002, DB fallback 없음 |
 
 두 가입 Service는 `LockStrategy`의 네 값을 default 없는 switch로 처리한다.
 REDIS_ASYNC 초대 가입 거부는 가입 Repository 호출·TransactionTemplate 실행 전에 발생한다.
 `Crew.validateJoinable()`은 상태·마감만 검사하며, 기존 addMember 경로의 정원/중복 검사 순서는 유지한다.
 
-## 5. `REDIS_ASYNC` 공개 가입 (Phase 2, 로컬 실험 전용)
+## 5. `REDIS_ASYNC` 공개 가입 (Phase 3, 로컬 실험 전용)
 
 ```mermaid
 sequenceDiagram
@@ -115,6 +115,37 @@ sequenceDiagram
     end
 ```
 
-- pending에 쌓인 작업을 DB에 반영하는 worker는 아직 없다(Phase 3). 따라서 201 이후에도 DB 인원·멤버는 그대로다.
+- 201은 Redis 승인·pending 등록 완료다. worker commit 전에는 DB 기반 조회가 아직 비멤버로 판단할 수 있다.
+  commit 뒤 새 조회는 가입을 인식한다. 반영 시간·polling·새 API 보장은 없다.
 - 앱 기동: `REDIS_ASYNC`일 때만 웹 서버가 포트를 열기 전 Redis PING을 하고, 실패하면 기동이 중단된다.
   DB 세 전략은 Redis 없이 기동하며 `/actuator/health`에 Redis가 포함되지 않는다.
+
+### Phase 3 단일 worker
+
+```mermaid
+sequenceDiagram
+    participant W as CrewJoinPendingWorker
+    participant R as Redis
+    participant S as CrewJoinPersistenceService
+    participant DB as PostgreSQL
+    W->>R: BLMOVE pending processing RIGHT LEFT 1
+    R-->>W: exact raw (정상 nil이면 대기 반복)
+    W->>W: strict parse + confirmedAt 보존
+    W->>S: persist(crewId, userId, joinedAt)
+    S->>DB: BEGIN + INSERT ON CONFLICT (crew_id,user_id) DO NOTHING
+    alt 신규 INSERT 1행
+        S->>DB: current_members +1 (1행 필수)
+    else INSERT 0행
+        S->>S: 정상 replay, 무변경
+    end
+    S->>DB: COMMIT
+    DB-->>S: commit 성공
+    S-->>W: DB 완료
+    W->>R: LREM processing 1 exact raw
+    R-->>W: 1행 (ACK 완료)
+```
+
+- parse/DB 실패·commit 결과 불명이면 ACK하지 않고 소비 루프를 중단한다. 증가 0행은 invariant 불일치로 INSERT도 rollback한다.
+- claim 예외는 이동 결과 불명, ACK 0행/예외는 DB commit 유지·raw 존재 불명으로 중단한다. 다음 claim·retry는 없다.
+- 정상 종료는 새 claim을 막고 진행 중 작업의 commit→ACK를 기다린다. 10초 join 한도 초과는 미완료 로그를 남긴다.
+- processing 잔존 재기동·startup recovery·retry/reprocessing은 Phase 4다. processing 검사에 따른 기동 거부는 추가하지 않는다.

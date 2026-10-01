@@ -59,17 +59,36 @@
 설정 값이 없으면(null) 공개·초대 가입 모두 가입 DB 트랜잭션·조회·쓰기 전에
 `NullPointerException`으로 거부하며 기존 `500 / C002`로 응답한다.
 세 DB 전략은 동시성 처리 방식을 비교하려고 함께 유지하며, 운영 기본값은 `CONDITIONAL`이다.
-`REDIS_ASYNC`(Phase 2)는 **로컬 실험 전용**이며 운영 가입 기능으로 활성화하지 않는다.
+`REDIS_ASYNC`(Phase 3)는 **로컬 실험 전용**이며 운영 가입 기능으로 활성화하지 않는다.
 
 - 공개 가입만: DB 조회 → PUBLIC → `validateJoinable()`(상태 → 마감) → Redis Lua 한 번에 준비 상태 → 중복 → 정원을
   판단하고, 신규 승인이면 순번(`seq`)·멤버·pending 작업을 함께 기록한다. 오류 순서는 **중복 → 정원**이다.
-- 이 경로는 DB에 쓰지 않는다(TransactionTemplate·멤버 저장·인원 증가 없음). pending 소비(DB 반영)는 Phase 3이다.
+- HTTP 가입 경로는 DB에 쓰지 않는다. 단일 worker가 pending을 processing으로 claim하여 DB에 비동기 반영한다.
 - 크루별 Redis 상태는 실험 전 DB snapshot으로 **명시적으로 초기화**한다(`scripts/crew-join-redis.sh`, 기존 멤버 score 1..N,
   seq=N). 가입 요청 중 lazy 초기화는 없고, 미초기화 크루의 가입은 그 요청만 `500 / C002`다.
 - 미초기화·상태 불일치·연결·timeout·스크립트 실패는 `500 / C002`, DB fallback·자동 재시도·보상 없음.
   Lua는 원자 실행이지만 실행 오류 시 이전 쓰기를 rollback하지 않는다 — 부분 상태는 실험 실패로 판정한다.
 - 초대 가입은 이 전략에서 계속 `IllegalStateException` → `500 / C002`로 거부한다.
 - 운영 적용 전 미결 설계는 [추후 고려 사항](../log/future-considerations.md)에 있다.
+
+#### Redis worker의 DB 반영·실험 계약
+
+- `CrewJoinPersistenceService`가 transaction을 소유한다. `(crew_id,user_id)` 대상 native insert-if-absent 1행이면
+  `incrementMembersIfNotFull` 1행을 요구하고 함께 commit한다. 증가 0행은 invariant 불일치이며 INSERT도 rollback한다.
+  INSERT 0행은 정상 replay로 인원·기존 role·joinedAt을 변경하지 않는다. 다른 SQL·제약·연결 오류는 duplicate로 흡수하지 않는다.
+- 일반 멤버는 `MEMBER`, `CRMB` ID를 사용하고 `joinedAt`은 payload `confirmedAt`의 서울 local 값이다. worker 처리 시각을 쓰지 않는다.
+- worker는 Crew 전체를 load/save하지 않는다. DB commit 뒤에만 claim 당시 raw로 ACK한다. commit 실패·결과 불명은 ACK하지 않는다.
+  commit 후 ACK 실패는 DB 결과를 보존하고 중단한다. ACK 결과 불명이면 processing 잔존 여부도 단정하지 않는다.
+- DB 반영과 Redis ACK 사이에는 분산 transaction이 없다. DB 멱등성은 유지하되 runtime retry/reprocessing은 제공하지 않는다.
+- 준비 단계에서 fixture가 startup compensation 대상(`RECRUITING && startDate <= 오늘`, `ACTIVE && endDate < 오늘`)인지 확인한다.
+  대상 fixture는 제외하고 날짜 경계도 피한다. snapshot부터 drain·최종 검증까지 대상 crew의 수정·다른 가입 전략·탈퇴·삭제·재가입·
+  설정 변경·상태 scheduler·startup compensation·기타 전체 save/인원 writer를 혼합하지 않는다.
+  기존 JPA 전체 저장은 stale `current_members`를 덮어쓸 수 있으며 이 Phase에서 persistence/lock 구조를 변경하지 않는다.
+- `CREW_JOIN_WORKER_STOPPED` 로그의 `stage=claim|parse|DB|ACK`, 원인, namespace/runId와 확인 가능한 crewId로 오류 중단을 식별한다.
+  해당 run 로그를 확인하면 신규 부하 요청 생성을 수동 중단하고, 이미 전송한 요청의 종료·결과를 수집한다. 결과를 모르면 불명으로 기록한다.
+  Redis/DB/로그를 진단용으로 보존하며 Queue cleanup·reset·worker 재시작으로 실험을 재개하지 않는다.
+  pending 증가만으로 중단을 확정하지 않는다. 로그 확인 전/진행 중 요청에서 추가 승인이 발생할 수 있다.
+- 별도 health/readiness/admission 차단은 없다. processing 잔존 startup guard도 없으며, 잔존 상태 재기동·복구·재처리는 Phase 4다.
 
 `Crew.validateJoinable()`은 상태 → 마감만 검사하고 멤버 목록·인원 수를 변경하지 않는다.
 기존 DB 가입은 이 검증을 재사용하되 순서를 유지한다.
