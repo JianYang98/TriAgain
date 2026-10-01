@@ -16,6 +16,21 @@ public record CrewJoinRedisProperties(String namespace, String runId) {
 		requireKeyPart("triagain.crew.redis.run-id", runId);
 	}
 
+	/** 생산자·소비자가 공유하는 run key prefix — 기존 Phase 2 key 계약 */
+	public String keyPrefix() {
+		return "triagain:crew-join:{" + namespace + ":" + runId + "}";
+	}
+
+	/** 승인 Lua가 LPUSH하고 worker가 BLMOVE로 꺼내는 run 공용 LIST */
+	public String pendingKey() {
+		return keyPrefix() + ":pending";
+	}
+
+	/** worker가 claim한 raw를 commit 뒤 ACK까지 보관하는 LIST */
+	public String processingKey() {
+		return keyPrefix() + ":processing";
+	}
+
 	private static void requireKeyPart(String name, String value) {
 		// 빈 값에 기본값을 대입하지 않는다 — 다른 실험의 key와 합쳐지는 것을 막기 위해 기동을 멈춘다
 		if (value == null || !KEY_PART.matcher(value).matches()) {
