@@ -61,3 +61,35 @@ Feature: 업로드 세션 생성
     And SSE로 세션 이벤트를 구독 중이다
     When Lambda가 업로드 완료를 알린다
     Then SSE로 "COMPLETED" 이벤트를 수신한다
+
+  # ===== 상태 조회 (GET /upload-sessions/{id}) =====
+
+  Scenario: PENDING 세션 상태 조회
+    Given 업로드 세션이 이미 "PENDING" 상태이다
+    When 업로드 세션 상태를 조회한다
+    Then 응답 코드는 200이다
+    And 업로드 세션 조회 응답의 status는 "PENDING"이다
+
+  Scenario: COMPLETED 세션 상태 조회
+    Given 업로드 세션이 이미 "COMPLETED" 상태이다
+    When 업로드 세션 상태를 조회한다
+    Then 응답 코드는 200이다
+    And 업로드 세션 조회 응답의 status는 "COMPLETED"이다
+
+  Scenario: EXPIRED 세션 상태 조회
+    Given 업로드 세션이 이미 "EXPIRED" 상태이다
+    When 업로드 세션 상태를 조회한다
+    Then 응답 코드는 200이다
+    And 업로드 세션 조회 응답의 status는 "EXPIRED"이다
+
+  Scenario: 타인 소유 세션 조회 시 실패
+    Given 업로드 세션이 이미 "PENDING" 상태이다
+    When "user_other"가 업로드 세션 상태를 조회한다
+    Then 응답 코드는 404이다
+    And 에러 코드는 "UPLOAD_SESSION_NOT_FOUND"이다
+
+  Scenario: 토큰 없이 세션 상태 조회 시 실패
+    Given 업로드 세션이 이미 "PENDING" 상태이다
+    When 토큰 없이 업로드 세션 상태를 조회한다
+    Then 응답 코드는 401이다
+    And 에러 코드는 "UNAUTHORIZED"이다

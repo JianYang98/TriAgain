@@ -1,5 +1,7 @@
 package com.triagain.common.auth;
 
+import jakarta.servlet.DispatcherType;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -28,11 +30,13 @@ public class DevSecurityConfig {
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.exceptionHandling(exception -> exception.authenticationEntryPoint(authEntryPoint))
 				.authorizeHttpRequests(auth -> auth
+						// SSE emitter.complete()가 트리거하는 ASYNC 재디스패치에서 AuthorizationFilter가
+						// 인가를 재평가해 401을 던지는 문제 방지(shouldFilterAllDispatcherTypes 기본값 true).
+						.dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
 						.requestMatchers("/auth/**").permitAll()
 						.requestMatchers("/health", "/actuator/health").permitAll()
 						.requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
 						.requestMatchers("/internal/**").permitAll()
-						.requestMatchers("/upload-sessions/*/events").permitAll()
 						.requestMatchers("/crews/search").permitAll()
 						.requestMatchers("/invite/**", "/images/**", "/css/**", "/feedback").permitAll()
 						.anyRequest().authenticated()
