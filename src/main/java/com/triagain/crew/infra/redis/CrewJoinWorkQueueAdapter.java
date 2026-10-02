@@ -3,17 +3,29 @@ package com.triagain.crew.infra.redis;
 import java.time.Duration;
 
 import org.springframework.data.redis.connection.RedisListCommands.Direction;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 import com.triagain.crew.port.out.CrewJoinWorkQueuePort;
 
-import lombok.RequiredArgsConstructor;
-
-@RequiredArgsConstructor
-public class CrewJoinWorkQueueAdapter implements CrewJoinWorkQueuePort {
+public class CrewJoinWorkQueueAdapter implements CrewJoinWorkQueuePort, AutoCloseable {
 
 	private final StringRedisTemplate redisTemplate;
 	private final CrewJoinRedisProperties properties;
+	private final CrewJoinWorkerRedisConnection connection;
+
+	/** 기존 standalone 접속 설정을 계승하되 claim·ACK의 자동 재전송은 worker에서만 차단 */
+	public CrewJoinWorkQueueAdapter(LettuceConnectionFactory producer, CrewJoinRedisProperties properties) {
+		this.connection = new CrewJoinWorkerRedisConnection(producer);
+		this.redisTemplate = connection.template();
+		this.properties = properties;
+	}
+
+	/** 소비 루프 종료 후 worker 전용 연결 해제 */
+	@Override
+	public void close() {
+		connection.close();
+	}
 
 	/** 유한 BLMOVE로 FIFO 작업을 원자 이동하고 수신 원문 반환 */
 	@Override

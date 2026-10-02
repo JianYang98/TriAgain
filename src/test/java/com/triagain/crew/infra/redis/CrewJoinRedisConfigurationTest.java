@@ -19,6 +19,9 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.RedisConnectionFailureException;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -107,6 +110,11 @@ class CrewJoinRedisConfigurationTest {
 				assertThat(context).hasNotFailed();
 				assertThat(context).hasSingleBean(CrewJoinRedisStartupCheck.class);
 				assertThat(context).hasSingleBean(CrewJoinPendingWorker.class);
+				assertThat(context).hasSingleBean(RedisConnectionFactory.class);
+				var producer = context.getBean(LettuceConnectionFactory.class);
+				assertThat(context.getBean(StringRedisTemplate.class).getConnectionFactory()).isSameAs(producer);
+				assertThat(producer.getClientConfiguration().getClientOptions().orElseThrow().isAutoReconnect())
+					.isTrue();
 				assertThat(context.getBean(CrewJoinPendingWorker.class).isRunning()).isTrue();
 				HealthIndicator health = context.getBean("redisHealthIndicator", HealthIndicator.class);
 				assertThat(health.health().getStatus()).isEqualTo(Status.UP);
@@ -127,6 +135,11 @@ class CrewJoinRedisConfigurationTest {
 				assertThat(context).hasNotFailed();
 				assertThat(context).hasSingleBean(CrewJoinRedisStartupCheck.class);
 				assertThat(context).hasSingleBean(CrewJoinPendingWorker.class);
+				assertThat(context).hasSingleBean(RedisConnectionFactory.class);
+				var producer = context.getBean(LettuceConnectionFactory.class);
+				assertThat(context.getBean(StringRedisTemplate.class).getConnectionFactory()).isSameAs(producer);
+				assertThat(producer.getClientConfiguration().getClientOptions().orElseThrow().isAutoReconnect())
+					.isTrue();
 				assertThat(context.getBean(CrewJoinPendingWorker.class).isRunning()).isTrue();
 				assertThat(context).hasBean("redisHealthIndicator");
 			});

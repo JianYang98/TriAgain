@@ -147,5 +147,6 @@ sequenceDiagram
 
 - parse/DB 실패·commit 결과 불명이면 ACK하지 않고 소비 루프를 중단한다. 증가 0행은 invariant 불일치로 INSERT도 rollback한다.
 - claim 예외는 이동 결과 불명, ACK 0행/예외는 DB commit 유지·raw 존재 불명으로 중단한다. 다음 claim·retry는 없다.
+  worker 전용 Lettuce 클라이언트도 연결 단절 뒤 claim·ACK를 재전송하지 않는다. producer 설정은 유지한다.
 - 정상 종료는 새 claim을 막고 진행 중 작업의 commit→ACK를 기다린다. 10초 join 한도 초과는 미완료 로그를 남긴다.
 - processing 잔존 재기동·startup recovery·retry/reprocessing은 Phase 4다. processing 검사에 따른 기동 거부는 추가하지 않는다.

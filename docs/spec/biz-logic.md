@@ -79,6 +79,8 @@
 - 일반 멤버는 `MEMBER`, `CRMB` ID를 사용하고 `joinedAt`은 payload `confirmedAt`의 서울 local 값이다. worker 처리 시각을 쓰지 않는다.
 - worker는 Crew 전체를 load/save하지 않는다. DB commit 뒤에만 claim 당시 raw로 ACK한다. commit 실패·결과 불명은 ACK하지 않는다.
   commit 후 ACK 실패는 DB 결과를 보존하고 중단한다. ACK 결과 불명이면 processing 잔존 여부도 단정하지 않는다.
+- worker의 claim·ACK는 연결 단절 시 Lettuce 내부에서도 자동 재전송하지 않는다. 결과 불명으로 중단·보존하며,
+  이미 서버가 실행했을 가능성은 배제하지 않는다. producer 연결의 재연결 정책은 유지한다.
 - DB 반영과 Redis ACK 사이에는 분산 transaction이 없다. DB 멱등성은 유지하되 runtime retry/reprocessing은 제공하지 않는다.
 - 준비 단계에서 fixture가 startup compensation 대상(`RECRUITING && startDate <= 오늘`, `ACTIVE && endDate < 오늘`)인지 확인한다.
   대상 fixture는 제외하고 날짜 경계도 피한다. snapshot부터 drain·최종 검증까지 대상 crew의 수정·다른 가입 전략·탈퇴·삭제·재가입·

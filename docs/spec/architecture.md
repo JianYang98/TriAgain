@@ -263,6 +263,9 @@ sequenceDiagram
 - Phase 3 `CrewJoinPendingWorker`는 같은 조건부 설정에서 한 개만 등록되는 `SmartLifecycle` 전용 스레드다.
   startup PING 뒤 시작하고 `CrewJoinWorkQueuePort` → `CrewJoinWorkQueueAdapter`로 `BLMOVE RIGHT LEFT`와 raw ACK를 실행한다.
   Spring Data Redis 3.4.13 / Lettuce 6.4.2.RELEASE의 blocking 전용 연결을 사용한다. block 1초 < command 2초를 유지한다.
+  `CrewJoinWorkerRedisConnection`이 기존 standalone 접속·인증·TLS·timeout 설정을 계승한 private factory를 소유한다.
+  worker의 claim·ACK에만 `autoReconnect=false`, `REJECT_COMMANDS`를 적용하여 응답 유실 시 투명한 재전송을 막는다.
+  Boot의 producer factory/template bean은 대체하지 않는다. worker 종료 뒤 Queue Adapter의 close가 전용 factory를 해제한다.
   `CrewJoinPersistenceService`는 `TransactionTemplate`로 INSERT+인원 증가를 commit한 뒤 반환한다. 기존 transaction에 참여하지 않는다.
   Redis 호출은 DB transaction 밖이며 정상 종료는 새 claim을 막고 in-flight commit·ACK를 최대 10초 join으로 기다린다
   (이미 진행 중인 claim은 유한 command timeout 범위에서 먼저 반환). 초과 시 `CREW_JOIN_WORKER_SHUTDOWN_INCOMPLETE`로 기록한다.

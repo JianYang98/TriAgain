@@ -111,3 +111,61 @@
 - `/simplify` 반영 2건: pending/processing key를 `CrewJoinRedisProperties.pendingKey()`·`processingKey()`로 모아 생산자·소비자 Adapter가 공유. 종료 대기 단위 테스트의 전체 스레드 스택 검색을 `stop()` 호출 스레드 상태 확인 helper로 교체. 반영 뒤 같은 명령에 `compileJava compileTestJava`를 더해 재실행 PASS(수치 동일).
 - `/simplify` 미반영: 테스트 fixture·초기화 Lua 중복, E2E와 단위 테스트 중복, worker 전용 context 분리, timeout 검증 위치 이동, 단계 enum화. 동작 무변경 정리지만 이번 범위 밖이거나 SDD의 "새 설정 없음"과 충돌한다.
 
+
+## PR #182 후속 수정·재검증 — 2026-10-02
+
+### 실제 TCP 응답 유실과 수정
+
+- 기준: PR HEAD `6c3a8971a7b438e33a135e13d949520bfd161550`, 최신 develop
+  `6b1372b01de0f08fa828b6f02cff115929d83959`. 기존 미커밋 변경 없이 같은 BE worktree/branch에서 진행했다.
+- `RedisReplyDropProxy`는 실제 Redis 7.4.11에 명령을 전달하고 서버의 응답 프레임을 완전히 받은 후
+  클라이언트에는 전달하지 않고 TCP 연결을 닫는다. 재연결은 수락하여 Lettuce의 투명한 재전송을 관측한다.
+- 수정 전 `CrewJoinTransportFailureIntegrationTest` 두 케이스는 모두 단언 FAIL:
+  - BLMOVE 응답 유실: claim 3회(첫 A, 재전송 B, 다음 대기), ACK 1회. pending 비었고 processing에 A 잔류.
+  - LREM 응답 유실: claim 1회, ACK 2회. pending에 B, processing은 비었음.
+  - 둘 다 `expected: 1` 전송 횟수 단언에서 실패했다. 컴파일 오류·0건 실행 실패가 아니다.
+- worker의 standalone 전용 private factory에 `autoReconnect=false`, `REJECT_COMMANDS`를 적용했다.
+  기존 factory의 주소·DB·인증·TLS·command/connect timeout·ClientResources를 계승하며 producer bean을
+  대체하지 않는다. 설정 검증도 factory의 실제 command timeout을 읽는다. Queue bean close에서 전용 factory만 해제한다.
+- 수정 후 같은 두 테스트 PASS:
+  - BLMOVE: claim 1회, ACK 0회, A processing / B pending, persistence 호출 0회, claim 오류 로그·worker 중단.
+  - LREM: claim 1회, ACK 1회, A 제거 / B pending, persistence 호출 1회, ACK 오류 로그·worker 중단.
+- **검증 분리:** 이 TCP 테스트의 persistence는 mock이다. DB commit·rollback·인원·joinedAt은 기존
+  `RedisCrewJoinWorkerE2eTest` 21건의 실제 PostgreSQL 테스트로 검증했다. 네트워크 장애와 실 DB를 결합한
+  하나의 테스트라고 주장하지 않는다. 앞 절의 "물리 TCP 단절 미재현"은 이 후속 Redis 응답 경계 두 건에 한해 갱신된다.
+
+### 명령과 결과
+
+| 명령/검증 | 실제 결과 |
+|---|---|
+| `./gradlew cleanE2eTest e2eTest --tests '*CrewJoinTransportFailureIntegrationTest'` | 수정 전 2/2 단언 FAIL → 수정 후 2/2 PASS |
+| `./gradlew compileJava compileTestJava test cleanE2eTest e2eTest checkstyleMain checkstyleTest` | PASS. test 784건 중 기존 skip 26, 실행 758, 실패/error 0. E2E 103건 실행, skip/실패/error 0 |
+| `CrewJoinWorkerRedisConnectionTest` | producer의 autoReconnect·접속 설정·수명 보존, worker 설정 분리·close 확인 PASS |
+| `CrewJoinRedisConfigurationTest` | Boot RedisConnectionFactory 단일 bean·producer template 연결 보존, 세 DB 전략·relaxed 표기 격리 PASS |
+| `git diff --check` | PASS |
+
+Checkstyle의 테스트 주석 들여쓰기 2건을 수정한 뒤 위 전체 명령이 PASS했다. 마지막 전체 회귀 때의 모든
+`src` 파일 해시를 저장했고, 아래 변이 원복 후 전체가 동일함을 확인했다. 테스트 실패용 변경은 남아 있지 않다.
+
+### 현재 코드에서 다시 실행한 민감성 증명
+
+각 행은 `./gradlew cleanE2eTest e2eTest --tests '*<class>.<method>'`로 변이 FAIL → 원복 PASS를 실행했다.
+
+| 변이 | 대상 테스트 | 실패 단언 | 원복 |
+|---|---|---|---|
+| INSERT 0행에도 인원 증가 | `RedisCrewJoinWorkerE2eTest.p3t4_duplicatePairPreservesCountRoleAndTime` | 1/1 FAIL, 인원 expected 2 / actual 3 | 1/1 PASS |
+| persist 전에 ACK 추가 | `RedisCrewJoinWorkerE2eTest.p3t7_failureAfterInsertRollsBackAndDoesNotAckOrClaimNext` | 2/2 FAIL, processing expected raw / actual empty | 2/2 PASS |
+| joinedAt 대신 now() | `RedisCrewJoinWorkerE2eTest.p3t3_newMembershipCommitsBeforeExactAck` | 1/1 FAIL, 고정 승인 시각과 현재 시각 불일치 | 1/1 PASS |
+| worker autoReconnect만 true로 복원 | `CrewJoinTransportFailureIntegrationTest.replyLost_stopsWithoutTransparentReplay` | 2/2 FAIL, claim expected 1 / actual 3, ACK expected 1 / actual 2 | 2/2 PASS |
+
+### SDD 대조와 PR 댓글 처리
+
+- step0 범위·Phase 4 제외, step1 자동 재명령 금지, step2 공개 계약, step4 P3-T1~T12,
+  redis-worker-contract의 claim/ACK 결과 불명 중단과 대조했다. 새 정책 결정·Policy Blocking 없음.
+- DB 멱등 Service·worker 루프·producer Lua/Adapter·운영 yml·DDL·ErrorCode는 이번 수정에서 변경하지 않았다.
+- CodeRabbit 재전송 지적 반영. Greptile의 Given–When–Then 및 판단 로그 위치 지적 반영.
+  BusinessException 일괄 전환은 하지 않으며 내부 실패 계약에 따른 판단을 debugging-log에 기록했다.
+- 루트 Phase 1·2·3 SDD는 수정하지 않았다. BE 정본 다섯 문서는 실제 연결 동작에 맞춰 갱신했다.
+- 미검증: 프로세스 kill·전원 장애, DB commit 응답의 실제 TCP 유실, 종료 10초 초과, TLS 실접속,
+  운영 부하·multi-worker·Sentinel/Cluster·Phase 4 recovery/restart/retry. TLS는 설정 계승만 단위 테스트했다.
+- 원격 CI 및 사용자 머지 승인은 PR에서 별도 확인한다. 이 기록은 머지 승인을 의미하지 않는다.

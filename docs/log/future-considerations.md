@@ -13,6 +13,7 @@
   - 오류 매핑은 정해졌다: 중복 `409 / CR004`, 정원 `409 / CR002`, 미초기화·상태 불일치·연결·timeout·스크립트·직렬화
     실패는 신규 ErrorCode 없이 `500 / C002`, DB 전략 fallback 없음 (`docs/spec/api-spec/crew.md` REDIS_ASYNC 절)
   - Phase 3: 단일 worker의 pending→processing claim, DB 멱등 INSERT+인원 증가, commit 뒤 raw ACK를 구현했다.
+    worker 전용 연결은 claim·ACK의 Lettuce 자동 재전송도 차단한다. producer 설정은 유지한다.
     실패 시 중단·증거 보존까지이며 자동 복구는 없다. 신규 API·운영 설정·기본 전략은 변경하지 않았다.
 - 필요 시점: 운영 전환을 검토할 때. 아래가 정해지기 전에는 운영 값으로 쓰지 않는다.
   - processing 잔존 시 애플리케이션 재기동 정책, startup recovery, retry/reprocessing — Phase 4

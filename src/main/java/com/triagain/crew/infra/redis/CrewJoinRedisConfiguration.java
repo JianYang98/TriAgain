@@ -3,7 +3,6 @@ package com.triagain.crew.infra.redis;
 import java.time.Duration;
 
 import org.springframework.boot.actuate.data.redis.RedisHealthIndicator;
-import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Condition;
@@ -12,7 +11,7 @@ import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.type.AnnotatedTypeMetadata;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,14 +44,14 @@ public class CrewJoinRedisConfiguration {
 	}
 
 	/** worker 전용 queue — 유한 block 대기와 command timeout의 여유를 검증 */
-	@Bean
-	CrewJoinWorkQueuePort crewJoinWorkQueuePort(StringRedisTemplate template,
-		CrewJoinRedisProperties properties, RedisProperties redisProperties) {
-		Duration commandTimeout = redisProperties.getTimeout();
+	@Bean(destroyMethod = "close")
+	CrewJoinWorkQueueAdapter crewJoinWorkQueuePort(LettuceConnectionFactory connectionFactory,
+		CrewJoinRedisProperties properties) {
+		Duration commandTimeout = connectionFactory.getClientConfiguration().getCommandTimeout();
 		if (commandTimeout == null || commandTimeout.compareTo(CrewJoinPendingWorker.BLOCK_TIMEOUT) <= 0) {
 			throw new IllegalStateException("Redis command timeout must exceed worker block timeout (1s)");
 		}
-		return new CrewJoinWorkQueueAdapter(template, properties);
+		return new CrewJoinWorkQueueAdapter(connectionFactory, properties);
 	}
 
 	/** DB commit 경계를 소유하는 서비스 — Redis ACK는 포함하지 않음 */

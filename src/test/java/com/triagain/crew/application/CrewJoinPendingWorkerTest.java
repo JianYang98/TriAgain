@@ -15,6 +15,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -35,9 +36,13 @@ class CrewJoinPendingWorkerTest {
 	private final CrewJoinPersistenceService persistence = mock(CrewJoinPersistenceService.class);
 
 	@Test
+	@DisplayName("claim이 실패하면 상태를 추정하거나 재시도하지 않고 중단한다")
 	void claimFailure_stopsWithoutGuessingQueueOrRetrying() {
+		// Given — 실패 또는 종료 경계를 제어한다.
 		when(queue.claimRaw(any())).thenThrow(new IllegalStateException("timeout"));
+		// When / Then — 실제 소비 루프의 중단과 오류 로그를 확인한다.
 		assertStoppedWithLog("claim", RAW);
+		// Then — 추가 claim·ACK가 실행되지 않는다.
 		verify(queue, times(1)).claimRaw(CrewJoinPendingWorker.BLOCK_TIMEOUT);
 		verifyNoMoreInteractions(queue);
 		verifyNoInteractions(persistence);
@@ -45,29 +50,41 @@ class CrewJoinPendingWorkerTest {
 
 	@ParameterizedTest
 	@MethodSource("malformedPayloads")
+	@DisplayName("payload가 잘못되면 DB 반영과 ACK 없이 중단한다")
 	void malformedPayload_noDbOrAckAndStops(String raw) {
+		// Given — 실패 또는 종료 경계를 제어한다.
 		when(queue.claimRaw(any())).thenReturn(raw, RAW);
+		// When / Then — 실제 소비 루프의 중단과 오류 로그를 확인한다.
 		assertStoppedWithLog("parse", raw);
+		// Then — 추가 claim·ACK가 실행되지 않는다.
 		verify(queue, times(1)).claimRaw(any());
 		verifyNoMoreInteractions(queue);
 		verifyNoInteractions(persistence);
 	}
 
 	@Test
+	@DisplayName("DB 반영이 실패하면 ACK 없이 중단한다")
 	void dbFailure_noAckAndStops() {
+		// Given — 실패 또는 종료 경계를 제어한다.
 		when(queue.claimRaw(any())).thenReturn(RAW);
 		when(persistence.persist(any(), any(), any())).thenThrow(new IllegalStateException("DB unavailable"));
+		// When / Then — 실제 소비 루프의 중단과 오류 로그를 확인한다.
 		assertStoppedWithLog("DB", RAW);
+		// Then — 추가 claim·ACK가 실행되지 않는다.
 		verify(queue, times(1)).claimRaw(any());
 		verify(queue, never()).ackRaw(any());
 		verify(persistence, times(1)).persist("crew", "user", LocalDateTime.of(2026, 1, 2, 3, 4, 5, 678000000));
 	}
 
 	@Test
+	@DisplayName("ACK가 실패하면 DB 반환 후 소비를 중단한다")
 	void ackFailure_stopsAfterDbReturn() {
+		// Given — 실패 또는 종료 경계를 제어한다.
 		when(queue.claimRaw(any())).thenReturn(RAW);
 		when(queue.ackRaw(RAW)).thenReturn(0L);
+		// When / Then — 실제 소비 루프의 중단과 오류 로그를 확인한다.
 		assertStoppedWithLog("ACK", RAW);
+		// Then — DB 반환 뒤 ACK 순서를 유지한다.
 		var ordered = inOrder(queue, persistence);
 		ordered.verify(queue).claimRaw(any());
 		ordered.verify(persistence).persist(any(), any(), any());
@@ -76,7 +93,9 @@ class CrewJoinPendingWorkerTest {
 	}
 
 	@Test
+	@DisplayName("DB 처리 중 종료하면 commit과 ACK를 기다리고 새 claim을 하지 않는다")
 	void shutdownWhileDbInFlight_waitsForCommitAndAckWithoutNewClaim() throws Exception {
+		// Given — 실패 또는 종료 경계를 제어한다.
 		CountDownLatch entered = new CountDownLatch(1);
 		CountDownLatch release = new CountDownLatch(1);
 		when(queue.claimRaw(any())).thenReturn(RAW);
@@ -89,11 +108,13 @@ class CrewJoinPendingWorkerTest {
 		CrewJoinPendingWorker worker = worker();
 		var executor = Executors.newSingleThreadExecutor();
 		try {
+			// When — 처리 도중 종료를 요청한다.
 			worker.start();
 			assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
 			var stopped = stopAndAwaitBlocked(executor, worker);
 			verify(queue, never()).ackRaw(any());
 			release.countDown();
+			// Then — 진행 중 호출 반환 뒤 종료하며 다음 claim은 없다.
 			stopped.get(5, TimeUnit.SECONDS);
 			assertThat(worker.isRunning()).isFalse();
 			verify(queue, times(1)).claimRaw(any());
@@ -106,7 +127,9 @@ class CrewJoinPendingWorkerTest {
 	}
 
 	@Test
+	@DisplayName("claim 중 종료하면 새 claim을 시작하지 않는다")
 	void shutdownDuringClaim_doesNotStartAnotherClaim() throws Exception {
+		// Given — 실패 또는 종료 경계를 제어한다.
 		CountDownLatch entered = new CountDownLatch(1);
 		CountDownLatch release = new CountDownLatch(1);
 		when(queue.claimRaw(any())).thenAnswer(invocation -> {
@@ -117,10 +140,12 @@ class CrewJoinPendingWorkerTest {
 		CrewJoinPendingWorker worker = worker();
 		var executor = Executors.newSingleThreadExecutor();
 		try {
+			// When — 처리 도중 종료를 요청한다.
 			worker.start();
 			assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
 			var stopped = stopAndAwaitBlocked(executor, worker);
 			release.countDown();
+			// Then — 진행 중 호출 반환 뒤 종료하며 다음 claim은 없다.
 			stopped.get(5, TimeUnit.SECONDS);
 			assertThat(worker.isRunning()).isFalse();
 			verify(queue, times(1)).claimRaw(any());

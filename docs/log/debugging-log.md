@@ -5,6 +5,29 @@
 
 ---
 
+### [2026-10-02] PR #182 worker의 Redis 응답 유실이 Lettuce 재전송에 숨음
+
+- 상황: CodeRabbit의 지적으로 Lettuce 6.4.2.RELEASE의 기본 autoReconnect와 미응답 명령 재전송을 대조했다.
+  실제 Redis 앞의 테스트 TCP 프록시가 서버 응답을 읽은 뒤 클라이언트 전달 없이 연결을 닫도록 했다.
+  수정 전 BLMOVE는 A를 processing에 남기고 B를 persistence에 전달·ACK한 뒤 다음 claim까지 진행했다(claim 3회).
+  이 전송 테스트의 persistence는 mock이며 DB 효과는 기존 PostgreSQL E2E에서 별도로 검증한다.
+  LREM 응답 유실에서는 ACK가 2회 전송됐다. 두 케이스 모두 전송 1회 단언에서 실패했다.
+- 내 판단: Phase 3의 결과 불명 중단·자동 재명령 금지 계약을 그대로 이행한다. worker의 claim과 ACK에만
+  autoReconnect=false / REJECT_COMMANDS를 적용하고 producer 설정은 보존한다. private factory를 Adapter가
+  소유하여 Boot의 RedisConnectionFactory 자동 설정을 대체하지 않는다. reconnect를 끄는 것은 서버 실행 취소가
+  아니므로 이동·ACK 결과 불명 계약은 유지한다. recovery/retry·startup guard는 추가하지 않는다.
+  Greptile의 예외 규칙 지적은 일반 규칙과 내부 실패의 적용 범위 문제로 판단했다. worker가 잡아 중단하는
+  parse/invariant/ACK 오류는 기존 내부 예외를 유지한다. 새 ErrorCode나 CREW_FULL 매핑을 만들지 않는다.
+  /simplify 미채택 제안(단계 enum, 테스트 fixture·중복 정리, worker 전용 테스트 context, timeout 검사 위치)은
+  별도 검증 이득이 없어 이번 수정에 포함하지 않는다. 전용 클라이언트 구성은 동작 결함을 해결하므로 포함한다.
+- AI 역할: Codex·Claude가 PR 댓글을 코드·SDD·관리 라이브러리와 대조했다. Codex가 TCP 장애를 재현하여
+  기존 Port 예외 주입이 놓치던 재전송을 확인하고, 수정 뒤 같은 두 테스트의 PASS를 확인했다.
+  Given–When–Then 주석과 이 판단 기록도 보완했다. 상세 실행 결과는 Phase 3 검증 기록의 후속 절을 따른다.
+- 배운 점: 애플리케이션에서 retry를 하지 않는다는 코드만으로 전송 계층의 재실행 부재를 증명하지 않는다.
+  비멱등 Queue 명령은 실제 클라이언트가 응답을 잃는 경계에서 전송 횟수와 다음 작업 상태를 함께 검증한다.
+
+---
+
 ### [2026-09-27] PR #181 REDIS_ASYNC 표기 차이로 기동 게이트가 빠짐
 
 - 상황: 서비스의 `CrewLockProperties.LockStrategy`는 `redis-async`를 `REDIS_ASYNC`로 바인딩하지만, `CrewJoinRedisConfiguration`의 기존 `@ConditionalOnProperty(havingValue="REDIS_ASYNC")`는 문자열을 비교했다. 따라서 같은 설정에서 가입 경로는 Redis를 쓰면서 기동 PING과 Redis health indicator는 등록되지 않았다.

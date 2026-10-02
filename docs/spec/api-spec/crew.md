@@ -699,6 +699,8 @@
 
 - 단일 worker가 `BLMOVE pending processing RIGHT LEFT 1`로 원자 claim한다. block `1s`, command `2s`,
   connect `1s`를 사용한다. `0 < block < command`와 응답 여유를 유지한다. 정상 nil은 다음 대기, 예외는 결과 불명·중단이다.
+- worker 전용 연결은 claim·ACK의 자동 재전송을 차단한다. TCP 응답 유실 시 결과 불명으로 중단하며,
+  producer의 기존 연결 정책이나 공개 응답 계약을 바꾸지 않는다.
 - 세 문자열 필드·시각 형식을 엄격히 검사한다. `confirmedAt`의 서울 local 값을 DB `joined_at`에 그대로 보존한다.
 - `INSERT … ON CONFLICT (crew_id,user_id) DO NOTHING`: 신규 1행일 때만 `current_members +1`, 중복 0행은 정상 replay다.
   다른 DB 오류는 전파한다. INSERT와 증가가 같은 transaction이며 증가 0행은 Redis/DB invariant 불일치로 rollback한다.
