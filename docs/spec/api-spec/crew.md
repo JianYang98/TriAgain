@@ -625,13 +625,14 @@
 `(crew_id, user_id)` 유니크 제약 위반을 `CR004`로 변환한다. 별도 Idempotency-Key나
 응답 캐시는 사용하지 않는다. `CR023`은 설정을 `OPTIMISTIC`으로 바꿨을 때만 발생 가능한 계약이다.
 
-#### `REDIS_ASYNC` (Phase 2 — 로컬 실험 전용, 운영 비활성)
+#### `REDIS_ASYNC` (Phase 3 — 로컬 실험 전용, 운영 비활성)
 
 공개 직접 가입(`POST /crews/{crewId}/join`)만 Redis 승인으로 처리한다. 요청·응답 형태는 위와 같다.
 
 - **201의 의미**: Redis에 신규 가입 승인(순번·멤버 기록)과 DB 반영용 pending 작업 등록이 끝났다는 뜻이다.
-  **DB 멤버·`current_members`에는 반영되지 않는다.** pending을 소비하는 worker가 아직 없으므로
-  조회 API·챌린지 흐름이 이 가입을 인식한다는 보장은 없다.
+  **DB persistence 완료를 뜻하지 않는다.** 단일 worker가 별도 transaction으로 반영한다.
+  worker commit 전 DB 기반 조회는 아직 비멤버로 판단할 수 있고, commit 뒤 새 DB 기반 API 조회는 membership을 인식한다.
+  이 시간차를 위한 새 API·ErrorCode·polling 또는 반영 시간 보장은 추가하지 않는다.
 - `currentMembers`: 이번 승인 직후 Redis 멤버 수. `role`: `MEMBER`.
 - `joinedAt`: pending에 기록한 가입 확인 시각과 같은 순간의 Asia/Seoul `LocalDateTime` (기존 타입 유지).
 
@@ -657,7 +658,7 @@
 | `triagain:crew-join:{<namespace>:<runId>}:crew:<crewId>:members` | ZSET | member=userId, score=승인 순번 |
 | `triagain:crew-join:{<namespace>:<runId>}:crew:<crewId>:meta` | HASH | `capacity`, `seq`, `initialized` |
 | `triagain:crew-join:{<namespace>:<runId>}:pending` | LIST | 신규 승인 payload, `LPUSH`(왼쪽 추가). run 내 모든 크루 공용 |
-| `triagain:crew-join:{<namespace>:<runId>}:processing` | — | 이름만 예약(Phase 3). 현재 코드는 생성·사용하지 않는다 |
+| `triagain:crew-join:{<namespace>:<runId>}:processing` | LIST | worker가 claim한 raw 작업. DB commit 뒤 exact raw ACK |
 
 - 중괄호는 실제 key에 포함된다. `namespace`·`runId`는 서버 설정 `triagain.crew.redis.namespace`·`run-id`이며
   `[A-Za-z0-9_-]+`만 허용, 비면 `REDIS_ASYNC` 기동이 실패한다. TTL 없음.
@@ -693,6 +694,21 @@
   preflight는 부하테스트 시작 전 초기 상태 검증 전용이다. 가입 승인이 시작되면 Redis가 DB보다 앞서고 pending이 생기므로
   실패(4)가 정상이며, 실험 중 정합성 점검 용도로 쓰지 않는다.
   종료 코드 0 성공 / 1 사용법 / 2 CONNECTION / 3 NOT_INITIALIZED / 4 INVALID_STATE(재초기화 거부 포함) / 5 DB snapshot 불일치.
+
+##### Phase 3 worker와 실험 경계
+
+- 단일 worker가 `BLMOVE pending processing RIGHT LEFT 1`로 원자 claim한다. block `1s`, command `2s`,
+  connect `1s`를 사용한다. `0 < block < command`와 응답 여유를 유지한다. 정상 nil은 다음 대기, 예외는 결과 불명·중단이다.
+- worker 전용 연결은 claim·ACK의 자동 재전송을 차단한다. TCP 응답 유실 시 결과 불명으로 중단하며,
+  producer의 기존 연결 정책이나 공개 응답 계약을 바꾸지 않는다.
+- 세 문자열 필드·시각 형식을 엄격히 검사한다. `confirmedAt`의 서울 local 값을 DB `joined_at`에 그대로 보존한다.
+- `INSERT … ON CONFLICT (crew_id,user_id) DO NOTHING`: 신규 1행일 때만 `current_members +1`, 중복 0행은 정상 replay다.
+  다른 DB 오류는 전파한다. INSERT와 증가가 같은 transaction이며 증가 0행은 Redis/DB invariant 불일치로 rollback한다.
+  이미 승인된 가입을 새 `CR002`로 바꾸지 않는다.
+- commit 성공 뒤 `LREM processing 1 <claim raw>`만 실행하고 1행만 성공으로 인정한다. parse/DB 실패에는 ACK하지 않는다.
+  ACK 0행·예외·응답 유실은 DB commit을 취소하지 않으며, raw가 남았다고 단정하지 않는다. 모두 worker 중단·추가 claim 없음이다.
+- worker 장애가 기존 201이나 health를 차단하지 않는다. 오류 로그와 실험자 조치는 [비즈니스 규칙](../biz-logic.md)을 따른다.
+  startup recovery·retry·reprocessing·processing 잔존 재기동 정책은 Phase 4다. 잔존 작업 startup guard는 없다.
 
 ## 6. 삭제·탈퇴
 

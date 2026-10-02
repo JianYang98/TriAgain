@@ -72,7 +72,7 @@ flowchart TB
 | S3 | 사진 인증과 프로필 이미지 원본 저장 |
 | Lambda | S3 ObjectCreated를 받아 내부 완료 API 호출 |
 | FCM | `firebase.enabled=true`일 때 활성, false면 NoOp Adapter |
-| Redis | `REDIS_ASYNC` 전략에서만 공개 가입 승인·pending 등록. 로컬 Compose `redis` 프로필(opt-in) |
+| Redis | `REDIS_ASYNC` 전략에서만 공개 가입 승인·pending 등록·단일 worker DB 반영. 로컬 Compose `redis` 프로필(opt-in) |
 | Kakao·Apple | 소셜 사용자 검증, Apple token 교환·revoke |
 
 운영 AWS의 실제 S3 이벤트 필터, Lambda retry·DLQ, IAM, 경보 값은 저장소 밖 설정 확인이 필요하다.
@@ -260,6 +260,17 @@ sequenceDiagram
   Adapter Bean은 모든 전략에 존재하지만 생성 시 네트워크를 쓰지 않는다. 기동 게이트(`CrewJoinRedisStartupCheck`,
   싱글턴 초기화 직후·포트 오픈 전 PING)와 Redis health indicator는 `REDIS_ASYNC`에서만 등록되고,
   공통 설정 `management.health.redis.enabled=false`로 DB 전략의 health는 Redis와 무관하다.
+- Phase 3 `CrewJoinPendingWorker`는 같은 조건부 설정에서 한 개만 등록되는 `SmartLifecycle` 전용 스레드다.
+  startup PING 뒤 시작하고 `CrewJoinWorkQueuePort` → `CrewJoinWorkQueueAdapter`로 `BLMOVE RIGHT LEFT`와 raw ACK를 실행한다.
+  Spring Data Redis 3.4.13 / Lettuce 6.4.2.RELEASE의 blocking 전용 연결을 사용한다. block 1초 < command 2초를 유지한다.
+  `CrewJoinWorkerRedisConnection`이 기존 standalone 접속·인증·TLS·timeout 설정을 계승한 private factory를 소유한다.
+  worker의 claim·ACK에만 `autoReconnect=false`, `REJECT_COMMANDS`를 적용하여 응답 유실 시 투명한 재전송을 막는다.
+  Boot의 producer factory/template bean은 대체하지 않는다. worker 종료 뒤 Queue Adapter의 close가 전용 factory를 해제한다.
+  `CrewJoinPersistenceService`는 `TransactionTemplate`로 INSERT+인원 증가를 commit한 뒤 반환한다. 기존 transaction에 참여하지 않는다.
+  Redis 호출은 DB transaction 밖이며 정상 종료는 새 claim을 막고 in-flight commit·ACK를 최대 10초 join으로 기다린다
+  (이미 진행 중인 claim은 유한 command timeout 범위에서 먼저 반환). 초과 시 `CREW_JOIN_WORKER_SHUTDOWN_INCOMPLETE`로 기록한다.
+  오류 시 다음 claim 없이 `CREW_JOIN_WORKER_STOPPED`를 남긴다. 애플리케이션 health/admission과 자동 연동하지 않는다.
+  Queue Port에는 claim·ACK만 있고, processing 잔존 guard·recovery·retry·DLQ는 없다.
 
 ---
 
@@ -274,6 +285,6 @@ sequenceDiagram
 | 폴링 | 계약만 있고 Controller 없음 | 상태 조회 API 구현 |
 | FCM | 코드 존재, 환경 설정에 따라 NoOp | 운영 `FIREBASE_ENABLED`와 자격증명 확인 |
 | AWS 운영 | retry·DLQ·경보 값을 저장소에서 확정 불가 | 배포 환경에서 확인 |
-| Redis 가입 | 승인·pending 생산만 있고 소비자·DB 반영 없음 | Phase 3 worker 설계 |
+| Redis 가입 | 단일 worker의 DB 멱등 반영·commit 뒤 ACK, 실패 시 중단 | Phase 4 recovery·재기동·retry 설계 |
 
 상세 후속 과제는 [`future-considerations.md`](../log/future-considerations.md)에 기록한다.

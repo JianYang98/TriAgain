@@ -6,21 +6,24 @@
 
 ---
 
-### [2026-09-27] Redis 선착순 가입 — 운영 적용 전 미결 설계
+### [2026-10-01] Redis 선착순 가입 — 운영 적용 전 미결 설계
 
 - 현재 상태: Phase 2(PR #181)에서 공개 가입(`POST /crews/{crewId}/join`)만 Redis Lua 승인 + pending 등록까지
   구현했다. 로컬 실험 전용이며 운영 기본값은 `CONDITIONAL` 그대로다. 초대 가입은 계속 `500 / C002`로 거부한다.
   - 오류 매핑은 정해졌다: 중복 `409 / CR004`, 정원 `409 / CR002`, 미초기화·상태 불일치·연결·timeout·스크립트·직렬화
     실패는 신규 ErrorCode 없이 `500 / C002`, DB 전략 fallback 없음 (`docs/spec/api-spec/crew.md` REDIS_ASYNC 절)
-  - pending을 소비하는 worker가 없어 DB 멤버·`current_members`에는 반영되지 않는다
+  - Phase 3: 단일 worker의 pending→processing claim, DB 멱등 INSERT+인원 증가, commit 뒤 raw ACK를 구현했다.
+    worker 전용 연결은 claim·ACK의 Lettuce 자동 재전송도 차단한다. producer 설정은 유지한다.
+    실패 시 중단·증거 보존까지이며 자동 복구는 없다. 신규 API·운영 설정·기본 전략은 변경하지 않았다.
 - 필요 시점: 운영 전환을 검토할 때. 아래가 정해지기 전에는 운영 값으로 쓰지 않는다.
-  - pending 소비 worker와 DB 반영(processing 이동·커밋 후 ACK) — Phase 3
-  - 재기동 시 pending/processing 복구(startup recovery)·재처리 — Phase 4
+  - processing 잔존 시 애플리케이션 재기동 정책, startup recovery, retry/reprocessing — Phase 4
+    (Phase 3에는 processing 잔존 startup guard나 별도 admission 차단 없음)
   - Redis와 DB의 reconciliation (도입 여부 미정)
   - 201의 의미가 "Redis 확정 + pending 등록"이라 DB 반영에 시차가 생긴다. 가입 직후 DB 멤버 존재를
     전제하는 흐름(챌린지 생성·크루 조회 등)의 정합성
-  - FE 대응 — Phase 1·2 모두 FE 작업을 포함하지 않았다
-- 이유: Phase 2는 승인·pending 생산의 정확성 검증까지가 범위이고, 소비·복구는 별도 Phase로 나눴다.
+  - FE 대응 — Phase 1~3 모두 FE 작업을 포함하지 않았다
+- 이유: Phase 3은 정상 소비와 실패 시 작업 보존까지다. 실패 run은 신규 부하를 수동 중단하고 Redis/DB/로그를 보존한다.
+  자동 복구·잔여 작업 재기동 정책은 Phase 4에서 별도로 결정한다.
 
 ---
 

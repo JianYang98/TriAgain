@@ -49,9 +49,9 @@ public class CrewJoinRedisAdapter implements CrewJoinRedisPort {
 			+ ", crewId=" + crewId + ")";
 		String confirmedAtText = formatConfirmedAt(confirmedAt, where);
 		String payload = serialize(new PendingPayload(crewId, userId, confirmedAtText), where);
-		String prefix = "triagain:crew-join:{" + properties.namespace() + ":" + properties.runId() + "}";
+		String prefix = properties.keyPrefix();
 		String crewKey = prefix + ":crew:" + crewId;
-		List<String> keys = List.of(crewKey + ":members", crewKey + ":meta", prefix + ":pending");
+		List<String> keys = List.of(crewKey + ":members", crewKey + ":meta", properties.pendingKey());
 		return interpret(execute(keys, where, crewId, userId, confirmedAtText, payload), where);
 	}
 
