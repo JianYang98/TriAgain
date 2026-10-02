@@ -59,10 +59,6 @@ class CrewJoinTransportFailureIntegrationTest {
 				await().atMost(Duration.ofSeconds(4)).until(() -> !worker.isRunning()
 					|| proxy.claims() > 1 || proxy.acknowledgements() > 1);
 				// Then — 두 번째 작업을 몰래 가져오거나 이미 보낸 ACK를 재전송하지 않는다.
-				System.out.printf("wire command=%s claims=%d ACKs=%d pending=%s processing=%s%n", command,
-					proxy.claims(), proxy.acknowledgements(),
-					redis.opsForList().range(properties.pendingKey(), 0, -1),
-					redis.opsForList().range(properties.processingKey(), 0, -1));
 				assertThat(proxy.failure()).isNull();
 				assertThat(proxy.claims()).isEqualTo(1);
 				assertThat(proxy.acknowledgements()).isEqualTo(command.equals("LREM") ? 1 : 0);
