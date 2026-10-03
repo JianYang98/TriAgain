@@ -79,6 +79,7 @@ class RedisCrewJoinRecoveryE2eTest {
 
 	private final ObjectMapper mapper = new ObjectMapper();
 	private final List<ConfigurableApplicationContext> contexts = new ArrayList<>();
+	private final List<ListAppender<ILoggingEvent>> appenders = new ArrayList<>();
 	private String jdbcUrl;
 	private JdbcTemplate db;
 	private LettuceConnectionFactory observerFactory;
@@ -116,6 +117,8 @@ class RedisCrewJoinRecoveryE2eTest {
 	void closeContexts() {
 		contexts.forEach(ConfigurableApplicationContext::close);
 		contexts.clear();
+		appenders.forEach(workerLogger()::detachAppender);
+		appenders.clear();
 		redis.delete(redis.keys(properties.keyPrefix() + ":*"));
 	}
 
@@ -323,7 +326,8 @@ class RedisCrewJoinRecoveryE2eTest {
 					.resolveClassName("org.springframework.boot.test.context.filter.TestTypeExcludeFilter", null)));
 				// 로깅 시스템 초기화 뒤에 붙인다 — 그 전에 붙이면 기동 중 reset으로 떨어진다.
 				logs.start();
-				((Logger)LoggerFactory.getLogger(CrewJoinPendingWorker.class)).addAppender(logs);
+				workerLogger().addAppender(logs);
+				appenders.add(logs);
 			})
 			.registerShutdownHook(false)
 			.run("--spring.profiles.active=integration", "--spring.main.banner-mode=off", "--server.port=0",
@@ -335,6 +339,10 @@ class RedisCrewJoinRecoveryE2eTest {
 				"--spring.data.redis.port=" + RedisTestContainer.getPort(),
 				"--triagain.crew.lock-strategy=" + strategy, "--triagain.crew.redis.namespace=" + NAMESPACE,
 				"--triagain.crew.redis.run-id=" + runId);
+	}
+
+	private static Logger workerLogger() {
+		return (Logger)LoggerFactory.getLogger(CrewJoinPendingWorker.class);
 	}
 
 	/** 실제 Port bean을 lifecycle 시작 전에 감싼다 — recovery 장애·호출 시도 관측용 */

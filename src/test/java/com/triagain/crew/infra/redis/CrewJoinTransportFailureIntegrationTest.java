@@ -90,7 +90,7 @@ class CrewJoinTransportFailureIntegrationTest {
 		String pending) throws Exception {
 		try (RedisReplyDropProxy proxy = new RedisReplyDropProxy()) {
 			// Given — processing [B,A], pending [D]. dropAt번째 LMOVE 응답만 유실시킨다.
-			proxy.dropRecoveryReply(dropAt);
+			proxy.dropNth("LMOVE", dropAt);
 			Recovery run = recover(factory("localhost", proxy.port()));
 			// Then — 앱은 정상 nil을 받지 못했으므로 실제 이동 여부와 무관하게 실패다.
 			assertThat(proxy.failure()).isNull();
@@ -125,7 +125,7 @@ class CrewJoinTransportFailureIntegrationTest {
 	void recoveryReplyLost_noTransparentReplay() throws Exception {
 		try (RedisReplyDropProxy proxy = new RedisReplyDropProxy()) {
 			// Given — source 2건, 첫 LMOVE 응답 유실. 프록시는 재연결을 계속 수락한다.
-			proxy.dropRecoveryReply(1);
+			proxy.dropNth("LMOVE", 1);
 			Recovery run = recover(factory("localhost", proxy.port()));
 			// Then — command timeout(2s)을 넘기는 관찰 구간에도 wire LMOVE는 1회, claim 0회
 			await().during(Duration.ofMillis(2500)).atMost(Duration.ofSeconds(4)).untilAsserted(() -> {

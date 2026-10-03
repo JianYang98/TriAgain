@@ -334,10 +334,7 @@ class CrewJoinPendingWorkerTest {
 	}
 
 	private void assertStoppedWithLog(String stage, String raw) {
-		Logger logger = (Logger)LoggerFactory.getLogger(CrewJoinPendingWorker.class);
-		ListAppender<ILoggingEvent> appender = new ListAppender<>();
-		appender.start();
-		logger.addAppender(appender);
+		ListAppender<ILoggingEvent> appender = capture();
 		CrewJoinPendingWorker worker = worker();
 		try {
 			worker.start();
@@ -352,7 +349,7 @@ class CrewJoinPendingWorkerTest {
 				.doesNotContain("payload=" + raw);
 		} finally {
 			worker.stop();
-			logger.detachAppender(appender);
+			detach(appender);
 		}
 	}
 
