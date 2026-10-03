@@ -64,7 +64,7 @@ public class CrewJoinPendingWorker implements SmartLifecycle {
 				confirmedMoves++;
 			}
 		} catch (RuntimeException exception) {
-			// 연결 획득 실패만 확정 미전송이다. 그 외(timeout·단절·오류 응답)는 실행 여부를 추정하지 않는다.
+			// Port 계약상 연결 획득 실패만 확정 미전송이다. 그 외(timeout·단절·오류 응답)는 실행 여부를 추정하지 않는다.
 			boolean outcomeUnknown = !(exception instanceof DataAccessResourceFailureException);
 			log.error("CREW_JOIN_RECOVERY_FAILED stage=recover namespace={} runId={} cause={} confirmedMoves={} "
 					+ "outcomeUnknown={} workerStarted=false retryInProcess=false admissionBlockedByRecovery=false",

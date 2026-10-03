@@ -17,8 +17,9 @@
   `lock-strategy=PESSIMISTIC`에 덮인다. ② `@SpringBootTest`가 넣는 `TestTypeExcludeFilter`가 없으면 테스트 클래스 내부
   `@TestConfiguration`(예: `CrewFirstVerificationEventListenerTest.MockConfig`)까지 component scan 대상이 된다.
   민감성 변이 4(autoReconnect=true)의 첫 실행은 요구 단언(wire LMOVE 1회)이 아니라 helper 안의 로그 단언에서 먼저 실패했다.
-- 내 판단: `outcomeUnknown=false`는 연결 획득 실패(`DataAccessResourceFailureException`, 미전송 확정)에만 쓰고,
-  오류 응답을 포함한 나머지는 보수적으로 `true`로 둔다 — worker는 실행 여부를 추정하지 않는다는 계약과 같은 방향이며
+- 내 판단: `outcomeUnknown=false`는 연결 획득 실패(미전송 확정)에만 쓰고, 오류 응답을 포함한 나머지는 보수적으로
+  `true`로 둔다. 예외 타입만으로는 미전송을 확정할 수 없어(PR #183 리뷰), Adapter가 LMOVE 전에 연결 획득을 따로
+  수행하고 그 뒤의 `DataAccessResourceFailureException`은 결과 불명 예외로 바꿔 던진다 — worker는 실행 여부를 추정하지 않는다는 계약과 같은 방향이며
   Lettuce 타입을 application 계층에 들이지 않는다. 테스트는 설정을 command-line 인수로 넘기고(`--key=value`),
   `TestTypeExcludeFilter`를 initializer에서 singleton으로 등록했다. 로그 단언은 wire·상태 단언 뒤로 옮겨 변이 4가
   `[wire LMOVE 횟수] expected: 1 but was: 3`으로 실패함을 다시 확인했다.
