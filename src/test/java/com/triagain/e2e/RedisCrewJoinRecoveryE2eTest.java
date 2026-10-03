@@ -80,6 +80,7 @@ class RedisCrewJoinRecoveryE2eTest {
 	private final ObjectMapper mapper = new ObjectMapper();
 	private final List<ConfigurableApplicationContext> contexts = new ArrayList<>();
 	private final List<ListAppender<ILoggingEvent>> appenders = new ArrayList<>();
+	private String database;
 	private String jdbcUrl;
 	private JdbcTemplate db;
 	private LettuceConnectionFactory observerFactory;
@@ -89,7 +90,7 @@ class RedisCrewJoinRecoveryE2eTest {
 
 	@BeforeAll
 	void prepareSchemaOnce() {
-		String database = "p4_recovery_" + UUID.randomUUID().toString().replace("-", "");
+		database = "p4_recovery_" + UUID.randomUUID().toString().replace("-", "");
 		new JdbcTemplate(dataSource(TestContainers.getJdbcUrl())).execute("CREATE DATABASE " + database);
 		jdbcUrl = TestContainers.getJdbcUrl().replaceFirst("/triagain_test", "/" + database);
 		db = new JdbcTemplate(dataSource(jdbcUrl));
@@ -102,8 +103,11 @@ class RedisCrewJoinRecoveryE2eTest {
 	}
 
 	@AfterAll
-	void closeObserver() {
+	void closeObserverAndDropDatabase() {
 		observerFactory.destroy();
+		// 공유 컨테이너에 클래스 전용 DB를 남기지 않는다 — 모든 context는 @AfterEach에서 닫혔다.
+		new JdbcTemplate(dataSource(TestContainers.getJdbcUrl()))
+			.execute("DROP DATABASE " + database + " WITH (FORCE)");
 	}
 
 	@BeforeEach
