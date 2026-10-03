@@ -126,12 +126,12 @@ class CrewJoinTransportFailureIntegrationTest {
 		try (RedisReplyDropProxy proxy = new RedisReplyDropProxy()) {
 			// Given — source 2건, 첫 LMOVE 응답 유실. 프록시는 재연결을 계속 수락한다.
 			proxy.dropNth("LMOVE", 1);
-			Recovery run = recover(factory("localhost", proxy.port()));
-			// Then — command timeout(2s)을 넘기는 관찰 구간에도 wire LMOVE는 1회, claim 0회
-			await().during(Duration.ofMillis(2500)).atMost(Duration.ofSeconds(4)).untilAsserted(() -> {
-				assertThat(proxy.recoveries()).as("wire LMOVE 횟수").isEqualTo(1);
-				assertThat(proxy.claims()).as("wire BLMOVE 횟수").isZero();
-			});
+			// Then — worker·queue 연결을 닫기 전, command timeout(2s)을 넘기는 관찰 구간에도 wire LMOVE 1회·claim 0회
+			Recovery run = recover(factory("localhost", proxy.port()),
+				() -> await().during(Duration.ofMillis(2500)).atMost(Duration.ofSeconds(4)).untilAsserted(() -> {
+					assertThat(proxy.recoveries()).as("wire LMOVE 횟수").isEqualTo(1);
+					assertThat(proxy.claims()).as("wire BLMOVE 횟수").isZero();
+				}));
 			assertThat(proxy.failure()).isNull();
 			assertThat(run.started()).isFalse();
 			assertThat(run.processing()).containsExactly("A");
@@ -141,6 +141,12 @@ class CrewJoinTransportFailureIntegrationTest {
 	}
 
 	private Recovery recover(LettuceConnectionFactory upstream) throws Exception {
+		return recover(upstream, () -> {
+		});
+	}
+
+	/** whileOpen은 start() 반환 뒤, worker·queue·upstream을 닫기 전에 실행한다. */
+	private Recovery recover(LettuceConnectionFactory upstream, Runnable whileOpen) throws Exception {
 		LettuceConnectionFactory observer = factory(RedisTestContainer.getHost(), RedisTestContainer.getPort());
 		var properties = new CrewJoinRedisProperties("wire", UUID.randomUUID().toString());
 		var queue = new CrewJoinRedisConfiguration().crewJoinWorkQueuePort(upstream, properties);
@@ -156,6 +162,7 @@ class CrewJoinTransportFailureIntegrationTest {
 			redis.opsForList().rightPush(properties.pendingKey(), payload("D"));
 			// When — recovery는 start() 안에서 동기로 끝난다.
 			worker.start();
+			whileOpen.run();
 			verifyNoInteractions(persistence);
 			String failure = logs.list.stream().map(ILoggingEvent::getFormattedMessage)
 				.filter(message -> message.startsWith("CREW_JOIN_RECOVERY_FAILED")).findFirst().orElse("");
