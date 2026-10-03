@@ -61,7 +61,7 @@ public class CrewJoinRedisConfiguration {
 		return new CrewJoinPersistenceService(repository, transactionTemplate);
 	}
 
-	/** REDIS_ASYNC에서만 단일 worker 등록 — processing 잔존 여부는 조회하지 않음 */
+	/** REDIS_ASYNC에서만 단일 worker 등록 — processing 복구는 worker start()가 소비 전에 수행 */
 	@Bean
 	CrewJoinPendingWorker crewJoinPendingWorker(CrewJoinWorkQueuePort queue,
 		CrewJoinPersistenceService persistence, ObjectMapper mapper, CrewJoinRedisProperties properties) {

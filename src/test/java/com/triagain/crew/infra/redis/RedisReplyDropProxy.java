@@ -24,6 +24,8 @@ final class RedisReplyDropProxy implements AutoCloseable {
 	private final AtomicReference<Throwable> failure = new AtomicReference<>();
 	private final AtomicInteger claims = new AtomicInteger();
 	private final AtomicInteger acknowledgements = new AtomicInteger();
+	private final AtomicInteger recoveries = new AtomicInteger();
+	private final AtomicInteger dropRecoveryAt = new AtomicInteger();
 	private final AtomicInteger dropped = new AtomicInteger();
 
 	RedisReplyDropProxy() throws IOException {
@@ -36,6 +38,15 @@ final class RedisReplyDropProxy implements AutoCloseable {
 
 	void dropNext(String command) {
 		dropCommand.set(command);
+	}
+
+	/** n번째 LMOVE(복구 명령)의 실제 응답을 버리고 TCP를 닫는다 */
+	void dropRecoveryReply(int ordinal) {
+		dropRecoveryAt.set(ordinal);
+	}
+
+	int recoveries() {
+		return recoveries.get();
 	}
 
 	int claims() {
@@ -74,12 +85,13 @@ final class RedisReplyDropProxy implements AutoCloseable {
 			while (!client.isClosed()) {
 				byte[] request = readFrame(client.getInputStream());
 				String command = new String(request, StandardCharsets.UTF_8).split("\r\n", 4)[2];
-				countCommand(command);
+				int recovery = countCommand(command);
 				server.getOutputStream().write(request);
 				server.getOutputStream().flush();
 				byte[] reply = readFrame(server.getInputStream());
 				String target = dropCommand.get();
-				if (command.equalsIgnoreCase(target) && dropCommand.compareAndSet(target, null)) {
+				if (command.equalsIgnoreCase(target) && dropCommand.compareAndSet(target, null)
+					|| recovery > 0 && dropRecoveryAt.compareAndSet(recovery, 0)) {
 					dropped.incrementAndGet();
 					return; // Redis의 실행 완료 응답을 실제로 읽었지만 클라이언트에는 0바이트 전달.
 				}
@@ -93,12 +105,15 @@ final class RedisReplyDropProxy implements AutoCloseable {
 		}
 	}
 
-	private void countCommand(String command) {
+	private int countCommand(String command) {
 		if (command.equalsIgnoreCase("BLMOVE")) {
 			claims.incrementAndGet();
 		} else if (command.equalsIgnoreCase("LREM")) {
 			acknowledgements.incrementAndGet();
+		} else if (command.equalsIgnoreCase("LMOVE")) {
+			return recoveries.incrementAndGet();
 		}
+		return 0;
 	}
 
 	private static byte[] readFrame(InputStream input) throws IOException {

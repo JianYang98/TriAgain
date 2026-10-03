@@ -3,6 +3,7 @@ package com.triagain.crew.application;
 import java.time.Duration;
 
 import org.springframework.context.SmartLifecycle;
+import org.springframework.dao.DataAccessResourceFailureException;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,6 +25,7 @@ public class CrewJoinPendingWorker implements SmartLifecycle {
 	private final String runId;
 	private final Object claimMonitor = new Object();
 	private volatile boolean stopRequested;
+	private boolean startAttempted;
 	private Thread thread;
 
 	/** 단일 소비 루프 구성 — 별도 reader로 기존 API의 Jackson 설정 보존 */
@@ -37,15 +39,41 @@ public class CrewJoinPendingWorker implements SmartLifecycle {
 		this.runId = runId;
 	}
 
-	/** 한 인스턴스에서 한 번만 시작 — 오류 중단 뒤 자동·수동 재시작 없음 */
+	/** 한 인스턴스에서 한 번만 시작 — recovery 성공 뒤에만 소비, 실패·오류 중단 뒤 자동·수동 재시작 없음 */
 	@Override
 	public synchronized void start() {
-		if (thread != null) {
+		// thread 생성 전에 기록한다 — recovery 실패로 thread가 없어도 같은 실행의 재진입을 막는다.
+		if (startAttempted) {
+			return;
+		}
+		startAttempted = true;
+		if (!recover()) {
 			return;
 		}
 		thread = new Thread(this::consume, "crew-join-worker");
 		thread.setDaemon(true);
 		thread.start();
+	}
+
+	/** 이전 실행의 processing을 정상 nil까지 되돌림 — 실패는 refresh로 전파하지 않고 worker를 시작하지 않음 */
+	private boolean recover() {
+		log.info("CREW_JOIN_RECOVERY_STARTED namespace={} runId={}", namespace, runId);
+		int confirmedMoves = 0;
+		try {
+			while (queue.recoverOneRaw() != null) {
+				confirmedMoves++;
+			}
+		} catch (RuntimeException exception) {
+			// 연결 획득 실패만 확정 미전송이다. 그 외(timeout·단절·오류 응답)는 실행 여부를 추정하지 않는다.
+			boolean outcomeUnknown = !(exception instanceof DataAccessResourceFailureException);
+			log.error("CREW_JOIN_RECOVERY_FAILED stage=recover namespace={} runId={} cause={} confirmedMoves={} "
+					+ "outcomeUnknown={} workerStarted=false retryInProcess=false admissionBlockedByRecovery=false",
+				namespace, runId, exception.getClass().getSimpleName(), confirmedMoves, outcomeUnknown, exception);
+			return false;
+		}
+		log.info("CREW_JOIN_RECOVERY_SUCCEEDED namespace={} runId={} confirmedMoves={}",
+			namespace, runId, confirmedMoves);
+		return true;
 	}
 
 	private void consume() {

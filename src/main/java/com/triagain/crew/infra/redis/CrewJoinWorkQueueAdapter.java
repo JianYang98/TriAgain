@@ -43,4 +43,11 @@ public class CrewJoinWorkQueueAdapter implements CrewJoinWorkQueuePort, AutoClos
 		}
 		return removed;
 	}
+
+	/** timeout 없는 LMOVE processing pending LEFT RIGHT — 예외를 nil로 바꾸지 않는다 */
+	@Override
+	public String recoverOneRaw() {
+		return redisTemplate.opsForList().move(properties.processingKey(), Direction.LEFT,
+			properties.pendingKey(), Direction.RIGHT);
+	}
 }
