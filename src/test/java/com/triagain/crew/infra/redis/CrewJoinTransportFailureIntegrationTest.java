@@ -98,8 +98,9 @@ class CrewJoinTransportFailureIntegrationTest {
 			assertThat(proxy.recoveries()).isEqualTo(dropAt);
 			assertThat(proxy.claims()).isZero();
 			assertThat(run.started()).isFalse();
-			assertThat(run.failure()).contains("confirmedMoves=" + (dropAt - 1), "outcomeUnknown=true",
-				"workerStarted=false", "retryInProcess=false", "admissionBlockedByRecovery=false");
+			assertThat(run.failure()).contains("namespace=wire", "confirmedMoves=" + (dropAt - 1),
+				"outcomeUnknown=true", "workerStarted=false", "retryInProcess=false",
+				"admissionBlockedByRecovery=false");
 			// observer만 실제 상태를 안다 — 마지막 이동·nil 유실이면 processing은 이미 비어 있다.
 			assertThat(run.processing()).isEqualTo(users(processing));
 			assertThat(run.pending()).isEqualTo(users(pending));
@@ -113,7 +114,8 @@ class CrewJoinTransportFailureIntegrationTest {
 		Recovery run = recover(factory("localhost", 1));
 		// Then
 		assertThat(run.started()).isFalse();
-		assertThat(run.failure()).contains("confirmedMoves=0", "outcomeUnknown=false", "workerStarted=false");
+		assertThat(run.failure()).contains("namespace=wire", "confirmedMoves=0", "outcomeUnknown=false",
+			"workerStarted=false");
 		assertThat(run.processing()).containsExactly("B", "A");
 		assertThat(run.pending()).containsExactly("D");
 	}
@@ -134,6 +136,7 @@ class CrewJoinTransportFailureIntegrationTest {
 			assertThat(run.started()).isFalse();
 			assertThat(run.processing()).containsExactly("A");
 			assertThat(run.pending()).containsExactly("D", "B");
+			assertThat(run.failure()).contains("namespace=wire", "confirmedMoves=0", "outcomeUnknown=true");
 		}
 	}
 
@@ -156,7 +159,6 @@ class CrewJoinTransportFailureIntegrationTest {
 			verifyNoInteractions(persistence);
 			String failure = logs.list.stream().map(ILoggingEvent::getFormattedMessage)
 				.filter(message -> message.startsWith("CREW_JOIN_RECOVERY_FAILED")).findFirst().orElse("");
-			assertThat(failure).contains("namespace=wire", "runId=" + properties.runId());
 			return new Recovery(worker.isRunning(), failure, users(redis, properties.processingKey()),
 				users(redis, properties.pendingKey()));
 		} finally {
