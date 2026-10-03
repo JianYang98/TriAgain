@@ -6,6 +6,23 @@
 
 ---
 
+### [2026-10-03 13:30] Redis 가입 strategy handoff — Phase 4 startup recovery와 별도 과제
+
+- 현재 상태: Phase 4에서 같은 namespace/runId 재기동의 startup recovery를 구현했다. worker가 소비 전에
+  `LMOVE processing pending LEFT RIGHT`를 nil까지 반복하고, 실패하면 앱·admission은 유지한 채 worker만 시작하지 않는다
+  (`docs/spec/biz-logic.md` startup recovery 절). `PESSIMISTIC / OPTIMISTIC / CONDITIONAL ↔ REDIS_ASYNC` 전환은 다루지 않는다.
+  - DB → REDIS_ASYNC: 가입 중단 → DB write drain → DB snapshot → Redis 새 run 초기화 → DB/Redis 대조 → 전환
+  - REDIS_ASYNC → DB: 신규 가입 중단 → processing recovery → pending/processing drain → Redis membership == DB membership
+    검증 → 전환. recovery 성공은 processing을 pending으로 되돌렸다는 뜻일 뿐 이 전환 조건을 단독으로 충족하지 않는다.
+  - 기존 `scripts/crew-join-redis.sh init|preflight|cleanup`은 새 run 준비 도구다. 같은 run 복구에서 재초기화·cleanup하지 않는다.
+- 필요 시점: REDIS_ASYNC를 DB 전략과 오가며 실험하거나 운영 전환을 검토할 때.
+  후보는 검증 중심의 별도 도구(예: `crew-join-strategy-handoff.sh`)이며 아직 만들지 않았다.
+- 이유: 가입 재개 시점, 검증 실패 시 전환 중단·재개, 동시 writer 배제, 이전 소비자 종료 증거, 응답 유실 처리는
+  정본과 미처리 쓰기를 함께 넘기는 별도 설계다. Phase 4의 "recovery 실패 후 admission 유지" 정책과 섞지 않는다.
+  yml 자동 수정·앱 자동 재시작·분산 소유권·자동 reconciliation도 범위 밖이다.
+
+---
+
 ### [2026-10-01] Redis 선착순 가입 — 운영 적용 전 미결 설계
 
 - 현재 상태: Phase 2(PR #181)에서 공개 가입(`POST /crews/{crewId}/join`)만 Redis Lua 승인 + pending 등록까지
@@ -16,8 +33,8 @@
     worker 전용 연결은 claim·ACK의 Lettuce 자동 재전송도 차단한다. producer 설정은 유지한다.
     실패 시 중단·증거 보존까지이며 자동 복구는 없다. 신규 API·운영 설정·기본 전략은 변경하지 않았다.
 - 필요 시점: 운영 전환을 검토할 때. 아래가 정해지기 전에는 운영 값으로 쓰지 않는다.
-  - processing 잔존 시 애플리케이션 재기동 정책, startup recovery, retry/reprocessing — Phase 4
-    (Phase 3에는 processing 잔존 startup guard나 별도 admission 차단 없음)
+  - processing 잔존 시 애플리케이션 재기동 정책, startup recovery — **2026-10-03 Phase 4에서 같은 run 재기동만 구현**
+    (위 항목). runtime retry/reprocessing·startup guard·admission 차단은 여전히 없다
   - Redis와 DB의 reconciliation (도입 여부 미정)
   - 201의 의미가 "Redis 확정 + pending 등록"이라 DB 반영에 시차가 생긴다. 가입 직후 DB 멤버 존재를
     전제하는 흐름(챌린지 생성·크루 조회 등)의 정합성
