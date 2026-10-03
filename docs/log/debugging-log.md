@@ -5,6 +5,30 @@
 
 ---
 
+### [2026-10-03] Phase 4 recovery 실패 로그의 결과 불명 판정과 재기동 테스트 하네스
+
+- 상황: `CREW_JOIN_RECOVERY_FAILED`에 SDD가 요구한 `outcomeUnknown`(실패 명령 결과 불명 여부)을 채우려고
+  Spring Data Redis 3.4.13 `LettuceExceptionConverter`를 바이트코드로 대조했다. Lettuce의 `RedisCommandExecutionException`
+  (WRONGTYPE 등 오류 응답)과 연결 단절 `RedisException`이 둘 다 `RedisSystemException`으로 번역되어, application 계층에서
+  Lettuce 타입 없이 "오류 응답(미실행 확정)"과 "전송 후 단절(불명)"을 가를 수 없었다. 실 Redis 테스트에서도 WRONGTYPE은
+  `RedisSystemException`(root cause 메시지 `WRONGTYPE`)으로 관측됐다.
+  재기동 E2E는 `SpringApplicationBuilder`로 웹 context를 직접 띄웠다. 작성 전 판단(실패를 관측하지는 않음):
+  ① `.properties()`는 defaultProperties(최저 우선순위)라 `application-integration.yml`의 `spring.data.redis.port=1`·
+  `lock-strategy=PESSIMISTIC`에 덮인다. ② `@SpringBootTest`가 넣는 `TestTypeExcludeFilter`가 없으면 테스트 클래스 내부
+  `@TestConfiguration`(예: `CrewFirstVerificationEventListenerTest.MockConfig`)까지 component scan 대상이 된다.
+  민감성 변이 4(autoReconnect=true)의 첫 실행은 요구 단언(wire LMOVE 1회)이 아니라 helper 안의 로그 단언에서 먼저 실패했다.
+- 내 판단: `outcomeUnknown=false`는 연결 획득 실패(미전송 확정)에만 쓰고, 오류 응답을 포함한 나머지는 보수적으로
+  `true`로 둔다. 예외 타입만으로는 미전송을 확정할 수 없어(PR #183 리뷰), Adapter가 LMOVE 전에 연결 획득을 따로
+  수행하고 그 뒤의 `DataAccessResourceFailureException`은 결과 불명 예외로 바꿔 던진다 — worker는 실행 여부를 추정하지 않는다는 계약과 같은 방향이며
+  Lettuce 타입을 application 계층에 들이지 않는다. 테스트는 설정을 command-line 인수로 넘기고(`--key=value`),
+  `TestTypeExcludeFilter`를 initializer에서 singleton으로 등록했다. 로그 단언은 wire·상태 단언 뒤로 옮겨 변이 4가
+  `[wire LMOVE 횟수] expected: 1 but was: 3`으로 실패함을 다시 확인했다.
+- AI 역할: Claude가 converter 분기·Boot 설정 우선순위를 실물로 확인하고, 민감성 변이 6건을 FAIL→원복 PASS로 실행했다.
+- 배운 점: 테스트에서 `SpringApplicationBuilder`로 context를 직접 띄울 땐 설정을 defaultProperties가 아닌 인수로 주고
+  `@SpringBootTest`가 대신해 주던 scan 제외를 직접 넣는다. 민감성 변이는 "실패했다"가 아니라 "그 단언으로 실패했다"까지 본다.
+
+---
+
 ### [2026-10-02] PR #182 worker의 Redis 응답 유실이 Lettuce 재전송에 숨음
 
 - 상황: CodeRabbit의 지적으로 Lettuce 6.4.2.RELEASE의 기본 autoReconnect와 미응답 명령 재전송을 대조했다.

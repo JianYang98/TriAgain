@@ -26,6 +26,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.triagain.crew.application.CrewJoinPendingWorker;
+import com.triagain.crew.port.out.CrewJoinWorkQueuePort;
 import com.triagain.crew.port.out.CrewRepositoryPort;
 
 /**
@@ -64,6 +65,7 @@ class CrewJoinRedisConfigurationTest {
 				assertThat(context).hasNotFailed();
 				assertThat(context).doesNotHaveBean(CrewJoinRedisStartupCheck.class);
 				assertThat(context).doesNotHaveBean(CrewJoinPendingWorker.class);
+				assertThat(context).doesNotHaveBean(CrewJoinWorkQueuePort.class); // recovery 경로도 없다(P4-T15)
 				assertThat(context).doesNotHaveBean("redisHealthIndicator");
 				assertThat(context).doesNotHaveBean("redisHealthContributor");
 			});
