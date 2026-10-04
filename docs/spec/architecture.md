@@ -227,14 +227,21 @@ sequenceDiagram
 
     FE->>BE: POST /upload-sessions
     BE-->>FE: presignedUrl, uploadSessionId
-    FE->>BE: SSE 구독 (현재 구현)
+    FE->>BE: GET /upload-sessions/{id}/events 구독 시작 (S3 PUT 전)
     FE->>S3: PUT image
-    S3->>L: ObjectCreated
-    L->>BE: PUT /internal/upload-sessions/complete?imageKey=...
-    BE->>BE: PENDING → COMPLETED
-    BE-->>FE: SSE completed
-    FE-->>BE: GET /upload-sessions/{id} 2초 폴링
-    FE->>BE: POST /verifications
+    par S3 완료 이벤트 → SSE
+        S3->>L: ObjectCreated
+        L->>BE: PUT /internal/upload-sessions/complete?imageKey=...
+        BE->>BE: PENDING → COMPLETED
+        BE-->>FE: SSE completed
+    and S3 PUT 후 상태 폴링
+        loop 2초 간격
+            FE->>BE: GET /upload-sessions/{id}
+            BE-->>FE: PENDING 또는 COMPLETED/EXPIRED
+        end
+    end
+    FE->>FE: 먼저 확정된 결과 채택, 나머지 대기 종료
+    FE->>BE: POST /verifications (COMPLETED일 때)
 ```
 
 - Lambda 요청은 운영에서 Internal API Key를 포함해야 한다.
@@ -264,8 +271,8 @@ sequenceDiagram
 | 알림 Adapter BC 의존 | Crew·Verification infra가 Support 내부 타입과 Port를 직접 사용 | Support Inbound UseCase·이벤트 경계로 옮길지 별도 분석 |
 | 패키지 의존 순환 | 세 쌍 이상의 양방향 컴파일 의존 존재 | 모듈 분리 필요 시 방향 재설계 |
 | Moderation | 기반 코드만 있고 사용자 호출 경로 없음 | 기능 착수 시 현재 Adapter 경계부터 재검증 |
-| SSE | 공개·소유권 미검증·단일 emitter | 확정 API 계약에 맞춰 구현 |
-| 폴링 | 계약만 있고 Controller 없음 | 상태 조회 API 구현 |
+| SSE | 인증·소유권 검증 적용, 세션당 emitter 1개 | 재연결·다중 연결 시 이전 emitter 대체 문제 검토 |
+| 폴링 | `GET /upload-sessions/{id}` 구현, 요청자 소유 세션만 조회 | SSE 유실 시 폴백 동작은 운영 배포 후 실기기 확인 |
 | FCM | 코드 존재, 환경 설정에 따라 NoOp | 운영 `FIREBASE_ENABLED`와 자격증명 확인 |
 | AWS 운영 | retry·DLQ·경보 값을 저장소에서 확정 불가 | 배포 환경에서 확인 |
 
