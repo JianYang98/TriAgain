@@ -274,6 +274,8 @@ sequenceDiagram
   Redis 호출은 DB transaction 밖에서 수행하고, commit 후 수신 원문으로 ACK한다.
 - **실패 처리:** recovery 예외는 `CREW_JOIN_RECOVERY_FAILED`로 기록하고 refresh로 전파하지 않는다.
   worker는 시작하지 않으며 recovery 실패를 이유로 admission을 차단하지 않는다. 소비 중 오류는 다음 claim 없이 `CREW_JOIN_WORKER_STOPPED`를 남긴다.
+  실패 로그의 `outcomeUnknown=false`는 LMOVE 전송 전 연결 획득 실패만 뜻한다. 그 외 실패는 오류 응답(WRONGTYPE 등)을
+  포함해 보수적으로 `true`로 분류하며, 이 값에 따라 복구 동작을 달리하지 않는다.
   같은 프로세스의 recovery 재시도·runtime retry, DLQ, 잔존 작업 startup guard는 없다. 별도 worker health/admission 연동도 없다.
 - **종료:** 동기 recovery 중 일반 종료 요청이 즉시 recovery를 취소한다고 보장하지 않는다.
   소비 시작 후에는 새 claim을 막고 이미 진행 중인 claim의 반환을 기다린 뒤 in-flight commit·ACK를 최대 10초 join으로 기다린다.
