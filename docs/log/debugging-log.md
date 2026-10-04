@@ -5,27 +5,46 @@
 
 ---
 
-### [2026-10-03] Phase 4 recovery 실패 로그의 결과 불명 판정과 재기동 테스트 하네스
+### [2026-10-04] Redis recovery 실패 — 예외 타입만으로 미전송을 확정하지 않기 (#183)
 
-- 상황: `CREW_JOIN_RECOVERY_FAILED`에 SDD가 요구한 `outcomeUnknown`(실패 명령 결과 불명 여부)을 채우려고
-  Spring Data Redis 3.4.13 `LettuceExceptionConverter`를 바이트코드로 대조했다. Lettuce의 `RedisCommandExecutionException`
-  (WRONGTYPE 등 오류 응답)과 연결 단절 `RedisException`이 둘 다 `RedisSystemException`으로 번역되어, application 계층에서
-  Lettuce 타입 없이 "오류 응답(미실행 확정)"과 "전송 후 단절(불명)"을 가를 수 없었다. 실 Redis 테스트에서도 WRONGTYPE은
-  `RedisSystemException`(root cause 메시지 `WRONGTYPE`)으로 관측됐다.
-  재기동 E2E는 `SpringApplicationBuilder`로 웹 context를 직접 띄웠다. 작성 전 판단(실패를 관측하지는 않음):
-  ① `.properties()`는 defaultProperties(최저 우선순위)라 `application-integration.yml`의 `spring.data.redis.port=1`·
-  `lock-strategy=PESSIMISTIC`에 덮인다. ② `@SpringBootTest`가 넣는 `TestTypeExcludeFilter`가 없으면 테스트 클래스 내부
-  `@TestConfiguration`(예: `CrewFirstVerificationEventListenerTest.MockConfig`)까지 component scan 대상이 된다.
-  민감성 변이 4(autoReconnect=true)의 첫 실행은 요구 단언(wire LMOVE 1회)이 아니라 helper 안의 로그 단언에서 먼저 실패했다.
-- 내 판단: `outcomeUnknown=false`는 연결 획득 실패(미전송 확정)에만 쓰고, 오류 응답을 포함한 나머지는 보수적으로
-  `true`로 둔다. 예외 타입만으로는 미전송을 확정할 수 없어(PR #183 리뷰), Adapter가 LMOVE 전에 연결 획득을 따로
-  수행하고 그 뒤의 `DataAccessResourceFailureException`은 결과 불명 예외로 바꿔 던진다 — worker는 실행 여부를 추정하지 않는다는 계약과 같은 방향이며
-  Lettuce 타입을 application 계층에 들이지 않는다. 테스트는 설정을 command-line 인수로 넘기고(`--key=value`),
-  `TestTypeExcludeFilter`를 initializer에서 singleton으로 등록했다. 로그 단언은 wire·상태 단언 뒤로 옮겨 변이 4가
-  `[wire LMOVE 횟수] expected: 1 but was: 3`으로 실패함을 다시 확인했다.
-- AI 역할: Claude가 converter 분기·Boot 설정 우선순위를 실물로 확인하고, 민감성 변이 6건을 FAIL→원복 PASS로 실행했다.
-- 배운 점: 테스트에서 `SpringApplicationBuilder`로 context를 직접 띄울 땐 설정을 defaultProperties가 아닌 인수로 주고
-  `@SpringBootTest`가 대신해 주던 scan 제외를 직접 넣는다. 민감성 변이는 "실패했다"가 아니라 "그 단언으로 실패했다"까지 본다.
+- 상황: recovery 실패 로그의 `outcomeUnknown`을 정하려고 Spring Data Redis 3.4.13의 `LettuceExceptionConverter`를 대조했다.
+  WRONGTYPE 오류 응답과 연결 단절이 모두 `RedisSystemException`으로 번역되는 경로가 있었다.
+  초기 구현은 `DataAccessResourceFailureException`을 미전송으로 분류했지만, 독립 리뷰에서 그 타입만으로 전송 단계를 확정할 수 없음을 지적했다.
+- 내 판단: `b865af6`에서 Adapter가 LMOVE 호출 전 연결 획득을 별도로 수행하도록 했다.
+  그 단계의 실패만 `outcomeUnknown=false`로 기록하고, 이후 `DataAccessResourceFailureException`은 결과 불명 예외로 감싼다.
+  나머지 오류도 보수적으로 결과 불명으로 기록한다. 분류는 로그에만 쓰며 worker 미시작·같은 실행의 재시도 금지 동작은 동일하다.
+- AI 역할: Claude가 converter와 최초 구현을 대조했고, Codex가 예외 타입과 전송 단계의 차이를 지적했다.
+  Claude의 `b865af6` 구현 보고에는 연결 획득 분리 제거 변이 시 전송 전 실패 대조군이 기대 `false` 대신 `true`로 실패한 결과가 있다.
+  획득 뒤 해당 예외가 발생하는 경로는 실측하지 않았으며 코드 리딩으로만 확인했다. 상세 실행 이력은 [PR #183](https://github.com/JianYang98/TriAgain/pull/183)을 참조한다.
+- 배운 점: 명령의 실행 여부를 로그에 확정하려면 예외 이름 대신 전송 전후의 실행 경계를 근거로 삼는다.
+
+---
+
+### [2026-10-04] Redis 재전송 검증 — 연결 종료 전 관찰과 의도한 단언의 실패 (#183)
+
+- 상황: `autoReconnect=true` 변이의 첫 실행은 wire LMOVE 횟수가 아닌 helper의 로그 단언에서 먼저 실패했다.
+  독립 리뷰에서는 P4-T12의 2.5초 관찰이 helper의 연결 종료·Queue 삭제 뒤에 수행된다는 추가 공백을 확인했다.
+  기존 wire count는 초기 재전송을 탐지할 수 있었지만, 정리 이후의 대기는 살아 있는 client의 추가 재전송을 관찰하는 증거가 아니었다.
+- 내 판단: wire·상태 단언이 로그 단언보다 먼저 검사되도록 하고, `0a45d31`에서 연결과 Queue를 정리하기 전에 관찰하도록 옮겼다.
+  command timeout 2초를 넘는 2.5초 관찰 동안 wire LMOVE 1회·BLMOVE 0회를 검사하고 이후 Queue 상태를 수집한다.
+- AI 역할: Claude가 테스트를 보강했다. `b865af6` 구현 보고에서 `autoReconnect=true` 변이는
+  `[wire LMOVE 횟수] expected: 1 but was: 3`으로 FAIL, 원복 후 PASS를 재확인했다.
+  상세 민감성 실행 이력은 [PR #183](https://github.com/JianYang98/TriAgain/pull/183)에 남긴다.
+- 배운 점: 민감성 증명은 목표 단언의 FAIL을 확인해야 한다. 지연된 동작을 검증할 때는 관찰 구간이 끝날 때까지 대상 자원을 유지한다.
+
+---
+
+### [2026-10-03] Redis 재기동 E2E — 직접 생성한 웹 context의 설정과 격리 (#183)
+
+- 상황: DB·Redis 상태를 유지하며 웹 context A→B를 만드는 테스트에 `SpringApplicationBuilder`를 사용했다.
+  작성 전 코드 대조로 확인한 주의점은 두 가지다. 아래는 테스트 실패를 재현한 기록이 아니다.
+  - `.properties()`는 defaultProperties여서 `application-integration.yml`의 Redis port=1·PESSIMISTIC 설정에 덮일 수 있다.
+  - 직접 만든 context에는 `@SpringBootTest`의 `TestTypeExcludeFilter` 등록이 없어 테스트 클래스 내부 설정이 스캔될 수 있다.
+- 내 판단: 설정은 command-line 인수(`--key=value`)로 넘기고, initializer에서 `TestTypeExcludeFilter`를 등록했다.
+  schema는 한 번만 준비하며 두 재기동 context는 `ddl-auto=none`으로 DB 증거를 유지한다.
+- AI 역할: Claude가 설정 우선순위와 테스트 설정 제외 방식을 확인하고 `RedisCrewJoinRecoveryE2eTest`를 구성했다.
+  검증은 같은 JVM의 웹 context 재생성 모델이며 OS 프로세스 강제 종료를 재현한 것은 아니다.
+- 배운 점: 테스트 framework 밖에서 context를 직접 만들 때는 설정 우선순위·스캔 격리·데이터 수명을 명시적으로 맞춘다.
 
 ---
 

@@ -87,7 +87,7 @@ PostgreSQL은 경합한 UPDATE의 조건을 다시 평가하므로 `current_memb
 REDIS_ASYNC 초대 가입 거부는 가입 Repository 호출·TransactionTemplate 실행 전에 발생한다.
 `Crew.validateJoinable()`은 상태·마감만 검사하며, 기존 addMember 경로의 정원/중복 검사 순서는 유지한다.
 
-## 5. `REDIS_ASYNC` 공개 가입 (Phase 3~4, 로컬 실험 전용)
+## 5. `REDIS_ASYNC` 공개 가입 (로컬 실험 전용)
 
 ```mermaid
 sequenceDiagram
@@ -120,7 +120,7 @@ sequenceDiagram
 - 앱 기동: `REDIS_ASYNC`일 때만 웹 서버가 포트를 열기 전 Redis PING을 하고, 실패하면 기동이 중단된다.
   DB 세 전략은 Redis 없이 기동하며 `/actuator/health`에 Redis가 포함되지 않는다.
 
-### Phase 3 단일 worker
+### 단일 worker의 DB 반영과 ACK
 
 ```mermaid
 sequenceDiagram
@@ -149,9 +149,10 @@ sequenceDiagram
 - claim 예외는 이동 결과 불명, ACK 0행/예외는 DB commit 유지·raw 존재 불명으로 중단한다. 다음 claim·retry는 없다.
   worker 전용 Lettuce 클라이언트도 연결 단절 뒤 claim·ACK를 재전송하지 않는다. producer 설정은 유지한다.
 - 정상 종료는 새 claim을 막고 진행 중 작업의 commit→ACK를 기다린다. 10초 join 한도 초과는 미완료 로그를 남긴다.
-- retry/reprocessing은 없다. processing 검사에 따른 기동 거부는 추가하지 않는다.
+- 같은 프로세스의 runtime retry/reprocessing은 없다. 다음 앱 기동에서는 아래 startup recovery를 수행한다.
+  processing 잔존을 이유로 기동을 거부하지 않는다.
 
-### Phase 4 startup recovery (소비 시작 전)
+### 재기동 시 Queue 복구 (소비 시작 전)
 
 ```mermaid
 sequenceDiagram
@@ -166,7 +167,7 @@ sequenceDiagram
     end
     alt 정상 nil (processing 소진)
         W->>W: CREW_JOIN_RECOVERY_SUCCEEDED confirmedMoves=n
-        W->>W: 소비 thread 시작 → 위 Phase 3 claim 루프
+        W->>W: 소비 thread 시작 → 위 claim 루프
     else 예외·timeout·응답 유실·오류 응답
         W->>W: CREW_JOIN_RECOVERY_FAILED (workerStarted=false)
         W-->>L: 정상 반환 — 앱 기동·admission 계속, 소비 없음
@@ -175,5 +176,5 @@ sequenceDiagram
 
 - 실패 뒤 같은 프로세스에서 recovery·소비를 다시 시도하지 않는다(`context.start()` 재호출 포함). 추가 이동·ACK·보상도 없다.
   다음 앱 재기동이 실제 남은 processing을 같은 방향으로 이어 비운다.
-- 복구된 작업은 위 Phase 3 흐름(INSERT 1/0행 → COMMIT → exact raw ACK)으로 replay된다. recovery 성공은 DB 수렴의 증거가 아니다.
+- 복구된 작업은 위 DB 반영 흐름(INSERT 1/0행 → COMMIT → exact raw ACK)으로 replay된다. recovery 성공은 DB 수렴의 증거가 아니다.
 - recovery는 `start()` 안에서 동기로 실행된다. 일반 종료 요청이 recovery를 즉시 취소한다고 보장하지 않는다.

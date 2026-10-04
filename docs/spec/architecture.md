@@ -260,22 +260,24 @@ sequenceDiagram
   Adapter Bean은 모든 전략에 존재하지만 생성 시 네트워크를 쓰지 않는다. 기동 게이트(`CrewJoinRedisStartupCheck`,
   싱글턴 초기화 직후·포트 오픈 전 PING)와 Redis health indicator는 `REDIS_ASYNC`에서만 등록되고,
   공통 설정 `management.health.redis.enabled=false`로 DB 전략의 health는 Redis와 무관하다.
-- Phase 3 `CrewJoinPendingWorker`는 같은 조건부 설정에서 한 개만 등록되는 `SmartLifecycle` 전용 스레드다.
-  startup PING 뒤 시작하고 `CrewJoinWorkQueuePort` → `CrewJoinWorkQueueAdapter`로 `BLMOVE RIGHT LEFT`와 raw ACK를 실행한다.
-  Spring Data Redis 3.4.13 / Lettuce 6.4.2.RELEASE의 blocking 전용 연결을 사용한다. block 1초 < command 2초를 유지한다.
-  `CrewJoinWorkerRedisConnection`이 기존 standalone 접속·인증·TLS·timeout 설정을 계승한 private factory를 소유한다.
-  worker의 claim·ACK에만 `autoReconnect=false`, `REJECT_COMMANDS`를 적용하여 응답 유실 시 투명한 재전송을 막는다.
-  Boot의 producer factory/template bean은 대체하지 않는다. worker 종료 뒤 Queue Adapter의 close가 전용 factory를 해제한다.
-  `CrewJoinPersistenceService`는 `TransactionTemplate`로 INSERT+인원 증가를 commit한 뒤 반환한다. 기존 transaction에 참여하지 않는다.
-  Redis 호출은 DB transaction 밖이며 정상 종료는 새 claim을 막고 in-flight commit·ACK를 최대 10초 join으로 기다린다
-  (이미 진행 중인 claim은 유한 command timeout 범위에서 먼저 반환). 초과 시 `CREW_JOIN_WORKER_SHUTDOWN_INCOMPLETE`로 기록한다.
-  오류 시 다음 claim 없이 `CREW_JOIN_WORKER_STOPPED`를 남긴다. 애플리케이션 health/admission과 자동 연동하지 않는다.
-  Phase 4: Queue Port의 `recoverOneRaw()`가 timeout 없는 ListOperations `move` overload(= `LMOVE processing pending LEFT RIGHT`)를
-  같은 worker private template으로 실행한다. `bLMove`(dedicated 연결)와 달리 `lMove`는 일반 `invoke()` 경로라 물리 소켓은
-  claim과 다를 수 있지만 같은 private factory의 `autoReconnect=false`·`REJECT_COMMANDS`를 적용받는다.
-  `start()`는 thread 생성 전에 시작 시도 latch를 세우고 nil까지 동기 recovery한 뒤에만 소비 thread를 만든다.
-  recovery 예외는 `CREW_JOIN_RECOVERY_FAILED`로 기록하고 refresh로 전파하지 않는다(worker 미시작, 같은 실행 재시도 없음).
-  recovery는 `StartupCompensationRunner`·`CrewJoinRedisStartupCheck`와 분리되며 retry·DLQ·startup guard는 없다.
+- **worker 연결:** `CrewJoinPendingWorker`는 같은 조건부 설정에서 한 개만 등록되는 `SmartLifecycle`이다.
+  `CrewJoinWorkQueuePort` → `CrewJoinWorkQueueAdapter`를 통해 Queue를 처리한다.
+  `CrewJoinWorkerRedisConnection`은 기존 standalone 접속·인증·TLS·timeout 설정을 계승한 private factory를 소유한다.
+  claim·ACK·recovery에 `autoReconnect=false`, `REJECT_COMMANDS`를 적용한다. Boot의 producer factory/template은 대체하지 않는다.
+  Spring Data Redis 3.4.13 / Lettuce 6.4.2.RELEASE에서 `bLMove`는 dedicated 연결, `lMove`는 일반 `invoke()` 경로다.
+  물리 소켓은 다를 수 있지만 두 경로 모두 worker private factory의 설정을 적용받는다.
+- **기동 순서:** startup PING 뒤 `start()`가 시작 시도 latch를 세우고 동기로 recovery한다.
+  `start()`는 `recoverOneRaw()`로 `LMOVE processing pending LEFT RIGHT`를 정상 nil까지 반복하며, 그 뒤에만 소비 thread를 만든다.
+  LMOVE 자체의 blocking 대기는 없고 client command timeout은 2초다. 소비는 `BLMOVE RIGHT LEFT`로 block 1초 < command 2초를 유지한다.
+  recovery는 `StartupCompensationRunner`·`CrewJoinRedisStartupCheck`와 분리된다.
+- **DB 반영:** `CrewJoinPersistenceService`는 `TransactionTemplate`로 INSERT+인원 증가를 commit한 뒤 반환하며 기존 transaction에 참여하지 않는다.
+  Redis 호출은 DB transaction 밖에서 수행하고, commit 후 수신 원문으로 ACK한다.
+- **실패 처리:** recovery 예외는 `CREW_JOIN_RECOVERY_FAILED`로 기록하고 refresh로 전파하지 않는다.
+  worker는 시작하지 않으며 recovery 실패를 이유로 admission을 차단하지 않는다. 소비 중 오류는 다음 claim 없이 `CREW_JOIN_WORKER_STOPPED`를 남긴다.
+  같은 프로세스의 recovery 재시도·runtime retry, DLQ, 잔존 작업 startup guard는 없다. 별도 worker health/admission 연동도 없다.
+- **종료:** 동기 recovery 중 일반 종료 요청이 즉시 recovery를 취소한다고 보장하지 않는다.
+  소비 시작 후에는 새 claim을 막고 이미 진행 중인 claim의 반환을 기다린 뒤 in-flight commit·ACK를 최대 10초 join으로 기다린다.
+  초과 시 `CREW_JOIN_WORKER_SHUTDOWN_INCOMPLETE`를 기록한다. 앱 종료 시 Queue Adapter의 close가 전용 factory를 해제한다.
 
 ---
 
@@ -290,6 +292,6 @@ sequenceDiagram
 | 폴링 | 계약만 있고 Controller 없음 | 상태 조회 API 구현 |
 | FCM | 코드 존재, 환경 설정에 따라 NoOp | 운영 `FIREBASE_ENABLED`와 자격증명 확인 |
 | AWS 운영 | retry·DLQ·경보 값을 저장소에서 확정 불가 | 배포 환경에서 확인 |
-| Redis 가입 | 단일 worker의 DB 멱등 반영·commit 뒤 ACK, 실패 시 중단. 같은 run 재기동 시 startup recovery(Phase 4) | 전략 handoff·retry·reconciliation |
+| Redis 가입 | 단일 worker의 DB 멱등 반영·commit 뒤 ACK, 실패 시 중단. 같은 run 재기동 시 startup recovery | 전략 handoff·retry·reconciliation |
 
 상세 후속 과제는 [`future-considerations.md`](../log/future-considerations.md)에 기록한다.
