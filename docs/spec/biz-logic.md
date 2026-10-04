@@ -59,7 +59,7 @@
 설정 값이 없으면(null) 공개·초대 가입 모두 가입 DB 트랜잭션·조회·쓰기 전에
 `NullPointerException`으로 거부하며 기존 `500 / C002`로 응답한다.
 세 DB 전략은 동시성 처리 방식을 비교하려고 함께 유지하며, 운영 기본값은 `CONDITIONAL`이다.
-`REDIS_ASYNC`(Phase 3)는 **로컬 실험 전용**이며 운영 가입 기능으로 활성화하지 않는다.
+`REDIS_ASYNC`는 **로컬 실험 전용**이며 운영 가입 기능으로 활성화하지 않는다.
 
 - 공개 가입만: DB 조회 → PUBLIC → `validateJoinable()`(상태 → 마감) → Redis Lua 한 번에 준비 상태 → 중복 → 정원을
   판단하고, 신규 승인이면 순번(`seq`)·멤버·pending 작업을 함께 기록한다. 오류 순서는 **중복 → 정원**이다.
@@ -85,12 +85,33 @@
 - 준비 단계에서 fixture가 startup compensation 대상(`RECRUITING && startDate <= 오늘`, `ACTIVE && endDate < 오늘`)인지 확인한다.
   대상 fixture는 제외하고 날짜 경계도 피한다. snapshot부터 drain·최종 검증까지 대상 crew의 수정·다른 가입 전략·탈퇴·삭제·재가입·
   설정 변경·상태 scheduler·startup compensation·기타 전체 save/인원 writer를 혼합하지 않는다.
-  기존 JPA 전체 저장은 stale `current_members`를 덮어쓸 수 있으며 이 Phase에서 persistence/lock 구조를 변경하지 않는다.
+  기존 JPA 전체 저장은 stale `current_members`를 덮어쓸 수 있으며 현재 persistence/lock 구조는 변경하지 않는다.
 - `CREW_JOIN_WORKER_STOPPED` 로그의 `stage=claim|parse|DB|ACK`, 원인, namespace/runId와 확인 가능한 crewId로 오류 중단을 식별한다.
   해당 run 로그를 확인하면 신규 부하 요청 생성을 수동 중단하고, 이미 전송한 요청의 종료·결과를 수집한다. 결과를 모르면 불명으로 기록한다.
-  Redis/DB/로그를 진단용으로 보존하며 Queue cleanup·reset·worker 재시작으로 실험을 재개하지 않는다.
+  Redis/DB/로그를 진단용으로 보존하며 Queue cleanup·reset이나 같은 프로세스의 worker 재시작으로 실험을 재개하지 않는다.
+  다음 앱 기동의 Queue 복구는 아래 startup recovery 계약을 따른다.
   pending 증가만으로 중단을 확정하지 않는다. 로그 확인 전/진행 중 요청에서 추가 승인이 발생할 수 있다.
-- 별도 health/readiness/admission 차단은 없다. processing 잔존 startup guard도 없으며, 잔존 상태 재기동·복구·재처리는 Phase 4다.
+- 별도 health/readiness/admission 차단은 없다. processing 잔존을 이유로 기동을 거부하지 않는다(startup guard 없음).
+
+#### Redis worker의 startup recovery
+
+DB→Redis 초기화가 끝나 Redis가 admission 정본인 **같은 namespace/runId의 재기동**만 다룬다. 전략 전환(handoff)은 별도 과제다.
+이전 worker/JVM 종료와 다른 소비자 부재는 실험자가 확인한다(multi-worker·분산 소유권 미지원).
+
+- worker `start()`가 소비 thread를 만들기 전에 `LMOVE processing pending LEFT RIGHT`를 한 번에 한 명령씩 정상 nil까지 반복한다.
+  raw는 parse·재직렬화·DB 조회 없이 그대로 옮긴다. 정상 nil(processing 소진)을 받은 뒤에만 claim을 시작한다.
+- FIFO: 소비는 pending RIGHT, 새 승인은 pending LEFT(LPUSH)다. processing `[C,B,A]`·pending `[E,D]`는 `[E,D,C,B,A]`가 되어
+  A→E 순으로 소비된다. 복구 도중 승인된 F는 왼쪽에 붙어 마지막에 소비된다. 복구 완료 전 claim은 FIFO를 깨므로 금지다.
+- 연결 획득·명령 예외·timeout·응답 유실·WRONGTYPE 등 오류 응답은 recovery 실패다. 예외를 nil로 바꾸지 않는다.
+  실패하면 `CREW_JOIN_RECOVERY_FAILED`를 남기고 worker를 시작하지 않으며 앱 기동은 계속한다. admission도 막지 않는다.
+  이미 성공한 이동과 결과 불명 명령을 되돌리거나 추가 이동·ACK·삭제하지 않는다. 같은 프로세스에서 다시 시도하지 않고
+  (시작 시도 latch — `context.start()` 재호출도 무시) 다음 앱 재기동이 실제 남은 processing만 같은 방향으로 이어 비운다.
+- **의도한 trade-off**: recovery 실패 중에도 유효한 신규 공개 가입은 201로 Redis에 승인되고 pending이 늘지만
+  DB membership·`current_members`는 멈춰 있을 수 있다. 시간이 지나 자동 해소된다고 보장하지 않으며 backlog 상한도 없다.
+- 복구된 작업의 replay는 위 DB 반영 계약을 따른다(INSERT 1행만 인원 +1, 대상 UNIQUE 0행은 role·joinedAt·인원 불변,
+  commit 뒤 exact raw ACK). parse/DB 실패는 미ACK·중단, ACK 실패는 결과 불명·중단이다. runtime 실패가 recovery를 다시 부르지 않는다.
+- recovery 성공(정상 nil)은 pending 소진이나 DB 수렴의 증거가 아니다. 정상 run의 최종 검증은 생산을 멈추고 소비가 끝난 뒤
+  pending/processing 공백·Redis/DB membership 집합 일치·`current_members = count(crew_members)`·원래 joinedAt으로 한다.
 
 `Crew.validateJoinable()`은 상태 → 마감만 검사하고 멤버 목록·인원 수를 변경하지 않는다.
 기존 DB 가입은 이 검증을 재사용하되 순서를 유지한다.

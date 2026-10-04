@@ -2,6 +2,8 @@ package com.triagain.crew.infra.redis;
 
 import java.time.Duration;
 
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.data.redis.RedisSystemException;
 import org.springframework.data.redis.connection.RedisListCommands.Direction;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -42,5 +44,20 @@ public class CrewJoinWorkQueueAdapter implements CrewJoinWorkQueuePort, AutoClos
 			throw new IllegalStateException("Redis ACK result unknown");
 		}
 		return removed;
+	}
+
+	/**
+	 * timeout 없는 LMOVE processing pending LEFT RIGHT — 예외를 nil로 바꾸지 않는다.
+	 * 연결 획득 실패만 DataAccessResourceFailureException(확정 미전송)이고, 획득 뒤 실패는 결과 불명으로 바꿔 던진다.
+	 */
+	@Override
+	public String recoverOneRaw() {
+		redisTemplate.getRequiredConnectionFactory().getConnection().close();
+		try {
+			return redisTemplate.opsForList().move(properties.processingKey(), Direction.LEFT,
+				properties.pendingKey(), Direction.RIGHT);
+		} catch (DataAccessResourceFailureException exception) {
+			throw new RedisSystemException("LMOVE outcome unknown", exception);
+		}
 	}
 }

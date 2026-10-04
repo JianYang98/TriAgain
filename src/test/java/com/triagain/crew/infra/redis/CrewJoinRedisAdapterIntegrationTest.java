@@ -2,7 +2,13 @@ package com.triagain.crew.infra.redis;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -10,6 +16,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -22,6 +34,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.RedisConnectionFailureException;
+import org.springframework.data.redis.RedisSystemException;
 import org.springframework.data.redis.connection.DataType;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
@@ -32,10 +45,13 @@ import org.springframework.data.redis.core.script.RedisScript;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.triagain.crew.application.CrewJoinPendingWorker;
+import com.triagain.crew.application.CrewJoinPersistenceService;
 import com.triagain.crew.port.out.CrewJoinRedisPort.Approval;
 import com.triagain.crew.port.out.CrewJoinRedisPort.Status;
+import com.triagain.crew.port.out.CrewJoinWorkQueuePort;
 
-/** 승인 Lua + Adapter — 실제 Redis로 신규 승인·payload 형식, 중복/정원/미초기화, 쓰기 전 방어, 인프라 실패를 검증 */
+/** 승인 Lua + Adapter, 복구 LMOVE — 실제 Redis로 승인·payload 형식·방어·인프라 실패와 startup recovery FIFO를 검증 */
 @Tag("e2e")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class CrewJoinRedisAdapterIntegrationTest {
@@ -341,6 +357,194 @@ class CrewJoinRedisAdapterIntegrationTest {
 		} finally {
 			shortTimeout.destroy();
 		}
+	}
+
+	@Test
+	@DisplayName("P4-T1 processing이 없으면 LMOVE는 정상 nil이고 빈 LIST를 만들지 않으며 기존 pending은 그대로다")
+	void recover_absentProcessing_returnsNilWithoutCreatingKey() throws Exception {
+		// Given
+		redis.opsForList().rightPush(pendingKey(), payload("u-d"));
+		try (CrewJoinWorkQueueAdapter queue = workQueue()) {
+			// When
+			String reply = queue.recoverOneRaw();
+			// Then
+			assertThat(reply).isNull();
+			assertThat(redis.hasKey(processingKey())).isFalse();
+			assertThat(redis.opsForList().range(pendingKey(), 0, -1)).containsExactly(payload("u-d"));
+		}
+	}
+
+	@Test
+	@DisplayName("P4-T2 복구한 raw는 필드 순서·공백·이스케이프·유니코드까지 바이트 그대로 pending 오른쪽에 붙는다")
+	void recover_oneRaw_preservesExactBytes() throws Exception {
+		// Given — 재직렬화하면 달라지는 원문
+		String raw = "{ \"userId\" : \"u-\\\"q\\\\한글\" ,\"crewId\":\"CREW-1\",  "
+			+ "\"confirmedAt\":\"2026-09-27T14:05:23.481+09:00\" }\t ";
+		redis.opsForList().rightPush(processingKey(), raw);
+		redis.opsForList().rightPush(pendingKey(), payload("u-e"));
+		try (CrewJoinWorkQueueAdapter queue = workQueue()) {
+			// When
+			assertThat(queue.recoverOneRaw()).isEqualTo(raw);
+			assertThat(queue.recoverOneRaw()).isNull();
+		}
+		// Then
+		byte[] stored = redis.execute((RedisCallback<byte[]>)connection ->
+			connection.listCommands().lIndex(pendingKey().getBytes(StandardCharsets.UTF_8), -1));
+		assertThat(stored).isEqualTo(raw.getBytes(StandardCharsets.UTF_8));
+		assertThat(redis.opsForList().range(pendingKey(), 0, -1)).containsExactly(payload("u-e"), raw);
+		assertThat(redis.hasKey(processingKey())).isFalse();
+	}
+
+	@Test
+	@DisplayName("P4-T3 [C,B,A]/[E,D] 복구는 [E,D,C,B,A]이고 중간에 LPUSH된 F까지 A→F 순으로 claim된다")
+	void recover_multipleRemainders_preservesFifoWithInterleavedApproval() throws Exception {
+		// Given — 배열은 모두 LEFT→RIGHT. processing의 C가 가장 최근 claim이다.
+		initCrew(10, "u-leader");
+		redis.opsForList().rightPushAll(processingKey(), payload("C"), payload("B"), payload("A"));
+		redis.opsForList().rightPushAll(pendingKey(), payload("E"), payload("D"));
+		try (CrewJoinWorkQueueAdapter queue = workQueue()) {
+			// When — C 이동 직후 새 승인 F가 LPUSH된다.
+			assertThat(queue.recoverOneRaw()).isEqualTo(payload("C"));
+			assertThat(users(processingKey())).containsExactly("B", "A");
+			assertThat(users(pendingKey())).containsExactly("E", "D", "C");
+			assertThat(adapter.approve(CREW, "F", CONFIRMED_AT).status()).isEqualTo(Status.JOIN_SUCCESS);
+			assertThat(queue.recoverOneRaw()).isEqualTo(payload("B"));
+			assertThat(queue.recoverOneRaw()).isEqualTo(payload("A"));
+			assertThat(queue.recoverOneRaw()).isNull();
+			// Then
+			assertThat(users(pendingKey())).containsExactly("F", "E", "D", "C", "B", "A");
+			List<String> consumed = new ArrayList<>();
+			for (int i = 0; i < 6; i++) {
+				consumed.add(userOf(queue.claimRaw(Duration.ofSeconds(1))));
+			}
+			assertThat(consumed).containsExactly("A", "B", "C", "D", "E", "F");
+		}
+	}
+
+	@Test
+	@DisplayName("P4-T14 pending이 WRONGTYPE이면 LMOVE 오류를 nil로 숨기지 않고 두 key를 고치지 않으며 worker는 시작하지 않는다")
+	void recover_wrongTypeDestination_throwsAndWorkerDoesNotStart() throws Exception {
+		// Given
+		redis.opsForList().rightPush(processingKey(), payload("A"));
+		redis.opsForValue().set(pendingKey(), "corrupted");
+		try (CrewJoinWorkQueueAdapter queue = workQueue()) {
+			// When & Then — 오류 응답
+			assertThatThrownBy(queue::recoverOneRaw).isInstanceOf(RedisSystemException.class)
+				.rootCause().hasMessageContaining("WRONGTYPE");
+			assertThat(redis.opsForList().range(processingKey(), 0, -1)).containsExactly(payload("A"));
+			assertThat(redis.opsForValue().get(pendingKey())).isEqualTo("corrupted");
+			RecordingWorkQueue probe = new RecordingWorkQueue(queue);
+			CrewJoinPendingWorker worker = worker(probe);
+			worker.start();
+			assertThat(worker.isRunning()).isFalse();
+			assertThat(probe.claimAttempts()).isZero();
+			// 한계 기록 — source가 없으면 Redis는 destination type 검사 전에 nil을 반환한다(7.4.11).
+			redis.delete(processingKey());
+			assertThat(queue.recoverOneRaw()).isNull();
+		}
+	}
+
+	@Test
+	@DisplayName("P4-T6 C 이동 뒤 다음 recovery가 전송 전에 실패하면 [B,A]/[E,D,C]로 남고 claim·DB·ACK·추가 recovery가 없다")
+	void recover_partialFailureBeforeSend_leavesStateAndNoConsumption() throws Exception {
+		// Given
+		redis.opsForList().rightPushAll(processingKey(), payload("C"), payload("B"), payload("A"));
+		redis.opsForList().rightPushAll(pendingKey(), payload("E"), payload("D"));
+		CrewJoinPersistenceService persistence = mock(CrewJoinPersistenceService.class);
+		try (RecordingWorkQueue probe = new RecordingWorkQueue(workQueue()).failRecoverAtCall(2)) {
+			CrewJoinPendingWorker worker = new CrewJoinPendingWorker(probe, persistence, objectMapper, "test", runId);
+			// When
+			worker.start();
+			worker.start();
+			// Then
+			assertThat(worker.isRunning()).isFalse();
+			assertThat(users(processingKey())).containsExactly("B", "A");
+			assertThat(users(pendingKey())).containsExactly("E", "D", "C");
+			assertThat(probe.recoverCalls()).isEqualTo(2);
+			assertThat(probe.claimAttempts()).isZero();
+			assertThat(probe.ackCalls()).isZero();
+			verifyNoInteractions(persistence);
+		}
+	}
+
+	@Test
+	@DisplayName("P4-T11 마지막 nil 응답을 반환하기 직전까지 claim 시도·DB·ACK가 0이고, 반환 뒤에만 A→E로 소비한다")
+	void recover_noClaimUntilFinalNilReturned() throws Exception {
+		// Given — 실제 LMOVE 응답 경계마다 그 시점의 claim 시도 수를 기록하고, nil 응답은 반환 전에 붙잡는다.
+		redis.opsForList().rightPushAll(processingKey(), payload("C"), payload("B"), payload("A"));
+		redis.opsForList().rightPushAll(pendingKey(), payload("E"), payload("D"));
+		CrewJoinPersistenceService persistence = mock(CrewJoinPersistenceService.class);
+		when(persistence.persist(any(), any(), any())).thenReturn(1);
+		CountDownLatch atNil = new CountDownLatch(1);
+		CountDownLatch release = new CountDownLatch(1);
+		List<Integer> claimsAtReply = new CopyOnWriteArrayList<>();
+		ExecutorService starter = Executors.newSingleThreadExecutor();
+		try (RecordingWorkQueue probe = new RecordingWorkQueue(workQueue())) {
+			probe.onRecoverReply(reply -> holdNil(reply, probe, claimsAtReply, atNil, release));
+			CrewJoinPendingWorker worker = new CrewJoinPendingWorker(probe, persistence, objectMapper, "test", runId);
+			try {
+				// When
+				Future<?> started = starter.submit(worker::start);
+				assertThat(atNil.await(5, TimeUnit.SECONDS)).isTrue();
+				// Then — 복구 완료 확인 직전: 소비 경로 호출 0, Redis는 이미 [E,D,C,B,A]
+				assertThat(claimsAtReply).containsExactly(0, 0, 0, 0);
+				await().during(Duration.ofMillis(300)).atMost(Duration.ofSeconds(1))
+					.until(() -> probe.claimAttempts() == 0 && probe.ackCalls() == 0);
+				verifyNoInteractions(persistence);
+				assertThat(users(pendingKey())).containsExactly("E", "D", "C", "B", "A");
+				release.countDown();
+				started.get(5, TimeUnit.SECONDS);
+				await().atMost(Duration.ofSeconds(8)).until(() -> probe.ackCalls() == 5);
+				assertThat(probe.claimed().stream().map(this::userOf)).containsExactly("A", "B", "C", "D", "E");
+			} finally {
+				release.countDown();
+				worker.stop();
+			}
+		} finally {
+			starter.shutdownNow();
+		}
+	}
+
+	private static void holdNil(String reply, RecordingWorkQueue probe, List<Integer> claimsAtReply,
+		CountDownLatch atNil, CountDownLatch release) {
+		claimsAtReply.add(probe.claimAttempts());
+		if (reply == null) {
+			atNil.countDown();
+			try {
+				assertThat(release.await(5, TimeUnit.SECONDS)).isTrue();
+			} catch (InterruptedException exception) {
+				Thread.currentThread().interrupt();
+			}
+		}
+	}
+
+	private CrewJoinWorkQueueAdapter workQueue() {
+		return new CrewJoinWorkQueueAdapter(connectionFactory, new CrewJoinRedisProperties("test", runId));
+	}
+
+	private CrewJoinPendingWorker worker(CrewJoinWorkQueuePort queue) {
+		return new CrewJoinPendingWorker(queue, mock(CrewJoinPersistenceService.class), objectMapper, "test", runId);
+	}
+
+	private List<String> users(String listKey) {
+		return redis.opsForList().range(listKey, 0, -1).stream().map(this::userOf).toList();
+	}
+
+	private String userOf(String raw) {
+		try {
+			return objectMapper.readTree(raw).get("userId").asText();
+		} catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+			throw new IllegalStateException(e);
+		}
+	}
+
+	private static String payload(String user) {
+		return "{\"crewId\":\"" + CREW + "\",\"userId\":\"" + user
+			+ "\",\"confirmedAt\":\"" + CONFIRMED_AT_TEXT + "\"}";
+	}
+
+	private String processingKey() {
+		return prefix() + ":processing";
 	}
 
 	private boolean waitForMember(String userId) throws InterruptedException {

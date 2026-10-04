@@ -6,24 +6,51 @@
 
 ---
 
-### [2026-10-01] Redis 선착순 가입 — 운영 적용 전 미결 설계
+### [2026-10-03 13:30] Redis 가입 — 전략 전환과 운영 도입 전 남은 과제
 
-- 현재 상태: Phase 2(PR #181)에서 공개 가입(`POST /crews/{crewId}/join`)만 Redis Lua 승인 + pending 등록까지
-  구현했다. 로컬 실험 전용이며 운영 기본값은 `CONDITIONAL` 그대로다. 초대 가입은 계속 `500 / C002`로 거부한다.
-  - 오류 매핑은 정해졌다: 중복 `409 / CR004`, 정원 `409 / CR002`, 미초기화·상태 불일치·연결·timeout·스크립트·직렬화
-    실패는 신규 ErrorCode 없이 `500 / C002`, DB 전략 fallback 없음 (`docs/spec/api-spec/crew.md` REDIS_ASYNC 절)
-  - Phase 3: 단일 worker의 pending→processing claim, DB 멱등 INSERT+인원 증가, commit 뒤 raw ACK를 구현했다.
-    worker 전용 연결은 claim·ACK의 Lettuce 자동 재전송도 차단한다. producer 설정은 유지한다.
-    실패 시 중단·증거 보존까지이며 자동 복구는 없다. 신규 API·운영 설정·기본 전략은 변경하지 않았다.
-- 필요 시점: 운영 전환을 검토할 때. 아래가 정해지기 전에는 운영 값으로 쓰지 않는다.
-  - processing 잔존 시 애플리케이션 재기동 정책, startup recovery, retry/reprocessing — Phase 4
-    (Phase 3에는 processing 잔존 startup guard나 별도 admission 차단 없음)
-  - Redis와 DB의 reconciliation (도입 여부 미정)
-  - 201의 의미가 "Redis 확정 + pending 등록"이라 DB 반영에 시차가 생긴다. 가입 직후 DB 멤버 존재를
-    전제하는 흐름(챌린지 생성·크루 조회 등)의 정합성
-  - FE 대응 — Phase 1~3 모두 FE 작업을 포함하지 않았다
-- 이유: Phase 3은 정상 소비와 실패 시 작업 보존까지다. 실패 run은 신규 부하를 수동 중단하고 Redis/DB/로그를 보존한다.
-  자동 복구·잔여 작업 재기동 정책은 Phase 4에서 별도로 결정한다.
+> 2026-10-04 정리. 기존 Redis 관련 두 항목을 현재 완료 범위와 남은 과제 기준으로 통합했다.
+
+- 현재 상태: 로컬 실험용 `REDIS_ASYNC`는 Redis 가입 승인, worker의 DB 멱등 반영, 동일 namespace/runId의 startup recovery를 지원한다.
+  recovery 실패 시 앱 기동은 계속하고 worker는 시작하지 않는다. 이 실패를 이유로 admission을 차단하지 않아 DB 반영 지연이 커질 수 있다.
+  운영 기본값은 `CONDITIONAL`이다. 현재 계약은 [비즈니스 규칙](../spec/biz-logic.md)과 [가입 API](../spec/api-spec/crew.md)를 따른다.
+- 필요 시점: DB 전략과 REDIS_ASYNC 사이의 전략 전환 실험 또는 운영 도입 검토 시.
+- 남은 과제:
+  - **strategy handoff:** 전략을 바꿀 때 가입을 중단하고 미처리 쓰기를 정리한 뒤 DB/Redis 정합성을 확인하는 절차.
+  - **runtime retry:** 같은 프로세스에서 실패 작업을 다시 처리할지, 도입한다면 재시도·중단 조건을 어떻게 정할지.
+  - **reconciliation:** Redis와 DB의 불일치를 탐지하고 교정하는 기능의 도입 여부와 범위.
+  - **사용자 화면의 반영 지연 대응:** 201 이후 DB 기반 조회에 아직 가입이 보이지 않는 경우의 표시와 후속 동작.
+    가입 직후 DB membership을 전제하는 흐름도 함께 검토한다. 현재 반영 시간 보장·새 polling API·REDIS_ASYNC 전용 FE 대응은 없다.
+- 이유: 현재 구현은 동일 run의 Queue 복구까지다. 정본 인계, 실행 중 실패 재처리, 전체 정합성 교정, 사용자 화면의 지연 대응은 별도 설계가 필요하다.
+
+#### handoff 검토안
+
+아래는 후속 설계를 위한 흐름이다. 실행 가능한 runbook이나 도구가 완성된 상태가 아니며, 현재 startup recovery와 구분한다.
+
+**DB → REDIS_ASYNC**
+
+```text
+가입 중단
+→ DB write drain
+→ DB snapshot
+→ Redis 새 run 초기화
+→ DB/Redis 대조
+→ REDIS_ASYNC 전환
+```
+
+**REDIS_ASYNC → DB**
+
+```text
+신규 가입 중단
+→ processing recovery
+→ pending/processing drain
+→ Redis membership == DB membership 검증
+→ DB 전략 전환
+```
+
+- recovery 성공만으로 DB 전환 조건을 충족하지 않는다. pending까지 DB 반영·ACK한 뒤 정합성을 확인해야 한다.
+- 가입 재개 시점, 검증 실패 시 전환 중단·재개, 동시 writer 배제, 이전 소비자 종료 확인, 응답 유실 처리는 후속 설계에서 정한다.
+- 검증 중심 도구 `crew-join-strategy-handoff.sh`는 후보이며 아직 구현하지 않았다. yml 자동 수정·앱 자동 재시작을 포함하는 결정도 없다.
+- 기존 `scripts/crew-join-redis.sh init|preflight|cleanup`은 새 run 준비 도구다. 동일 run recovery에서 재초기화·cleanup하지 않는다.
 
 ---
 

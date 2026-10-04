@@ -8,6 +8,9 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -22,8 +25,8 @@ final class RedisReplyDropProxy implements AutoCloseable {
 	private final List<Socket> sockets = new CopyOnWriteArrayList<>();
 	private final AtomicReference<String> dropCommand = new AtomicReference<>();
 	private final AtomicReference<Throwable> failure = new AtomicReference<>();
-	private final AtomicInteger claims = new AtomicInteger();
-	private final AtomicInteger acknowledgements = new AtomicInteger();
+	private final AtomicInteger dropAt = new AtomicInteger();
+	private final Map<String, AtomicInteger> counts = new ConcurrentHashMap<>();
 	private final AtomicInteger dropped = new AtomicInteger();
 
 	RedisReplyDropProxy() throws IOException {
@@ -35,15 +38,30 @@ final class RedisReplyDropProxy implements AutoCloseable {
 	}
 
 	void dropNext(String command) {
-		dropCommand.set(command);
+		dropNth(command, count(command) + 1);
+	}
+
+	/** 명령의 n번째 발생(누적 순번)의 실제 응답을 버리고 TCP를 닫는다 */
+	void dropNth(String command, int ordinal) {
+		dropAt.set(ordinal);
+		dropCommand.set(command.toUpperCase(Locale.ROOT));
+	}
+
+	int recoveries() {
+		return count("LMOVE");
 	}
 
 	int claims() {
-		return claims.get();
+		return count("BLMOVE");
 	}
 
 	int acknowledgements() {
-		return acknowledgements.get();
+		return count("LREM");
+	}
+
+	private int count(String command) {
+		AtomicInteger count = counts.get(command.toUpperCase(Locale.ROOT));
+		return count == null ? 0 : count.get();
 	}
 
 	int dropped() {
@@ -73,13 +91,13 @@ final class RedisReplyDropProxy implements AutoCloseable {
 			sockets.add(server);
 			while (!client.isClosed()) {
 				byte[] request = readFrame(client.getInputStream());
-				String command = new String(request, StandardCharsets.UTF_8).split("\r\n", 4)[2];
-				countCommand(command);
+				String command = new String(request, StandardCharsets.UTF_8).split("\r\n", 4)[2]
+					.toUpperCase(Locale.ROOT);
+				int seen = counts.computeIfAbsent(command, key -> new AtomicInteger()).incrementAndGet();
 				server.getOutputStream().write(request);
 				server.getOutputStream().flush();
 				byte[] reply = readFrame(server.getInputStream());
-				String target = dropCommand.get();
-				if (command.equalsIgnoreCase(target) && dropCommand.compareAndSet(target, null)) {
+				if (command.equals(dropCommand.get()) && dropAt.compareAndSet(seen, 0)) {
 					dropped.incrementAndGet();
 					return; // Redis의 실행 완료 응답을 실제로 읽었지만 클라이언트에는 0바이트 전달.
 				}
@@ -90,14 +108,6 @@ final class RedisReplyDropProxy implements AutoCloseable {
 			// 클라이언트 연결 반환·응답 유실·fixture 종료의 정상 TCP 단절.
 		} catch (IOException | RuntimeException exception) {
 			failure.set(exception);
-		}
-	}
-
-	private void countCommand(String command) {
-		if (command.equalsIgnoreCase("BLMOVE")) {
-			claims.incrementAndGet();
-		} else if (command.equalsIgnoreCase("LREM")) {
-			acknowledgements.incrementAndGet();
 		}
 	}
 

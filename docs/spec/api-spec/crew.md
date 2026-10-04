@@ -625,7 +625,7 @@
 `(crew_id, user_id)` 유니크 제약 위반을 `CR004`로 변환한다. 별도 Idempotency-Key나
 응답 캐시는 사용하지 않는다. `CR023`은 설정을 `OPTIMISTIC`으로 바꿨을 때만 발생 가능한 계약이다.
 
-#### `REDIS_ASYNC` (Phase 3 — 로컬 실험 전용, 운영 비활성)
+#### `REDIS_ASYNC` (로컬 실험 전용, 운영 비활성)
 
 공개 직접 가입(`POST /crews/{crewId}/join`)만 Redis 승인으로 처리한다. 요청·응답 형태는 위와 같다.
 
@@ -695,7 +695,7 @@
   실패(4)가 정상이며, 실험 중 정합성 점검 용도로 쓰지 않는다.
   종료 코드 0 성공 / 1 사용법 / 2 CONNECTION / 3 NOT_INITIALIZED / 4 INVALID_STATE(재초기화 거부 포함) / 5 DB snapshot 불일치.
 
-##### Phase 3 worker와 실험 경계
+##### worker의 DB 반영과 실험 경계
 
 - 단일 worker가 `BLMOVE pending processing RIGHT LEFT 1`로 원자 claim한다. block `1s`, command `2s`,
   connect `1s`를 사용한다. `0 < block < command`와 응답 여유를 유지한다. 정상 nil은 다음 대기, 예외는 결과 불명·중단이다.
@@ -708,7 +708,21 @@
 - commit 성공 뒤 `LREM processing 1 <claim raw>`만 실행하고 1행만 성공으로 인정한다. parse/DB 실패에는 ACK하지 않는다.
   ACK 0행·예외·응답 유실은 DB commit을 취소하지 않으며, raw가 남았다고 단정하지 않는다. 모두 worker 중단·추가 claim 없음이다.
 - worker 장애가 기존 201이나 health를 차단하지 않는다. 오류 로그와 실험자 조치는 [비즈니스 규칙](../biz-logic.md)을 따른다.
-  startup recovery·retry·reprocessing·processing 잔존 재기동 정책은 Phase 4다. 잔존 작업 startup guard는 없다.
+  runtime retry·reprocessing은 없다. 잔존 작업 startup guard(기동 거부)도 없다.
+
+##### 재기동 시 Queue 복구와 공개 계약
+
+- worker는 소비 전에 `LMOVE processing pending LEFT RIGHT`를 정상 nil까지 반복해 이전 실행의 processing을
+  pending 오른쪽으로 되돌린다. LMOVE 자체의 blocking 대기는 없으며 client command timeout은 `2s`다.
+  상세 규칙은 [비즈니스 규칙](../biz-logic.md)의 startup recovery 절이 정본이다.
+- 공개 가입의 요청·응답·인증·201·ErrorCode는 그대로다. **201 = Redis 승인 + pending 등록**이며
+  recovery 완료·DB persistence·ACK 완료를 뜻하지 않는다.
+- recovery 진행 중·실패·결과 불명 어느 상태도 admission 차단 조건이 아니다. 기존 인증·크루 조회·PUBLIC·상태/마감 검증과
+  Redis 중복/정원 판정을 통과하면 승인된다. Redis 자체 장애·pending 손상은 기존대로 `500 / C002`일 수 있다.
+- recovery가 실패하면 그 프로세스의 worker는 시작하지 않는다. 다음 재기동에서 recovery가 성공하고 해당 작업의 DB 반영이 commit될 때까지
+  DB 기반 조회는 신규 사용자를 비멤버·이전 인원으로 볼 수 있다. 지연 상한·polling·Retry-After·새 ErrorCode는 없다.
+- 기존 설정 검증·startup PING 실패의 기동 실패는 유지한다. 그 뒤의 recovery 실패는 기동 실패로 전파하지 않는다.
+  recovery/worker 전용 health·readiness는 없고 기존 Redis health는 producer 연결만 본다(UP이 DB 반영 정상을 뜻하지 않음).
 
 ## 6. 삭제·탈퇴
 
