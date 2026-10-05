@@ -49,10 +49,12 @@ class UploadSessionSseApiTest extends E2eTestBase {
 	@DisplayName("A1: 토큰 없이 구독하면 401 A003을 받는다")
 	void subscribe_withoutAuth_returns401() {
 		var response = givenRequest()
+				.accept("text/event-stream")
 				.when().get("/upload-sessions/{id}/events", 1L)
 				.then().extract();
 
 		assertThat(response.statusCode()).isEqualTo(401);
+		assertThat(response.contentType()).startsWith("application/json");
 		assertThat(response.jsonPath().getString("error.code")).isEqualTo("A003");
 	}
 
@@ -62,10 +64,53 @@ class UploadSessionSseApiTest extends E2eTestBase {
 		UploadSession session = createSession("owner", UploadSessionStatus.PENDING);
 
 		var response = givenAuthRequest("intruder")
+				.accept("text/event-stream")
 				.when().get("/upload-sessions/{id}/events", session.getId())
 				.then().extract();
 
 		assertThat(response.statusCode()).isEqualTo(404);
+		assertThat(response.contentType()).startsWith("application/json");
+		assertThat(response.jsonPath().getString("error.code")).isEqualTo("V004");
+	}
+
+	@Test
+	@DisplayName("없는 세션을 SSE Accept로 구독하면 404 V004 JSON을 받는다")
+	void subscribe_notFound_withEventStreamAccept_returns404Json() {
+		var response = givenAuthRequest("owner")
+				.accept("text/event-stream")
+				.when().get("/upload-sessions/{id}/events", Long.MAX_VALUE)
+				.then().extract();
+
+		assertThat(response.statusCode()).isEqualTo(404);
+		assertThat(response.contentType()).startsWith("application/json");
+		assertThat(response.jsonPath().getString("error.code")).isEqualTo("V004");
+	}
+
+	@Test
+	@DisplayName("숫자가 아닌 세션 ID를 SSE Accept로 구독하면 400 C001 JSON을 받는다")
+	void subscribe_invalidId_withEventStreamAccept_returns400Json() {
+		var response = givenAuthRequest("owner")
+				.accept("text/event-stream")
+				.when().get("/upload-sessions/{id}/events", "abc")
+				.then().extract();
+
+		assertThat(response.statusCode()).isEqualTo(400);
+		assertThat(response.contentType()).startsWith("application/json");
+		assertThat(response.jsonPath().getString("error.code")).isEqualTo("C001");
+	}
+
+	@Test
+	@DisplayName("일반 Accept 요청의 소유권 오류도 404 V004 JSON을 유지한다")
+	void subscribe_notOwner_withAnyAccept_returns404Json() {
+		UploadSession session = createSession("owner", UploadSessionStatus.PENDING);
+
+		var response = givenAuthRequest("intruder")
+				.accept("*/*")
+				.when().get("/upload-sessions/{id}/events", session.getId())
+				.then().extract();
+
+		assertThat(response.statusCode()).isEqualTo(404);
+		assertThat(response.contentType()).startsWith("application/json");
 		assertThat(response.jsonPath().getString("error.code")).isEqualTo("V004");
 	}
 
@@ -151,6 +196,7 @@ class UploadSessionSseApiTest extends E2eTestBase {
 		HttpRequest request = HttpRequest.newBuilder()
 				.uri(URI.create("http://localhost:" + port + "/upload-sessions/" + id + "/events"))
 				.header("X-User-Id", userId)
+				.header("Accept", "text/event-stream")
 				.GET()
 				.build();
 		return httpClient.sendAsync(request, BodyHandlers.ofLines());
