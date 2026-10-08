@@ -149,7 +149,7 @@ sequenceDiagram
     L->>BE: PUT /internal/upload-sessions/complete?imageKey=...
     BE->>BE: PENDING → COMPLETED
     BE-->>FE: upload-complete SSE
-    FE-->>BE: GET /upload-sessions/{id} 2초 폴링 (계약 확정·구현 대기)
+    FE-->>BE: GET /upload-sessions/{id} 2초 폴링
     FE->>BE: POST /verifications
 ```
 
@@ -165,13 +165,12 @@ sequenceDiagram
 
 ### 우선 해결 제안
 
-1. SSE JWT 인증·UploadSession 소유권 검증
-2. `GET /upload-sessions/{id}` 상태 폴링 API 구현
-3. SHA 이미지 배포와 health 실패 자동 rollback
-4. 추적 가능한 안전한 `application-local.yml` 정리
+1. SHA 이미지 배포와 health 실패 자동 rollback
+2. 추적 가능한 안전한 `application-local.yml` 정리
 
-SSE와 폴링은 같은 소유권 검증을 공유해야 한다. 현재 SSE는 운영에서도 `permitAll`이고 세션 ID당
-emitter 하나만 저장하므로 타인의 구독과 emitter 덮어쓰기 가능성이 있다.
+SSE 인증·소유권 검증과 `GET /upload-sessions/{id}` 폴링 API는 구현됐다 (BE #165). 둘은 응용 계층
+`getOwnedOrThrow(id, userId)` 한 곳을 공유한다. 다만 `SseEmitterAdapter`가 세션 ID당 emitter 하나만
+저장하는 구조는 그대로라 **같은 세션의 재연결·다중 연결이 이전 emitter를 덮어쓴다.**
 
 ### 확인된 도메인·구현 차이
 

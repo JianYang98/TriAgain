@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSource;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -60,6 +61,7 @@ public class GlobalExceptionHandler {
 				request.getMethod(), request.getRequestURI(), errorCode.getCode(), message);
 		return ResponseEntity
 				.status(errorCode.getStatus())
+				.contentType(MediaType.APPLICATION_JSON)
 				.body(ApiResponse.fail(errorCode, message));
 	}
 
@@ -76,6 +78,7 @@ public class GlobalExceptionHandler {
 				log.warn("[{} {}] 입력값 검증 실패 [errorCode={}]: {}",
 						request.getMethod(), request.getRequestURI(), mappedCode.getCode(), message);
 				return ResponseEntity.status(mappedCode.getStatus())
+						.contentType(MediaType.APPLICATION_JSON)
 						.body(ApiResponse.fail(mappedCode, message));
 			} catch (IllegalArgumentException ignored) {
 			}
@@ -89,6 +92,7 @@ public class GlobalExceptionHandler {
 		log.warn("[{} {}] 입력값 검증 실패: {}", request.getMethod(), request.getRequestURI(), message);
 		return ResponseEntity
 				.badRequest()
+				.contentType(MediaType.APPLICATION_JSON)
 				.body(ApiResponse.fail(ErrorCode.INVALID_INPUT, message));
 	}
 
@@ -102,7 +106,9 @@ public class GlobalExceptionHandler {
 		log.warn("[{} {}] 요청 파라미터 바인딩 실패 [{}]",
 				request.getMethod(), request.getRequestURI(), e.getClass().getSimpleName());
 		String message = resolveMessage(ErrorCode.INVALID_INPUT, null);
-		return ResponseEntity.badRequest().body(ApiResponse.fail(ErrorCode.INVALID_INPUT, message));
+		return ResponseEntity.badRequest()
+				.contentType(MediaType.APPLICATION_JSON)
+				.body(ApiResponse.fail(ErrorCode.INVALID_INPUT, message));
 	}
 
 	@ExceptionHandler(DataIntegrityViolationException.class)
@@ -122,6 +128,7 @@ public class GlobalExceptionHandler {
 		String message = resolveMessage(errorCode, null);
 		return ResponseEntity
 				.status(errorCode.getStatus())
+				.contentType(MediaType.APPLICATION_JSON)
 				.body(ApiResponse.fail(errorCode, message));
 	}
 
@@ -131,6 +138,7 @@ public class GlobalExceptionHandler {
 		log.warn("[{} {}] 잘못된 인자: {}", request.getMethod(), request.getRequestURI(), e.getMessage());
 		return ResponseEntity
 				.badRequest()
+				.contentType(MediaType.APPLICATION_JSON)
 				.body(ApiResponse.fail(ErrorCode.INVALID_INPUT, e.getMessage()));
 	}
 
@@ -140,6 +148,7 @@ public class GlobalExceptionHandler {
 		String message = resolveMessage(ErrorCode.INTERNAL_SERVER_ERROR, null);
 		return ResponseEntity
 				.internalServerError()
+				.contentType(MediaType.APPLICATION_JSON)
 				.body(ApiResponse.fail(ErrorCode.INTERNAL_SERVER_ERROR, message));
 	}
 }
