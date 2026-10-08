@@ -91,6 +91,7 @@ public class CrewJoinPendingWorker implements SmartLifecycle {
 		}
 	}
 
+	/** 종료 요청이 없으면 pending에서 다음 작업을 기다려 가져온다. */
 	private String claimUnlessStopped() {
 		synchronized (claimMonitor) {
 			return stopRequested ? null : queue.claimRaw(BLOCK_TIMEOUT);
@@ -104,7 +105,7 @@ public class CrewJoinPendingWorker implements SmartLifecycle {
 			CrewJoinPendingPayload payload = CrewJoinPendingPayload.parse(raw, reader);
 			crewId = payload.crewId();
 			stage = "DB";
-			persistence.persist(crewId, payload.userId(), payload.joinedAt());
+			persistence.persist(crewId, payload.userId(), payload.joinedAt()); /* CREW DB 저장*/
 			stage = "ACK";
 			if (queue.ackRaw(raw) != 1) {
 				throw new IllegalStateException("ACK did not remove exactly one raw payload");

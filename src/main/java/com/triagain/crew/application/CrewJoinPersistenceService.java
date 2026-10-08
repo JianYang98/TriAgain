@@ -24,7 +24,7 @@ public class CrewJoinPersistenceService {
 		CrewMember member = CrewMember.createMember(userId, crewId, joinedAt);
 		return transactionTemplate.execute(status -> insertAndIncrement(member));
 	}
-
+	/** 멤버 저장과 인원 증가가 한 트랜잭션이며, 중복 재처리 때는 둘 다 다시 하지 않는다 */
 	private int insertAndIncrement(CrewMember member) {
 		int inserted = crewRepositoryPort.insertMemberIfAbsent(member);
 		if (inserted == 0) {
