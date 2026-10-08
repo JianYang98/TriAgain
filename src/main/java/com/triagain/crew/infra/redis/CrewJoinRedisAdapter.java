@@ -48,10 +48,13 @@ public class CrewJoinRedisAdapter implements CrewJoinRedisPort {
 		String where = " (namespace=" + properties.namespace() + ", runId=" + properties.runId()
 			+ ", crewId=" + crewId + ")";
 		String confirmedAtText = formatConfirmedAt(confirmedAt, where);
-		String payload = serialize(new PendingPayload(crewId, userId, confirmedAtText), where);
+		String payload = serialize(new PendingPayload(crewId, userId, confirmedAtText), where); // Redis ARGV 전달용
 		String prefix = properties.keyPrefix();
 		String crewKey = prefix + ":crew:" + crewId;
-		List<String> keys = List.of(crewKey + ":members", crewKey + ":meta", properties.pendingKey());
+		List<String> keys = List.of(crewKey + ":members", crewKey + ":meta", properties.pendingKey()); // Redis KEYS 전달용
+		// KEYS[1] = <prefix>:crew:<crewId>:members (ZSET)
+		// KEYS[2] = <prefix>:crew:<crewId>:meta (HASH)
+		// KEYS[3] = <prefix>:pending
 		return interpret(execute(keys, where, crewId, userId, confirmedAtText, payload), where);
 	}
 

@@ -29,7 +29,7 @@ public class CrewJoinWorkQueueAdapter implements CrewJoinWorkQueuePort, AutoClos
 		connection.close();
 	}
 
-	/** 유한 BLMOVE로 FIFO 작업을 원자 이동하고 수신 원문 반환 */
+	/** 유한 BLMOVE로 FIFO 작업을 원자 이동하고 수신 원문 반환 — 성공 시 payload JSON, 타임아웃이면 null */
 	@Override
 	public String claimRaw(Duration timeout) {
 		return redisTemplate.opsForList().move(properties.pendingKey(), Direction.RIGHT,
