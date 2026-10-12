@@ -49,10 +49,6 @@ public class WithdrawUserService implements WithdrawUserUseCase {
 		User user = userRepositoryPort.findById(userId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-		if (user.isWithdrawn()) {
-			throw new BusinessException(ErrorCode.USER_WITHDRAWN);
-		}
-
 		// Apple 사용자: revoke 호출 (트랜잭션 밖, graceful — 어댑터가 graceful이지만 서비스에서도 방어적으로 wrap)
 		if (PROVIDER_APPLE.equals(user.getProvider()) && user.getAppleRefreshToken() != null) {
 			try {
