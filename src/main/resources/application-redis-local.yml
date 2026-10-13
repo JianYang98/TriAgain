@@ -1,0 +1,15 @@
+# 로컬 Redis 가입 실험 overlay — `--spring.profiles.active=local,redis-local`로 명시 활성화.
+# Redis는 `docker compose --profile redis up -d redis`. 자격증명을 두지 않는다(로컬 Redis 무인증).
+# run-id는 실험마다 명시한다(기본값 없음 — 비면 기동 실패): CREW_JOIN_RUN_ID=<run> 또는 --triagain.crew.redis.run-id=<run>. 같은 실험 재시작은 같은 값.
+spring:
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+
+triagain:
+  crew:
+    lock-strategy: REDIS_ASYNC
+    redis:
+      namespace: local
+      run-id: ${CREW_JOIN_RUN_ID:}

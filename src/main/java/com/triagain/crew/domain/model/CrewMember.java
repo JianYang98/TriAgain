@@ -34,13 +34,12 @@ public class CrewMember {
 
 	/** 일반 멤버 생성 — 크루 참여 시 사용 */
 	public static CrewMember createMember(String userId, String crewId) {
-		return new CrewMember(
-				IdGenerator.generate("CRMB"),
-				userId,
-				crewId,
-				CrewRole.MEMBER,
-				LocalDateTime.now()
-		);
+		return createMember(userId, crewId, LocalDateTime.now());
+	}
+
+	/** Redis 승인 시각으로 일반 멤버 생성 — worker 처리 지연에도 가입 시각 보존 */
+	public static CrewMember createMember(String userId, String crewId, LocalDateTime joinedAt) {
+		return new CrewMember(IdGenerator.generate("CRMB"), userId, crewId, CrewRole.MEMBER, joinedAt);
 	}
 
 	/** 영속 데이터로 멤버 복원 — DB 조회 결과를 도메인 객체로 변환 */

@@ -1,262 +1,104 @@
-# 사진 인증 업로드 프로세스 - Lambda + SSE 설계
+# 사진 업로드 Lambda·S3·SSE 운영
 
-> **변경 사유**: 기존 방식은 클라이언트가 API 2번 순차 호출 + upload_session COMPLETED 처리를 /verifications에서 담당.
-> 변경 후 Lambda가 업로드 완료를 감지하고 SSE로 프론트에 알림 → 클라이언트 의존 제거, 책임 분리.
+> 사용자 플로우: [`photo-upload-flow.md`](photo-upload-flow.md) · API 계약: [`api-spec/verification.md`](api-spec/verification.md) · 내부 API: [`api-spec/internal.md`](api-spec/internal.md) · 서버 시퀀스: [`sequence/verification.md`](sequence/verification.md)
 
-## 1. 전체 플로우
+이 문서는 S3 업로드 완료를 Lambda가 감지해 백엔드 세션을 완료하고 SSE로 알리는 인프라·운영 경계를 다룬다. `/verifications`의 검증·중복 방지 규칙은 정본 문서로 위임한다.
 
-```
-[기존 방식]
-  POST /upload-sessions → presignedUrl
-  클라이언트 → S3 업로드
-  POST /verifications → 인증 생성 + session COMPLETED  ← 여기서 너무 많은 일
-
-[변경 방식]
-  POST /upload-sessions → presignedUrl + SSE 구독 시작
-  클라이언트 → S3 업로드
-  S3 Event → Lambda → session COMPLETED + SSE 알림
-  클라이언트가 SSE 이벤트 수신 → POST /verifications ← 인증 로직에만 집중
-```
-
-## 2. 시퀀스 다이어그램
+## 1. 운영 흐름
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Client as Flutter
-    participant Server as Spring Boot (EC2)
     participant S3 as AWS S3
-    participant Lambda as AWS Lambda
-    
-    Note over Client,Lambda: 📸 1단계: 업로드 세션 생성
-    
-    Client->>Server: POST /upload-sessions<br/>(crewId, fileName, fileType, fileSize)
-    Server-->>Client: sessionId + presignedUrl
-    
-    Note over Client,Server: 📡 2단계: SSE 구독
-    
-    Client->>Server: GET /upload-sessions/{id}/events<br/>(SSE 연결)
-    
-    Note over Client,S3: ☁️ 3단계: S3 업로드
-    
-    Client->>S3: PUT 이미지 업로드 (presignedUrl)
-    S3-->>Client: 200 OK
-    
-    Note over S3,Lambda: ⚡ 4단계: Lambda 자동 실행
-    
-    S3->>Lambda: S3 PutObject Event
-    Lambda->>Server: PUT /internal/upload-sessions/complete?imageKey={key}
-    
-    Note over Server: DB: PENDING → COMPLETED
-    Note over Server: SSE: "COMPLETED" 이벤트 전송
-    
-    Server-->>Client: SSE Event: { status: "COMPLETED" }
-    
-    Note over Client,Server: ✅ 5단계: 인증 요청
+    participant Lambda as upload-complete
+    participant Internal as InternalUploadSessionController
+    participant Service as CompleteUploadSessionService
+    participant DB as PostgreSQL
+    participant SSE as SsePort
+    actor Client
 
-    Client->>Server: POST /verifications<br/>(sessionId, challengeId/crewId,<br/>Idempotency-Key)
-    Note over Server: session COMPLETED 확인 → verification INSERT
-    Server-->>Client: 201 Created 🎉
+    S3->>Lambda: ObjectCreated:Put<br/>(prefix: upload-sessions/)
+    Lambda->>Internal: PUT /internal/upload-sessions/complete?imageKey={key}<br/>X-Internal-Api-Key
+    Internal->>Service: complete(imageKey)
+    Service->>DB: PENDING → COMPLETED
+    DB-->>Service: COMMIT
+    Service->>SSE: afterCommit send(COMPLETED)
+    SSE-->>Client: upload-complete
 ```
 
-## 3. 컴포넌트별 책임
+- Lambda는 S3 이벤트의 `imageKey`를 URL 인코딩하여 내부 API에 전달한다.
+- 이미 COMPLETED인 세션의 재호출은 성공한다. EXPIRED 세션은 COMPLETED로 되돌리지 않는다.
+- SSE는 DB 커밋 후 전송하므로 롤백된 상태를 완료로 알리지 않는다.
 
-### Spring Boot (EC2)
+## 2. 저장소에서 확인되는 AWS 구성
 
-| API | 책임 |
-|-----|------|
-| `POST /upload-sessions` | crewId 기반 검증(멤버십, 크루 상태, 마감) + session INSERT(PENDING) + presignedUrl 생성 |
-| `GET /upload-sessions/{id}/events` | SSE 엔드포인트 (프론트 구독용) |
-| `PUT /internal/upload-sessions/complete?imageKey={key}` | Lambda 전용 내부 API → session COMPLETED + SSE 이벤트 발행 |
-| `POST /verifications` | 인증 생성 (session COMPLETED 확인 → verification INSERT, 중복 사용은 DB UNIQUE constraint로 방지) |
+| 항목 | 저장소 기준 |
+|------|-------------|
+| Handler | `lambda/upload-complete/handler.py`의 `handler` |
+| Runtime | Python 3.12 |
+| Timeout / Memory | 15초 / 128MB |
+| 대상 Key prefix | `upload-sessions/` |
+| 기본 버킷 | `triagain-verifications` (배포 인자로 변경 가능) |
+| 환경 변수 | `BACKEND_URL`, `INTERNAL_API_KEY` |
+| 배포 | `lambda/deploy-lambda.sh`에서 SAM 배포 후 S3 Notification 설정 |
+| S3 이벤트 | `s3:ObjectCreated:Put` |
 
-**SSE 구현:**
-```java
-// SSE 엔드포인트
-@GetMapping("/upload-sessions/{id}/events")
-public SseEmitter subscribe(@PathVariable Long id) {
-    SseEmitter emitter = new SseEmitter(60_000L); // 60초 타임아웃
-    ssePort.register(id, emitter);
-    return emitter;
-}
+Presigned URL은 백엔드가 15분으로 발급하고, S3 PUT 요청에 `Content-Type`과 `Content-Length`를 지정한다. 이미지 Key는 `upload-sessions/{userId}/{uuid}.{ext}` 형식이다.
 
-// Lambda 콜백 시 SSE 전송 (imageKey 기반)
-@PutMapping("/internal/upload-sessions/complete")
-public ResponseEntity<ApiResponse<Void>> complete(@RequestParam String imageKey) {
-    completeUploadSessionUseCase.complete(imageKey); // DB: PENDING → COMPLETED + SSE 전송
-    return ResponseEntity.ok(ApiResponse.ok());
-}
-```
+## 3. 내부 API 보안
 
-**내부 API 보안:**
-- `/internal/**` 경로는 `X-Internal-Api-Key` 헤더로 인증 (`InternalApiKeyFilter`)
-- API Key 불일치 시 403 Forbidden 반환
-- SecurityConfig에서 `/internal/**`는 `permitAll()` (JWT 스킵), API Key 필터에서 검증
+`/internal/**`은 사용자 API가 아니라 Lambda와 백엔드 사이의 머신 간 API다.
 
-### AWS Lambda (Python 3.12)
+### 운영 (`prod`)
 
-> Java 대신 Python 선택: Lambda는 단순 HTTP 호출만 수행하므로 cold start가 빠른 Python이 적합.
+- Spring Security의 `permitAll()`은 사용자 JWT 검사를 요구하지 않기 위한 설정이다.
+- `InternalApiKeyFilter`가 모든 `/internal/` 요청의 `X-Internal-Api-Key`를 검사한다.
+- Key가 없거나 일치하지 않으면 Controller 전에 `403 Forbidden`을 반환한다.
+- API Key는 HTTPS 연결을 전제로 Lambda 환경 변수와 백엔드 설정에 같은 값으로 배포한다.
 
-```python
-def handler(event, context):
-    for record in event.get("Records", []):
-        key = urllib.parse.unquote_plus(
-            record["s3"]["object"]["key"]
-        )
-        if not key.startswith("upload-sessions/"):
-            continue
+### 개발·테스트 (`!prod`)
 
-        encoded_key = urllib.parse.quote(key, safe="")
-        url = f"{BACKEND_URL}/internal/upload-sessions/complete?imageKey={encoded_key}"
-        req = urllib.request.Request(
-            url, method="PUT",
-            headers={"X-Internal-Api-Key": INTERNAL_API_KEY},
-            data=b"",
-        )
-        urllib.request.urlopen(req, timeout=10)
+- 로컬·통합 테스트 편의를 위해 `/internal/**`를 허용하며 `InternalApiKeyFilter`를 등록하지 않는다.
+- 이 차이는 운영 프로필에 적용되지 않는다.
 
-    return {"statusCode": 200, "body": "OK"}
-```
+Phase 1에서는 공유 API Key를 사용한다. HMAC 요청 서명·재전송 방지·IP 제한은 실제 위협이나 운영 요구가 생길 때 검토한다.
 
-**Lambda 설정:**
-- Runtime: Python 3.12
-- 트리거: S3 PutObject Event (버킷: triagain-verifications, prefix: upload-sessions/)
-- 타임아웃: 15초
-- 메모리: 128MB
-- 재시도: 2회 (AWS 기본)
-- 실패 시: DLQ(Dead Letter Queue)로 전달
-- 환경 변수: `BACKEND_URL`, `INTERNAL_API_KEY`
-- 배포: SAM (lambda/template.yaml)
+## 4. SSE와 폴링
 
-### S3
+- SSE 서버 타임아웃은 60초다.
+- **SSE 구독은 S3 업로드(PUT) 전에 시작한다.** 서버는 미구독 세션의 완료 이벤트를 버리므로,
+  구독 전에 Lambda 콜백이 도착하면 이벤트가 영구 유실된다.
+- **폴링은 S3 업로드 후 시작한다.** 업로드 전에는 완료될 수 없다.
+- 전체 확인 제한은 90초이며, 먼저 `COMPLETED` 또는 `EXPIRED`를 확인한 결과를 사용한다.
+- SSE와 상태 조회를 로그인한 세션 소유자 전용으로 한다는 것은 **목표 계약이며 아직 구현되지 않았다** (§6 참조).
+  현재 SSE는 `permitAll`이고 소유권 검증이 없으며, `GET /upload-sessions/{id}`는 라우트 자체가 없다.
 
-- **버킷**: triagain-verifications
-- **Key 규칙**: `upload-sessions/{userId}/{uuid}.{ext}`
-- **Event Notification**: PutObject → Lambda 트리거
-- **CORS**: Flutter에서 직접 업로드 허용
+## 5. 실패 처리와 운영 확인
 
-### Phase 1 이미지 정책
+| 상황 | 저장소에서 확인되는 처리 |
+|------|--------------------------|
+| Lambda → 백엔드 HTTP 오류 | 예외를 다시 던져 Lambda 실행을 실패 처리 |
+| SSE 전송 실패·이벤트 유실 | 상태 조회 폴링으로 보완 |
+| 완료 콜백이 끝내 성공하지 않음 | PENDING 세션을 서버가 15분 후 EXPIRED 처리 (5분 주기) |
 
-**클라이언트 압축 정책:**
-- 1차(촬영/선택): maxWidth·maxHeight 1600px, imageQuality 90 (verification_screen.dart)
-- 최종(크롭 후): 긴 변 1280px 캡 + JPEG 재인코딩 quality 85 (crop_screen.dart)
-- 목표 크기: 실측 미확인 (측정 로그 없음)
-- 서버 허용 최대: 5MB (안전마진)
+현재 SAM 템플릿과 배포 스크립트에는 다음 설정이 없다.
 
-**Phase 1 업로드 완료(COMPLETED) 정의:**
-- S3 업로드 완료 → Lambda 감지 → 내부 complete 처리 → afterCommit SSE 전송
-- 원본 1장 업로드 완료 = COMPLETED (썸네일 미포함)
+- Lambda 비동기 재시도 횟수 재정의
+- DLQ (`DeadLetterQueue`)
+- 실패 목적지 (`DestinationConfig` / `EventInvokeConfig`)
 
-**썸네일:** Phase 1에서는 생성하지 않음. Phase 2에서 thumbnailUrl 확장 예정.
+따라서 “2회 재시도 후 DLQ 전달”을 저장소 기준으로 보장할 수 없다. 실제 운영값은 AWS 계정에서 별도로 확인해야 하며, 보장을 요구한다면 콘솔 수동 설정이 아니라 SAM 템플릿에 선언한다.
 
-**주의사항:**
-- presigned URL은 압축된 최종 파일 기준으로 발급/검증
-- Content-Type 일치 보장
-- auth header 없이 S3 direct upload
-- Lambda는 imageKey 기준으로 session 조회
-- SSE는 afterCommit 이후에만 전송
+배포 후에는 다음을 확인한다.
 
-### Flutter
+- Lambda 환경 변수와 백엔드 `internal.api-key` 일치
+- S3 Notification의 함수 ARN·이벤트·prefix
+- Lambda가 운영 백엔드 URL에 접근 가능한지
+- 실패 재시도·DLQ·실패 목적지의 실제 AWS 설정
+- CloudWatch에서 Lambda 오류와 내부 API 4xx/5xx
 
-```dart
-// 1. 세션 생성
-final session = await api.createUploadSession(file);
+## 6. 확정 계약과 현재 구현의 차이
 
-// 2. SSE 구독 시작
-final sseStream = api.subscribeUploadEvents(session.id);
-
-// 3. S3 업로드
-await s3.upload(session.presignedUrl, file);
-
-// 4. SSE 이벤트 대기
-sseStream.listen((event) {
-  if (event.status == 'COMPLETED') {
-    // 5. 인증 요청
-    api.createVerification(session.id, challengeId);
-  }
-});
-
-// 타임아웃: 30초 내 COMPLETED 안 오면 재시도 안내
-```
-
-## 4. 텍스트 인증 (사진 없음)
-
-사진 없이 텍스트만 인증하는 경우:
-```
-POST /verifications 바로 호출 (uploadSessionId = null)
-→ Lambda, SSE, S3 전부 스킵
-→ 바로 APPROVED
-```
-
-## 5. 기존 대비 변경점
-
-| 항목 | Before | After |
-|------|--------|-------|
-| session COMPLETED 처리 | /verifications 트랜잭션 내 | Lambda → /internal API |
-| 업로드 완료 감지 | 클라이언트가 /verifications 호출 | S3 Event → Lambda 자동 감지 |
-| 프론트 알림 | 없음 (동기 호출) | SSE로 실시간 알림 |
-| /verifications 책임 | 세션확인 + 인증생성 + 세션완료 | 인증 생성만 (session COMPLETED 확인만) |
-| 인프라 추가 | 없음 | Lambda + S3 Event Notification |
-
-## 6. 실패 처리
-
-| 실패 상황 | 처리 방법 |
-|-----------|-----------|
-| S3 업로드 실패 | 클라이언트 재시도 → 실패 시 안내 |
-| Lambda 실행 실패 | AWS 자동 재시도 2회 → DLQ |
-| Lambda → EC2 호출 실패 | Lambda 재시도 → 최종 실패 시 DLQ |
-| SSE 타임아웃 (60초) | 클라이언트가 폴링 fallback (GET /upload-sessions/{id}) |
-| SSE 연결 끊김 | 클라이언트 재연결 + 상태 확인 |
-| PENDING 세션 방치 | 스케줄러: 15분 후 EXPIRED 처리 (5분 주기 체크) |
-
-## 7. /verifications 변경된 책임
-
-```
-[Before - /verifications에서 하던 일]
-1. 멱등성 검사
-2. 분산 락 획득
-3. upload_session 확인 (PENDING → COMPLETED)  ← 삭제
-4. 챌린지 비관적 락
-5. 마감 시간 검증
-6. verification INSERT
-7. upload_session COMPLETED UPDATE             ← 삭제
-8. 멱등성 완료
-9. 락 해제
-
-[After - /verifications에서 하는 일]
-1. 멱등성 검사
-2. 분산 락 획득
-3. upload_session 상태 확인 (COMPLETED인지만 체크) ← 확인만!
-4. cross-crew 검증 (session.crewId == 요청 crewId)
-5. 챌린지 비관적 락
-6. 마감 시간 검증
-7. verification INSERT (upload_session_id UNIQUE constraint가 중복 사용 방지)
-8. 멱등성 완료
-9. 락 해제
-```
-
-## 8. 구현 순서 (Claude Code 작업 단위)
-
-```
-1단계: Spring Boot (구현 완료)
-  - POST /upload-sessions (기존 유지)
-  - GET /upload-sessions/{id}/events (SSE 엔드포인트)
-  - PUT /internal/upload-sessions/complete?imageKey={key} (내부 API, imageKey 기반)
-  - InternalApiKeyFilter (X-Internal-Api-Key 검증)
-  - SseEmitter 관리 (SsePort/SseEmitterAdapter)
-
-2단계: Lambda (구현 완료)
-  - Python 3.12 핸들러 (lambda/upload-complete/handler.py)
-  - SAM 템플릿 (lambda/template.yaml)
-  - 배포 스크립트 (lambda/deploy.sh)
-
-3단계: Flutter
-  - SSE 구독 로직
-  - 업로드 → SSE 대기 → 인증 요청 플로우
-  - 타임아웃/재연결 처리
-
-4단계: 통합 테스트
-  - 사진 인증 E2E 테스트
-  - Lambda 실패 시 fallback 테스트
-  - SSE 타임아웃 테스트
-```
+- 백엔드 `GET /upload-sessions/{id}` 상태 조회 엔드포인트 구현이 필요하다.
+- 현재 SSE는 `permitAll`이고 소유권 검증이 없다. 로그인·본인 세션 전용으로 변경해야 한다.
+- Flutter는 이미 Bearer 토큰으로 SSE를 요청하므로 SSE 인증 변경에 별도 요청 형식 변경은 필요 없다.

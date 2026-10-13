@@ -4,7 +4,6 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,7 +54,9 @@ public class CreateHabitVerificationService implements CreateHabitVerificationUs
 				? createPhotoVerification(habit, cycle, command, targetDate)
 				: createTextVerification(cycle, command, targetDate);
 
-		HabitVerification saved = saveVerification(verification);
+		// 유니크 제약 위반은 GlobalExceptionHandler.CONSTRAINT_ERRORS가 제약명으로 매핑한다(V015·HB010).
+		// 여기서 catch해 V003으로 뭉개지 않는다 — substring 매처 시절의 우회책이었다(#167)
+		HabitVerification saved = habitVerificationRepositoryPort.save(verification);
 		cycle.recordCompletion();
 		HabitCycle savedCycle = habitCycleRepositoryPort.save(cycle);
 
@@ -126,14 +127,5 @@ public class CreateHabitVerificationService implements CreateHabitVerificationUs
 				cycle.getId(), cycle.getHabitId(), command.userId(),
 				command.textContent(), targetDate, cycle.getCompletedDays() + 1
 		);
-	}
-
-	/** 저장 — 유니크 제약 위반(더블탭)을 명시적으로 V003 매핑(G2, substring 매처 오작동 방지) */
-	private HabitVerification saveVerification(HabitVerification verification) {
-		try {
-			return habitVerificationRepositoryPort.save(verification);
-		} catch (DataIntegrityViolationException e) {
-			throw new BusinessException(ErrorCode.VERIFICATION_ALREADY_EXISTS);
-		}
 	}
 }

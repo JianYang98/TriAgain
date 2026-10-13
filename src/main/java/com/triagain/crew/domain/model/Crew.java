@@ -125,17 +125,19 @@ public class Crew {
 				deadlineTime, category, visibility, version, members);
 	}
 
-	/**
-	 * 조건부 UPDATE 전략용 멤버 추가 — 정원 검증은 DB predicate에 위임, 상태/마감/중복만 앱에서 검증.
-	 * 추후 검증 규칙(상태/마감 등) 변경 시 addMember와 이 메서드 둘 다 동기화 필요.
-	 */
-	public CrewMember addMemberSkipCapacityCheck(String userId) {
-		if (!isJoinableStatus()) {           // [수정] canNotJoin()은 isFull을 포함 → 정원-독립 상태 술어
+	/** 가입 상태와 마감만 검증 — 정원·중복 판단 및 멤버 변경 없이 재사용 */
+	public void validateJoinable() {
+		if (!isJoinableStatus()) {
 			throw new BusinessException(ErrorCode.CREW_NOT_RECRUITING);
 		}
 		if (isJoinDeadlinePassed()) {
 			throw new BusinessException(ErrorCode.CREW_JOIN_DEADLINE_PASSED);
 		}
+	}
+
+	/** 조건부 UPDATE 전략용 멤버 추가 — 정원은 DB predicate, 상태·마감·중복은 도메인에서 검증 */
+	public CrewMember addMemberSkipCapacityCheck(String userId) {
+		validateJoinable();
 		if (isAlreadyMember(userId)) {
 			throw new BusinessException(ErrorCode.CREW_ALREADY_JOINED);
 		}
@@ -150,12 +152,7 @@ public class Crew {
 		if (isFull()) {
 			throw new BusinessException(ErrorCode.CREW_FULL);
 		}
-		if (canNotJoin()) {
-			throw new BusinessException(ErrorCode.CREW_NOT_RECRUITING);
-		}
-		if (isJoinDeadlinePassed()) {
-			throw new BusinessException(ErrorCode.CREW_JOIN_DEADLINE_PASSED);
-		}
+		validateJoinable();
 		if (isAlreadyMember(userId)) {
 			throw new BusinessException(ErrorCode.CREW_ALREADY_JOINED);
 		}

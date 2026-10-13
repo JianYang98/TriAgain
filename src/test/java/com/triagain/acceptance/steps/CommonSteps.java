@@ -59,6 +59,12 @@ public class CommonSteps {
 		assertThat(actualCode).isEqualTo(expectedCode);
 	}
 
+	@그리고("에러 메시지는 {string}이다")
+	public void 에러_메시지는_이다(String expectedMessage) {
+		String actualMessage = scenarioContext.getResponse().jsonPath().getString("error.message");
+		assertThat(actualMessage).isEqualTo(expectedMessage);
+	}
+
 	@그리고("현재 인원은 {int}이다")
 	public void 현재_인원은_이다(int expected) {
 		int actual = scenarioContext.getResponse().jsonPath().getInt("data.currentMembers");

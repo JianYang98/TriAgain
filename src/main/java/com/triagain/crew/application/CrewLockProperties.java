@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import lombok.Getter;
 import lombok.Setter;
 
-/** 크루 동시성 락 전략 설정 — yml로 PESSIMISTIC/OPTIMISTIC/CONDITIONAL 전환 */
+/** 크루 동시성 락 전략 설정 — yml로 PESSIMISTIC/OPTIMISTIC/CONDITIONAL/REDIS_ASYNC 선택 */
 @Getter
 @Setter
 @ConfigurationProperties(prefix = "triagain.crew")
@@ -15,7 +15,7 @@ public class CrewLockProperties {
 
 	private Integer maxRetry;
 
-	public enum LockStrategy { PESSIMISTIC, OPTIMISTIC, CONDITIONAL }
+	public enum LockStrategy { PESSIMISTIC, OPTIMISTIC, CONDITIONAL, REDIS_ASYNC }
 
 	public boolean isPessimistic() {
 		return lockStrategy == LockStrategy.PESSIMISTIC;

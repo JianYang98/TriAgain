@@ -5,6 +5,151 @@
 
 ---
 
+### [2026-10-04] Redis recovery 실패 — 예외 타입만으로 미전송을 확정하지 않기 (#183)
+
+- 상황: recovery 실패 로그의 `outcomeUnknown`을 정하려고 Spring Data Redis 3.4.13의 `LettuceExceptionConverter`를 대조했다.
+  WRONGTYPE 오류 응답과 연결 단절이 모두 `RedisSystemException`으로 번역되는 경로가 있었다.
+  초기 구현은 `DataAccessResourceFailureException`을 미전송으로 분류했지만, 독립 리뷰에서 그 타입만으로 전송 단계를 확정할 수 없음을 지적했다.
+- 내 판단: `b865af6`에서 Adapter가 LMOVE 호출 전 연결 획득을 별도로 수행하도록 했다.
+  그 단계의 실패만 `outcomeUnknown=false`로 기록하고, 이후 `DataAccessResourceFailureException`은 결과 불명 예외로 감싼다.
+  나머지 오류도 보수적으로 결과 불명으로 기록한다. 분류는 로그에만 쓰며 worker 미시작·같은 실행의 재시도 금지 동작은 동일하다.
+- AI 역할: Claude가 converter와 최초 구현을 대조했고, Codex가 예외 타입과 전송 단계의 차이를 지적했다.
+  Claude의 `b865af6` 구현 보고에는 연결 획득 분리 제거 변이 시 전송 전 실패 대조군이 기대 `false` 대신 `true`로 실패한 결과가 있다.
+  획득 뒤 해당 예외가 발생하는 경로는 실측하지 않았으며 코드 리딩으로만 확인했다. 상세 실행 이력은 [PR #183](https://github.com/JianYang98/TriAgain/pull/183)을 참조한다.
+- 배운 점: 명령의 실행 여부를 로그에 확정하려면 예외 이름 대신 전송 전후의 실행 경계를 근거로 삼는다.
+
+---
+
+### [2026-10-04] Redis 재전송 검증 — 연결 종료 전 관찰과 의도한 단언의 실패 (#183)
+
+- 상황: `autoReconnect=true` 변이의 첫 실행은 wire LMOVE 횟수가 아닌 helper의 로그 단언에서 먼저 실패했다.
+  독립 리뷰에서는 P4-T12의 2.5초 관찰이 helper의 연결 종료·Queue 삭제 뒤에 수행된다는 추가 공백을 확인했다.
+  기존 wire count는 초기 재전송을 탐지할 수 있었지만, 정리 이후의 대기는 살아 있는 client의 추가 재전송을 관찰하는 증거가 아니었다.
+- 내 판단: wire·상태 단언이 로그 단언보다 먼저 검사되도록 하고, `0a45d31`에서 연결과 Queue를 정리하기 전에 관찰하도록 옮겼다.
+  command timeout 2초를 넘는 2.5초 관찰 동안 wire LMOVE 1회·BLMOVE 0회를 검사하고 이후 Queue 상태를 수집한다.
+- AI 역할: Claude가 테스트를 보강했다. `b865af6` 구현 보고에서 `autoReconnect=true` 변이는
+  `[wire LMOVE 횟수] expected: 1 but was: 3`으로 FAIL, 원복 후 PASS를 재확인했다.
+  상세 민감성 실행 이력은 [PR #183](https://github.com/JianYang98/TriAgain/pull/183)에 남긴다.
+- 배운 점: 민감성 증명은 목표 단언의 FAIL을 확인해야 한다. 지연된 동작을 검증할 때는 관찰 구간이 끝날 때까지 대상 자원을 유지한다.
+
+---
+
+### [2026-10-03] Redis 재기동 E2E — 직접 생성한 웹 context의 설정과 격리 (#183)
+
+- 상황: DB·Redis 상태를 유지하며 웹 context A→B를 만드는 테스트에 `SpringApplicationBuilder`를 사용했다.
+  작성 전 코드 대조로 확인한 주의점은 두 가지다. 아래는 테스트 실패를 재현한 기록이 아니다.
+  - `.properties()`는 defaultProperties여서 `application-integration.yml`의 Redis port=1·PESSIMISTIC 설정에 덮일 수 있다.
+  - 직접 만든 context에는 `@SpringBootTest`의 `TestTypeExcludeFilter` 등록이 없어 테스트 클래스 내부 설정이 스캔될 수 있다.
+- 내 판단: 설정은 command-line 인수(`--key=value`)로 넘기고, initializer에서 `TestTypeExcludeFilter`를 등록했다.
+  schema는 한 번만 준비하며 두 재기동 context는 `ddl-auto=none`으로 DB 증거를 유지한다.
+- AI 역할: Claude가 설정 우선순위와 테스트 설정 제외 방식을 확인하고 `RedisCrewJoinRecoveryE2eTest`를 구성했다.
+  검증은 같은 JVM의 웹 context 재생성 모델이며 OS 프로세스 강제 종료를 재현한 것은 아니다.
+- 배운 점: 테스트 framework 밖에서 context를 직접 만들 때는 설정 우선순위·스캔 격리·데이터 수명을 명시적으로 맞춘다.
+
+---
+
+### [2026-10-02] PR #182 worker의 Redis 응답 유실이 Lettuce 재전송에 숨음
+
+- 상황: CodeRabbit의 지적으로 Lettuce 6.4.2.RELEASE의 기본 autoReconnect와 미응답 명령 재전송을 대조했다.
+  실제 Redis 앞의 테스트 TCP 프록시가 서버 응답을 읽은 뒤 클라이언트 전달 없이 연결을 닫도록 했다.
+  수정 전 BLMOVE는 A를 processing에 남기고 B를 persistence에 전달·ACK한 뒤 다음 claim까지 진행했다(claim 3회).
+  이 전송 테스트의 persistence는 mock이며 DB 효과는 기존 PostgreSQL E2E에서 별도로 검증한다.
+  LREM 응답 유실에서는 ACK가 2회 전송됐다. 두 케이스 모두 전송 1회 단언에서 실패했다.
+- 내 판단: Phase 3의 결과 불명 중단·자동 재명령 금지 계약을 그대로 이행한다. worker의 claim과 ACK에만
+  autoReconnect=false / REJECT_COMMANDS를 적용하고 producer 설정은 보존한다. private factory를 Adapter가
+  소유하여 Boot의 RedisConnectionFactory 자동 설정을 대체하지 않는다. reconnect를 끄는 것은 서버 실행 취소가
+  아니므로 이동·ACK 결과 불명 계약은 유지한다. recovery/retry·startup guard는 추가하지 않는다.
+  Greptile의 예외 규칙 지적은 일반 규칙과 내부 실패의 적용 범위 문제로 판단했다. worker가 잡아 중단하는
+  parse/invariant/ACK 오류는 기존 내부 예외를 유지한다. 새 ErrorCode나 CREW_FULL 매핑을 만들지 않는다.
+  /simplify 미채택 제안(단계 enum, 테스트 fixture·중복 정리, worker 전용 테스트 context, timeout 검사 위치)은
+  별도 검증 이득이 없어 이번 수정에 포함하지 않는다. 전용 클라이언트 구성은 동작 결함을 해결하므로 포함한다.
+- AI 역할: Codex·Claude가 PR 댓글을 코드·SDD·관리 라이브러리와 대조했다. Codex가 TCP 장애를 재현하여
+  기존 Port 예외 주입이 놓치던 재전송을 확인하고, 수정 뒤 같은 두 테스트의 PASS를 확인했다.
+  Given–When–Then 주석과 이 판단 기록도 보완했다. 상세 실행 결과는 Phase 3 검증 기록의 후속 절을 따른다.
+- 배운 점: 애플리케이션에서 retry를 하지 않는다는 코드만으로 전송 계층의 재실행 부재를 증명하지 않는다.
+  비멱등 Queue 명령은 실제 클라이언트가 응답을 잃는 경계에서 전송 횟수와 다음 작업 상태를 함께 검증한다.
+
+---
+
+### [2026-09-27] PR #181 REDIS_ASYNC 표기 차이로 기동 게이트가 빠짐
+
+- 상황: 서비스의 `CrewLockProperties.LockStrategy`는 `redis-async`를 `REDIS_ASYNC`로 바인딩하지만, `CrewJoinRedisConfiguration`의 기존 `@ConditionalOnProperty(havingValue="REDIS_ASYNC")`는 문자열을 비교했다. 따라서 같은 설정에서 가입 경로는 Redis를 쓰면서 기동 PING과 Redis health indicator는 등록되지 않았다.
+- 내 판단: `d25b421`에서 설정 조건도 `Binder`로 같은 enum에 바인딩하고, `redis-async`에서 게이트·health가 등록되고 `pessimistic`에서 등록되지 않는 테스트 2건을 추가했다. Redis 연결 실패 테스트는 기존 테스트를 유지했다.
+- AI 역할: 리뷰에서 가입 전략 선택과 설정 조건을 대조해 표기 차이를 발견하고, 수정 전 HEAD에서 relaxed 표기 회귀 테스트의 실패를 확인했다. 수정 커밋은 별도 작업 세션에서 작성했다.
+- 배운 점: 하나의 설정값을 여러 계층에서 해석할 때는 문자열 조건과 타입 바인딩을 섞지 않는다.
+
+---
+
+### [2026-09-27] PR #181 Redis 준비 도구가 pending 검사 전에 크루 키를 생성
+
+- 상황: `scripts/crew-join-redis.sh init`은 크루별 `initialize-crew-join.lua`를 실행한 뒤에야 공용 pending을 검사했다. 기존 pending이 남은 runId를 재사용하면 종료 코드 4로 실패하면서도 앞선 크루의 Redis 키는 생성됐다. mock Redis에서 pending `LLEN=1`일 때 수정 전 `EVAL` 1회가 호출되는 것을 확인했다.
+- 내 판단: 첫 쓰기 전 `check_pending_empty`를 호출하고, 기존 마지막 검사도 유지한다. 앞의 검사는 이미 부적합한 run에 대한 부분 초기화를 막고, 뒤의 검사는 준비 중 유입된 pending을 탐지한다. 요청 중지 전제와 크루 간 원자성은 기존 계약 그대로다.
+- AI 역할: PR diff와 정본의 새 run `pending=0` 조건을 대조하고, mock Redis/DB 재현으로 EVAL 순서를 확인한 뒤 순서를 수정했다.
+- 배운 점: 여러 key를 준비하는 도구의 전역 사전조건은 첫 번째 쓰기 전에 검사한다. 마지막 pre-flight만으로는 실패 시 상태가 보존되지 않는다.
+
+---
+
+### [2026-08-22] 우회책이 원인 수정보다 오래 살았다 — habit 인증 저장의 무조건 catch (#167)
+
+- 상황: `CreateHabitVerificationService.saveVerification()`이 `DataIntegrityViolationException`을
+  제약명 구분 없이 잡아 전부 `V003`으로 바꾸고 있었다. PR #164 리뷰가 "V015·HB010을 뭉갠다"로 보고
+- 내 판단: **분기를 추가하지 않고 catch를 지운다.** 이 catch는 매핑 누락이 아니라 **해소된 우회책의
+  잔재**였다 — `2a33b73`(07-11) habit BC 구현 시점의 `GlobalExceptionHandler`는 `contains()`
+  부분매칭이었고, `sdd/solo-habit/impl-guards.md` G2가 *"매처에 의존하지 마라 … 서비스 레이어에서
+  catch해 명시 매핑 … 그럼 애초에 핸들러까지 안 감"* 이라고 이 catch를 지시했다. 그런데
+  `af52fc0`(07-24)가 매처를 정확매칭 Map으로 교체했고 `23694b3`(07-25)가 habit 제약 2건을 등록했다.
+  **07-25부터 우회책은 중복이자 정확매칭을 가로막는 쪽**이 됐고, 07-11의 지시서 문구만 남아 4주를 더 살았다.
+  분기를 추가하면 제약명→에러코드 표가 두 곳이 되고, application 레이어가 Hibernate 타입을 import하게 된다
+- AI 역할: 세 커밋의 시간순 대조로 "매핑 버그"가 아니라 "잔재"임을 특정. `HabitVerificationJpaAdapter`에
+  flush가 없다는 대조군(crew는 `saveMemberAndFlush` 명시)으로 catch 도달 여부 자체가 불확실함을 확인 —
+  삭제하면 서비스 안에서 터지든 commit 시점에 터지든 같은 코드가 나가므로 그 불확실성이 함께 사라진다
+- 배운 점: **우회책에는 전제가 붙어 있고, 전제가 사라져도 코드는 안 사라진다.** 원인을 고치는 커밋
+  (`af52fc0`)은 자기가 무효화한 우회책을 찾아 지우는 것까지가 범위다. 특히 그 우회책이 SDD 가드 문서에
+  적혀 있으면 문서가 코드를 되살리는 압력으로 남는다. `[2026-03-03] DataIntegrityViolation 기본
+  에러코드 V003 하드코딩` 항목의 *"기본 fallback은 범용 코드, 구체 매핑은 명시적 분기"* 판단을
+  서비스 레이어가 다시 덮고 있던 셈이다
+
+---
+
+### [2026-08-22] 쿼리 파라미터 바인딩 예외가 500 C002로 매핑된 문제
+
+- 상황: `@RequestParam` 누락·타입 변환 실패가 전용 예외 핸들러 없이 catch-all `Exception` 핸들러로 흘러 `500 C002`를 반환했다.
+- 내 판단: `MissingServletRequestParameterException`과 `MethodArgumentTypeMismatchException`을 `GlobalExceptionHandler` 한 곳에서 `400 C001`로 매핑했다. malformed JSON과 미등록 경로는 별도 예외이므로 이번 수정에서 제외했다.
+- AI 역할: 내부 API·크루 검색·알림 query 바인딩 호출자를 전수 확인하고, 공통 핸들러와 실제 HTTP API 테스트 2건으로 범위를 좁혔다.
+- 배운 점: Spring MVC 바인딩 예외는 Bean Validation 예외와 별도 경로이므로, 공통 예외 처리기 변경 시 query 누락과 타입 변환 호출자를 함께 점검해야 한다.
+
+---
+
+### [2026-08-22] CREW_ACCESS_DENIED(CR009) 메시지 일반화 — 공용 에러코드의 메시지 문자열이 조건 하나에만 고정돼 있었다
+
+- 상황: 이슈 #166 — 크루 멤버(비리더)가 `PATCH/DELETE /crews/{id}`를 호출하면 403과 함께 "크루
+  멤버만 조회할 수 있습니다."를 받는다. 실제로는 멤버인데 "멤버가 아니다"라는 사유를 받는 모순.
+  코드를 확인하니 `CREW_ACCESS_DENIED`(CR009)가 5곳에서 던져지고 있었고, 그중 3곳
+  (`EditCrewService`·`DeleteCrewService`의 `!member.isLeader()` 분기,
+  `VerificationMutationGuard.requireOwner`)은 "비멤버 조회"와 무관한 조건인데도 같은 메시지
+  문자열을 그대로 재사용하고 있었다
+- 내 판단: 조건별 에러코드 분리 대신, `error-messages.properties`의 값 하나를
+  조건-불가지론적인 일반 권한 문구("이 작업을 수행할 권한이 없습니다.")로 바꿨다 — `ErrorCode`
+  enum·throw 지점·HTTP 상태코드는 전부 무변경. 구현 전에 `ApiResponse`·`ErrorResponse`·
+  `GlobalExceptionHandler`를 먼저 읽어 응답 JSON에 `error.message`가 실제로 존재하는지 확인했다
+  (레코드가 `code`·`message` 두 필드뿐이라 jsonPath `error.message`가 맞았다). CR009(CREW_ACCESS_DENIED)
+  메시지를 단언하는 테스트는 지금까지 없었다는 걸 확인한 뒤(기존 `에러 코드는 {string}이다` 스텝은
+  `ErrorCode.valueOf().getCode()`만 비교) 새 스텝을 추가했고, crew-detail·crew-edit 두 시나리오에만
+  붙였다 — crew-delete는 `DeleteCrewService`가 `EditCrewService`와 동일한 `!isLeader()` 패턴이라
+  회귀 감지 목적상 중복이라 판단해 생략했다
+- AI 역할: Cucumber 실행 결과(JUnit XML + cucumber-report.html)를 직접 파싱해 새로 추가한 두
+  단언이 UNDEFINED·FAILED 없이 실제로 매칭·통과했는지 확인했고, 726개 테스트 중 skip 26건이
+  기존 스케줄러·Apple 인증 시나리오(변경 전부터 스킵 대상)였지 이번 변경으로 새로 생긴 스킵이
+  아님을 테스트케이스명으로 대조했다. `/simplify`의 4개 병렬 리뷰(재사용·단순화·효율·고도)에서
+  지적 0건
+- 배운 점: 공용 에러코드가 서로 무관한 조건에 재사용될 때, 메시지 문자열은 코드와 달리 조건
+  하나에만 맞게 "우연히" 고정될 수 있다 — 코드(`CR009`) 재사용 자체는 설계 의도(docs §2.8)였지만,
+  메시지가 조건-불가지론적이어야 한다는 요구는 별도로 지켜야 했다. 그리고 이 버그가 지금까지
+  안 잡힌 이유는 "CR009 메시지를 단언한 테스트가 없어서"였다 — 응답 바디의 필드 중 어떤
+  것도 검증하지 않으면 그 필드는 회귀해도 그린으로 남는다
+
+---
+
 ### [2026-08-13] 비관적 락의 발행 SQL은 `FOR UPDATE`가 아니라 `FOR NO KEY UPDATE`였다
 
 - 상황: 문서 8곳이 비관적 락을 `SELECT FOR UPDATE`로 기술했으나, SQL 로그 실측 결과 발행되는 건
@@ -270,3 +415,5 @@
   4. **후속 조치** — (a) FCM 스모크 테스트 엔드포인트 `/internal/fcm-test` 신설(Tier 2, BE 에이전트 지시 전달 완료). (b) 스케줄러 요약 로그를 FCM 발송 결과와 DB 저장 결과로 분리. (c) 배포 게이트 키 유효성 검증 보강 검토 중
 - AI 역할: 3겹 탐지 공백(배포 게이트·`GoogleCredentials` lazy 검증·요약 로그 설계) 분석, FCM 에러코드(`UNAUTHENTICATED` vs `UNREGISTERED`) 구분으로 토큰 안전 여부 판정
 - 배운 점: `GoogleCredentials.fromStream()`은 구조 파싱만 하고 Google과 실제 통신은 하지 않는다. 키 교체 후에는 반드시 온디맨드 `send()` 호출로 발송 인증까지 확인해야 한다. 스케줄러 요약 로그는 처리 대상 카운트와 외부 I/O 결과를 분리해서 집계해야 거짓 초록불을 막는다
+- 후속 결과 (2026-08-20): `/internal/fcm-test`가 `firebase.enabled=true`에서만 활성화되도록 구현되었고,
+  성공·영구 토큰 무효·발송 오류를 별도 상태로 반환한다. 관련 단위 테스트 3건이 통과했다.

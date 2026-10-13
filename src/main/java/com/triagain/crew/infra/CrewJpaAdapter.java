@@ -45,6 +45,13 @@ public class CrewJpaAdapter implements CrewRepositoryPort {
 		return entity.toDomain();
 	}
 
+	/** Redis 가입 INSERT 결과 반환 — 증가 여부를 같은 transaction에서 판단 */
+	@Override
+	public int insertMemberIfAbsent(CrewMember member) {
+		return crewMemberJpaRepository.insertIfAbsent(member.getId(), member.getCrewId(), member.getUserId(),
+			member.getRole().name(), member.getJoinedAt());
+	}
+
 	/** 조건부 원자적 멤버 수 증가 — current_members < max_members일 때만 +1 */
 	@Override
 	public int incrementMembersIfNotFull(String id) {

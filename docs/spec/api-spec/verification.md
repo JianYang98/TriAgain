@@ -151,7 +151,7 @@ Content-Type: application/json
   "data": null,
   "error": {
     "code": "CR009",
-    "message": "크루 멤버만 조회할 수 있습니다."
+    "message": "이 작업을 수행할 권한이 없습니다."
   }
 }
 
@@ -338,7 +338,7 @@ Content-Type: application/json
   "data": null,
   "error": {
     "code": "CR009",
-    "message": "크루 멤버만 조회할 수 있습니다."
+    "message": "이 작업을 수행할 권한이 없습니다."
   }
 }
 
@@ -430,7 +430,7 @@ Authorization: Bearer <token>
 | 400 | V021 | 오늘은 더 이상 인증을 수정하거나 취소할 수 없습니다. | 슬롯당 상한(기본 3회) 초과 |
 | 400 | CR013 | 진행 중인 챌린지만 처리할 수 있습니다. | 취소 역연산 CAS 실패(희귀 레이스) — 트랜잭션 전체 롤백, 재조회 후 재시도 |
 | 409 | V023 | 신고 검토 중인 인증은 수정하거나 취소할 수 없습니다. | 대상이 `REPORTED`/`HIDDEN`/`REJECTED` |
-| 403 | CR009 | 크루 멤버만 조회할 수 있습니다. | 남의 인증 (`CREW_ACCESS_DENIED` 재사용, 전용 코드 없음) |
+| 403 | CR009 | 이 작업을 수행할 권한이 없습니다. | 남의 인증 (`CREW_ACCESS_DENIED` 재사용, 전용 코드 없음) |
 | 404 | V001 | 인증을 찾을 수 없습니다. | 존재하지 않는 인증 |
 
 ---
@@ -509,20 +509,77 @@ Content-Type: application/json
 | 409 | V015 | 이미 사용된 업로드 세션입니다. | 세션 이미 사용됨 |
 | 409 | V022 | 이미 취소되었거나 수정된 인증입니다. | 대상이 이미 `CANCELLED` (취소됐거나 수정으로 치환되어 id가 낡음) |
 | 409 | V023 | 신고 검토 중인 인증은 수정하거나 취소할 수 없습니다. | 대상이 `REPORTED`/`HIDDEN`/`REJECTED` |
-| 403 | CR009 | 크루 멤버만 조회할 수 있습니다. | 남의 인증 (`CREW_ACCESS_DENIED` 재사용, 전용 코드 없음) |
+| 403 | CR009 | 이 작업을 수행할 권한이 없습니다. | 남의 인증 (`CREW_ACCESS_DENIED` 재사용, 전용 코드 없음) |
 | 404 | V001 | 인증을 찾을 수 없습니다. | 존재하지 않는 인증 |
 
 **공통 참고:** 취소·수정 마감/컷오프는 `triagain.verification` 설정값(기본 `cancel-cutoff-minutes: 5`, `slot-attempt-limit: 3`)을 따르며, 판정 시 `DeadlinePolicy.isWithinDeadline()`(grace 5분 포함)이 아닌 **grace 미포함 순수 비교**를 사용한다.
 
 ---
 
+### GET /upload-sessions/{id} (업로드 세션 상태 조회)
+
+> ⚠️ **계약 확정·구현 대기.** 아래는 목표 계약이며 **현재 백엔드에 이 라우트가 없다**
+> (`UploadSessionController`에는 `POST /upload-sessions`와 `GET /upload-sessions/{id}/events` 두 개만 존재).
+> 지금 호출하면 아래 에러표의 `404 V004` 봉투가 아니라 **라우트 미존재 404**가 돌아온다.
+> 응용 계층 `UploadSessionQueryService.findByIdAndUserId(id, userId)`는 이미 소유권 필터를 포함해 존재한다.
+
+SSE 이벤트 누락·연결 실패에 대비해 업로드 세션의 현재 상태를 조회하는 폴링 API.
+**호출 순서** — 클라이언트는 S3 업로드 **전에** SSE를 구독하고, **S3 업로드 후** 이 API의 2초 간격 폴링을 시작한다.
+두 채널 중 먼저 `COMPLETED` 또는 `EXPIRED`를 확인한 결과를 사용하고 나머지 대기를 종료한다.
+
+**인증:** 필요 (본인이 생성한 업로드 세션만 조회 가능) — 목표 계약
+
+**요청 (Request)**
+```http
+GET /upload-sessions/123 HTTP/1.1
+Authorization: Bearer <token>
+```
+
+**파라미터:**
+- `id`: (필수) 업로드 세션 ID (Long)
+
+**성공 응답 (200 OK)**
+```json
+{
+  "success": true,
+  "data": {
+    "uploadSessionId": 123,
+    "status": "PENDING"
+  },
+  "error": null
+}
+```
+
+**필드 설명:**
+- `uploadSessionId`: 조회한 업로드 세션 ID
+- `status`: `PENDING`(처리 대기), `COMPLETED`(업로드 완료), `EXPIRED`(만료)
+
+**에러 응답**
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 401 | A003 | 로그인이 필요합니다. | 인증 토큰 없음·만료 |
+| 404 | V004 | 업로드 세션을 찾을 수 없습니다. | 세션이 없거나 요청자 소유가 아님 |
+
+---
+
 ### GET /upload-sessions/{id}/events (SSE 구독 — 업로드 완료 알림)
 
-업로드 세션의 상태 변경을 실시간으로 수신하는 SSE 엔드포인트. 클라이언트가 S3 업로드 후 Lambda가 세션을 COMPLETED로 변경하면 이벤트를 받는다.
+업로드 세션의 상태 변경을 실시간으로 수신하는 SSE 엔드포인트. Lambda가 세션을 COMPLETED로 변경하면 이벤트를 받는다.
+
+**구독 시점: S3 업로드(PUT) 전.** 서버는 미구독 세션의 완료 이벤트를 보관하지 않고 버리므로
+(`SseEmitterAdapter.send()`가 등록된 emitter가 없으면 그대로 반환), 구독 전에 Lambda 콜백이 도착하면 이벤트가 영구 유실된다.
+
+> ⚠️ **인증은 계약 확정·구현 대기.** 아래 "인증: 필요"와 `401 A003`은 **목표 계약**이며 현재 구현과 다르다.
+> 현재 이 엔드포인트는 `SecurityConfig`에서 `/upload-sessions/*/events`가 `permitAll()`이고
+> 컨트롤러가 인증 주체를 받지 않아(`subscribe(@PathVariable Long id)`) **소유권 검증이 없다.**
+> 세션 id만 알면 무인증 구독이 가능하다(노출 정보는 `COMPLETED` 문자열).
+
+**인증:** 필요 (본인이 생성한 업로드 세션만 구독 가능) — 목표 계약
 
 **요청 (Request)**
 ```
 GET /upload-sessions/{id}/events HTTP/1.1
+Authorization: Bearer <token>
 Accept: text/event-stream
 ```
 
@@ -535,9 +592,16 @@ event: upload-complete
 data: COMPLETED
 ```
 
+**에러 응답**
+| HTTP | 코드 | 메시지 | 설명 |
+|------|------|--------|------|
+| 401 | A003 | 로그인이 필요합니다. | 인증 토큰 없음·만료 |
+| 404 | V004 | 업로드 세션을 찾을 수 없습니다. | 세션이 없거나 요청자 소유가 아님 |
+
 **제약 사항:**
 - SSE 타임아웃: 60초
-- 클라이언트는 fallback으로 폴링 대비 필요
+- 클라이언트는 SSE 이벤트 누락·연결 실패에 대비해 `GET /upload-sessions/{id}`를 **S3 업로드 후** 2초 간격으로 병렬 폴링한다 (해당 API는 구현 대기)
+- SSE와 폴링 중 먼저 `COMPLETED` 또는 `EXPIRED`를 확인한 결과를 사용하고 나머지 대기를 종료한다
 
 ---
 
@@ -600,7 +664,7 @@ Content-Type: application/json
 |------|------|--------|------|
 | 400 | S003 | 이모지는 필수입니다. | `emojiType` 누락·공백 |
 | 400 | S006 | 지원하지 않는 이모지입니다. | 정의 밖 값 또는 활성 세트 밖 이모지 |
-| 403 | CR009 | 크루 멤버만 조회할 수 있습니다. | 해당 크루의 현재 멤버가 아님 (`CREW_ACCESS_DENIED` 재사용 — 취소 API 선례) |
+| 403 | CR009 | 이 작업을 수행할 권한이 없습니다. | 해당 크루의 현재 멤버가 아님 (`CREW_ACCESS_DENIED` 재사용 — 취소 API 선례) |
 | 404 | CR001 | 크루를 찾을 수 없습니다. | 인증이 속한 크루 없음 |
 | 404 | S005 | 반응을 남길 인증을 찾을 수 없습니다. | 인증 미존재 **또는** 노출 상태(`APPROVED`)가 아님 — 취소·신고 숨김 등. 서버는 이 둘을 구분하지 않는다 (원자 처리) |
 
@@ -645,7 +709,7 @@ Authorization: Bearer <token>
 
 | HTTP | 코드 | 메시지 | 설명 |
 |------|------|--------|------|
-| 403 | CR009 | 크루 멤버만 조회할 수 있습니다. | 해당 크루의 현재 멤버가 아님 |
+| 403 | CR009 | 이 작업을 수행할 권한이 없습니다. | 해당 크루의 현재 멤버가 아님 |
 | 404 | CR001 | 크루를 찾을 수 없습니다. | 인증이 속한 크루 없음 |
 | 404 | S005 | 반응을 남길 인증을 찾을 수 없습니다. | 인증 미존재 (취소된 인증은 **에러가 아니다** — 위 참조) |
 

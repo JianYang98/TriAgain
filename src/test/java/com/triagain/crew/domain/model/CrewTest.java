@@ -11,6 +11,8 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import com.triagain.common.exception.BusinessException;
 import com.triagain.common.exception.ErrorCode;
@@ -404,6 +406,76 @@ class CrewTest {
 					.isInstanceOf(BusinessException.class)
 					.extracting("errorCode")
 					.isEqualTo(ErrorCode.CREW_NOT_RECRUITING);
+		}
+	}
+
+	@Nested
+	@DisplayName("validateJoinable — 상태·마감의 순수 검증")
+	class ValidateJoinable {
+
+		@ParameterizedTest
+		@CsvSource({
+			"RECRUITING, false, 30, false, NONE",
+			"RECRUITING, false, 30, true, NONE",
+			"ACTIVE, true, 30, false, NONE",
+			"ACTIVE, true, 30, true, NONE",
+			"RECRUITING, false, 3, false, NONE",
+			"RECRUITING, false, 2, false, CREW_JOIN_DEADLINE_PASSED",
+			"ACTIVE, false, 30, false, CREW_NOT_RECRUITING",
+			"COMPLETED, false, 30, true, CREW_NOT_RECRUITING",
+			"COMPLETED, false, 2, false, CREW_NOT_RECRUITING"
+		})
+		@DisplayName("상태·마감 검증은 반복 호출하거나 거부되어도 멤버와 인원을 변경하지 않는다")
+		void validation_doesNotMutate(CrewStatus status, boolean allowLateJoin, int days,
+				boolean full, String expected) {
+			// Given
+			Crew crew = validationCrew(status, allowLateJoin, days, full);
+			List<CrewMember> membersBefore = List.copyOf(crew.getMembers());
+			int countBefore = crew.getCurrentMembers();
+
+			// When & Then
+			for (int attempt = 0; attempt < 2; attempt++) {
+				if ("NONE".equals(expected)) {
+					crew.validateJoinable();
+				} else {
+					assertThatThrownBy(crew::validateJoinable).isInstanceOf(BusinessException.class)
+						.extracting("errorCode").isEqualTo(ErrorCode.valueOf(expected));
+				}
+				assertThat(crew.getMembers()).containsExactlyElementsOf(membersBefore);
+				assertThat(crew.getCurrentMembers()).isEqualTo(countBefore);
+				assertThat(crew.getStatus()).isEqualTo(status);
+			}
+		}
+
+		@ParameterizedTest
+		@CsvSource({
+			"COMPLETED, 30, true, newcomer, CREW_FULL, CREW_NOT_RECRUITING",
+			"RECRUITING, 2, true, newcomer, CREW_FULL, CREW_JOIN_DEADLINE_PASSED",
+			"RECRUITING, 30, true, leader, CREW_FULL, CREW_ALREADY_JOINED",
+			"COMPLETED, 2, false, newcomer, CREW_NOT_RECRUITING, CREW_NOT_RECRUITING",
+			"RECRUITING, 2, false, leader, CREW_JOIN_DEADLINE_PASSED, CREW_JOIN_DEADLINE_PASSED"
+		})
+		@DisplayName("여러 거절 조건이 겹쳐도 두 가입 메서드의 기존 오류 우선순위를 유지한다")
+		void addMember_preservesErrorOrder(CrewStatus status, int days, boolean full, String userId,
+				ErrorCode standardError, ErrorCode conditionalError) {
+			// Given
+			Crew crew = validationCrew(status, false, days, full);
+			List<CrewMember> membersBefore = List.copyOf(crew.getMembers());
+
+			// When & Then
+			assertThatThrownBy(() -> crew.addMember(userId)).isInstanceOf(BusinessException.class)
+				.extracting("errorCode").isEqualTo(standardError);
+			assertThatThrownBy(() -> crew.addMemberSkipCapacityCheck(userId))
+				.isInstanceOf(BusinessException.class).extracting("errorCode").isEqualTo(conditionalError);
+			assertThat(crew.getMembers()).containsExactlyElementsOf(membersBefore);
+			assertThat(crew.getCurrentMembers()).isEqualTo(1);
+		}
+
+		private Crew validationCrew(CrewStatus status, boolean allowLateJoin, int days, boolean full) {
+			return Crew.of("CREW-1", "leader", "크루", "목표", "인증", VerificationType.TEXT,
+				full ? 1 : 5, 1, status, LocalDate.now().minusDays(7), LocalDate.now().plusDays(days),
+				allowLateJoin, "ABC123", LocalDateTime.now(), Crew.DEFAULT_DEADLINE_TIME, null,
+				CrewVisibility.PUBLIC, 0L, List.of(CrewMember.createLeader("leader", "CREW-1")));
 		}
 	}
 

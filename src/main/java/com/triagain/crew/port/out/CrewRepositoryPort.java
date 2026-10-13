@@ -16,7 +16,10 @@ public interface CrewRepositoryPort {
 	/** 크루 멤버 저장 — 가입·역할 변경 시 사용 */
 	CrewMember saveMember(CrewMember member);
 
-	/** 조건부 원자적 멤버 수 증가 — current_members < max_members일 때만 +1 (1=성공, 0=정원 초과) */
+	/** 대상 가입 UNIQUE만 무시하는 INSERT — 신규 1행, 기존 가입 0행, 다른 오류는 전파 */
+	int insertMemberIfAbsent(CrewMember member);
+
+	/** 조건부 원자적 멤버 수 증가 — current_members < max_members일 때만 +1 (1=성공, 0=조건 불충족·크루 부재) */
 	int incrementMembersIfNotFull(String id);
 
 	/** 멤버 저장 + 즉시 flush — 유니크 제약 위반을 호출 지점에서 DataIntegrityViolationException으로 잡기 위함 (전략 C 전용) */

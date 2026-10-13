@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import org.springframework.http.HttpStatus;
@@ -130,7 +129,6 @@ public class UserController {
 
 	record UpdateNicknameRequest(
 			@NotBlank
-			@Pattern(regexp = "^[가-힣a-zA-Z0-9_]{2,12}$", message = "INVALID_NICKNAME")
 			String nickname
 	) {
 	}

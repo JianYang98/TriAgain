@@ -1,5 +1,9 @@
 # MVP 스프린트 (2/28 ~ 3/3)
 
+> **역사 기록**: 이 문서는 2026-02~03 초기 MVP 계획과 당시 진행 상태를 보존한다.
+> 현재 일정·완료 현황·API 계약의 정본이 아니다. 현재 문서는 [`docs/handoff.md`](handoff.md),
+> [`docs/spec/api-spec.md`](spec/api-spec.md), [`docs/prod-deploy-checklist.md`](prod-deploy-checklist.md)를 참조한다.
+
 ## 목표
 
 Feed API + Verification API + Upload Session 완성 → Flutter 연동 → E2E 데모
