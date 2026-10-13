@@ -6,6 +6,8 @@ USAGE='사용법: START_MS=<UTC epoch ms> END_MS=<UTC epoch ms> OUT_DIR=<run 폴
   선택: PROM_URL(기본 http://127.0.0.1:9090) QUERIES(기본 이 폴더의 queries.promql)
   출력: $OUT_DIR/prom-<이름>.json (Prometheus API 응답 그대로). 실패한 쿼리는 prom-<이름>.json.failed로 남긴다.
   판정: HTTP≠200 또는 status≠success → 실패. 결과가 비어도 실패. 단 node_* 이름은 경고.
+  OUT_DIR에 prom-*.json·prom-*.json.failed가 하나라도 있으면 아무것도 쓰지 않고 1 (덮어쓰기 방지, 강제 옵션 없음).
+  재추출은 새 하위 폴더로: OUT_DIR="<run 폴더>/reexport-$(date -u +%Y%m%dT%H%M%SZ)"
   범위가 11000초(약 3시간)를 넘으면 Prometheus가 step=1 요청을 거절한다.
   종료 코드: 0 전부 성공 · 1 입력 오류 · 2 하나 이상 실패 · 3 node_* 경고만 있음'
 DIR=$(cd "$(dirname "$0")" && pwd)
@@ -19,6 +21,10 @@ PROM_URL=${PROM_URL:-http://127.0.0.1:9090}
 QUERIES=${QUERIES:-$DIR/queries.promql}
 [[ -f "$QUERIES" ]] || die 1 "쿼리 파일 없음: $QUERIES"
 command -v jq >/dev/null 2>&1 || die 2 "jq가 필요하다"
+if compgen -G "$OUT_DIR/prom-*.json" >/dev/null || compgen -G "$OUT_DIR/prom-*.json.failed" >/dev/null; then
+	die 1 "이미 prom 덤프가 있다 — 덮어쓰지 않는다: $OUT_DIR
+  재추출은 새 하위 폴더로: OUT_DIR=\"<run 폴더>/reexport-\$(date -u +%Y%m%dT%H%M%SZ)\""
+fi
 mkdir -p "$OUT_DIR"
 
 sec() { printf '%d.%03d' $(($1 / 1000)) $(($1 % 1000)); }

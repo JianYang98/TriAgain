@@ -18,6 +18,7 @@ require_id RUN_ID
 [[ "$K6_END_MS" =~ ^[0-9]{13}$ ]] || die 1 "K6_END_MS는 13자리 UTC epoch ms: '$K6_END_MS'"
 [[ "$CLOCK_OFFSET_MS" =~ ^-?[0-9]+$ ]] || die 1 "CLOCK_OFFSET_MS는 정수(ms): '$CLOCK_OFFSET_MS'"
 OUT_DIR=${OUT_DIR:-$(default_out_dir)}
+export OUT_DIR # 자식 tcp-collect.sh stop이 같은 폴더를 쓴다 (기본값을 계산한 경우에도)
 [[ -d "$OUT_DIR" ]] || die 1 "OUT_DIR 없음: $OUT_DIR"
 poller_files
 CAP=${POLL_CAP_SEC:-600}
