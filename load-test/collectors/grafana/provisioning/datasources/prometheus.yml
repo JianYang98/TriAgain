@@ -1,0 +1,14 @@
+# load-test/monitoring/grafana/provisioning/datasources/prometheus.yml의 실행용 복사본 (C8).
+# 바뀐 점: url의 컨테이너 이름을 환경변수로(prometheus-up.sh가 DBB_PROM_HOST를 넘긴다), uid를 대시보드 값으로 고정,
+#          timeInterval=1s(scrape 간격).
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    uid: PBFA97CFB590B2093
+    type: prometheus
+    access: proxy
+    url: http://${DBB_PROM_HOST}:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: 1s
