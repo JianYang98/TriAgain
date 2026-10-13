@@ -292,6 +292,18 @@ curl -sS -m 5 -o /dev/null -w '%{http_code}\n' -X POST "http://$APP_PUBLIC_IP:80
 
 ## 9. 맥 모니터링 기동 · 확인 (세션 단위)
 
+**이번 실험은 기존 `load-test/scripts/start-monitoring.sh`·`stop-monitoring.sh`를 쓰지 않는다** — 기존 스크립트는 `prom/prometheus:latest`·`grafana/grafana:latest` 이미지, 전체 인터페이스 바인드(`-p 9090:9090`·`-p 3000:3000`), TSDB 볼륨 없음이다 [실물 `start-monitoring.sh`]. 순서는 C8 `prometheus-up.sh`(세션 시작 1회) → run마다 `prom-export.sh`만 → 세션 끝 `prometheus-down.sh`.
+
+- Prometheus·Grafana는 **세션 동안 계속 켜 두고 run마다 재기동하지 않는다.** run마다 하는 일은 export뿐이다 (§10-8).
+- 다시 띄울 때는 **같은 `PROM_DATA_DIR`**을 써서 기록을 이어 간다. 테스트 EC2를 다시 켜면 공인 IP가 바뀔 수 있다 — 그때는 `prometheus-down.sh` → 새 IP로 같은 `PROM_DATA_DIR`을 주어 `prometheus-up.sh`.
+- `prometheus-down.sh`는 **데이터 폴더를 지우지 않는다** [실물 `prometheus-down.sh` "TSDB 폴더(PROM_DATA_DIR)는 지우지 않는다"]. 사용자도 지우지 않는다 — run 덤프(`prom-*.json`)가 정본이지만 TSDB는 재덤프용으로 보존한다.
+- node_exporter는 기존 SSH 터널 방식(`host.docker.internal:9100`)을 그대로 쓴다 (①).
+
+```bash
+# 맥 — 앱 주소를 APP_TARGET으로 직접 주는 형태 (따옴표 안을 현재 테스트 EC2 공인 IP로 바꾼다)
+APP_TARGET="<현재 테스트 EC2 공인 IP>:8080" PROM_DATA_DIR="$PROM_DATA_DIR" load-test/collectors/prometheus-up.sh
+```
+
 C8 스크립트를 새로 쓰지 않고 **호출 순서와 기대 결과만** 적는다 (이름·환경변수는 C8 `833e9cf`의 `USAGE`·`require_env`).
 **컨테이너 안의 `localhost`는 그 컨테이너 자신이다.** 맥 Prometheus 컨테이너는 맥에 열린 SSH 터널을 `host.docker.internal:9100`으로 긁는다 (`prometheus-up.sh` `NODE_TARGETS` 기본값 `host.docker.internal:9100`, `prometheus.yml` 주석). 로컬 앱 컨테이너를 긁을 때는 같은 `DOCKER_NETWORK`의 `<컨테이너 이름>:8080`을 `APP_TARGET`으로 준다.
 
