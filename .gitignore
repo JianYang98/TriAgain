@@ -80,3 +80,12 @@ load-test/tokens.csv
 
 #p8
 *.p8
+
+# Private DB Baseline runtime inputs and local evidence
+/test-app.env
+/load-test/private/
+/load-test/results/1014-DB/*
+!/load-test/results/1014-DB/README.md
+/load-test/results/1014-Redis/*
+!/load-test/results/1014-Redis/README.md
+/load-test/collectors/.prometheus-data/
