@@ -8,7 +8,7 @@ C8 수집기(`load-test/collectors/`)의 스크립트 이름·환경변수는 C8
 
 ## 0. 변수
 
-값은 문서에 쓰지 않는다. `'<…>'` 안을 실제 값으로 바꿔 각 기계의 셸에서 정한다. **run 변수**(`RUN_ID`·크루 id·초대코드)는 run마다 새 값이고 두 기계에서 같아야 한다 (형식은 test-plan §2). `OUT_DIR`은 §10-1의 `run-folder.sh`가 정한다.
+값은 문서에 쓰지 않는다. `'<…>'` 안을 실제 값으로 바꿔 각 기계의 셸에서 정한다. **run 변수**(`RUN_ID`·크루 id·초대코드)는 run마다 새 값이고 두 기계에서 같아야 한다 (크루 id·초대코드 형식은 test-plan §2). `RUN_ID`는 `<YYYYMMDD>-<HHMMSS>-<arm>-<rps>-<hex4>`(UTC, 예 `20261014-103012-db-50-a3f9`)이고 **§10-1에서 맥이 한 번만** 만든다. `OUT_DIR`은 §10-1의 `run-folder.sh`가 정한다.
 
 ```bash
 # 테스트 EC2 — 세션 변수
@@ -19,8 +19,8 @@ export FLYWAY_ENABLED=false                        # Q10: B(psql로 스키마)=f
 export SQL_DIR='<U1 E1로 복사한 load-test/sql 절대 경로>'
 export COLLECTORS_DIR='<U1 E1로 복사한 load-test/collectors 절대 경로>'   # 폴더째 (common.sh가 같이 있어야 한다)
 export PGHOST='<테스트 RDS 엔드포인트>' PGPORT=5432 PGUSER='<앱과 같은 DB 계정>' PGDATABASE='<새 database>'   # 비밀번호는 ~/.pgpass
-# 테스트 EC2 — run 변수 (예: 20261014-1930-db-50 · dbb-db50-01 · BD0501 · dbb-warm-01 · BW0001)
-export RUN_ID='<YYYYMMDD-HHMM-db-RPS>' ARM=db RPS='<50|200>'
+# 테스트 EC2 — run 변수 (예: dbb-db50-01 · BD0501 · dbb-warm-01 · BW0001)
+export RUN_ID='<맥 §10-1에서 만든 값을 그대로 붙여 넣는다 — EC2에서 다시 만들지 않는다>' ARM=db RPS='<50|200>'
 export CREW_ID='<dbb-dbRPS-NN>' INVITE_CODE='<BD+RPS 3자리+순번>' EXPECTED_TOTAL=1000
 export WARM_CREW_ID='<dbb-warm-NN>' WARM_INVITE_CODE='<BW+4자리>' WARM_MAX=100
 ```
@@ -38,8 +38,8 @@ export TOKENS_FILE='<토큰 CSV 절대 경로>'
 export BASE_URL="http://$APP_PUBLIC_IP:8080"
 export PROM_DATA_DIR='<Prometheus TSDB 폴더 — 예: load-test/results/YYYYMMDD/prometheus 또는 저장소 밖>'
 export EC2_COLLECTORS_DIR='<테스트 EC2의 COLLECTORS_DIR과 같은 절대 경로>'
-# 맥 — run 변수 (EC2와 같은 값)
-export RUN_ID='<YYYYMMDD-HHMM-db-RPS>' ARM=db RPS='<50|200>'
+# 맥 — run 변수 (EC2와 같은 값). RUN_ID는 여기서 정하지 않고 §10-1에서 만든다
+export ARM=db RPS='<50|200>'
 export CREW_ID='<dbb-dbRPS-NN>' WARM_CREW_ID='<dbb-warm-NN>' WARM_TOTAL=1000   # 워밍업 건수는 스모크에서 확정
 # CLOCK_OFFSET_MS는 §10-0의 clock-check.sh가 정한다
 ```
@@ -347,18 +347,27 @@ echo "CLOCK_OFFSET_MS=$CLOCK_OFFSET_MS"
 ```
 기대: 표본 5줄(`sample=… rtt_ms=… offset_ms=…`), `offset_ms=<정수> (EC2 − 맥, …)`, `판정:` 줄, chronyc 요약. `CLOCK_OFFSET_MS`가 비면 다음으로 가지 않는다. 출력은 run card(스모크면 `gate-g6.txt`)에 붙인다. `[사용자·AWS]`
 
-### 10-1. run 1번 — run 폴더
+### 10-1. run 1번 — RUN_ID · run 폴더
 
 ```bash
-# 테스트 EC2 — RUN_ID·ARM·RPS는 §0
-OUT_DIR=$("$COLLECTORS_DIR/run-folder.sh" | tail -n1); export OUT_DIR; [ -d "$OUT_DIR/warmup" ] && echo "OUT_DIR=$OUT_DIR"
+# 맥 — run 시작 때 한 번만 RUN_ID를 만든다 (UTC). ARM·RPS는 §0
+RUN_ID="$(date -u +%Y%m%d-%H%M%S)-${ARM}-${RPS}-$(openssl rand -hex 2)"; export RUN_ID
+printf '%s\n' "$RUN_ID" | grep -Eq '^[0-9]{8}-[0-9]{6}-(db|rd)-[0-9]+-[0-9a-f]{4}$' && echo "RUN_ID=$RUN_ID"
+# run 폴더 — 셸에 남은 이전 run의 OUT_DIR이 넘어가지 않게 빈 값으로 부른다. run-card.md도 여기서 만든다
+OUT_DIR=$(OUT_DIR= load-test/collectors/run-folder.sh | tail -n1); export OUT_DIR; [ -d "$OUT_DIR/warmup" ] && echo "OUT_DIR=$OUT_DIR"
 ```
 
 ```bash
-# 맥 — run-card.md도 여기서 만든다 (EC2 쪽은 만들지 않는다)
-OUT_DIR=$(load-test/collectors/run-folder.sh | tail -n1); export OUT_DIR; [ -d "$OUT_DIR/warmup" ] && echo "OUT_DIR=$OUT_DIR"
+# 테스트 EC2 — RUN_ID는 맥에서 만든 값을 그대로 붙여 넣는다 (EC2에서 다시 만들지 않는다)
+export RUN_ID='<맥에서 출력된 RUN_ID>'
+OUT_DIR=$(OUT_DIR= "$COLLECTORS_DIR/run-folder.sh" | tail -n1); export OUT_DIR; [ -d "$OUT_DIR/warmup" ] && echo "OUT_DIR=$OUT_DIR"
 ```
-기대: EC2 `~/dbb-results/<YYYYMMDD>/<RUN_ID>`, 맥 `load-test/results/<YYYYMMDD>/<RUN_ID>` 절대 경로 1줄. 아무것도 안 찍히면 입력 오류다 (사용법이 stderr에 나온다). `[사용자·AWS]`
+기대: 맥 `RUN_ID=<YYYYMMDD>-<HHMMSS>-db-<rps>-<hex4>`, 맥 `load-test/results/<YYYYMMDD>/<RUN_ID>`·EC2 `~/dbb-results/<YYYYMMDD>/<RUN_ID>` 절대 경로 각 1줄. 아무것도 안 찍히면 입력 오류다 (사용법이 stderr에 나온다). `[사용자·AWS]`
+
+- 같은 `RUN_ID`를 k6(`-e RUN_ID`)·`box-app-start.sh`·`box-app-stop.sh`·run 폴더 경로에 그대로 쓴다 (§10의 명령은 모두 export된 `$RUN_ID`를 쓴다). Redis 팔의 `--triagain.crew.redis.run-id`도 같은 값이다 (§8).
+- `run-folder.sh`가 **거절하면**(형식이 틀림, 같은 run 폴더가 이미 있고 비어 있지 않음, `OUT_DIR` 이름이 `RUN_ID`와 다름 — 종료 코드 1) **새 RUN_ID를 만든다** — 맥에서 첫 줄부터 다시, EC2에도 새 값을 붙여 넣는다.
+- **전체 재실행** = 새 RUN_ID + 새 크루(`dbb-<arm><rps>-<NN+1>`, 새 초대코드). 같은 크루·같은 RUN_ID를 다시 쓰지 않는다.
+- 결과 폴더·파일은 자동이든 수동이든 **지우지 않는다** (실패한 run·거절된 run의 폴더도 그대로 둔다).
 
 ### 10-2. run 2번 — 크루 2개 · VACUUM · 기준선 (C7)
 
@@ -434,12 +443,19 @@ K6_RC=$?; K6_END_MS=$(python3 -c 'import time;print(int(time.time()*1000))'); ec
 ### 10-8. run 9·11번 — 종료 표식 → 수집기 종료 → export
 
 ```bash
-# 맥 → 테스트 EC2 — 본 측정 종료 표식 (OUT_DIR은 EC2 기본값 = RUN_ID에서 계산)
-ssh -i "$KEY" "$APP_SSH_TARGET" "RUN_ID='$RUN_ID' K6_END_MS='$K6_END_MS' CLOCK_OFFSET_MS='$CLOCK_OFFSET_MS' '$EC2_COLLECTORS_DIR/box-app-stop.sh'"; echo "stop exit=$?"
+# 맥 → 테스트 EC2 — 본 측정 종료 표식 (OUT_DIR은 EC2 run-folder.sh 기본 경로, 워밍업 호출과 같은 방식으로 명시)
+ssh -i "$KEY" "$APP_SSH_TARGET" "RUN_ID='$RUN_ID' OUT_DIR=\"\$HOME/dbb-results/${RUN_ID:0:8}/$RUN_ID\" K6_END_MS='$K6_END_MS' CLOCK_OFFSET_MS='$CLOCK_OFFSET_MS' '$EC2_COLLECTORS_DIR/box-app-stop.sh'"; echo "stop exit=$?"
 sleep 2; END_MS=$(python3 -c 'import time;print(int(time.time()*1000))'); export END_MS; echo "END_MS=$END_MS"
 load-test/collectors/prom-export.sh     # START_MS·END_MS·OUT_DIR는 export된 값
 ```
-기대: `poll-db: END reason=confirmed …`와 `poll-db: T_DB_CONFIRM …` 줄(DB 팔은 `END`가 `timeout`이면 run card에 "미도달"과 사유), `stop exit=0`(3은 비차단 경고, 2는 폴러 강제 정지 — 기록하고 사용자에게 알림). `END_MS`는 폴러 종료 뒤 2초 이상 지난 값이라 마지막 scrape를 포함한다 — k6 종료 시각으로 자르지 않는다 (C8 §3-5). export는 §9 ⑤의 기대. 그다음 EC2에서 §7 첫 블록(앱 로그 덤프). `[사용자·AWS]`
+기대: `poll-db: END reason=confirmed …`와 `poll-db: T_DB_CONFIRM …` 줄(DB 팔은 `END`가 `timeout`이면 run card에 "미도달"과 사유), `stop exit=0`(3은 비차단 경고, 2는 폴러 강제 정지 — 기록하고 사용자에게 알림). `END_MS`는 폴러 종료 뒤 2초 이상 지난 값이라 마지막 scrape를 포함한다 — k6 종료 시각으로 자르지 않는다 (C8 §3-5). export는 §9 ⑤의 기대. `START_MS`·`END_MS`는 run card에 적어 둔다 (재추출에 쓴다). 그다음 EC2에서 §7 첫 블록(앱 로그 덤프). `[사용자·AWS]`
+
+**기존 run의 메트릭 재추출** — 원본 `prom-*.json`을 덮지 않도록 새 하위 폴더에 쓴다. `prom-export.sh`는 `prom-*.json`이 이미 있는 폴더를 종료 코드 1로 거절한다.
+
+```bash
+# 맥 — OUT_DIR은 그 run 폴더, START_MS·END_MS는 그 run card의 값 그대로
+OUT_DIR="$OUT_DIR/reexport-$(date -u +%Y%m%dT%H%M%SZ)" START_MS="$START_MS" END_MS="$END_MS" load-test/collectors/prom-export.sh
+```
 
 ### 10-9. run 10번 — 정합성 SQL (C7)
 
