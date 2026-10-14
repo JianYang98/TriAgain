@@ -23,7 +23,7 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/auth")
-@Profile("!prod")
+@Profile({"!prod", "loadtest"})
 @RequiredArgsConstructor
 public class TestLoginController {
 
