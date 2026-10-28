@@ -41,7 +41,7 @@ def run_phase(config, check_only=False):
     allowed = (50,) if phase == 'warmup' else (200, 250, 300, 400, 500, 600, 800, 1000)
     if type(rate) is not int or rate not in allowed:
         raise ValueError('C supports main 200/250/300/400/500/600/800/1000 RPS or warmup 50 RPS')
-    if not re.fullmatch(r'\d{8}-\d{6}-db-'+str(rate)+r'-[0-9a-f]{4}', run):
+    if not re.fullmatch(r'\d{8}-\d{6}-(?:db|rd)-'+str(rate)+r'-[0-9a-f]{4}', run):
         raise ValueError('RUN_ID and target_rps disagree')
     pre = c.get('pre_vus', 150 if phase == 'warmup' else 10000)
     maximum = c.get('max_vus', 250 if phase == 'warmup' else 10000)

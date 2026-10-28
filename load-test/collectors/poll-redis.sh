@@ -19,6 +19,9 @@ source "$DIR/common.sh"
 
 require_env RUN_ID OUT_DIR CREW_ID REDIS_CLI EXPECTED_TOTAL MAX_WAIT_SEC
 require_id RUN_ID CREW_ID
+# 서버 Redis run-id(--triagain.crew.redis.run-id). 워밍업 HTTP RUN_ID와 다를 수 있다. 없으면 RUN_ID.
+REDIS_RUN_ID=${REDIS_RUN_ID:-$RUN_ID}
+require_id REDIS_RUN_ID
 require_uint EXPECTED_TOTAL MAX_WAIT_SEC
 NAMESPACE=${NAMESPACE:-dbb}
 [[ "$NAMESPACE" =~ ^[A-Za-z0-9_-]+$ ]] || die 1 "NAMESPACE 형식 위반([A-Za-z0-9_-]): '$NAMESPACE'"
@@ -29,7 +32,7 @@ DB_SAMPLE_MAX_AGE_MS=3000
 LOG=$OUT_DIR/poll-redis.log
 DB_SAMPLE_FILE=${DB_SAMPLE_FILE:-$OUT_DIR/poll-db.latest.txt}
 poller_files
-P="triagain:crew-join:{$NAMESPACE:$RUN_ID}"
+P="triagain:crew-join:{$NAMESPACE:$REDIS_RUN_ID}"
 start_guard poll-redis "$LOG"
 echo "ts_poller_ms,zcard,seq,pending,processing" >"$LOG"
 log_line "START run_id=$RUN_ID crew_id=$CREW_ID namespace=$NAMESPACE expected_total=$EXPECTED_TOTAL max_wait_sec=$MAX_WAIT_SEC prefix=$P"

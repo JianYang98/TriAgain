@@ -50,6 +50,16 @@ def main():
     need(env.get('DB_USERNAME') == C['db_user'] and env.get('DB_URL', '').endswith('/' + C['db_name']), 'db_identity')
     need(all('-Xrs' not in env.get(k, '') for k in ('JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS', '_JAVA_OPTIONS')), 'xrs')
     need('--triagain.crew.lock-strategy=CONDITIONAL' in tpl['Args'], 'lock_strategy')
+    redis = C.get('redis')  # 선택(REDIS_ASYNC 전환): lock-strategy 인자 교체 + redis 인자 4개 추가. 없으면 템플릿 그대로
+
+    def swap(args):
+        if not redis:
+            return args
+        return [a for a in args if not a.startswith('--triagain.crew.lock-strategy=')] + [
+            '--triagain.crew.lock-strategy=REDIS_ASYNC', '--spring.data.redis.host=' + redis['host'],
+            '--spring.data.redis.port=' + str(redis['port']),
+            '--triagain.crew.redis.namespace=' + redis['namespace'],
+            '--triagain.crew.redis.run-id=' + redis['run_id']]
     mounts = tpl['Mounts']
     need(len(mounts) == 1 and mounts[0]['Type'] == 'bind' and mounts[0]['Destination'] == '/access-logs', 'template_mounts')
     need(subprocess.run(['docker', 'container', 'inspect', C['app']], capture_output=True).returncode != 0, 'name_free')
@@ -83,13 +93,13 @@ def main():
         with os.fdopen(fd, 'w') as f:
             f.write('\n'.join(tpl['Config']['Env']) + '\n')
         run(args + ['--env-file', envfile, tpl['Image'], C['jfr_extra_option'], C['jfr_start_option']]
-            + tpl['Config']['Entrypoint'][1:] + tpl['Config']['Cmd'])
+            + tpl['Config']['Entrypoint'][1:] + swap(tpl['Config']['Cmd']))
     finally:
         os.unlink(envfile)
 
     new = json.loads(run(['docker', 'inspect', C['app']]))[0]
     need(new['Image'] == tpl['Image'] and new['Config']['Env'] == tpl['Config']['Env'], 'clone_image_env')
-    need(new['Args'] == [C['jfr_extra_option'], C['jfr_start_option']] + tpl['Args'], 'clone_args')
+    need(new['Args'] == [C['jfr_extra_option'], C['jfr_start_option']] + swap(tpl['Args']), 'clone_args')
     need(new['HostConfig']['PortBindings'] == tpl['HostConfig']['PortBindings'], 'clone_ports')
     need({m['Destination'] for m in new['Mounts']} == {'/diagnostics', '/access-logs', '/jfr-repo'}, 'clone_mounts')
 

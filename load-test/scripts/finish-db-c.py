@@ -89,7 +89,7 @@ def finish(config):
     os.umask(0o077)
     card = json.loads(Path(config).read_text())
     run, phase, crew = card['run_id'], card.get('phase', 'main'), card['crew_id']
-    if phase not in ('main', 'warmup') or not re.fullmatch(r'\d{8}-\d{6}-db-(1000|800|600|500|400|300|250|200|50)-[0-9a-f]{4}', run):
+    if phase not in ('main', 'warmup') or not re.fullmatch(r'\d{8}-\d{6}-(?:db|rd)-(1000|800|600|500|400|300|250|200|50)-[0-9a-f]{4}', run):
         raise ValueError('Invalid C run/phase')
     rate = int(run.split('-')[3])
     if rate not in ((50,) if phase == 'warmup' else (200, 250, 300, 400, 500, 600, 800, 1000)):
@@ -192,7 +192,9 @@ def finish(config):
               'active_collectors': remote.get('active_collectors'),
               'prom_start_ms': start, 'prom_end_ms': end,
               'prom_scrape_quality': 'not evaluated; inspect raw export',
-              'classification': 'PASS_WITH_SCRAPE_REVIEW_PENDING' if passed else 'PARTIAL_OR_FAILED'}
+              # rd: Redis 큐·집합·Worker는 이 도구가 판정하지 않는다 → PASS 라벨을 만들지 않는다
+              'classification': ('COLLECTED_REVIEW_PENDING' if run.split('-')[2] == 'rd' else
+                                 'PASS_WITH_SCRAPE_REVIEW_PENDING') if passed else 'PARTIAL_OR_FAILED'}
     (evidence / 'finish-status.json').write_text(json.dumps(status, indent=2) + '\n')
     print(json.dumps(status))
     return 0 if passed else 2
