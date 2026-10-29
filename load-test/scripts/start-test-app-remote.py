@@ -4,10 +4,12 @@
 정지 상태의 템플릿 컨테이너 설정(이미지·환경·인자·포트)을 복제하고, 다른 컨테이너는 중지·시작·삭제하지 않는다.
 (지난 operation-start-jfr-app-remote.py는 실패 시 원본을 다시 켰다 — 여기서는 하지 않는다.)
 사용법: ssh … python3 - '<JSON 설정>' < start-test-app-remote.py   (JSON 키는 아래 C 참조, 비밀값 없음)
+선택 키: redis / extra_jvm_options(힙·GC 알고리즘 옵션은 거부) / new_image{ref,id} / extra_env_file(EC2 안의 비공개 파일 경로, 값은 출력하지 않음)
 """
 import json
 import os
 import pathlib
+import re
 import shutil
 import socket
 import subprocess
@@ -31,6 +33,33 @@ def need(condition, message):
         raise RuntimeError('precondition_failed:' + message)
 
 
+# 힙 크기·GC 알고리즘을 바꾸는 옵션은 이 도구로 넣을 수 없다 (승인된 계측 옵션만 허용)
+FORBIDDEN_JVM_PREFIXES = ('-Xmx', '-Xms', '-Xss', '-XX:+Use', '-XX:-Use', '-XX:MaxRAM', '-XX:InitialRAM',
+                          '-XX:MaxHeap', '-XX:InitialHeap', '-XX:MinHeap', '-XX:NewSize', '-XX:MaxNewSize')
+
+
+def validate_jvm_options(options):
+    need(isinstance(options, list) and all(isinstance(o, str) and o.startswith('-X') for o in options),
+         'extra_jvm_options_form')
+    need(not any(o.startswith(FORBIDDEN_JVM_PREFIXES) for o in options), 'extra_jvm_options_no_heap_or_gc_change')
+    return options
+
+
+def env_names(lines):
+    return sorted(x.split('=', 1)[0] for x in lines if '=' in x)
+
+
+def read_extra_env(path, existing_names):
+    """비공개 env 파일(소유자만 접근)을 읽는다. 값은 어디에도 출력하지 않고 오류에는 이름·조건만 쓴다."""
+    st = os.stat(path)
+    need(st.st_mode & 0o077 == 0 and st.st_size < 4096, 'extra_env_file_private')
+    lines = [x for x in pathlib.Path(path).read_text().splitlines() if x.strip()]
+    need(all(re.fullmatch(r'[A-Z][A-Z0-9_]*=\S.*', x) for x in lines), 'extra_env_line_form')
+    names = [x.split('=', 1)[0] for x in lines]
+    need(len(set(names)) == len(names) and not set(names) & set(existing_names), 'extra_env_names_unique')
+    return lines
+
+
 def listening(port):
     s = socket.socket()
     s.settimeout(1)
@@ -51,6 +80,16 @@ def main():
     need(all('-Xrs' not in env.get(k, '') for k in ('JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS', '_JAVA_OPTIONS')), 'xrs')
     need('--triagain.crew.lock-strategy=CONDITIONAL' in tpl['Args'], 'lock_strategy')
     redis = C.get('redis')  # 선택(REDIS_ASYNC 전환): lock-strategy 인자 교체 + redis 인자 4개 추가. 없으면 템플릿 그대로
+    extra_opts = validate_jvm_options(C.get('extra_jvm_options', []))  # 선택: 승인된 계측 옵션(예: GC 로그)을 -jar 앞에 추가
+    extra_env = read_extra_env(C['extra_env_file'], env.keys()) if C.get('extra_env_file') else []  # 선택: 비공개 env 추가
+    new_image = C.get('new_image')  # 선택: {'ref','id'} — 템플릿 이미지 대신 이 이미지로 컨테이너를 만든다
+    image_ref, image_id = tpl['Image'], tpl['Image']
+    if new_image:
+        img = json.loads(run(['docker', 'image', 'inspect', new_image['ref']]))[0]
+        need(img['Id'] == new_image['id'] and img['Architecture'] == 'amd64' and img['Os'] == 'linux', 'new_image_id')
+        need(img['Config']['Entrypoint'] == tpl['Config']['Entrypoint']
+             and img['Config']['WorkingDir'] == tpl['Config']['WorkingDir'], 'new_image_config')
+        image_ref, image_id = new_image['ref'], new_image['id']
 
     def swap(args):
         if not redis:
@@ -91,15 +130,18 @@ def main():
     try:
         os.chmod(envfile, 0o600)
         with os.fdopen(fd, 'w') as f:
-            f.write('\n'.join(tpl['Config']['Env']) + '\n')
-        run(args + ['--env-file', envfile, tpl['Image'], C['jfr_extra_option'], C['jfr_start_option']]
+            f.write('\n'.join(tpl['Config']['Env'] + extra_env) + '\n')
+        run(args + ['--env-file', envfile, image_ref, C['jfr_extra_option'], C['jfr_start_option']] + extra_opts
             + tpl['Config']['Entrypoint'][1:] + swap(tpl['Config']['Cmd']))
     finally:
         os.unlink(envfile)
 
     new = json.loads(run(['docker', 'inspect', C['app']]))[0]
-    need(new['Image'] == tpl['Image'] and new['Config']['Env'] == tpl['Config']['Env'], 'clone_image_env')
-    need(new['Args'] == [C['jfr_extra_option'], C['jfr_start_option']] + swap(tpl['Args']), 'clone_args')
+    need(new['Image'] == image_id and sorted(new['Config']['Env']) == sorted(tpl['Config']['Env'] + extra_env),
+         'clone_image_env')
+    need(env_names(new['Config']['Env']) == sorted(env_names(tpl['Config']['Env']) + env_names(extra_env)),
+         'clone_env_names')
+    need(new['Args'] == [C['jfr_extra_option'], C['jfr_start_option']] + extra_opts + swap(tpl['Args']), 'clone_args')
     need(new['HostConfig']['PortBindings'] == tpl['HostConfig']['PortBindings'], 'clone_ports')
     need({m['Destination'] for m in new['Mounts']} == {'/diagnostics', '/access-logs', '/jfr-repo'}, 'clone_mounts')
 
@@ -126,7 +168,8 @@ def main():
                           'uid': st.st_uid, 'readable_by_me': os.access(p, os.R_OK)})
         state = {'ok': True, 'app': C['app'], 'image': fresh['Image'], 'pid': fresh['State']['Pid'],
                  'started_at': fresh['State']['StartedAt'], 'healthy_after_seconds': healthy_after,
-                 'jfr_repository_files': files, 'my_uid': os.getuid(), 'args': new['Args']}
+                 'jfr_repository_files': files, 'my_uid': os.getuid(), 'args': new['Args'],
+                 'extra_jvm_options': extra_opts, 'extra_env_names': env_names(extra_env)}
     except Exception:
         subprocess.run(['docker', 'stop', '--time', '20', C['app']], capture_output=True, timeout=40)  # 새 컨테이너만
         raise
