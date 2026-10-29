@@ -63,7 +63,7 @@ done
 [[ -f "$OUT_DIR/poll-db.log" ]] && command grep -E '^(T_DB_CONFIRM|DONE_SEEN)' "$OUT_DIR/poll-db.log" | sed 's/^/   poll-db: /' || true
 
 echo "== 4. CPU 수집 정지 (mpstat·vmstat)"
-for p in mpstat vmstat; do
+for p in mpstat vmstat pressure procvmstat conntrack diskstats; do
 	pid=$(pid_of "$p")
 	if pid_alive "$pid"; then
 		kill -TERM "$pid"

@@ -36,6 +36,7 @@ bg() { # $1 이름, 나머지 명령 — 터미널·ssh 세션과 분리해 백�
 
 bg mpstat "$DIR/mpstat-run.sh"
 bg vmstat "$DIR/vmstat-run.sh"
+for p in pressure procvmstat conntrack diskstats; do bg "$p" "$DIR/proc-collect.sh" "$p"; done
 tcp_rc=0
 "$DIR/tcp-collect.sh" start </dev/null >>"$OUT_DIR/tcp-collect.stderr.log" 2>&1 || tcp_rc=$?
 bg poll-db "$DIR/poll-db.sh"
@@ -60,6 +61,7 @@ check() { # $1 이름(PID 파일) $2 필수(2)/비차단(3)
 }
 check mpstat 3
 check vmstat 3
+for p in pressure procvmstat conntrack diskstats; do check "$p" 3; done
 if [[ "$tcp_rc" == 0 ]]; then check tcp-collect 3; else
 	echo "WARN tcp-collect (코드 $tcp_rc) — $(tail -n 1 "$OUT_DIR/tcp-collect.stderr.log" 2>/dev/null)"
 	[[ "$rc" == 0 ]] && rc=3
