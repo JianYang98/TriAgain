@@ -94,5 +94,49 @@ class ExtraEnv(unittest.TestCase):
             T.read_extra_env(path, [])
 
 
+class AcceptCount(unittest.TestCase):
+    ARGS = ['-jar', 'app.jar', '--server.tomcat.accept-count=100',
+            '--server.tomcat.threads.max=200', '--triagain.crew.lock-strategy=CONDITIONAL']
+    REDIS = {'host': 'synthetic-host', 'port': 6379, 'namespace': 'test', 'run_id': 'test-run'}
+
+    def legacy(self, args, redis):
+        if not redis:
+            return args
+        return [a for a in args if not a.startswith('--triagain.crew.lock-strategy=')] + [
+            '--triagain.crew.lock-strategy=REDIS_ASYNC', '--spring.data.redis.host=synthetic-host',
+            '--spring.data.redis.port=6379', '--triagain.crew.redis.namespace=test',
+            '--triagain.crew.redis.run-id=test-run']
+
+    def test_absent_key_preserves_legacy_args_with_and_without_redis(self):
+        for redis in (None, self.REDIS):
+            for args in (self.ARGS, ['--other=value']):
+                self.assertEqual(T.swap_args(args, redis), self.legacy(args, redis))
+
+    def test_replaces_in_place_with_and_without_redis(self):
+        for redis in (None, self.REDIS):
+            original = list(self.ARGS)
+            expected = list(self.legacy(original, redis))
+            expected[2] = '--server.tomcat.accept-count=4096'
+            self.assertEqual(T.swap_args(original, redis, 4096), expected)
+            self.assertEqual(original, self.ARGS)
+
+    def test_missing_and_duplicate_template_options_are_rejected(self):
+        for redis in (None, self.REDIS):
+            for args in (self.ARGS[:2], self.ARGS + ['--server.tomcat.accept-count=256']):
+                with self.assertRaisesRegex(RuntimeError, 'accept_count_exactly_one'):
+                    T.swap_args(args, redis, 4096)
+
+    def test_invalid_values_are_rejected(self):
+        for value in (0, 65536, -1, True, False, '4096', None, 4096.0):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(RuntimeError, 'accept_count_range'):
+                    T.swap_args(self.ARGS, None, value)
+
+    def test_boundary_values_are_accepted(self):
+        for value in (1, 65535):
+            self.assertEqual(T.swap_args(self.ARGS, None, value)[2],
+                             '--server.tomcat.accept-count=' + str(value))
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

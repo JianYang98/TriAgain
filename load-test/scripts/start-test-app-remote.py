@@ -4,7 +4,7 @@
 정지 상태의 템플릿 컨테이너 설정(이미지·환경·인자·포트)을 복제하고, 다른 컨테이너는 중지·시작·삭제하지 않는다.
 (지난 operation-start-jfr-app-remote.py는 실패 시 원본을 다시 켰다 — 여기서는 하지 않는다.)
 사용법: ssh … python3 - '<JSON 설정>' < start-test-app-remote.py   (JSON 키는 아래 C 참조, 비밀값 없음)
-선택 키: redis / extra_jvm_options(힙·GC 알고리즘 옵션은 거부) / new_image{ref,id} / extra_env_file(EC2 안의 비공개 파일 경로, 값은 출력하지 않음)
+선택 키: accept_count(정수 1~65535) / redis / extra_jvm_options(힙·GC 알고리즘 옵션은 거부) / new_image{ref,id} / extra_env_file(EC2 안의 비공개 파일 경로, 값은 출력하지 않음)
 """
 import json
 import os
@@ -45,6 +45,25 @@ def validate_jvm_options(options):
     return options
 
 
+ACCEPT_COUNT_UNSET = object()
+
+
+def swap_args(args, redis, accept_count=ACCEPT_COUNT_UNSET):
+    """템플릿 순서를 유지해 accept-count를 교체한 뒤 기존 Redis 전환을 적용한다."""
+    if accept_count is not ACCEPT_COUNT_UNSET:
+        need(type(accept_count) is int and 1 <= accept_count <= 65535, 'accept_count_range')
+        prefix = '--server.tomcat.accept-count='
+        need(sum(a.startswith(prefix) for a in args) == 1, 'accept_count_exactly_one')
+        args = [prefix + str(accept_count) if a.startswith(prefix) else a for a in args]
+    if not redis:
+        return args
+    return [a for a in args if not a.startswith('--triagain.crew.lock-strategy=')] + [
+        '--triagain.crew.lock-strategy=REDIS_ASYNC', '--spring.data.redis.host=' + redis['host'],
+        '--spring.data.redis.port=' + str(redis['port']),
+        '--triagain.crew.redis.namespace=' + redis['namespace'],
+        '--triagain.crew.redis.run-id=' + redis['run_id']]
+
+
 def env_names(lines):
     return sorted(x.split('=', 1)[0] for x in lines if '=' in x)
 
@@ -80,6 +99,8 @@ def main():
     need(all('-Xrs' not in env.get(k, '') for k in ('JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS', '_JAVA_OPTIONS')), 'xrs')
     need('--triagain.crew.lock-strategy=CONDITIONAL' in tpl['Args'], 'lock_strategy')
     redis = C.get('redis')  # 선택(REDIS_ASYNC 전환): lock-strategy 인자 교체 + redis 인자 4개 추가. 없으면 템플릿 그대로
+    swap_args(tpl['Config']['Cmd'], redis, C.get('accept_count', ACCEPT_COUNT_UNSET))
+    swap_args(tpl['Args'], redis, C.get('accept_count', ACCEPT_COUNT_UNSET))
     extra_opts = validate_jvm_options(C.get('extra_jvm_options', []))  # 선택: 승인된 계측 옵션(예: GC 로그)을 -jar 앞에 추가
     extra_env = read_extra_env(C['extra_env_file'], env.keys()) if C.get('extra_env_file') else []  # 선택: 비공개 env 추가
     new_image = C.get('new_image')  # 선택: {'ref','id'} — 템플릿 이미지 대신 이 이미지로 컨테이너를 만든다
@@ -92,13 +113,8 @@ def main():
         image_ref, image_id = new_image['ref'], new_image['id']
 
     def swap(args):
-        if not redis:
-            return args
-        return [a for a in args if not a.startswith('--triagain.crew.lock-strategy=')] + [
-            '--triagain.crew.lock-strategy=REDIS_ASYNC', '--spring.data.redis.host=' + redis['host'],
-            '--spring.data.redis.port=' + str(redis['port']),
-            '--triagain.crew.redis.namespace=' + redis['namespace'],
-            '--triagain.crew.redis.run-id=' + redis['run_id']]
+        return swap_args(args, redis, C.get('accept_count', ACCEPT_COUNT_UNSET))
+
     mounts = tpl['Mounts']
     need(len(mounts) == 1 and mounts[0]['Type'] == 'bind' and mounts[0]['Destination'] == '/access-logs', 'template_mounts')
     need(subprocess.run(['docker', 'container', 'inspect', C['app']], capture_output=True).returncode != 0, 'name_free')
