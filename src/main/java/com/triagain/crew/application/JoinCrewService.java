@@ -52,7 +52,7 @@ public class JoinCrewService implements JoinCrewUseCase {
 	 * DB 저장·TransactionTemplate 미사용, Redis 실패 시 DB 전략으로 fallback하지 않는다.
 	 */
 	private JoinCrewResult joinRedisAsync(JoinCrewCommand command) {
-		Crew crew = crewRepositoryPort.findById(command.crewId())
+		Crew crew = crewRepositoryPort.findByIdWithoutMembers(command.crewId())
 			.orElseThrow(() -> new BusinessException(ErrorCode.CREW_NOT_FOUND));
 		if (!crew.isPublic()) {
 			throw new BusinessException(ErrorCode.CREW_NOT_PUBLIC);
