@@ -76,6 +76,12 @@ public class CrewJpaAdapter implements CrewRepositoryPort {
 				});
 	}
 
+	/** 크루 1행만 조회, 멤버 목록 미적재 — 가입 승인 사전 검증(공개·상태·마감) 전용 */
+	@Override
+	public Optional<Crew> findByIdWithoutMembers(String id) {
+		return crewJpaRepository.findById(id).map(CrewJpaEntity::toDomain);
+	}
+
 	/** 낙관적 락으로 멤버 수 갱신 — version 불일치 시 0 반환 */
 	@Override
 	public int updateCurrentMembersWithVersion(String id, int currentMembers, Long version) {
