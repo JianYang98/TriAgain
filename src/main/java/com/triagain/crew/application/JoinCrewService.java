@@ -136,7 +136,7 @@ public class JoinCrewService implements JoinCrewUseCase {
 		if (!crew.isPublic()) {
 			throw new BusinessException(ErrorCode.CREW_NOT_PUBLIC);
 		}
-		CrewMember member = crew.addMemberSkipCapacityCheck(command.userId());
+		CrewMember member = crew.addMemberWithCapacityPrecheck(command.userId());
 		if (crewRepositoryPort.incrementMembersIfNotFull(crew.getId()) == 0) {
 			throw new BusinessException(ErrorCode.CREW_FULL);
 		}

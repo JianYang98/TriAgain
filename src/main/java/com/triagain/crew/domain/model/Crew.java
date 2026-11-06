@@ -137,9 +137,21 @@ public class Crew {
 
 	/** 조건부 UPDATE 전략용 멤버 추가 — 정원은 DB predicate, 상태·마감·중복은 도메인에서 검증 */
 	public CrewMember addMemberSkipCapacityCheck(String userId) {
+		return addMemberForConditional(userId, false);
+	}
+
+	/** 공개 CONDITIONAL 가입의 매진 사전 검사 — 최종 정원 보호는 여전히 DB UPDATE가 담당한다. */
+	public CrewMember addMemberWithCapacityPrecheck(String userId) {
+		return addMemberForConditional(userId, true);
+	}
+
+	private CrewMember addMemberForConditional(String userId, boolean checkCapacity) {
 		validateJoinable();
 		if (isAlreadyMember(userId)) {
 			throw new BusinessException(ErrorCode.CREW_ALREADY_JOINED);
+		}
+		if (checkCapacity && isFull()) {
+			throw new BusinessException(ErrorCode.CREW_FULL);
 		}
 		CrewMember member = CrewMember.createMember(userId, this.id);
 		this.members.add(member);

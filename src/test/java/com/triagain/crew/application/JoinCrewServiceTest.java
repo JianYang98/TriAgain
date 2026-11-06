@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -325,6 +326,70 @@ class JoinCrewServiceTest {
 	@Nested
 	@DisplayName("조건부 원자적 UPDATE 경로 (CONDITIONAL)")
 	class ConditionalLock {
+
+		@Test
+		@DisplayName("조회 시 매진이면 인원 변경과 UPDATE·저장 없이 거절한다")
+		void conditionalJoin_snapshotFull_skipsWrites() {
+			Crew crew = publicCrewWithMembers(CrewStatus.RECRUITING, 5, 5,
+				LocalDate.now().plusDays(7), LocalDate.now().plusDays(30));
+			assertRejectedBeforeWrite(crew, "user-1", ErrorCode.CREW_FULL);
+		}
+
+		@Test
+		@DisplayName("마지막 빈자리는 사전 검사를 통과하고 조건부 UPDATE로 가입한다")
+		void conditionalJoin_lastSlot_stillUsesAtomicUpdate() {
+			Crew crew = publicCrewWithMembers(CrewStatus.RECRUITING, 5, 4,
+				LocalDate.now().plusDays(7), LocalDate.now().plusDays(30));
+			given(crewRepositoryPort.findById("CREW-001")).willReturn(Optional.of(crew));
+			given(crewRepositoryPort.incrementMembersIfNotFull("CREW-001")).willReturn(1);
+			JoinCrewResult result = joinCrewService.joinCrew(new JoinCrewCommand("user-1", "CREW-001"));
+			assertThat(result.currentMembers()).isEqualTo(5);
+			verify(crewRepositoryPort).incrementMembersIfNotFull("CREW-001");
+			verify(crewRepositoryPort).saveMemberAndFlush(any());
+		}
+
+		@Test
+		@DisplayName("매진이어도 기존 상태 오류가 먼저다")
+		void conditionalJoin_snapshotFull_preservesStatusPriority() {
+			Crew crew = publicCrewWithMembers(CrewStatus.COMPLETED, 5, 5,
+				LocalDate.now().plusDays(7), LocalDate.now().plusDays(30));
+			assertRejectedBeforeWrite(crew, "user-1", ErrorCode.CREW_NOT_RECRUITING);
+		}
+
+		@Test
+		@DisplayName("매진이어도 기존 마감 오류가 먼저다")
+		void conditionalJoin_snapshotFull_preservesDeadlinePriority() {
+			Crew crew = publicCrewWithMembers(CrewStatus.RECRUITING, 5, 5,
+				LocalDate.now().minusDays(7), LocalDate.now().plusDays(1));
+			assertRejectedBeforeWrite(crew, "user-1", ErrorCode.CREW_JOIN_DEADLINE_PASSED);
+		}
+
+		@Test
+		@DisplayName("매진이어도 기존 중복 오류가 먼저다")
+		void conditionalJoin_snapshotFull_preservesDuplicatePriority() {
+			CrewMember member = CrewMember.of("CRMB-1", "user-1", "CREW-001",
+				CrewRole.MEMBER, LocalDateTime.now());
+			Crew crew = Crew.of("CREW-001", "leader", "테스트", "목표", "인증",
+				VerificationType.TEXT, 1, 1, CrewStatus.RECRUITING,
+				LocalDate.now().plusDays(7), LocalDate.now().plusDays(30), true,
+				"ABC123", LocalDateTime.now(), LocalTime.of(23, 59, 59), null,
+				CrewVisibility.PUBLIC, 0L, List.of(member));
+			assertRejectedBeforeWrite(crew, "user-1", ErrorCode.CREW_ALREADY_JOINED);
+		}
+
+		private void assertRejectedBeforeWrite(Crew crew, String userId, ErrorCode error) {
+			int before = crew.getCurrentMembers();
+			int memberCount = crew.getMembers().size();
+			given(crewRepositoryPort.findById("CREW-001")).willReturn(Optional.of(crew));
+			assertThatThrownBy(() -> joinCrewService.joinCrew(new JoinCrewCommand(userId, "CREW-001")))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode()).isEqualTo(error);
+			assertThat(crew.getCurrentMembers()).isEqualTo(before);
+			assertThat(crew.getMembers()).hasSize(memberCount);
+			verify(crewRepositoryPort, never()).incrementMembersIfNotFull(anyString());
+			verify(crewRepositoryPort, never()).saveMemberAndFlush(any());
+		}
+
 
 		@BeforeEach
 		void setUp() {
