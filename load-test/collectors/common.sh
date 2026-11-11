@@ -27,11 +27,11 @@ require_uint() { local v; for v in "$@"; do [[ "${!v}" =~ ^[0-9]+$ ]] || die 1 "
 # run-id·crew-id는 Redis 키와 경로에 그대로 들어간다 (test-plan §2: [A-Za-z0-9-]만)
 require_id() { local v; for v in "$@"; do [[ "${!v}" =~ ^[A-Za-z0-9-]+$ ]] || die 1 "$v 형식 위반([A-Za-z0-9-]만): '${!v}'"; done; }
 
-# run 폴더 기본값 — 날짜는 run-id 앞 8자리(시계가 아니라 run-id에서). 맥은 load-test/results, 그 외(EC2)는 ~/dbb-results
+# run 폴더 기본값 — 날짜는 run-id 앞 8자리(시계가 아니라 run-id에서). 맥은 load-test/results/raw, 그 외(EC2)는 ~/dbb-results
 default_out_dir() {
 	[[ "$RUN_ID" =~ ^[0-9]{8}- ]] || die 1 "RUN_ID가 <YYYYMMDD>-로 시작하지 않아 OUT_DIR 기본값을 만들 수 없다 — OUT_DIR을 직접 준다"
 	if [[ "$(uname -s)" == Darwin ]]; then
-		printf '%s\n' "$(cd "$DIR/.." && pwd)/results/${RUN_ID:0:8}/$RUN_ID"
+		printf '%s\n' "$(cd "$DIR/.." && pwd)/results/raw/${RUN_ID:0:8}/$RUN_ID"
 	else
 		printf '%s\n' "$HOME/dbb-results/${RUN_ID:0:8}/$RUN_ID"
 	fi

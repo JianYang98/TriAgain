@@ -84,6 +84,7 @@ load-test/tokens.csv
 # Private DB Baseline runtime inputs and local evidence
 /test-app.env
 /load-test/private/
+/load-test/results/raw/
 /load-test/results/1014-DB/*
 !/load-test/results/1014-DB/README.md
 /load-test/results/1014-Redis/*

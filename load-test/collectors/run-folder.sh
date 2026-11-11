@@ -5,7 +5,7 @@ USAGE='사용법: RUN_ID=<YYYYMMDD>-<HHMMSS>-<db|rd>-<rps>-<hex4> ARM=db|rd RPS=
   RUN_ID: UTC 시각 + 팔 + RPS + 16진 4자리 (예 20261014-103012-db-50-a3f9). 만들기 예:
           RUN_ID=$(date -u +%Y%m%d-%H%M%S)-db-50-$(openssl rand -hex 2)
           형식이 다르거나 RUN_ID의 팔·RPS가 ARM·RPS와 다르면 1.
-  선택: OUT_DIR(기본: 맥 load-test/results/<YYYYMMDD>/<RUN_ID>/, EC2 ~/dbb-results/<YYYYMMDD>/<RUN_ID>/ — 날짜는 RUN_ID 앞 8자리)
+  선택: OUT_DIR(기본: 맥 load-test/results/raw/<YYYYMMDD>/<RUN_ID>/, EC2 ~/dbb-results/<YYYYMMDD>/<RUN_ID>/ — 날짜는 RUN_ID 앞 8자리)
   OUT_DIR을 주면 마지막 경로가 RUN_ID와 같아야 한다(다르면 1). OUT_DIR가 이미 있고 비어 있지 않으면 1 — 아무것도 만들거나 지우지 않는다 (RUN_ID 재사용 덮어쓰기 방지).
   만드는 것: $OUT_DIR, $OUT_DIR/warmup/, (맥) $OUT_DIR/run-card.md (run-card.template.md)
   마지막 줄에 OUT_DIR 절대 경로를 출력한다 → OUT_DIR=$(… run-folder.sh | tail -n1)
