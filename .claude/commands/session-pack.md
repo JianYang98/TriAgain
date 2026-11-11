@@ -10,9 +10,10 @@
    - 다음 세션에서 이어갈 작업 (Next Steps)
    - 알려진 이슈나 주의사항
 3. **배운 것 정리**: 이번 세션에서 발견한 패턴이나 주의할 점이 있으면 기억에 저장
-4. **미푸시·미커밋 확인**:
+4. **미푸시·미커밋 확인** — 이 저장소에 맞는 **한 줄만** 실행한다 (`lab/*` 예외는 BE만). 결과는 비어 있어야 한다:
+   - BE: `git log --exclude='lab/*' --branches --not --remotes --oneline`
+   - FE: `git log --branches --not --remotes --oneline` (FE도 로컬 실험을 기본으로 정하면 BE와 같은 예외를 적용한다)
    ```bash
-   git log --exclude='lab/*' --branches --not --remotes --oneline   # 비어 있어야 한다 (lab/* 제외)
    git status --short
    ```
    비어 있지 않으면 **인계서에만 적고 끝내지 않는다 — 사용자에게 보고한다.**
