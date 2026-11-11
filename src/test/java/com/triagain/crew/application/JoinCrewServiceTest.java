@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -482,7 +484,7 @@ class JoinCrewServiceTest {
 		@DisplayName("Redis가 승인하면 DB에 쓰지 않고 Redis 인원과 같은 서울 시각으로 MEMBER 결과를 만든다")
 		void approved_returnsRedisCountWithoutDbWrite() {
 			// Given
-			given(crewRepositoryPort.findById("CREW-001")).willReturn(Optional.of(joinablePublicCrew()));
+			given(crewRepositoryPort.findByIdWithoutMembers("CREW-001")).willReturn(Optional.of(joinablePublicCrew()));
 			given(crewJoinRedisPort.approve("CREW-001", "user-1", CONFIRMED_AT))
 				.willReturn(new Approval(Status.JOIN_SUCCESS, 2));
 
@@ -492,16 +494,34 @@ class JoinCrewServiceTest {
 			// Then
 			assertThat(result).isEqualTo(new JoinCrewResult("user-1", "CREW-001", CrewRole.MEMBER, 2,
 				LocalDateTime.parse("2026-09-27T14:05:23.481")));
-			verify(crewRepositoryPort).findById("CREW-001");
+			verify(crewRepositoryPort).findByIdWithoutMembers("CREW-001");
 			verifyNoMoreInteractions(crewRepositoryPort);
 			verifyNoInteractions(txTemplate);
+		}
+
+		@Test
+		@DisplayName("사전 조회는 멤버 목록을 적재하지 않는 조회만 쓰고 findById는 부르지 않는다")
+		void preCheck_usesLookupWithoutMembers_neverFindById() {
+			// Given — 옛 경로(findById)로 되돌아가도 예외 없이 흘러가 아래 verify에서 잡히도록 lenient로 둔다
+			Crew crew = joinablePublicCrew();
+			lenient().when(crewRepositoryPort.findById("CREW-001")).thenReturn(Optional.of(crew));
+			given(crewRepositoryPort.findByIdWithoutMembers("CREW-001")).willReturn(Optional.of(crew));
+			given(crewJoinRedisPort.approve("CREW-001", "user-1", CONFIRMED_AT))
+				.willReturn(new Approval(Status.JOIN_SUCCESS, 2));
+
+			// When
+			service.joinCrew(new JoinCrewCommand("user-1", "CREW-001"));
+
+			// Then
+			verify(crewRepositoryPort).findByIdWithoutMembers("CREW-001");
+			verify(crewRepositoryPort, never()).findById(any());
 		}
 
 		@Test
 		@DisplayName("Redis가 중복이라 하면 CR004, 정원 초과라 하면 CR002로 거절한다")
 		void businessRejections_mapToExistingCodes() {
 			// Given
-			given(crewRepositoryPort.findById("CREW-001")).willReturn(Optional.of(joinablePublicCrew()));
+			given(crewRepositoryPort.findByIdWithoutMembers("CREW-001")).willReturn(Optional.of(joinablePublicCrew()));
 			given(crewJoinRedisPort.approve(anyString(), anyString(), any()))
 				.willReturn(new Approval(Status.ALREADY_JOINED, 0), new Approval(Status.CREW_FULL, 0));
 
@@ -515,7 +535,7 @@ class JoinCrewServiceTest {
 		@DisplayName("미초기화·상태 불일치는 사용자 오류(IllegalArgumentException)가 아닌 IllegalStateException이다")
 		void notInitializedOrInvalidState_isInternalFailure() {
 			// Given
-			given(crewRepositoryPort.findById("CREW-001")).willReturn(Optional.of(joinablePublicCrew()));
+			given(crewRepositoryPort.findByIdWithoutMembers("CREW-001")).willReturn(Optional.of(joinablePublicCrew()));
 			given(crewJoinRedisPort.approve(anyString(), anyString(), any()))
 				.willReturn(new Approval(Status.NOT_INITIALIZED, 0), new Approval(Status.INVALID_STATE, 0));
 
@@ -533,14 +553,14 @@ class JoinCrewServiceTest {
 		@DisplayName("Redis 인프라 예외는 그대로 전파되고 DB 전략으로 fallback하지 않는다")
 		void redisFailure_doesNotFallBackToDb() {
 			// Given
-			given(crewRepositoryPort.findById("CREW-001")).willReturn(Optional.of(joinablePublicCrew()));
+			given(crewRepositoryPort.findByIdWithoutMembers("CREW-001")).willReturn(Optional.of(joinablePublicCrew()));
 			given(crewJoinRedisPort.approve(anyString(), anyString(), any()))
 				.willThrow(new IllegalStateException("CONNECTION: crew join Redis unavailable"));
 
 			// When & Then
 			assertThatThrownBy(() -> service.joinCrew(new JoinCrewCommand("user-1", "CREW-001")))
 				.isExactlyInstanceOf(IllegalStateException.class);
-			verify(crewRepositoryPort).findById("CREW-001");
+			verify(crewRepositoryPort).findByIdWithoutMembers("CREW-001");
 			verifyNoMoreInteractions(crewRepositoryPort);
 			verifyNoInteractions(txTemplate);
 		}
@@ -550,7 +570,7 @@ class JoinCrewServiceTest {
 		void preChecks_rejectBeforeRedis() {
 			// Given
 			LocalDate today = LocalDate.now();
-			given(crewRepositoryPort.findById("CREW-001")).willReturn(
+			given(crewRepositoryPort.findByIdWithoutMembers("CREW-001")).willReturn(
 				Optional.empty(),
 				Optional.of(privateRecruitingCrew(today.plusDays(7), today.plusDays(30))),
 				Optional.of(publicCrewWithMembers(CrewStatus.COMPLETED, 10, 1,

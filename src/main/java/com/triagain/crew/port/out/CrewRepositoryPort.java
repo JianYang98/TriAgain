@@ -28,6 +28,9 @@ public interface CrewRepositoryPort {
 	/** ID로 크루 조회 — 크루 상세·수정 시 사용 */
 	Optional<Crew> findById(String id);
 
+	/** 크루 1행만 조회, 멤버 목록 미적재 — 가입 승인 사전 검증(공개·상태·마감) 전용 */
+	Optional<Crew> findByIdWithoutMembers(String id);
+
 	/** 비관적 락으로 크루 조회 — 동시 참여 시 정원 초과 방지 */
 	Optional<Crew> findByIdWithLock(String id);
 
