@@ -28,6 +28,11 @@ orchestrator가 BE `develop`에 직접 커밋했고 `branch -f`로 되돌렸다.
 - develop: 통합 브랜치 (feat→develop PR, CI + E2E 통과 필수)
 - feat/*: 기능 개발 브랜치 (develop에서 분기, develop으로 PR)
 - fix/*: 버그 수정 브랜치 (develop에서 분기, develop으로 PR)
+- lab/*: 실험·측정 브랜치. 채택 여부를 판단하는 용도 (develop에서 분기, `--no-track`으로 만들어 로컬 작업)
+  - 예) 조기 거절이 DB 부하를 줄이는지 비교 → `lab/early-reject`, 도입 결정·구현 → `feat/early-reject`, 기존 오류 수정 → `fix/early-reject`
+  - `push -u` 의무·세션 마감 미push 경고에서 제외. push는 공유하거나 PR을 열 때만 (공개 저장소라 비공개 값 확인)
+  - 끝나면 성공·실패와 관계없이 조건·핵심 결과를 짧게 적어 로컬 커밋. 워크트리 지우기 전에 다시 필요한 미추적 원본만 저장소 밖에 보관
+  - 반영: 일부 채택 → develop에서 새 `feat/*`·`fix/*`로 필요한 변경만 PR / 전체 채택 → `lab/*`에서 develop으로 직접 PR. 리뷰·CI·테스트·Tier는 기존 기준
 
 ## 워크트리 (worktree)
 
@@ -37,7 +42,7 @@ orchestrator가 BE `develop`에 직접 커밋했고 `branch -f`로 되돌렸다.
 ```bash
 git fetch origin develop                # ← origin/develop 이 낡으면 낡은 커밋에서 갈라진다
 git worktree add <경로> origin/develop -b <브랜치>
-git -C <경로> push -u origin <브랜치>   # ← 생략 금지(이유는 아래). 에이전트가 직접 실행한다
+git -C <경로> push -u origin <브랜치>   # ← 생략 금지(이유는 아래). 에이전트가 직접 실행한다 (lab/* 는 예외)
 ```
 
 **`push -u`를 생성 직후에 하는 이유** — 두 가지가 한 번에 해결된다.
@@ -54,6 +59,7 @@ untracked 파일은 워크트리를 따라가지 않으므로 "옮기면 되겠�
 로컬 브랜치는 squash-merge면 `-d`가 거부하므로, **PR 상태로 머지를 확인한 뒤** `-D`를 쓴다.
 
 **세션 마감 점검**: `git log --branches --not --remotes --oneline` 이 비어 있는지 본다.
+**BE만** `--exclude='lab/*'`를 더한다(lab/*는 로컬 작업이 기본).
 비어 있지 않으면 push 안 된 커밋이 있다. **3개 저장소를 각각** 본다 — 루트는 2026-08-13에
 remote가 붙어 **예외가 사라졌다**(그전 문구는 "루트는 예외"였다).
 이 점검은 `/session-pack` 4번째 단계로 배선돼 있다.

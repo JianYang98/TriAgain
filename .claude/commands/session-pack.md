@@ -12,7 +12,7 @@
 3. **배운 것 정리**: 이번 세션에서 발견한 패턴이나 주의할 점이 있으면 기억에 저장
 4. **미푸시·미커밋 확인**:
    ```bash
-   git log --branches --not --remotes --oneline   # 비어 있어야 한다
+   git log --exclude='lab/*' --branches --not --remotes --oneline   # 비어 있어야 한다 (lab/* 제외)
    git status --short
    ```
    비어 있지 않으면 **인계서에만 적고 끝내지 않는다 — 사용자에게 보고한다.**
