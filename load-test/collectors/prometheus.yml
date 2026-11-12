@@ -1,0 +1,34 @@
+# B 테스트 Prometheus 설정 (맥에서 실행) — prometheus-up.sh가 자리표시자를 치환해 $PROM_DATA_DIR/prometheus.yml로 쓴다.
+#   __APP_TARGET__   : APP_TARGET (기본 $APP_PUBLIC_IP:8080 — 앱 공인 IP. 로컬 컨테이너면 <컨테이너 이름>:<port>)
+#   __NODE_TARGETS__ : NODE_TARGETS (기본 host.docker.internal:9100 — 맥에 연 SSH 터널)
+# 컨테이너 안의 localhost는 Prometheus 컨테이너 자신이다. 맥의 터널은 host.docker.internal:<port>로 긁는다.
+#
+# 한계: scrape_timeout = scrape_interval = 1s. 응답이 한 번이라도 1초를 넘으면 그 초의 샘플은 없다(up=0, 값 결손).
+#       결손 초는 prom-up.json · prom-scrape_duration.json으로 확인한다 (measurement-contract §4 비교 그래프 8).
+global:
+  scrape_interval: 1s
+  scrape_timeout: 1s
+
+scrape_configs:
+  - job_name: triagain
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['__APP_TARGET__']
+    relabel_configs:
+      # instance 라벨에 IP를 남기지 않는다 (prom-*.json 덤프에 IP가 들어가지 않게)
+      - target_label: instance
+        replacement: app
+
+  # I5 (◐ 비차단): node_exporter. U1 K2의 터널 규약 — 맥 9100 = 앱 박스, 9101 = Redis 박스(Redis 단계부터)
+  - job_name: node
+    static_configs:
+      - targets: [__NODE_TARGETS__]
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '.*:9100'
+        target_label: instance
+        replacement: app
+      - source_labels: [__address__]
+        regex: '.*:9101'
+        target_label: instance
+        replacement: redis

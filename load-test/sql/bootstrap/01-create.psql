@@ -1,0 +1,29 @@
+\set ON_ERROR_STOP on
+-- 테스트 RDS의 postgres DB에 관리 계정 triagain으로 SSL 접속한 뒤 실행.
+-- 실행 직전 SSH/테스트 RDS 대상 재확인. 존재하면 중단하며 기존 객체 재사용/삭제 없음.
+DO $$
+BEGIN
+  IF current_database() <> 'postgres' OR current_user <> 'triagain' THEN
+    RAISE EXCEPTION 'Unexpected administrative database/user';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_database WHERE datname = 'triagain_dbb')
+     OR EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'triagain_dbb_app') THEN
+    RAISE EXCEPTION 'Target database or role already exists; stop without replacement';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname=current_user AND rolcreatedb AND rolcreaterole) THEN
+    RAISE EXCEPTION 'Administrative CREATEDB/CREATEROLE privileges require verification';
+  END IF;
+END $$;
+
+CREATE ROLE triagain_dbb_app LOGIN NOINHERIT NOSUPERUSER
+  NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+-- psql 비공개 프롬프트에 신규 테스트 비밀번호를 사용자가 직접 입력. 값 저장/출력 금지.
+\password triagain_dbb_app
+CREATE DATABASE triagain_dbb OWNER triagain TEMPLATE template0;
+REVOKE ALL ON DATABASE triagain_dbb FROM PUBLIC;
+GRANT CONNECT ON DATABASE triagain_dbb TO triagain_dbb_app;
+
+\connect triagain_dbb triagain
+REVOKE ALL ON SCHEMA public FROM PUBLIC;
+GRANT USAGE, CREATE ON SCHEMA public TO triagain_dbb_app;
+-- CREATE는 bootstrap 동안만. 02 성공 후 03에서 회수.
