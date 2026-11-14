@@ -67,7 +67,7 @@
 
 실행 순서: Phase A(문서 확정) → Phase B(구현) → Phase C(테스트)
 Phase A: 관련 문서(biz-logic.md, api-spec.md, schema.md 등)를 먼저 읽고 기존 포맷과 구조를 파악한 뒤 수정할 것
-Phase A 완료 후 사용자 검토를 받은 뒤에만 Phase B 진입
+Phase A 결과를 사용자에게 보여준다. 구현 대상과 범위가 이미 명확하게 승인되었다면 Phase B로 진행하고, 승인 범위를 벗어나는 변경이 필요하면 확인한다.
 Phase B 구현 중 문서에 없는 결정이 필요하면 멈추고 문서부터 갱신할 것
 
 ---
