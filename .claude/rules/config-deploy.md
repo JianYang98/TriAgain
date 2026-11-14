@@ -32,8 +32,11 @@ paths: "src/main/resources/application*.yml, src/test/resources/application*.yml
   ```bash
   command grep -nE '^  [A-Za-z0-9_-]+:|needs:|if: ' .github/workflows/*.yml
   ```
-- 현재(2026-08-11): `deploy-backend`에 `needs:` 없음 → **push 경로에서 도는 테스트는 0개**이고 `develop` push도 운영 배포다. 어떻게 고칠지는 **방향 미정으로 파킹**돼 있으니 임의로 고치지 않는다. 선택지·`git-convention.md`와의 불일치는 위 TODO가, 실제로 걸리는 게이트 목록(브랜치 보호 포함)은 `test-strategy.md`가 정본이다 — 여기 복사하지 않는다.
-- ⏳ 이 항목은 **배포 경로·트리거가 바뀌면 같은 PR에서 갱신한다.** 위 grep 결과와 어긋나면 grep이 맞다.
+- 과거(2026-08-11): `deploy-backend`에 `needs:`가 없어 push 경로 테스트가 0개였고, `develop` push가 운영 배포였다. 이 상태가 2026-11-14 정책 변경 전까지의 운영이었다. 당시 선택지·불일치는 위 TODO에 기록돼 있다.
+- 현재(2026-11-14): 운영 배포는 **main push의 backend 자동 배포** 또는 **develop을 대상으로 한 `workflow_dispatch` 수동 backend 배포**로만 한다. develop push, main 수동 실행, 그 밖의 브랜치에서의 실행은 backend 배포를 건너뛴다. PR의 `CI (Unit + Cucumber)` → `E2E Tests` 흐름은 main·develop 대상으로 유지한다. 수동 develop 배포도 동일한 운영 EC2에서 `prod` 프로파일의 `triagain` 컨테이너를 교체하므로, 운영에 반영되는 작업이다.
+- backend 빌드·push·배포는 공통 concurrency 그룹 `triagain-production-backend`에서 `cancel-in-progress: false`로 직렬화한다. 실행 중인 배포 뒤에는 대기 실행을 하나만 둔다. 새 대기 실행이 들어오면 이전 대기 실행을 교체한다.
+- Lambda는 main push에서 `lambda/**` 변경이 있을 때만 자동 감지·배포한다. `workflow_dispatch`에서는 Lambda 감지와 배포를 건너뛴다.
+- ⏳ 배포 경로·트리거를 바꾸면 같은 PR에서 이 설명을 갱신하고, `needs:`·`if:`의 실제 조건은 반드시 최종 워크플로 파일에서 다시 확인한다. 위 grep 결과와 어긋나면 grep이 맞다.
 
 ## 3. 프로파일 레인은 5개 파일에 흩어져 있다 — 한 곳만 보고 고치면 갈라진다
 
@@ -62,9 +65,9 @@ paths: "src/main/resources/application*.yml, src/test/resources/application*.yml
 
 ## 5. 태그가 환경을 안 가른다 — `latest`를 미는 것이 곧 운영 배포다
 
-- 왜? `deploy.yml:97-99`가 `:latest`와 `:${{ github.sha }}`를 둘 다 push하지만, EC2가 pull 하는 건 `:latest` 하나다(:129, :151). 배포 대상도 `secrets.EC2_HOST` 한 대(:114), 프로파일도 `prod` 하드코딩(:139)이다 — **환경 분리가 없다.** 실험 빌드를 그 태그로 올리면 다음 배포·재기동이 그걸 집는다.
+- 왜? `deploy.yml`은 브랜치별 배포 이미지를 `main`의 `:latest` 또는 `develop`의 `:develop` 태그로 push하고, `${{ github.sha }}` 태그도 보존한다. 배포 대상은 `secrets.EC2_HOST` 한 대이고 프로파일은 `prod`다 — **환경 분리가 없다.** main 자동 배포와 develop 수동 배포 모두 같은 운영 EC2의 `triagain` 컨테이너를 교체한다. develop 이미지는 수동 배포 전까지 운영 컨테이너에 적용되지 않는다.
 - 근거: `docs/log/future-considerations.md` 2026-03-15 "Docker 이미지 SHA 태그 기반 배포"(SHA 태그를 push하면서 배포엔 미사용 — 롤백 시 버전 추적 불가로 등록, 미착수) / 위 07-30 TODO §1.
-- 규칙: 부하테스트·실험 이미지를 `devjian/triagain:latest`로 push하지 않는다. 그리고 배포는 무중단이 아니다 — `docker stop`→`run`→`sleep 15`→헬스체크(:152-153) 사이에 20~30초 교체 구간이 있다.
+- 규칙: 부하테스트·실험 이미지를 `devjian/triagain:latest`나 `:develop`로 임의 push하지 않는다. 배포 실행은 main push 자동 또는 develop 수동 dispatch로 제한하고, 모든 backend 배포는 `triagain-production-backend` 그룹에서 직렬화한다. 배포는 무중단이 아니다 — 컨테이너 교체와 헬스체크 사이에 서비스 전환 구간이 있다.
 
 ---
 
