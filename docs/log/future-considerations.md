@@ -394,9 +394,9 @@
 
 ### [2026-03-15] Docker 이미지 SHA 태그 기반 배포
 
-- 현재 상태: deploy.yml에서 `devjian/triagain:latest`로 pull/run. 빌드 시 SHA 태그(`devjian/triagain:${{ github.sha }}`)도 push하지만 배포에는 미사용
+- 현재 상태(2026-11-14): deploy.yml에서 main은 `devjian/triagain:latest`, develop 수동 배포는 `devjian/triagain:develop`으로 pull/run. 빌드 시 SHA 태그(`devjian/triagain:${{ github.sha }}`)도 push하지만 배포에는 미사용. 브랜치별 태그 분리는 완료 범위이며 SHA 기반 rollback은 별도 미해결 과제다.
 - 필요 시점: 롤백 필요성 발생 시 또는 Phase 2
-- 이유: latest 태그 배포는 간단하지만 롤백 시 어떤 버전인지 추적 불가. SHA 태그로 배포하면 특정 커밋으로 즉시 롤백 가능
+- 이유: latest·develop 태그는 다음 빌드에서 덮어써지므로 rollback에 사용할 커밋을 고정하지 못한다. SHA 태그로 배포하면 특정 커밋으로 rollback 가능
 
 ---
 

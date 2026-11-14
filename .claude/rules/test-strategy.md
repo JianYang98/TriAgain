@@ -131,17 +131,16 @@ grep -rln "RANDOM_PORT\|webAppContextSetup\|AutoConfigureMockMvc" src/test/java/
 - 인증: X-User-Id 헤더 (dev/test 환경)
 - 위치: **무관** — 태그가 정본. 다만 해피패스는 `src/test/java/com/triagain/e2e/`에 둔다.
 
-### CI에서 실제로 걸리는 게이트 (2026-08-09 확인)
+### CI에서 실제로 걸리는 게이트 (2026-11-14 확인)
 
-`deploy.yml`의 `ci`·`e2e` 잡은 둘 다 `if: pull_request`이고, `deploy-backend`는 `if: push`인데
-**`needs:`가 없다** — push 경로에서 도는 테스트는 0개다. 배포를 막는 건 브랜치 보호뿐이다.
+`deploy.yml`의 `ci`·`e2e` 잡은 main·develop 대상 PR에서 실행되고, `E2E Tests`는 `CI (Unit + Cucumber)` 완료 뒤에 돈다. 배포 경로는 별도이며, main push의 backend 자동 배포와 develop `workflow_dispatch` backend 수동 배포에는 테스트 job 의존성이 없다. 따라서 자동 테스트는 PR에서만 실행된다. main push나 develop 수동 배포 전에 사용자가 해당 PR CI 초록 상태를 확인한다.
 
-| 브랜치 | 보호 | required check |
+| 브랜치 | 보호 (2026-11-14 GitHub API) | required check |
 |---|---|---|
-| `main` | 있음 | `CI (Unit + Cucumber)`, `E2E Tests` |
-| `develop` | **없음** | 없음 — 빨간 CI로도 머지된다 (알고 그대로 두기로 결정) |
+| `main` | **없음** | 없음 — PR CI 결과가 자동으로 병합을 막지 않는다 |
+| `develop` | **없음** | 없음 — PR CI 결과가 자동으로 병합을 막지 않는다 |
 
-→ develop 머지 전 그린 확인은 **사람이 한다.** 자동으로 막히지 않는다.
+→ PR CI는 main·develop 대상으로 실행되지만, 브랜치 보호와 required check가 없어 머지는 자동 차단되지 않는다. main push 배포 또는 develop 수동 운영 배포 전에 사람이 PR의 `CI (Unit + Cucumber)`와 `E2E Tests` 초록 상태를 확인한다. push·dispatch 배포 자체는 테스트 완료를 요구하지 않는다.
 
 ## 부하 테스트 (별도 트랙)
 
