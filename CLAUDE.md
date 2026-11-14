@@ -107,7 +107,7 @@ skill 파일을 읽지 않고 작업하는 것은 규칙 위반이다.
 | 서버 **Java 구현**(Spring·JPA·도메인·쿼리 작성) | `.claude/rules/lessons-learned.md` | `src/**/*.java` 작업 시 |
 | **DB 마이그레이션·스키마** | `.claude/rules/db-migration.md` | `src/main/resources/db/migration/**` 작업 시 |
 | **설정·배포**(yml·워크플로·Dockerfile) | `.claude/rules/config-deploy.md` | `application*.yml`·`.github/workflows/**`·`Dockerfile` 작업 시 |
-| Dart/Flutter · iOS 네이티브(설정·빌드·배포) | `../triagain-front/.claude/rules/lessons-learned.md` · `lessons-learned-ios.md` (정본) | FE 세션 |
+| Dart/Flutter · iOS 네이티브(설정·빌드·배포) | `../triagain-front/.claude/rules/lessons-learned.md` · `../triagain-front/.claude/rules/lessons-learned-ios.md` (정본) | FE 세션 |
 
 - FE 경로는 **이 저장소 기준 형제 디렉토리**(`triagain/triagain-front`)다.
 - ⚠️ 규칙이 **아직 없는 영역**의 실수는 기존 파일에 끼워 넣지 말고 **전용 규칙 신설을 먼저 검토**한다(사례: `db-migration.md`·`config-deploy.md`).
