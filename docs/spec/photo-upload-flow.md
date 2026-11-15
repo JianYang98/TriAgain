@@ -64,4 +64,5 @@ sequenceDiagram
 ## 구현 상태
 
 - SSE 구독·S3 3회 재시도·2초 폴링·90초 제한은 Flutter에 구현되어 있다.
-- `GET /upload-sessions/{id}`와 SSE 소유권 검증은 API 계약이 확정됐으며 백엔드 구현은 아직 필요하다.
+- `GET /upload-sessions/{id}`와 SSE 소유권 검증은 백엔드에 구현되어 있다. 둘 다 인증이 필요하며
+  타인 소유·부재 세션은 `404 V004`다.

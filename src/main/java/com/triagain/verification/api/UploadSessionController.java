@@ -18,6 +18,8 @@ import com.triagain.verification.port.in.CreateUploadSessionUseCase;
 import com.triagain.verification.port.in.CreateUploadSessionUseCase.CreateUploadSessionCommand;
 import com.triagain.verification.port.in.CreateUploadSessionUseCase.UploadSessionResult;
 import com.triagain.verification.port.in.SubscribeUploadSessionUseCase;
+import com.triagain.verification.port.in.UploadSessionQueryUseCase;
+import com.triagain.verification.port.in.UploadSessionQueryUseCase.UploadSessionSnapshot;
 
 import lombok.RequiredArgsConstructor;
 
@@ -27,6 +29,7 @@ public class UploadSessionController {
 
 	private final CreateUploadSessionUseCase createUploadSessionUseCase;
 	private final SubscribeUploadSessionUseCase subscribeUploadSessionUseCase;
+	private final UploadSessionQueryUseCase uploadSessionQueryUseCase;
 
 	@PostMapping("/upload-sessions")
 	public ResponseEntity<ApiResponse<UploadSessionResult>> createUploadSession(
@@ -47,9 +50,20 @@ public class UploadSessionController {
 		return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(result));
 	}
 
+	/** 업로드 세션 상태 조회 — SSE 유실·연결 실패에 대비한 클라이언트 폴링 폴백 */
+	@GetMapping("/upload-sessions/{id}")
+	public ResponseEntity<ApiResponse<UploadSessionStatusResponse>> getUploadSessionStatus(
+			@AuthenticatedUser String userId,
+			@PathVariable Long id
+	) {
+		UploadSessionSnapshot snapshot = uploadSessionQueryUseCase.getOwnedOrThrow(id, userId);
+		return ResponseEntity.ok(ApiResponse.ok(
+				new UploadSessionStatusResponse(snapshot.id(), snapshot.status())));
+	}
+
 	/** SSE 구독 — 클라이언트가 업로드 완료 이벤트를 실시간 수신 */
 	@GetMapping(value = "/upload-sessions/{id}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-	public SseEmitter subscribe(@PathVariable Long id) {
-		return (SseEmitter) subscribeUploadSessionUseCase.subscribe(id);
+	public SseEmitter subscribe(@AuthenticatedUser String userId, @PathVariable Long id) {
+		return (SseEmitter) subscribeUploadSessionUseCase.subscribe(id, userId);
 	}
 }

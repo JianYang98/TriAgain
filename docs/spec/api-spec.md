@@ -23,9 +23,6 @@
 > **순서 주의** — SSE 구독은 반드시 **S3 PUT 전**에 시작한다. 서버는 미구독 세션의 완료 이벤트를
 > 보관하지 않고 버리므로, 구독 전에 Lambda 콜백이 도착하면 이벤트가 영구 유실된다.
 > 폴링은 업로드 전에는 완료될 수 없으므로 **S3 PUT 후**에 시작한다.
->
-> **`GET /upload-sessions/{id}`는 계약 확정·구현 대기 상태다.** 현재 백엔드에 해당 라우트가 없어
-> 폴링 폴백이 동작하지 않는다 — 상세는 [`api-spec/verification.md`](api-spec/verification.md) 참조.
 
 ---
 
@@ -35,7 +32,7 @@
 |--------|------|-----------------|
 | 인증/유저 | [`api-spec/auth-user.md`](api-spec/auth-user.md) | POST /auth/kakao · signup · apple · apple-signup · refresh · logout, GET /users/me, PATCH /users/me/nickname · fcm-token, 프로필 이미지 업로드·확정, DELETE /users/me |
 | 크루 | [`api-spec/crew.md`](api-spec/crew.md) | GET /crews/{id}/feed · my-verifications, GET /crews/invite/{code} · {id}/preview, POST /crews/join, GET /crews/{id}, POST /crews, GET /crews, PATCH·DELETE /crews/{id}, DELETE /crews/{id}/members/me, GET /crews/search, POST /crews/{id}/join, GET /invite/{code} |
-| 인증 업로드 | [`api-spec/verification.md`](api-spec/verification.md) | POST /upload-sessions, GET /upload-sessions/{id} *(구현 대기)* · {id}/events (SSE), POST /verifications, DELETE /verifications/{id}, PATCH /verifications/{id}, PUT·DELETE /verifications/{id}/reactions (Support Context) |
+| 인증 업로드 | [`api-spec/verification.md`](api-spec/verification.md) | POST /upload-sessions, GET /upload-sessions/{id} · {id}/events (SSE), POST /verifications, DELETE /verifications/{id}, PATCH /verifications/{id}, PUT·DELETE /verifications/{id}/reactions (Support Context) |
 | 알림 | [`api-spec/notification.md`](api-spec/notification.md) | GET /notifications · unread-count, PATCH /notifications/{id}/read · read-all, DELETE /notifications |
 | 습관·솔로 | [`api-spec/habit.md`](api-spec/habit.md) | POST /habits, GET /habits · archived, PATCH /habits/{id}, POST /habits/{id}/end · pause · resume · cycles · verifications, DELETE cycles/current |
 | 내부 API | [`api-spec/internal.md`](api-spec/internal.md) | PUT /internal/upload-sessions/complete, POST /internal/fcm-test |

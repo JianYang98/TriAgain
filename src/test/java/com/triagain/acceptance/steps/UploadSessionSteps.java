@@ -147,6 +147,25 @@ public class UploadSessionSteps {
 		// no-op — CapturingSsePort가 자동 캡처
 	}
 
+	@만일("업로드 세션 상태를 조회한다")
+	public void 업로드_세션_상태를_조회한다() {
+		scenarioContext.setResponse(
+				uploadSessionAdapter.getUploadSessionStatus(
+						scenarioContext.getUserId(), scenarioContext.getUploadSessionId()));
+	}
+
+	@만일("{string}가 업로드 세션 상태를 조회한다")
+	public void 특정_사용자가_업로드_세션_상태를_조회한다(String userId) {
+		scenarioContext.setResponse(
+				uploadSessionAdapter.getUploadSessionStatus(userId, scenarioContext.getUploadSessionId()));
+	}
+
+	@만일("토큰 없이 업로드 세션 상태를 조회한다")
+	public void 토큰_없이_업로드_세션_상태를_조회한다() {
+		scenarioContext.setResponse(
+				uploadSessionAdapter.getUploadSessionStatusWithoutAuth(scenarioContext.getUploadSessionId()));
+	}
+
 	// ===== 그리고/그러면 (Then) =====
 
 	@그리고("세션 상태는 {string}이다")
@@ -161,5 +180,11 @@ public class UploadSessionSteps {
 		Long sessionId = scenarioContext.getUploadSessionId();
 		List<String> events = capturingSsePort.getCapturedEvents(sessionId);
 		assertThat(events).contains(expectedEvent);
+	}
+
+	@그리고("업로드 세션 조회 응답의 status는 {string}이다")
+	public void 업로드_세션_조회_응답의_status는_이다(String expectedStatus) {
+		String actual = scenarioContext.getResponse().jsonPath().getString("data.status");
+		assertThat(actual).isEqualTo(expectedStatus);
 	}
 }

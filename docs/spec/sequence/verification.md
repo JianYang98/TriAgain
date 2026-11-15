@@ -27,7 +27,7 @@ sequenceDiagram
         Server-->>Client: afterCommit SSE COMPLETED
     and 누락 대비 상태 확인
         loop 2초 간격
-            Client->>Server: GET /upload-sessions/{id} (구현 대기)
+            Client->>Server: GET /upload-sessions/{id}
             Server-->>Client: PENDING / COMPLETED / EXPIRED
         end
     end
@@ -50,8 +50,8 @@ sequenceDiagram
 
 SSE 구독은 **S3 업로드(PUT) 전에** 시작하고, 상태 조회 폴링은 **업로드 후에** 시작한다. 서버가 미구독 세션의 완료 이벤트를 버리기 때문이다. 연결 실패나 이벤트 유실이 인증 실패로 이어지지 않도록 클라이언트는 상태 조회를 병렬 수행하며, `COMPLETED` 또는 `EXPIRED`를 먼저 확인한 채널의 결과를 사용하고 나머지 대기를 종료한다.
 
-> ⚠️ **SSE와 상태 조회를 로그인한 세션 소유자 전용으로 한다는 것은 목표 계약이며 아직 구현되지 않았다.**
-> 현재 SSE는 `permitAll`이고 소유권 검증이 없으며, `GET /upload-sessions/{id}`는 라우트 자체가 없다.
+SSE와 상태 조회는 둘 다 **로그인한 세션 소유자 전용**이다. 소유권 검증은 응용 계층
+`getOwnedOrThrow(id, userId)` 한 곳을 공유하며, 타인 소유·부재 세션은 `404 V004`다.
 
 ## 2. `POST /upload-sessions`
 
@@ -101,7 +101,7 @@ sequenceDiagram
     SSE-->>Client: upload-complete
 
     opt SSE 미수신
-        Client->>StatusController: GET /upload-sessions/{id} (구현 대기)
+        Client->>StatusController: GET /upload-sessions/{id}
         StatusController-->>Client: status=COMPLETED
     end
 ```

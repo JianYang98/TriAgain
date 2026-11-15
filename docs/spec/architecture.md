@@ -12,7 +12,6 @@
 |---|---|
 | 현재 구현 | 저장소 코드와 설정에 존재하고 호출 경로가 연결됨 |
 | 조건부 구현 | 코드가 있으나 설정값에 따라 NoOp 또는 비활성화됨 |
-| 확정 계약·구현 대기 | 문서 계약은 확정됐지만 Java가 아직 따라오지 않음 |
 | 기반만 존재 | Domain·Port·Adapter 일부만 있고 사용자 호출 경로가 없음 |
 
 SQS, OpenAI Adapter는 현재 런타임 구성요소가 아니다. Redis는 `triagain.crew.lock-strategy=REDIS_ASYNC`일 때만
@@ -57,7 +56,7 @@ flowchart TB
     S3 -->|"ObjectCreated"| Lambda
     Lambda -->|"PUT /internal/upload-sessions/complete"| Security
     Verification -->|"SSE 현재 구현"| Flutter
-    Flutter -.->|"GET 상태 폴링 계약·구현 대기"| Verification
+    Flutter -->|"GET 상태 폴링 현재 구현"| Verification
     User --> Social
     Support --> FCM
     App --> PG
@@ -199,9 +198,12 @@ Spring ApplicationEvent는 현재 프로세스 안에서만 동작하며 메시�
 |---|---|
 | `/auth/**` | `permitAll`; 로그인·가입·refresh·no-op logout |
 | `/internal/**` | Security matcher는 permitAll이지만 `InternalApiKeyFilter`가 `X-Internal-Api-Key` 검증 |
-| `/upload-sessions/*/events` | 현재 permitAll |
 | `/crews/search`, `/invite/**`, health·정적 경로 | permitAll |
-| 나머지 | Bearer Access JWT + DB `tokenVersion` 검증 |
+| 나머지 (`/upload-sessions/*/events` 포함) | Bearer Access JWT + DB `tokenVersion` 검증 — 요청자 소유 세션만 구독 가능(404 V004) |
+
+`DispatcherType.ASYNC`·`ERROR` 재디스패치는 위 매처보다 먼저 `permitAll`이다 — SSE `emitter.complete()`가
+트리거하는 ASYNC 재디스패치에서 `AuthorizationFilter`가 빈 SecurityContext로 재평가해 정상 소유자에게
+401을 주는 문제를 막는다. 클라이언트가 직접 보내는 REQUEST 디스패치의 인가는 그대로다.
 
 ### 비운영 (`!prod`)
 
@@ -209,10 +211,8 @@ Spring ApplicationEvent는 현재 프로세스 안에서만 동작하며 메시�
 - `/internal/**`에는 운영용 InternalApiKeyFilter를 설치하지 않는다.
 - 따라서 비운영 인증 동작을 운영 계약으로 간주하면 안 된다.
 
-### 확정 계약과 구현 공백
+### SSE emitter 저장의 구조적 한계
 
-- `GET /upload-sessions/{id}`는 JWT 인증·소유자 전용 계약이 확정됐지만 Controller 구현이 없다.
-- SSE도 JWT 인증·소유자 전용으로 계약을 바꿨지만 현재 Security와 Controller는 적용 전이다.
 - `SseEmitterAdapter`는 `Map<sessionId, emitter>` 하나만 저장하므로 같은 세션의 재연결·다중 연결이
   이전 emitter를 덮어쓴다.
 
@@ -229,14 +229,21 @@ sequenceDiagram
 
     FE->>BE: POST /upload-sessions
     BE-->>FE: presignedUrl, uploadSessionId
-    FE->>BE: SSE 구독 (현재 구현)
+    FE->>BE: GET /upload-sessions/{id}/events 구독 시작 (S3 PUT 전)
     FE->>S3: PUT image
-    S3->>L: ObjectCreated
-    L->>BE: PUT /internal/upload-sessions/complete?imageKey=...
-    BE->>BE: PENDING → COMPLETED
-    BE-->>FE: SSE completed
-    FE-->>BE: GET /upload-sessions/{id} 2초 폴링 (구현 대기)
-    FE->>BE: POST /verifications
+    par S3 완료 이벤트 → SSE
+        S3->>L: ObjectCreated
+        L->>BE: PUT /internal/upload-sessions/complete?imageKey=...
+        BE->>BE: PENDING → COMPLETED
+        BE-->>FE: SSE completed
+    and S3 PUT 후 상태 폴링
+        loop 2초 간격
+            FE->>BE: GET /upload-sessions/{id}
+            BE-->>FE: PENDING 또는 COMPLETED/EXPIRED
+        end
+    end
+    FE->>FE: 먼저 확정된 결과 채택, 나머지 대기 종료
+    FE->>BE: POST /verifications (COMPLETED일 때)
 ```
 
 - Lambda 요청은 운영에서 Internal API Key를 포함해야 한다.
@@ -290,8 +297,8 @@ sequenceDiagram
 | 알림 Adapter BC 의존 | Crew·Verification infra가 Support 내부 타입과 Port를 직접 사용 | Support Inbound UseCase·이벤트 경계로 옮길지 별도 분석 |
 | 패키지 의존 순환 | 세 쌍 이상의 양방향 컴파일 의존 존재 | 모듈 분리 필요 시 방향 재설계 |
 | Moderation | 기반 코드만 있고 사용자 호출 경로 없음 | 기능 착수 시 현재 Adapter 경계부터 재검증 |
-| SSE | 공개·소유권 미검증·단일 emitter | 확정 API 계약에 맞춰 구현 |
-| 폴링 | 계약만 있고 Controller 없음 | 상태 조회 API 구현 |
+| SSE | 인증·소유권 검증 적용, 세션당 emitter 1개 | 재연결·다중 연결 시 이전 emitter 대체 문제 검토 |
+| 폴링 | `GET /upload-sessions/{id}` 구현, 요청자 소유 세션만 조회 | SSE 유실 시 폴백 동작은 운영 배포 후 실기기 확인 |
 | FCM | 코드 존재, 환경 설정에 따라 NoOp | 운영 `FIREBASE_ENABLED`와 자격증명 확인 |
 | AWS 운영 | retry·DLQ·경보 값을 저장소에서 확정 불가 | 배포 환경에서 확인 |
 | Redis 가입 | 단일 worker의 DB 멱등 반영·commit 뒤 ACK, 실패 시 중단. 같은 run 재기동 시 startup recovery | 전략 handoff·retry·reconciliation |
