@@ -23,14 +23,14 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/auth")
-//@Profile({"!prod", "loadtest"})
+@Profile({"!prod", "loadtest"})
 @RequiredArgsConstructor
 public class TestLoginController {
 
 	private final UserRepositoryPort userRepositoryPort;
 	private final JwtProvider jwtProvider;
 
-	/** 테스트 로그인 — userId로 JWT 발급 (dev/test 전용, prod에서는 빈 자체가 로드되지 않음) */
+	/** 테스트 로그인 — userId로 JWT 발급 (dev/test·loadtest 프로필 전용, prod 단독에서는 빈이 로드되지 않음) */
 	@PostMapping("/test-login")
 	public ResponseEntity<ApiResponse<KakaoLoginResult>> testLogin(
 			@Valid @RequestBody TestLoginRequest request) {
