@@ -31,6 +31,19 @@ management:
   health:
     redis:
       enabled: false
+  # 운영도 이 공통 설정으로 /actuator/prometheus를 연다. 외부 차단은 앱이 아니라 네트워크가 맡는다
+  # (도메인 경로는 nginx, 8080 직접 접근은 보안그룹) — docs/prod-deploy-checklist.md §6.
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  metrics:
+    tags:
+      application: triagain
+    distribution:
+      # HTTP p95/p99용 버킷. Hikari acquire 히스토그램·Tomcat MBean은 부하테스트 분석용이라 켜지 않는다.
+      percentiles-histogram:
+        http.server.requests: true
 
 jwt:
   secret: ${JWT_SECRET:dGVzdC1zZWNyZXQta2V5LWZvci1sb2NhbC1kZXZlbG9wbWVudC1vbmx5LXRyaWFnYWlu}
