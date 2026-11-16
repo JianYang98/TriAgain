@@ -192,7 +192,62 @@ FCM 재시도는 최초 시도를 포함해 최대 3회이며 대기 시간은 1
 
 ---
 
-## 4. Lambda 호출 경로
+## 4. POST /internal/gc
+
+부하테스트 측정 전에 JVM GC를 강제로 한 번 실행해 힙 상태를 맞추는 pre-GC 게이트용이다.
+`System.gc()`를 동기로 실행하고 실행 전후 힙 사용량과 소요 시간을 돌려준다.
+
+### 엔드포인트 등록 조건
+
+`GcTriggerController`의 `@Profile({"!prod", "loadtest"})` — 비운영이거나 `loadtest`가 켜졌을 때 등록된다.
+
+| 활성 프로필 | 등록 | 키 검사 |
+|---|---|---|
+| `prod` 단독 (운영 배포) | 안 됨 | `InternalApiKeyFilter`가 먼저 검사(키 없으면 403). 키가 맞으면 미등록 경로라 현재 공통 `Exception` 핸들러가 `500 C002`를 반환한다(2026-11-16 로컬 prod 기동 실측 — §3 FCM 테스트의 미등록 상태와 같은 현상) |
+| `prod,loadtest` (부하테스트 박스) | 됨 | `X-Internal-Api-Key` 필요 |
+| `!prod` (local·dev·test 등) | 됨 | 없음 — §1 비운영 경계와 같다 |
+
+`!prod`에서 키 없이 열리는 것은 기존 `/internal/**`와 같은 비운영 편의 설정이다. 비운영 환경은
+X-User-Id 헤더 인증도 허용하므로 원래부터 인터넷에 노출하면 안 되는 환경이며, GC API가 이 전제를 바꾸지 않는다.
+
+### 요청
+
+```http
+POST /internal/gc HTTP/1.1
+X-Internal-Api-Key: <internal-api-key>
+```
+
+Body와 query parameter는 없다. 헤더는 `prod,loadtest`에서만 필요하다.
+
+### 성공 응답 — 200 OK
+
+```json
+{
+  "success": true,
+  "data": {
+    "heapUsedBeforeMb": 94,
+    "heapUsedAfterMb": 50,
+    "durationMs": 53
+  },
+  "error": null
+}
+```
+
+| 필드 | 타입 | nullable | 설명 |
+|---|---|---:|---|
+| `heapUsedBeforeMb` | long | 아니오 | GC 직전 힙 사용량(MB, `totalMemory - freeMemory`) |
+| `heapUsedAfterMb` | long | 아니오 | GC 직후 힙 사용량(MB). 그 사이에도 할당이 계속되므로 before보다 작다고 보장하지 않는다 |
+| `durationMs` | long | 아니오 | `System.gc()` 호출 소요 시간(ms) |
+
+### HTTP 에러
+
+| HTTP | 코드 | 조건 |
+|---|---|---|
+| 403 | FORBIDDEN | `prod` 계열에서 내부 API 키 누락·불일치 |
+
+---
+
+## 5. Lambda 호출 경로
 
 ```mermaid
 sequenceDiagram
@@ -227,7 +282,7 @@ sequenceDiagram
 
 ---
 
-## 5. 확인된 운영 경계
+## 6. 확인된 운영 경계
 
 - SAM 템플릿에는 Lambda DLQ, 실패 Destination, 명시적 비동기 재시도 설정이 없다.
 - 실제 AWS의 재시도·DLQ·경보 값은 저장소 밖 설정을 확인해야 한다.
