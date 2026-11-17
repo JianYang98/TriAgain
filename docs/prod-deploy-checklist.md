@@ -245,7 +245,7 @@ location = /actuator/health {
 |---|---|
 | `/actuator/health` | 배포 워크플로가 `curl -f`로 확인하는 Spring Boot health |
 | `/health` | 항상 HTTP 200이며 body의 `database`가 `UP` 또는 `DOWN` |
-| `/actuator/prometheus` | Micrometer 지표. 공통 태그 `application="triagain"`, HTTP 요청 히스토그램 포함. 외부 차단은 §6 |
+| `/actuator/prometheus` | Micrometer 지표. 공통 태그 `application="triagain"`. 지연 히스토그램(HTTP 요청·Hikari 커넥션 대기)과 Tomcat MBean 지표(`tomcat_threads_*` 등) 포함. 외부 차단은 §6 |
 
 - 배포 성공 판정은 현재 `/actuator/health` HTTP 상태만 본다.
 - 애플리케이션 로그는 CloudWatch Logs `/triagain/app`, stream `triagain`으로 고정한다.
