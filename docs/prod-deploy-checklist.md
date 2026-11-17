@@ -184,6 +184,7 @@ main에도 변경이 반영되어야 나타난다. develop → main PR은 기존
 - [x] 나머지 보호 API는 Bearer JWT와 DB `tokenVersion` 검증
 - [x] `/internal/**`는 운영에서 `InternalApiKeyFilter`가 `X-Internal-Api-Key` 검증
 - [x] `/health`, `/actuator/health` 공개
+- [x] `/actuator/prometheus` 앱 레벨 공개(permitAll) — 외부 차단은 아래 "지표 경로 외부 차단"이 맡는다
 - [x] Swagger UI와 `/v3/api-docs/**` 운영 공개
 - [x] `/upload-sessions/*/events` 운영 공개 — 현재 SSE 인증·소유권 구현 전
 - [x] `server.forward-headers-strategy: framework` 설정됨
@@ -201,6 +202,41 @@ main에도 변경이 반영되어야 나타난다. develop → main PR은 기존
 Flutter iOS/Android 네이티브 HTTP 클라이언트에는 브라우저 CORS 정책이 적용되지 않는다. 따라서
 “CORS 설정”을 모든 모바일 배포의 필수 완료 항목으로 단정하지 않는다.
 
+### 지표 경로 외부 차단 — `/actuator/prometheus` 포함 버전을 운영에 배포하기 전 필수
+
+앱은 `/actuator/prometheus`를 인증 없이 응답한다. 수집은 운영자 Mac의 Prometheus가 EC2 공인 IP의
+8080으로 직접 하므로, 외부 차단은 두 경로를 각각 막아야 한다. 둘 다 저장소 밖 수동 인프라다.
+
+| 경로 | 차단 수단 | 2026-11-16 확인 상태 |
+|---|---|---|
+| 도메인(443 → nginx → 8080) | nginx 443 서버 블록(`api.triagain.kr`·`triagain.kr`) **둘 다**에 아래 규칙 | **미적용** — 두 블록 모두 `location /` 하나로 전부 8080에 넘긴다(`sudo nginx -T` 확인) |
+| 8080 직접 접근 | 보안그룹 인바운드 TCP 8080을 운영자 IP `/32`만 허용 | **미적용** — 적용 전 현재 인바운드 규칙과 8080을 직접 부르는 호출자(Lambda `BACKEND_URL` 등)를 먼저 확인 |
+
+```nginx
+# 운영 지표는 도메인으로 내보내지 않는다 — 수집은 8080 직접(보안그룹 IP 제한)
+location ^~ /actuator/ {
+    return 404;
+}
+location = /actuator/health {
+    proxy_pass http://localhost:8080;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+- `/actuator/` 접두 경로 전체를 막고 health만 남긴다. `/actuator/prometheus/` 같은 변형 경로와
+  나중에 노출될 엔드포인트까지 덮기 위해서다. health는 배포 후 도메인 경유 수동 확인 경로라 유지한다.
+- 적용: 설정 파일 백업 → 편집 → `sudo nginx -t` → `sudo systemctl reload nginx`. 롤백은 백업 복원 후 같은 순서.
+- 배포 헬스체크(`curl http://localhost:8080/actuator/health`, EC2 안에서 실행)와 nginx → 8080(루프백)은
+  보안그룹의 영향을 받지 않는다.
+- 운영자 IP가 바뀌면 Mac 수집이 끊긴다(fail-closed). 그때 `/32` 규칙을 고친다.
+
+- [ ] 두 도메인과 IP 직접 https 접속에서 `/actuator/prometheus`·`/actuator/prometheus/`가 nginx 404인지 확인
+- [ ] 도메인 경유 `/actuator/health`가 200인지 확인
+- [ ] 허용 IP가 아닌 출발지에서 `:8080` 접속이 차단되는지 확인 (예: EC2에서 자기 공인 IP:8080 → timeout, 대조군 443은 200)
+
 ---
 
 ## 7. Health check와 관측
@@ -209,6 +245,7 @@ Flutter iOS/Android 네이티브 HTTP 클라이언트에는 브라우저 CORS �
 |---|---|
 | `/actuator/health` | 배포 워크플로가 `curl -f`로 확인하는 Spring Boot health |
 | `/health` | 항상 HTTP 200이며 body의 `database`가 `UP` 또는 `DOWN` |
+| `/actuator/prometheus` | Micrometer 지표. 공통 태그 `application="triagain"`. 지연 히스토그램(HTTP 요청·Hikari 커넥션 대기)과 Tomcat MBean 지표(`tomcat_threads_*` 등) 포함. 외부 차단은 §6 |
 
 - 배포 성공 판정은 현재 `/actuator/health` HTTP 상태만 본다.
 - 애플리케이션 로그는 CloudWatch Logs `/triagain/app`, stream `triagain`으로 고정한다.
