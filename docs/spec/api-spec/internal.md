@@ -192,7 +192,62 @@ FCM 재시도는 최초 시도를 포함해 최대 3회이며 대기 시간은 1
 
 ---
 
-## 4. Lambda 호출 경로
+## 4. POST /internal/gc
+
+부하테스트 측정 전에 JVM GC를 강제로 한 번 실행해 힙 상태를 맞추는 pre-GC 게이트용이다.
+`System.gc()`를 동기로 실행하고 실행 전후 힙 사용량과 소요 시간을 돌려준다.
+
+### 엔드포인트 등록 조건
+
+`GcTriggerController`의 `@Profile({"!prod", "loadtest"})` — 비운영이거나 `loadtest`가 켜졌을 때 등록된다.
+
+| 활성 프로필 | 등록 | 키 검사 |
+|---|---|---|
+| `prod` 단독 (운영 배포) | 안 됨 | `InternalApiKeyFilter`가 먼저 검사(키 없으면 403). 키가 맞으면 미등록 경로라 현재 공통 `Exception` 핸들러가 `500 C002`를 반환한다(2026-11-16 로컬 prod 기동 실측 — §3 FCM 테스트의 미등록 상태와 같은 현상) |
+| `prod,loadtest` (부하테스트 박스) | 됨 | `X-Internal-Api-Key` 필요 |
+| `!prod` (local·dev·test 등) | 됨 | 없음 — §1 비운영 경계와 같다 |
+
+`!prod`에서 키 없이 열리는 것은 기존 `/internal/**`와 같은 비운영 편의 설정이다. 비운영 환경은
+X-User-Id 헤더 인증도 허용하므로 원래부터 인터넷에 노출하면 안 되는 환경이며, GC API가 이 전제를 바꾸지 않는다.
+
+### 요청
+
+```http
+POST /internal/gc HTTP/1.1
+X-Internal-Api-Key: <internal-api-key>
+```
+
+Body와 query parameter는 없다. 헤더는 `prod,loadtest`에서만 필요하다.
+
+### 성공 응답 — 200 OK
+
+```json
+{
+  "success": true,
+  "data": {
+    "heapUsedBeforeMb": 94,
+    "heapUsedAfterMb": 50,
+    "durationMs": 53
+  },
+  "error": null
+}
+```
+
+| 필드 | 타입 | nullable | 설명 |
+|---|---|---:|---|
+| `heapUsedBeforeMb` | long | 아니오 | GC 직전 힙 사용량(MB, `totalMemory - freeMemory`) |
+| `heapUsedAfterMb` | long | 아니오 | GC 직후 힙 사용량(MB). 그 사이에도 할당이 계속되므로 before보다 작다고 보장하지 않는다 |
+| `durationMs` | long | 아니오 | `System.gc()` 호출 소요 시간(ms) |
+
+### HTTP 에러
+
+| HTTP | 코드 | 조건 |
+|---|---|---|
+| 403 | FORBIDDEN | `prod` 계열에서 내부 API 키 누락·불일치 |
+
+---
+
+## 5. Lambda 호출 경로
 
 ```mermaid
 sequenceDiagram
@@ -227,7 +282,7 @@ sequenceDiagram
 
 ---
 
-## 5. 확인된 운영 경계
+## 6. 확인된 운영 경계
 
 - SAM 템플릿에는 Lambda DLQ, 실패 Destination, 명시적 비동기 재시도 설정이 없다.
 - 실제 AWS의 재시도·DLQ·경보 값은 저장소 밖 설정을 확인해야 한다.
@@ -238,9 +293,9 @@ sequenceDiagram
 - API 키는 단일 값 완전 일치 방식이며, 두 키를 동시에 허용하는 무중단 회전 절차는 없다.
 - 네트워크 수준 접근 제한, WAF·rate limit 여부는 애플리케이션 저장소만으로 확인할 수 없다.
 
-## 6. 부하테스트 제어 API
+## 7. POST /internal/scheduler/{name}
 
-두 경로는 `loadtest` 프로필이 활성일 때 등록된다. 요청 본문과 JWT는 필요 없다.
+스케줄러 호출은 `loadtest` 프로필이 활성일 때 등록된다. 요청 본문과 JWT는 필요 없다.
 
 | 활성 프로필 | 호출 조건 |
 |---|---|
@@ -248,7 +303,9 @@ sequenceDiagram
 | `prod,loadtest` | §1의 `X-Internal-Api-Key` 필수. 키가 없거나 일치하지 않으면 403 |
 | `local,loadtest` 등 비운영 + `loadtest` | 내부 API 키 검사 없이 호출 가능 |
 
-### POST /internal/scheduler/{name}
+스케줄러 엔드포인트는 같은 작업의 예약 실행을 중복 방지하지 않는다. HTTP 호출과 `@Scheduled` 실행은
+서로 다른 경로에서 작업을 실행하므로 동시에 겹칠 수 있다. 이 API만으로 동시 실행 경쟁이 전부
+해결됐다고 간주하지 않는다.
 
 지정한 작업을 호출 스레드에서 실행하고 작업이 반환된 뒤 응답한다.
 
@@ -263,7 +320,3 @@ sequenceDiagram
 
 성공하면 HTTP 200과 `success=true`를 반환한다. `data`에는 `schedulerName`, 소요 시간 `durationMs`(정수), 서버의 로컬 일시 문자열 `startedAt`·`finishedAt`이 들어간다.
 등록되지 않은 이름이면 작업 실행 없이 HTTP 400을 반환한다. 현재 구현의 본문은 `success=true`, `error=null`이며 `data.schedulerName`은 요청한 이름, `data.durationMs`는 -1이다. 호출자는 HTTP 상태로 실패를 판별한다.
-
-### POST /internal/gc
-
-JVM에 `System.gc()`를 요청한다. HTTP 200 응답의 `data`에는 호출 직전과 직후의 사용 힙 `heapUsedBeforeMb`·`heapUsedAfterMb`(각각 MiB 단위 정수), 호출 소요 시간 `durationMs`가 들어간다. 두 힙 값은 측정값이며 회수량이나 감소를 보장하지 않는다.

@@ -10,11 +10,14 @@ import com.triagain.common.response.ApiResponse;
 
 import lombok.extern.slf4j.Slf4j;
 
-/** 강제 GC 트리거 — 부하테스트 pre-GC 게이트 전용, loadtest 프로필에서만 활성화 */
+/**
+ * 강제 GC 트리거 — 부하테스트 pre-GC 게이트용. 비운영 또는 loadtest 프로필에서만 활성화.
+ * prod 단독에선 빈이 없고, prod+loadtest에선 /internal/** 의 InternalApiKeyFilter가 키를 검사한다.
+ */
 @Slf4j
 @RestController
 @RequestMapping("/internal/gc")
-@Profile("loadtest")
+@Profile({"!prod", "loadtest"})
 public class GcTriggerController {
 
 	/** System.gc()를 동기 실행하고 힙 회수량·소요시간 반환 — k6 setup() 게이트용 */

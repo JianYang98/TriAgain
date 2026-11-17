@@ -2,9 +2,10 @@ name: CI/CD
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
     branches: [main, develop]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -77,11 +78,34 @@ jobs:
           reporter: java-junit
 
   deploy-backend:
-    if: github.event_name == 'push'
+    if: >-
+      (github.event_name == 'push' &&
+       github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' &&
+       github.ref == 'refs/heads/develop')
     runs-on: ubuntu-latest
+    concurrency:
+      group: triagain-production-backend
+      cancel-in-progress: false
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Select image tag for deployment branch
+        shell: bash
+        run: |
+          case "$GITHUB_REF" in
+            refs/heads/main)
+              echo "IMAGE_TAG=latest" >> "$GITHUB_ENV"
+              ;;
+            refs/heads/develop)
+              echo "IMAGE_TAG=develop" >> "$GITHUB_ENV"
+              ;;
+            *)
+              echo "Unsupported deployment ref: $GITHUB_REF" >&2
+              exit 1
+              ;;
+          esac
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -95,12 +119,13 @@ jobs:
           context: .
           push: true
           tags: |
-            devjian/triagain:latest
+            devjian/triagain:${{ env.IMAGE_TAG }}
             devjian/triagain:${{ github.sha }}
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1
         env:
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
           DB_URL: ${{ secrets.DB_URL }}
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
@@ -114,7 +139,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: DB_URL,DB_USERNAME,DB_PASSWORD,JWT_SECRET,INTERNAL_API_KEY,APPLE_TEAM_ID,APPLE_KEY_ID,APPLE_PRIVATE_KEY,APPLE_REFRESH_KEY
+          envs: DB_URL,DB_USERNAME,DB_PASSWORD,JWT_SECRET,INTERNAL_API_KEY,APPLE_TEAM_ID,APPLE_KEY_ID,APPLE_PRIVATE_KEY,APPLE_REFRESH_KEY,IMAGE_TAG
           script: |
             # Firebase 키 파일 존재 체크
             FIREBASE_KEY_PATH="/home/ec2-user/triagain/config/triagain-firebase-service-account.json"
@@ -126,7 +151,7 @@ jobs:
               FIREBASE_ENABLED=false
             fi
 
-            docker pull devjian/triagain:latest
+            docker pull "devjian/triagain:${IMAGE_TAG}"
             docker stop triagain || true && docker rm triagain || true
             docker run -d --name triagain --restart unless-stopped \
               -p 8080:8080 \
@@ -148,7 +173,7 @@ jobs:
               -e "APPLE_REFRESH_KEY=$APPLE_REFRESH_KEY" \
               -e "FIREBASE_ENABLED=$FIREBASE_ENABLED" \
               -e "FIREBASE_SERVICE_ACCOUNT_PATH=/opt/triagain/config/triagain-firebase-service-account.json" \
-              devjian/triagain:latest
+              "devjian/triagain:${IMAGE_TAG}"
             sleep 15
             curl -f http://localhost:8080/actuator/health
             docker image prune -f

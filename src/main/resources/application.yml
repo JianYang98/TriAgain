@@ -15,12 +15,6 @@ spring:
     deserialization:
       fail-on-unknown-properties: false
 
-  task:
-    scheduling:
-      pool:
-        size: 4
-      thread-name-prefix: sched-
-
   flyway:
     baseline-on-migrate: true
     baseline-version: 6
@@ -37,13 +31,26 @@ management:
   health:
     redis:
       enabled: false
+  # 운영도 이 공통 설정으로 /actuator/prometheus를 연다. 외부 차단은 앱이 아니라 네트워크가 맡는다
+  # (도메인 경로는 nginx, 8080 직접 접근은 보안그룹) — docs/prod-deploy-checklist.md §6.
   endpoints:
     web:
       exposure:
-        include: health,prometheus,metrics
+        include: health,prometheus
   metrics:
     tags:
       application: triagain
+    distribution:
+      # 운영 병목 분석용 지연 분포 — HTTP 응답 p95/p99, 커넥션 획득 대기 p50/p95. 버킷은 Micrometer 기본(1ms~30s).
+      percentiles-histogram:
+        http.server.requests: true
+        hikaricp.connections.acquire: true
+
+# 워커 스레드 지표(tomcat_threads_*)는 Tomcat MBean 레지스트리를 읽는다. Boot 기본값은 꺼짐.
+server:
+  tomcat:
+    mbeanregistry:
+      enabled: true
 
 jwt:
   secret: ${JWT_SECRET:dGVzdC1zZWNyZXQta2V5LWZvci1sb2NhbC1kZXZlbG9wbWVudC1vbmx5LXRyaWFnYWlu}
