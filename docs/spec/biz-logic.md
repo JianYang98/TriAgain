@@ -117,7 +117,8 @@ DB→Redis 초기화가 끝나 Redis가 admission 정본인 **같은 namespace/r
 기존 DB 가입은 이 검증을 재사용하되 순서를 유지한다.
 
 - PESSIMISTIC/OPTIMISTIC: 정원 → 상태 → 마감 → 중복 → 멤버 추가.
-- CONDITIONAL: 상태 → 마감 → 중복 → 멤버 추가 → DB 정원 조건부 UPDATE → 멤버 저장.
+- 공개 가입의 CONDITIONAL 순서는 상태 → 마감 → 중복 → 조회 시점 정원 → 멤버 추가 → DB 정원 조건부 UPDATE → 멤버 저장이다. 조회 시 이미 만원이면 멤버 추가와 DB 쓰기 전에 CR002를 반환한다. 마지막 자리를 다른 요청이 먼저 차지해 UPDATE가 0행이어도 CR002다.
+- 초대코드 가입의 CONDITIONAL 순서는 상태 → 마감 → 중복 → 멤버 추가 → DB 정원 조건부 UPDATE → 멤버 저장이다.
 - 정원과 상태가 모두 불가하면 앞의 두 전략은 CR002, CONDITIONAL은 CR003이다.
 
 상세 순서: [`sequence/crew-join.md`](./sequence/crew-join.md)
