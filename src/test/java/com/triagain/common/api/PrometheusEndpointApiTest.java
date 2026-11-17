@@ -39,6 +39,10 @@ class PrometheusEndpointApiTest {
 				.contains("application=\"triagain\"")
 				.contains("http_server_requests_seconds_bucket{")
 				.contains("hikaricp_connections_active{")
+				.contains("hikaricp_connections_acquire_seconds_bucket{")
+				.contains("hikaricp_connections_usage_seconds_count{")
+				.contains("hikaricp_connections_timeout_total{")
+				.contains("tomcat_threads_busy_threads{")
 				.contains("executor_pool_size_threads{application=\"triagain\",name=\"taskScheduler\"}");
 	}
 
