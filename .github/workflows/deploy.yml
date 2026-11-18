@@ -141,6 +141,11 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           envs: DB_URL,DB_USERNAME,DB_PASSWORD,JWT_SECRET,INTERNAL_API_KEY,APPLE_TEAM_ID,APPLE_KEY_ID,APPLE_PRIVATE_KEY,APPLE_REFRESH_KEY,IMAGE_TAG
           script: |
+            set -euo pipefail
+
+            # 호스트에 공개하는 서비스 포트. -p의 컨테이너 쪽 8080은 앱 기본값이라 고정이다.
+            SERVICE_PORT=8080
+
             # Firebase 키 파일 존재 체크
             FIREBASE_KEY_PATH="/home/ec2-user/triagain/config/triagain-firebase-service-account.json"
             if [ -f "$FIREBASE_KEY_PATH" ]; then
@@ -151,10 +156,34 @@ jobs:
               FIREBASE_ENABLED=false
             fi
 
-            docker pull "devjian/triagain:${IMAGE_TAG}"
-            docker stop triagain || true && docker rm triagain || true
-            docker run -d --name triagain --restart unless-stopped \
-              -p 8080:8080 \
+            IMAGE="devjian/triagain:${IMAGE_TAG}"
+            docker pull "$IMAGE"
+
+            # 실제 HostPort가 SERVICE_PORT인 컨테이너만 검사한다. 다른 컨테이너는 건드리지 않는다.
+            PUBLISHED_CONTAINER_IDS="$(docker ps --filter publish="${SERVICE_PORT}" --quiet)"
+            for CONTAINER_ID in $PUBLISHED_CONTAINER_IDS; do
+              CONTAINER_NAME="$(docker inspect --format '{{.Name}}' "$CONTAINER_ID")"
+              HOST_PORTS="$(docker inspect --format '{{range $p, $bindings := .NetworkSettings.Ports}}{{range $bindings}}{{printf "%s\n" .HostPort}}{{end}}{{end}}' "$CONTAINER_ID")"
+              if [ "$CONTAINER_NAME" != "/triagain" ] && grep -Fqx "$SERVICE_PORT" <<< "$HOST_PORTS"; then
+                echo "[ERROR] Host port ${SERVICE_PORT} is owned by unexpected container ${CONTAINER_NAME} (${CONTAINER_ID}); leaving it untouched." >&2
+                exit 1
+              fi
+            done
+
+            # 이름이 정확히 triagain인 컨테이너만 교체한다.
+            if OLD_CONTAINER_ID="$(docker inspect --type=container --format '{{.Id}}' triagain 2>/dev/null)"; then
+              OLD_CONTAINER_RUNNING="$(docker inspect --format '{{.State.Running}}' "$OLD_CONTAINER_ID")"
+              if [ "$OLD_CONTAINER_RUNNING" = true ]; then
+                docker stop "$OLD_CONTAINER_ID"
+              fi
+              docker rm "$OLD_CONTAINER_ID"
+            fi
+
+            NEW_CONTAINER_ID="$(docker run -d --name triagain --restart unless-stopped \
+              -p "${SERVICE_PORT}:8080" \
+              --cpus 1.4 \
+              --memory 700m \
+              --memory-swap 700m \
               --log-driver=awslogs \
               --log-opt awslogs-region=ap-northeast-2 \
               --log-opt awslogs-group=/triagain/app \
@@ -173,10 +202,46 @@ jobs:
               -e "APPLE_REFRESH_KEY=$APPLE_REFRESH_KEY" \
               -e "FIREBASE_ENABLED=$FIREBASE_ENABLED" \
               -e "FIREBASE_SERVICE_ACCOUNT_PATH=/opt/triagain/config/triagain-firebase-service-account.json" \
-              "devjian/triagain:${IMAGE_TAG}"
-            sleep 15
-            curl -f http://localhost:8080/actuator/health
-            docker image prune -f
+              -e "JAVA_TOOL_OPTIONS=-Xms128m -Xmx320m" \
+              "$IMAGE")"
+
+            NEW_CONTAINER_RUNNING="$(docker inspect --format '{{.State.Running}}' "$NEW_CONTAINER_ID")"
+            NEW_CONTAINER_IMAGE="$(docker inspect --format '{{.Config.Image}}' "$NEW_CONTAINER_ID")"
+            if [ "$NEW_CONTAINER_RUNNING" != true ] || [ "$NEW_CONTAINER_IMAGE" != "$IMAGE" ]; then
+              echo "[ERROR] New triagain container ${NEW_CONTAINER_ID} is not running the expected image." >&2
+              docker inspect --format 'state={{.State.Status}} image={{.Config.Image}}' "$NEW_CONTAINER_ID" >&2
+              exit 1
+            fi
+
+            HEALTHY=false
+            for ATTEMPT in {1..30}; do
+              if curl --fail --silent --show-error --max-time 3 --output /dev/null "http://localhost:${SERVICE_PORT}/actuator/health"; then
+                HEALTHY=true
+                echo "[INFO] New triagain container ${NEW_CONTAINER_ID} passed health check on attempt ${ATTEMPT}."
+                break
+              fi
+              echo "[INFO] Waiting for new triagain container health (${ATTEMPT}/30)."
+              sleep 2
+            done
+            if [ "$HEALTHY" != true ]; then
+              echo "[ERROR] New triagain container ${NEW_CONTAINER_ID} did not become healthy." >&2
+              docker inspect --format 'state={{.State.Status}} image={{.Config.Image}}' "$NEW_CONTAINER_ID" >&2
+              exit 1
+            fi
+
+            FINAL_CONTAINER_RUNNING="$(docker inspect --format '{{.State.Running}}' "$NEW_CONTAINER_ID")"
+            FINAL_CONTAINER_IMAGE="$(docker inspect --format '{{.Config.Image}}' "$NEW_CONTAINER_ID")"
+            if [ "$FINAL_CONTAINER_RUNNING" != true ] || [ "$FINAL_CONTAINER_IMAGE" != "$IMAGE" ]; then
+              echo "[ERROR] New triagain container ${NEW_CONTAINER_ID} stopped or changed image after health check." >&2
+              docker inspect --format 'state={{.State.Status}} image={{.Config.Image}}' "$NEW_CONTAINER_ID" >&2
+              exit 1
+            fi
+
+            if docker image prune -f; then
+              echo "[INFO] Dangling image cleanup completed."
+            else
+              echo "[WARN] Dangling image cleanup failed after successful deployment." >&2
+            fi
 
   check-lambda-changes:
     if: github.event_name == 'push'
