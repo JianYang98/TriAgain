@@ -158,31 +158,14 @@ jobs:
 
             # 실제 HostPort가 8080인 컨테이너만 검사한다. 다른 컨테이너는 건드리지 않는다.
             PUBLISHED_CONTAINER_IDS="$(docker ps --filter publish=8080 --quiet)"
-            TRIAGAIN_OWNS_8080=false
             for CONTAINER_ID in $PUBLISHED_CONTAINER_IDS; do
               CONTAINER_NAME="$(docker inspect --format '{{.Name}}' "$CONTAINER_ID")"
               HOST_PORTS="$(docker inspect --format '{{range $p, $bindings := .NetworkSettings.Ports}}{{range $bindings}}{{printf "%s\n" .HostPort}}{{end}}{{end}}' "$CONTAINER_ID")"
-              if grep -Fqx '8080' <<< "$HOST_PORTS"; then
-                if [ "$CONTAINER_NAME" = "/triagain" ]; then
-                  TRIAGAIN_OWNS_8080=true
-                else
-                  echo "[ERROR] Host port 8080 is owned by unexpected container ${CONTAINER_NAME} (${CONTAINER_ID}); leaving it untouched." >&2
-                  exit 1
-                fi
-              fi
-            done
-
-            if ! command -v ss >/dev/null 2>&1; then
-              echo "[ERROR] ss is required to check host port 8080 before replacing triagain." >&2
-              exit 1
-            fi
-            PORT_8080_LISTENERS="$(ss -H -ltnp 'sport = :8080')"
-            if [ -n "$PORT_8080_LISTENERS" ]; then
-              if [ "$TRIAGAIN_OWNS_8080" != true ]; then
-                printf '[ERROR] Host port 8080 has an unexpected listener; leaving existing services untouched:\n%s\n' "$PORT_8080_LISTENERS" >&2
+              if [ "$CONTAINER_NAME" != "/triagain" ] && grep -Fqx '8080' <<< "$HOST_PORTS"; then
+                echo "[ERROR] Host port 8080 is owned by unexpected container ${CONTAINER_NAME} (${CONTAINER_ID}); leaving it untouched." >&2
                 exit 1
               fi
-            fi
+            done
 
             # 이름이 정확히 triagain인 컨테이너만 교체한다.
             if OLD_CONTAINER_ID="$(docker inspect --type=container --format '{{.Id}}' triagain 2>/dev/null)"; then
