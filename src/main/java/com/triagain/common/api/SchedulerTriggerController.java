@@ -20,7 +20,11 @@ import com.triagain.verification.application.scheduler.ExpireUploadSessionSchedu
 
 import lombok.extern.slf4j.Slf4j;
 
-/** 스케줄러 수동 트리거 — 부하테스트 전용, loadtest 프로필에서만 활성화 */
+/**
+ * 스케줄러 수동 트리거 — 현재 부하테스트용으로 유지한다.
+ * prod 단독 프로필에는 등록되지 않으며, loadtest 프로필에서 활성화된다.
+ * UseCase 경계·에러 응답·HTTP 테스트는 후속 PR에서 정리한다.
+ */
 @Slf4j
 @RestController
 @RequestMapping("/internal/scheduler")
