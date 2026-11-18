@@ -143,6 +143,9 @@ jobs:
           script: |
             set -euo pipefail
 
+            # 호스트에 공개하는 서비스 포트. -p의 컨테이너 쪽 8080은 앱 기본값이라 고정이다.
+            SERVICE_PORT=8080
+
             # Firebase 키 파일 존재 체크
             FIREBASE_KEY_PATH="/home/ec2-user/triagain/config/triagain-firebase-service-account.json"
             if [ -f "$FIREBASE_KEY_PATH" ]; then
@@ -156,13 +159,13 @@ jobs:
             IMAGE="devjian/triagain:${IMAGE_TAG}"
             docker pull "$IMAGE"
 
-            # 실제 HostPort가 8080인 컨테이너만 검사한다. 다른 컨테이너는 건드리지 않는다.
-            PUBLISHED_CONTAINER_IDS="$(docker ps --filter publish=8080 --quiet)"
+            # 실제 HostPort가 SERVICE_PORT인 컨테이너만 검사한다. 다른 컨테이너는 건드리지 않는다.
+            PUBLISHED_CONTAINER_IDS="$(docker ps --filter publish="${SERVICE_PORT}" --quiet)"
             for CONTAINER_ID in $PUBLISHED_CONTAINER_IDS; do
               CONTAINER_NAME="$(docker inspect --format '{{.Name}}' "$CONTAINER_ID")"
               HOST_PORTS="$(docker inspect --format '{{range $p, $bindings := .NetworkSettings.Ports}}{{range $bindings}}{{printf "%s\n" .HostPort}}{{end}}{{end}}' "$CONTAINER_ID")"
-              if [ "$CONTAINER_NAME" != "/triagain" ] && grep -Fqx '8080' <<< "$HOST_PORTS"; then
-                echo "[ERROR] Host port 8080 is owned by unexpected container ${CONTAINER_NAME} (${CONTAINER_ID}); leaving it untouched." >&2
+              if [ "$CONTAINER_NAME" != "/triagain" ] && grep -Fqx "$SERVICE_PORT" <<< "$HOST_PORTS"; then
+                echo "[ERROR] Host port ${SERVICE_PORT} is owned by unexpected container ${CONTAINER_NAME} (${CONTAINER_ID}); leaving it untouched." >&2
                 exit 1
               fi
             done
@@ -177,7 +180,7 @@ jobs:
             fi
 
             NEW_CONTAINER_ID="$(docker run -d --name triagain --restart unless-stopped \
-              -p 8080:8080 \
+              -p "${SERVICE_PORT}:8080" \
               --cpus 1.4 \
               --memory 700m \
               --memory-swap 700m \
@@ -212,7 +215,7 @@ jobs:
 
             HEALTHY=false
             for ATTEMPT in {1..30}; do
-              if curl --fail --silent --show-error --max-time 3 --output /dev/null http://localhost:8080/actuator/health; then
+              if curl --fail --silent --show-error --max-time 3 --output /dev/null "http://localhost:${SERVICE_PORT}/actuator/health"; then
                 HEALTHY=true
                 echo "[INFO] New triagain container ${NEW_CONTAINER_ID} passed health check on attempt ${ATTEMPT}."
                 break
