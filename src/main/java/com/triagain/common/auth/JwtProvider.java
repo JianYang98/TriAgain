@@ -13,7 +13,7 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
-@Component
+// @Component  // Cofig 생성되어 일단은 주석
 public class JwtProvider {
 
 	private final SecretKey secretKey;
@@ -21,9 +21,9 @@ public class JwtProvider {
 	private final long refreshTokenExpiration;
 
 	public JwtProvider(
-			@Value("${jwt.secret}") String secret,
-			@Value("${jwt.access-token-expiration}") long accessTokenExpiration,
-			@Value("${jwt.refresh-token-expiration}") long refreshTokenExpiration
+		String secret,
+		long accessTokenExpiration,
+		long refreshTokenExpiration
 	) {
 		this.secretKey = Keys.hmacShaKeyFor(Base64.getDecoder().decode(secret)); // HS256 (HMAC-SHA256)
 		this.accessTokenExpiration = accessTokenExpiration;

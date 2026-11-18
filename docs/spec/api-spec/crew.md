@@ -620,7 +620,7 @@
 | 공통 | 409 | CR004 | 이미 가입함 |
 | 공통 | 409 | CR023 | `OPTIMISTIC` 전략에서 설정된 재시도를 모두 소진함 |
 
-현재 기본 `triagain.crew.lock-strategy`는 `CONDITIONAL`이다. 이 전략은
+현재 기본 `triagain.crew.lock-strategy`는 `CONDITIONAL`이다. 공개 직접 가입은 상태·마감·중복 검사를 통과한 뒤 조회한 `current_members`가 정원에 도달했으면 쓰기 전에 `409 CR002`를 반환한다. 조회 당시 자리가 있어도 DB 갱신 시점에 만원이면 같은 오류를 반환한다. 초대코드 가입은 DB 갱신 시점에 정원을 판정한다. 두 경로 모두
 `current_members < max_members` 조건부 원자적 UPDATE로 정원을 지키고,
 `(crew_id, user_id)` 유니크 제약 위반을 `CR004`로 변환한다. 별도 Idempotency-Key나
 응답 캐시는 사용하지 않는다. `CR023`은 설정을 `OPTIMISTIC`으로 바꿨을 때만 발생 가능한 계약이다.

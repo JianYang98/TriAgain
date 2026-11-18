@@ -10,7 +10,7 @@
 - 기존 세 DB 전략에서 두 API 모두 가입 성공 시 `201 Created`를 반환한다
 - `Idempotency-Key`, Redis 분산 락, 응답 캐시는 사용하지 않는다 (`REDIS_ASYNC`는 락이 아니라 Lua 원자 승인 — 5절)
 
-공개 크루 직접 가입은 `visibility=PUBLIC`을 검증한다. 초대코드 가입은 유효한 초대코드 자체를 접근 권한으로 사용하므로 비공개 크루도 가입할 수 있다. 이후 상태·참여 마감·정원·중복 검증은 동일하다.
+공개 크루 직접 가입은 `visibility=PUBLIC`을 검증한다. 초대코드 가입은 유효한 초대코드 자체를 접근 권한으로 사용하므로 비공개 크루도 가입할 수 있다. 두 경로 모두 상태·참여 마감·중복을 검증한다. CONDITIONAL에서 공개 직접 가입은 조회한 인원으로 정원을 한 번 더 검사한다.
 
 ## 2. 기본 흐름 (`CONDITIONAL`)
 
@@ -33,6 +33,10 @@ sequenceDiagram
     DB-->>Service: Crew
     Service->>Service: 공개 여부·가입 가능 상태·마감·기존 멤버 검증
 
+    break 조회 시점에 이미 만원
+        Service-->>Controller: CR002 CREW_FULL (쓰기 전)
+        Controller-->>Client: 409 Conflict
+    end
     Service->>CrewRepo: incrementMembersIfNotFull(crewId)
     CrewRepo->>DB: UPDATE crews<br/>SET current_members = current_members + 1<br/>WHERE id = :id AND current_members < max_members
 
@@ -59,7 +63,7 @@ sequenceDiagram
     end
 ```
 
-초대코드 가입은 첫 조회가 `findByInviteCode(inviteCode)`이고 공개 여부 검증을 생략한다. 나머지 조건부 UPDATE와 멤버 INSERT 흐름은 같다.
+초대코드 가입은 첫 조회가 `findByInviteCode(inviteCode)`이고 공개 여부와 조회 시점 정원 검사를 생략한다. 나머지 조건부 UPDATE와 멤버 INSERT 흐름은 같다.
 
 ## 3. 동시성 보장
 

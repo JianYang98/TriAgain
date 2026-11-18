@@ -2,7 +2,7 @@
 
 > 전체 인덱스: [`../api-spec.md`](../api-spec.md) · 이 문서가 내부 API 계약의 정본이다.
 >
-> 내부 API는 일반 앱 클라이언트용이 아니다. 현재 호출 주체는 S3 이벤트 Lambda 또는 운영자다.
+> 내부 API는 일반 앱 클라이언트용이 아니다. 호출 주체는 S3 이벤트 Lambda, 운영자, 부하테스트 도구다.
 
 ---
 
@@ -292,3 +292,31 @@ sequenceDiagram
   고려한 운영 비밀 주입 방식은 저장소에 별도로 구현되어 있지 않다.
 - API 키는 단일 값 완전 일치 방식이며, 두 키를 동시에 허용하는 무중단 회전 절차는 없다.
 - 네트워크 수준 접근 제한, WAF·rate limit 여부는 애플리케이션 저장소만으로 확인할 수 없다.
+
+## 7. POST /internal/scheduler/{name}
+
+스케줄러 호출은 `loadtest` 프로필이 활성일 때 등록된다. 요청 본문과 JWT는 필요 없다.
+
+| 활성 프로필 | 호출 조건 |
+|---|---|
+| `prod` 단독 등 `loadtest` 미포함 | 컨트롤러 미등록 |
+| `prod,loadtest` | §1의 `X-Internal-Api-Key` 필수. 키가 없거나 일치하지 않으면 403 |
+| `local,loadtest` 등 비운영 + `loadtest` | 내부 API 키 검사 없이 호출 가능 |
+
+스케줄러 엔드포인트는 같은 작업의 예약 실행을 중복 방지하지 않는다. HTTP 호출과 `@Scheduled` 실행은
+서로 다른 경로에서 작업을 실행하므로 동시에 겹칠 수 있다. 이 API만으로 동시 실행 경쟁이 전부
+해결됐다고 간주하지 않는다.
+
+지정한 작업을 호출 스레드에서 실행하고 작업이 반환된 뒤 응답한다.
+
+| `name` | 실행 작업 |
+|---|---|
+| `fail-expired` | 마감 초과 챌린지 실패 처리 |
+| `activate-crews` | 시작일이 된 모집 크루 활성화 |
+| `complete-crews` | 종료일이 지난 미처리 크루 종료 |
+| `send-reminders` | 리마인더 발송 작업 |
+| `crew-start-notifications` | 크루 시작 알림 작업 |
+| `expire-upload-sessions` | 대기 중 만료 대상 업로드 세션 처리 |
+
+성공하면 HTTP 200과 `success=true`를 반환한다. `data`에는 `schedulerName`, 소요 시간 `durationMs`(정수), 서버의 로컬 일시 문자열 `startedAt`·`finishedAt`이 들어간다.
+등록되지 않은 이름이면 작업 실행 없이 HTTP 400을 반환한다. 현재 구현의 본문은 `success=true`, `error=null`이며 `data.schedulerName`은 요청한 이름, `data.durationMs`는 -1이다. 호출자는 HTTP 상태로 실패를 판별한다.

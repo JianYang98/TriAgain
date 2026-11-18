@@ -38,7 +38,7 @@
 | 인증 업로드 | [`api-spec/verification.md`](api-spec/verification.md) | POST /upload-sessions, GET /upload-sessions/{id} *(구현 대기)* · {id}/events (SSE), POST /verifications, DELETE /verifications/{id}, PATCH /verifications/{id}, PUT·DELETE /verifications/{id}/reactions (Support Context) |
 | 알림 | [`api-spec/notification.md`](api-spec/notification.md) | GET /notifications · unread-count, PATCH /notifications/{id}/read · read-all, DELETE /notifications |
 | 습관·솔로 | [`api-spec/habit.md`](api-spec/habit.md) | POST /habits, GET /habits · archived, PATCH /habits/{id}, POST /habits/{id}/end · pause · resume · cycles · verifications, DELETE cycles/current |
-| 내부 API | [`api-spec/internal.md`](api-spec/internal.md) | PUT /internal/upload-sessions/complete, POST /internal/fcm-test, POST /internal/gc |
+| 내부 API | [`api-spec/internal.md`](api-spec/internal.md) | PUT /internal/upload-sessions/complete, POST /internal/fcm-test, POST /internal/gc, 부하테스트용 POST /internal/scheduler/{name} |
 
 ## TODO (구현 시 추가 예정)
 
