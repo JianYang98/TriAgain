@@ -71,6 +71,9 @@ def main():
         fail("--config 또는 PREPARE_CONFIG가 필요합니다")
     if args.capacity > 1000:
         fail("capacity는 1~1000이어야 합니다")
+    if args.requests < args.rps:
+        fail(f"목표 {args.rps} RPS에서는 총 요청 수(--requests)가 최소 {args.rps}건이어야 합니다. "
+             f"입력한 총 요청 수는 {args.requests}건입니다.")
     cfg = load_config(args.config)
     if not SQL_FILE.is_file() or not shutil_which("psql"):
         fail("psql 또는 prepare_crew.sql을 찾을 수 없습니다")
@@ -142,7 +145,7 @@ def main():
     committed = "PREPARE_COMMIT_CONFIRMED" in markers
     if proc is not None and proc.returncode == 0 and committed:
         summary = render(started, run_id, crew_id, crew_name, args, cfg, "커밋 확인", "크루 준비 완료")
-        run_env = f"TARGET_RPS={args.rps} TOTAL={args.requests} RUN_ID={run_id}"
+        run_env = f"TARGET_RPS={args.rps} REQUESTS={args.requests} RUN_ID={run_id}"
         try:
             log.write(summary + "\n\n" + run_env + "\n\n------\n\n")
             log.flush()
@@ -184,20 +187,22 @@ def render(started, run_id, crew_id, crew_name, args, cfg, db_result, outcome):
 
 def render_next_commands(run_id, run_env):
     return (
-        f"[2번 창 · 앱 EC2 · {run_id}] 아래 블록을 복사해 수집을 시작하세요.\n"
+        f"[수집기 창 · 앱 EC2 · {run_id}] 아래 (부터 닫는 )까지 붙여넣으세요.\n"
         "(\n"
         "  printf '수집 대상 컨테이너: %s\\n' \"${APP_CONTAINER:?앱 EC2에서 APP_CONTAINER를 설정하세요.}\" &&\n"
         f'    "$HOME/load-test/collectors/collect" on --run-id {run_id} --container "$APP_CONTAINER"\n'
         ")\n\n"
-        f"[3번 창 · k6 러너 · {run_id}] 수집이 정상인 것을 확인한 뒤 아래 블록을 복사하세요.\n"
+        f"[k6 부하 테스트 창 · 러너 EC2 · {run_id}] 정상 수집을 확인한 뒤 아래 (부터 닫는 )까지 붙여넣으세요.\n"
         "(\n"
-        '  : "${BASE_URL:?k6 러너에서 BASE_URL을 설정하세요.}"\n'
+        '  : "${BASE_URL:?k6 러너에서 export BASE_URL=http://앱주소:8080 을 실행한 뒤 '
+        '이 블록을 다시 붙여넣으세요.}"\n'
         '  : "${TOKENS_FILE:?k6 러너에서 TOKENS_FILE을 설정하세요.}"\n'
         '  : "${PRE_VUS:?k6 러너에서 PRE_VUS를 설정하세요.}"\n'
         '  : "${SESSION_DATE:?k6 러너에서 SESSION_DATE를 설정하세요.}"\n'
+        "  export BASE_URL\n"
         "  printf 'k6 대상 앱: %s\\n' \"$BASE_URL\" &&\n"
         f"    DETAIL=1 {run_env} \\\n"
-        '    "$HOME/triagain-k6/load-test/scripts/run-db-rps-baseline.sh"\n'
+        '    "$HOME/triagain-k6/load-test/scripts/run-rps-join-test.sh"\n'
         ")"
     )
 
