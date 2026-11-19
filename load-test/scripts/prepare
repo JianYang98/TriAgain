@@ -1,0 +1,186 @@
+#!/usr/bin/env python3
+"""Prepare one load-test crew using an explicitly configured PostgreSQL target."""
+
+import argparse
+import datetime as dt
+import fcntl
+import json
+import os
+from pathlib import Path
+import re
+import secrets
+import subprocess
+import sys
+from zoneinfo import ZoneInfo
+
+
+SQL_FILE = Path(__file__).resolve().parents[1] / "sql" / "prepare_crew.sql"
+KST = ZoneInfo("Asia/Seoul")
+
+
+def fail(message):
+    print(f"오류: {message}", file=sys.stderr)
+    raise SystemExit(2)
+
+
+def positive(value):
+    if not re.fullmatch(r"[1-9][0-9]*", value):
+        raise argparse.ArgumentTypeError("양의 정수여야 합니다")
+    n = int(value)
+    if n > 2_147_483_647:
+        raise argparse.ArgumentTypeError("지원 범위를 초과했습니다")
+    return n
+
+
+def load_config(path):
+    try:
+        cfg = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        fail(f"설정 파일을 읽을 수 없습니다: {exc}")
+    required = {"host", "port", "database", "user", "schema", "allowed_hosts", "sslmode", "log_root"}
+    if not isinstance(cfg, dict) or set(cfg) != required:
+        fail("설정 키는 host, port, database, user, schema, allowed_hosts, sslmode, log_root만 허용합니다")
+    if not all(isinstance(cfg[k], str) and cfg[k] for k in ("host", "database", "user", "schema", "log_root")):
+        fail("host/database/user/schema/log_root는 비어 있지 않은 문자열이어야 합니다")
+    if not re.fullmatch(r"[A-Za-z0-9.-]+", cfg["host"]) or not re.fullmatch(r"[A-Za-z0-9_]+", cfg["database"]):
+        fail("host/database는 DNS·IP와 단순 DB 이름만 허용합니다")
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+", cfg["user"]):
+        fail("user는 단순 역할 이름만 허용합니다")
+    if not isinstance(cfg["allowed_hosts"], list) or cfg["host"] not in cfg["allowed_hosts"]:
+        fail("host가 allowed_hosts에 정확히 포함되어야 합니다")
+    if not isinstance(cfg["port"], int) or not 1 <= cfg["port"] <= 65535:
+        fail("port는 1~65535 정수여야 합니다")
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", cfg["schema"]):
+        fail("schema는 단순 PostgreSQL 식별자여야 합니다")
+    if cfg["sslmode"] not in {"disable", "require", "verify-ca", "verify-full"}:
+        fail("sslmode 값이 지원되지 않습니다")
+    if cfg["sslmode"] == "disable" and cfg["host"] not in {"localhost", "127.0.0.1", "::1"}:
+        fail("sslmode=disable은 loopback host에서만 허용합니다")
+    return cfg
+
+
+def main():
+    parser = argparse.ArgumentParser(prog="prepare")
+    parser.add_argument("--rps", required=True, type=positive)
+    parser.add_argument("--capacity", required=True, type=positive)
+    parser.add_argument("--requests", required=True, type=positive)
+    parser.add_argument("--warmup", action="store_true")
+    parser.add_argument("--config", default=os.environ.get("PREPARE_CONFIG"))
+    args = parser.parse_args()
+    if not args.config:
+        fail("--config 또는 PREPARE_CONFIG가 필요합니다")
+    if args.capacity > 1000:
+        fail("capacity는 1~1000이어야 합니다")
+    cfg = load_config(args.config)
+    if not SQL_FILE.is_file() or not shutil_which("psql"):
+        fail("psql 또는 prepare_crew.sql을 찾을 수 없습니다")
+
+    started = dt.datetime.now(KST).replace(microsecond=0)
+    start_date = started.date() + dt.timedelta(days=7)
+    end_date = start_date + dt.timedelta(days=30)
+    stamp = started.strftime("%Y%m%d-%H%M%S")
+    date = started.strftime("%Y%m%d")
+    crew_id = f"dbb-{started:%Y%m%d-%H%M%S}"
+    crew_name = f"테스트크루-{started:%Y%m%d-%H%M%S}"
+    run_id = f"{stamp}-rps{args.rps}-cap{args.capacity}" + ("-warmup" if args.warmup else "")
+    invite = "".join(secrets.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789") for _ in range(6))
+    member_id = "CRMB-" + secrets.token_hex(8)
+    log_dir = Path(cfg["log_root"]).expanduser() / "prepare"
+    log_path = log_dir / f"{date}.log"
+    try:
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log = log_path.open("a", encoding="utf-8")
+        fcntl.flock(log.fileno(), fcntl.LOCK_EX)
+    except OSError as exc:
+        fail(f"로그 파일/잠금을 준비할 수 없습니다(DB 쓰기 전): {exc}")
+
+    try:
+        if f"크루 ID: {crew_id}" in log_path.read_text(encoding="utf-8"):
+            fail(f"같은 KST 초의 크루 ID가 일일 로그에 이미 있습니다: {crew_id}")
+    except OSError as exc:
+        fail(f"일일 로그의 기존 크루 ID를 검사할 수 없습니다(DB 쓰기 전): {exc}")
+
+    planned = render(started, run_id, crew_id, crew_name, args, cfg, "시작", "실행 중")
+    try:
+        log.write(planned + "\n\n")
+        log.flush()
+        os.fsync(log.fileno())
+    except OSError as exc:
+        fail(f"시작 로그를 저장할 수 없습니다(DB 쓰기 전): {exc}")
+
+    env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "PGCONNECT_TIMEOUT": "5",
+           "PGSSLMODE": cfg["sslmode"], "PGTZ": "Asia/Seoul"}
+    pgpass = Path.home() / ".pgpass"
+    env["PGPASSFILE"] = str(pgpass)
+    psql = ["psql", "-X", "-w", "-v", "ON_ERROR_STOP=1", "-h", cfg["host"], "-p", str(cfg["port"]),
+            "-d", cfg["database"], "-U", cfg["user"], "-v", f"schema={cfg['schema']}",
+            "-v", f"expected_db={cfg['database']}", "-v", f"expected_user={cfg['user']}",
+            "-v", f"crew_id={crew_id}", "-v", f"crew_name={crew_name}", "-v", f"invite_code={invite}",
+            "-v", f"member_id={member_id}", "-v", f"capacity={args.capacity}", "-v", f"started_at={started.isoformat(sep=' ')}",
+            "-v", f"start_date={start_date.isoformat()}",
+            "-v", f"end_date={end_date.isoformat()}", "-f", str(SQL_FILE)]
+    try:
+        proc = subprocess.run(psql, env=env, text=True, capture_output=True, timeout=45)
+        stdout, stderr = proc.stdout, proc.stderr
+        failure_state = "DB 반영 불명"
+        if proc.returncode == 3 and "PREPARE_COMMIT_ATTEMPT" not in stdout.splitlines():
+            failure_state = "롤백된 실패"
+    except subprocess.TimeoutExpired as exc:
+        stdout = exc.stdout or ""
+        stderr = exc.stderr or ""
+        if isinstance(stdout, bytes):
+            stdout = stdout.decode("utf-8", errors="replace")
+        if isinstance(stderr, bytes):
+            stderr = stderr.decode("utf-8", errors="replace")
+        failure_state = "DB 반영 불명"
+        proc = None
+    except OSError as exc:
+        stdout, stderr = "", f"psql 실행 실패: {exc}"
+        failure_state = "DB 쓰기 전 실패"
+        proc = None
+    markers = stdout.splitlines()
+    committed = "PREPARE_COMMIT_CONFIRMED" in markers
+    if proc is not None and proc.returncode == 0 and committed:
+        result = render(started, run_id, crew_id, crew_name, args, cfg, "커밋 확인", "크루 준비 완료")
+        result += f"\n\nTARGET_RPS={args.rps} TOTAL={args.requests} RUN_ID={run_id}"
+        try:
+            log.write(result + "\n\n------\n\n")
+            log.flush()
+            os.fsync(log.fileno())
+        except OSError as exc:
+            print(f"커밋은 확인됐지만 결과 로그 기록 실패: {exc}; 크루 ID={crew_id}", file=sys.stderr)
+            raise SystemExit(3)
+        print(result)
+        return
+    state = "커밋 확인" if committed else failure_state
+    if stderr:
+        print(stderr[-4000:], file=sys.stderr)
+    result = render(started, run_id, crew_id, crew_name, args, cfg, state, "실패 — 자동 재시도 금지")
+    try:
+        log.write(result + "\n\n------\n\n")
+        log.flush()
+        os.fsync(log.fileno())
+    except OSError as exc:
+        print(f"{state}; 로그 기록 실패: {exc}; 크루 ID={crew_id}", file=sys.stderr)
+    print(result, file=sys.stderr)
+    raise SystemExit(1)
+
+
+def shutil_which(command):
+    for directory in os.environ.get("PATH", "/usr/bin:/bin").split(os.pathsep):
+        candidate = Path(directory) / command
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return None
+
+
+def render(started, run_id, crew_id, crew_name, args, cfg, db_result, outcome):
+    return (f"[{started:%Y-%m-%d %H:%M:%S} KST]\n실행 ID: {run_id}\n크루 ID: {crew_id}\n크루 이름: {crew_name}\n"
+            f"목적: {'워밍업' if args.warmup else '본 측정'}\n대상 DB: {cfg['host']}:{cfg['port']}/{cfg['database']}/{cfg['schema']}\n"
+            f"목표 RPS: {args.rps}\n크루 정원: {args.capacity}명\n초기 인원: 1명 — 리더\n총 요청 수: {args.requests}회\n"
+            f"가입 가능한 자리: {args.capacity - 1}명\nDB 결과: {db_result}\n검증: {'통과' if db_result == '커밋 확인' else '미확인'}\n"
+            f"결과: {outcome}\n로그: {cfg['log_root']}/prepare/{started:%Y%m%d}.log")
+
+
+if __name__ == "__main__":
+    main()
