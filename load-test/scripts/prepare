@@ -141,16 +141,16 @@ def main():
     markers = stdout.splitlines()
     committed = "PREPARE_COMMIT_CONFIRMED" in markers
     if proc is not None and proc.returncode == 0 and committed:
-        result = render(started, run_id, crew_id, crew_name, args, cfg, "커밋 확인", "크루 준비 완료")
-        result += f"\n\nTARGET_RPS={args.rps} TOTAL={args.requests} RUN_ID={run_id}"
+        summary = render(started, run_id, crew_id, crew_name, args, cfg, "커밋 확인", "크루 준비 완료")
+        run_env = f"TARGET_RPS={args.rps} TOTAL={args.requests} RUN_ID={run_id}"
         try:
-            log.write(result + "\n\n------\n\n")
+            log.write(summary + "\n\n" + run_env + "\n\n------\n\n")
             log.flush()
             os.fsync(log.fileno())
         except OSError as exc:
             print(f"커밋은 확인됐지만 결과 로그 기록 실패: {exc}; 크루 ID={crew_id}", file=sys.stderr)
             raise SystemExit(3)
-        print(result)
+        print(f"{summary}\n\n{render_next_commands(run_id, run_env)}\n\n{run_env}")
         return
     state = "커밋 확인" if committed else failure_state
     if stderr:
@@ -180,6 +180,26 @@ def render(started, run_id, crew_id, crew_name, args, cfg, db_result, outcome):
             f"목표 RPS: {args.rps}\n크루 정원: {args.capacity}명\n초기 인원: 1명 — 리더\n총 요청 수: {args.requests}회\n"
             f"가입 가능한 자리: {args.capacity - 1}명\nDB 결과: {db_result}\n검증: {'통과' if db_result == '커밋 확인' else '미확인'}\n"
             f"결과: {outcome}\n로그: {cfg['log_root']}/prepare/{started:%Y%m%d}.log")
+
+
+def render_next_commands(run_id, run_env):
+    return (
+        f"[2번 창 · 앱 EC2 · {run_id}] 아래 블록을 복사해 수집을 시작하세요.\n"
+        "(\n"
+        "  printf '수집 대상 컨테이너: %s\\n' \"${APP_CONTAINER:?앱 EC2에서 APP_CONTAINER를 설정하세요.}\" &&\n"
+        f'    "$HOME/load-test/collectors/collect" on --run-id {run_id} --container "$APP_CONTAINER"\n'
+        ")\n\n"
+        f"[3번 창 · k6 러너 · {run_id}] 수집이 정상인 것을 확인한 뒤 아래 블록을 복사하세요.\n"
+        "(\n"
+        '  : "${BASE_URL:?k6 러너에서 BASE_URL을 설정하세요.}"\n'
+        '  : "${TOKENS_FILE:?k6 러너에서 TOKENS_FILE을 설정하세요.}"\n'
+        '  : "${PRE_VUS:?k6 러너에서 PRE_VUS를 설정하세요.}"\n'
+        '  : "${SESSION_DATE:?k6 러너에서 SESSION_DATE를 설정하세요.}"\n'
+        "  printf 'k6 대상 앱: %s\\n' \"$BASE_URL\" &&\n"
+        f"    DETAIL=1 {run_env} \\\n"
+        '    "$HOME/triagain-k6/load-test/scripts/run-db-rps-baseline.sh"\n'
+        ")"
+    )
 
 
 if __name__ == "__main__":
