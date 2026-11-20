@@ -207,7 +207,7 @@ export default function () {
 
 	// 응답 시각 구간은 HTTP 응답이 있는 경우 집계
 	if (response.status > 0) {
-			if (elapsedMs <= ARRIVAL_SECONDS * 1000) {
+			if (elapsedMs <= ARRIVAL_DURATION_US / 1000) {
 					responsesDuringArrival.add(1);
 			} else {
 					responsesAfterArrival.add(1);
