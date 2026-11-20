@@ -100,7 +100,7 @@ if (TARGET_RPS > 1000000 || REQUESTS < TARGET_RPS || REQUESTS > Math.floor(Numbe
 // 총 요청 수 만큼 토큰 로더
 const tokens = loadTokens(TOKENS_FILE, REQUESTS, true);
 
-// 종료 시간 계산
+// 계획 투입 시간(요청 수 ÷ 목표 RPS)
 const ARRIVAL_SECONDS = REQUESTS / TARGET_RPS;
 
 // 목표 요청 수와 RPS로 테스트 실행 시간을 계산
