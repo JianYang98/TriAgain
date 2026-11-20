@@ -98,6 +98,38 @@ stopped-with-errors·stop-incomplete·FAIL은 항목별 원인을 확인한다.
 worker.log는 별도 오류가 없으면 비어 있을 수 있다.  
 파일 존재와 종료 성공만으로 부하 구간 전체의 수집 완전성을 판정하지 않는다.
 
+### `tcpdump` 워커가 사라졌을 때 수동 복구
+
+앱 EC2에서 OFF 결과에 `tcpdump · still-running`이 표시되고 Python 워커가 사라졌다면, 이번 RUN의 `tcpdump`가 남았는지 확인한다.
+
+1. OFF가 출력한 결과 폴더의 `run.json`에서 `started_at`과 `workers.tcpdump.pid`를 확인한다. 기록된 PID는 Python 워커의 PID이며, 워커가 처음 만든 프로세스 그룹의 번호이기도 하다. 아래 목록에서 그룹 번호, 시작 시각, 명령의 포트·필터를 대조해 실제 `tcpdump` 후보를 찾는다.
+
+   ```sh
+   ps -eo pid,ppid,pgid,sid,lstart,args
+   ```
+
+2. `APP_OUT`에 OFF가 출력한 결과 폴더의 절대경로를, `TCPDUMP_PID`에 찾은 `tcpdump`의 양의 정수 PID를 지정한다. 후보가 열고 있는 표준 오류와 이번 RUN의 로그가 같은 파일인지 장치 번호와 inode로 대조한다.
+
+   ```sh
+   sudo stat -L -c '%d:%i %n' -- "/proc/$TCPDUMP_PID/fd/2" "$APP_OUT/tcpdump.stderr.log"
+   ```
+
+   두 줄의 `장치번호:inode`가 같고, 캡처 옵션과 시작 시각도 이번 RUN에 부합할 때만 다음 단계로 간다. 파이프나 터미널을 가리키거나 소속이 불확실하면 프로세스 목록과 RUN 기록을 남기고 활성 상태를 유지한다.
+
+3. 종료 직전에 후보의 명령, 시작 시각, 열린 로그 파일을 다시 확인한다. 확인된 `tcpdump`에만 `SIGTERM`을 보낸다. `ps`로 해당 PID의 실행이 끝났는지 확인한 뒤 OFF를 재실행한다.
+
+   ```sh
+   sudo kill -TERM -- "$TCPDUMP_PID"
+   ps -p "$TCPDUMP_PID" -o pid,stat,args
+   ```
+
+   ```sh
+   cd ~/load-test/collectors
+   ./collect off
+   ```
+
+`active.json`은 OFF가 정지와 자료 저장 상태를 확인할 수 있도록 유지한다. 이 RUN의 `network.pcap`은 워커가 끝난 뒤의 패킷이 빠졌을 수 있으므로 부분 캡처로 표시한다.
+
 ## Mac에서 결과 가져오기
 
 Mac 터미널에서 운영 또는 테스트 SSH 호스트와 실제 OFF 경로를 지정한다.  
