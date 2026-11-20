@@ -84,9 +84,19 @@ load-test/tokens.csv
 # Private DB Baseline runtime inputs and local evidence
 /test-app.env
 /load-test/private/
-/load-test/results/raw/
+# 부하테스트 결과 전체 — IP·키 경로·RDS 주소 포함(stage/, <날짜>/<RUN_ID>/). 추적 중인 README·INDEX는 예외
+/load-test/results/*
+!/load-test/results/RESULTS-INDEX.md
+!/load-test/results/1014-DB/
+!/load-test/results/1014-Redis/
 /load-test/results/1014-DB/*
 !/load-test/results/1014-DB/README.md
 /load-test/results/1014-Redis/*
 !/load-test/results/1014-Redis/README.md
 /load-test/collectors/.prometheus-data/
+# 테스트 RDS 주소 하드코딩 스크립트 (로컬 전용)
+/load-test/scripts/finish-db-phase.py
+# 파이썬 캐시
+__pycache__/
+# 부하테스트 토큰 — 경로 무관
+tokens*.csv
