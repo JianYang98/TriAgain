@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 import time
 
+# nstat 출력에서 누적값과 표본 간 증가량을 기록할 TCP 카운터 이름.
 
 NSTAT_COUNTERS = (
     "TcpExtListenOverflows",

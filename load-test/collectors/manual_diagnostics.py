@@ -11,13 +11,18 @@ import uuid
 
 
 def command(argv, timeout=30):
-    # rc≠0이면 RuntimeError(stderr 끝 1000자). 시간 초과는 subprocess.TimeoutExpired가 그대로 올라간다.
+    """외부 명령어를 실행하고 결과를 반환한다.
+    실행에 실패하면 예외를 발생시킨다.
+    """
+
+    # 외부 명령어를 실행하고 결과를 받는다.
     result = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+    # 실행에 실패하면 예외를 발생시킨다.
     if result.returncode:
         raise RuntimeError(" ".join(argv[:3]) + ": " + result.stderr.strip()[-1000:])
     return result.stdout
 
-
+# Docker 컨테이너의 실행 상태를 확인하고 ID와 PID를 반환
 def container_info(name):
     info = json.loads(command(["docker", "inspect", name]))[0]
     if not info["State"]["Running"] or info["State"]["Pid"] <= 0:
@@ -25,15 +30,17 @@ def container_info(name):
     return info["Id"], info["State"]["Pid"]
 
 
+# Docker 컨테이너 재시작 감지
 def same_container(run):
-    # ON이 기록한 Running·Pid·StartedAt과 지금의 docker inspect를 비교해 종료·재시작을 감지한다.
-    # kind 워커 시작 시, OFF의 nstat-after 전, stop_jfr에서 부른다.
+    """수집 시작 시점과 현재의 Docker 컨테이너 상태를 비교한다.
+    컨테이너가 종료되거나 재시작되었다면 예외를 발생시킨다.
+    """
     info = json.loads(command(["docker", "inspect", run["container_id"]]))[0]
     if (not info["State"]["Running"] or info["State"]["Pid"] != run["container_pid"]
             or info["State"]["StartedAt"] != run["container_started_at"]):
         raise RuntimeError("수집 시작 후 대상 앱 컨테이너가 종료되거나 재시작됐습니다.")
 
-
+# Docker 컨테이너 내부 JVM의 JFR 녹화
 def start_jfr(run, persist):
     options = run["options"]
     name = "collect-" + uuid.uuid4().hex
@@ -55,7 +62,7 @@ def start_jfr(run, persist):
     persist()
     return run["jfr"]
 
-
+# 녹화 종료가 확인되면, 파일을 복사하기 전에 종료 결과를 기록한다.
 def stop_jfr(folder, run):
     info = run["jfr"]
     same_container(run)
@@ -80,7 +87,7 @@ def stop_jfr(folder, run):
     info["state"] = "saved"
     return info
 
-
+# 컨테이너의 네트워크 설정과 소켓 상태를 조회해 파일에 기록
 def capture_limits(folder, run, now):
     prefix = ["sudo", "-n", "nsenter", "-t", str(run["container_pid"]), "-n"]
     queries = [
@@ -96,7 +103,7 @@ def capture_limits(folder, run, now):
             stream.write(" ".join(query) + "\n" + result.stdout + result.stderr)
             stream.write("exit=" + str(result.returncode) + "\n")
 
-
+# 컨테이너의 TCP 패킷을 캡처해 network.pcap 기록
 def run_tcpdump(folder, run, now, stopped):
     options = run["options"]
     expression = "tcp and port " + str(options["port"])
