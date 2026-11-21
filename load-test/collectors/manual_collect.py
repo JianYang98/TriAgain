@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Manual Linux collector control. All timestamps and run paths are owned here.
+"""부하 테스트 수집기의 ON/OFF와 워커 실행을 관리한다.
 
-진입점 3개 (collect 셸 스크립트가 인자를 그대로 넘긴다):
-- on       : RUN 폴더·run.json·active.json을 만들고 수집 워커를 띄운 뒤 바로 끝난다.
-- off      : active.json이 가리키는 RUN의 워커를 멈추고 OFF 시점 자료(nstat-after·JFR·app.log)를 저장한다.
-- __worker : on이 수집 항목마다 띄우는 내부 서브커맨드. 사용자가 직접 실행하지 않는다.
-전체 흐름과 상태 파일 관계는 MANUAL-COLLECT.md의 "코드 구조" 절에 있다.
+- on: 결과 폴더와 상태 파일을 만들고 수집을 시작한다.
+- off: 실행 중인 수집을 정지하고 종료 시점 자료를 저장한다.
+- __worker: on이 수집 항목별로 실행하는 내부 명령어다.
+
+전체 실행 흐름과 파일 관계는 MANUAL-COLLECT.md를 참고한다.
 """
+
 import argparse
 import datetime
 import fcntl
@@ -46,9 +47,8 @@ def save(path, value):
 def read(path):
     return json.loads(path.read_text())
 
-
+# ID의 프로세스 상태, 그룹 ID, 시작 ticks를 조회
 def process(pid):
-    """Read Linux process identity including boot-relative start ticks."""
     try:
         stat = Path("/proc/%d/stat" % pid).read_text()
         # comm(2번째 필드)에 공백·괄호가 들어갈 수 있어 마지막 ")" 뒤부터 나눈다.
@@ -61,10 +61,9 @@ def process(pid):
 
 
 def group_alive(pid):
-    """pid를 프로세스 그룹 ID로 쓰는 살아 있는(좀비 아닌) 프로세스가 하나라도 있으면 True.
-
-    워커 자신만이 아니라 워커가 띄운 측정 명령·sudo 자식까지 그룹 전체가 끝났는지 보려고
-    /proc 전체를 훑는다.
+    """
+    해당 프로세스 그룹에 좀비가 아닌 프로세스가 남아 있는지 확인한다.
+    워커뿐 아니라 워커가 실행한 측정 명령까지 확인한다.
     """
     for entry in Path("/proc").iterdir():
         if entry.name.isdigit():
@@ -75,22 +74,17 @@ def group_alive(pid):
 
 
 def stop_workers(folder, run):
-    """run.json에 기록된 워커를 하나씩 멈추고 항목별 outcome과 run state를 저장한다.
+    """워커 프로세스 그룹을 종료하고 결과를 run.json에 기록한다.
 
-    항목을 순서대로 처리하며(병렬 아님) 항목마다 최대 약 10초를 기다린다.
-    1. 워커가 살아 있으면 신원을 확인한다. 시작 ticks가 ON 때 기록과 같고, 그룹 리더이며
-       (group == pid), cmdline에 이 파일 경로와 "__worker"가 있어야 한다. 하나라도 다르면 신호를
-       보내지 않고 identity-mismatch로 둔다. PID가 재사용된 경우 남의 그룹에 신호를 보내지 않는다.
-    2. 그룹 전체에 SIGTERM을 보낸다. privileged 항목의 그룹에는 `sudo -n`으로 띄운 root 소유
-       자식이 있고, 일반 사용자 권한의 killpg는 root 프로세스에 닿지 않으므로 `sudo -n kill`을 쓴다.
-    3. 그룹이 사라질 때까지 0.1초 간격으로 최대 10초 기다린 뒤 워커가 남긴 <name>.status.json을 읽는다.
+    1. PID, 시작 ticks, 그룹 ID, 실행 명령을 대조해 워커 신원을 확인한다.
+       PID가 다른 프로세스에 재사용된 경우 잘못된 종료 신호를 보내지 않기 위해서다.
+    2. 살아 있는 워커 그룹에 SIGTERM을 보낸다. 권한이 필요한 그룹은 sudo를 사용한다.
+    3. 그룹 종료를 항목별 최대 10초 기다리고 status.json을 읽어 결과를 기록한다.
 
-    이미 끝난 워커는 신호 없이 3번만 한다. outcome은 still-running(그룹 잔존) → status의 state →
-    status 파일 없음이면 ended-unexpectedly 순으로 정한다. 워커가 최종 status를 쓰지 못하고
-    죽으면(SIGKILL·재부팅 등) 시작 때 쓴 "running"이 그대로 outcome이 된다.
-    identity-mismatch·still-running·stop-failed가 하나라도 있으면 run state는 stop-incomplete,
-    아니면 stopped다. 반환값은 "모든 워커 정지 확인" 여부다.
+    신원 불일치·종료 실패·그룹 잔존이 있으면 stop-incomplete 상태로 남긴다.
+    반환값은 모든 워커 그룹의 종료 확인 여부다.
     """
+
     outcomes = {}
     for name, identity in run["workers"].items():
         pid = identity["pid"]
@@ -129,40 +123,51 @@ def stop_workers(folder, run):
     save(folder / "run.json", run)
     return run["state"] == "stopped"
 
-
+# 수집 시작
 def on(args):
-    """수집을 시작한다. 워커를 띄운 뒤 기다리지 않고 반환한다(main()의 락을 쥔 채 실행).
 
-    순서
-    1. 입력 검증: Linux(/proc), RUN_ID, 활성 RUN 없음(active.json), --only 이름, 옵션 범위.
-    2. 한국 시각 started_at의 날짜로 test-results/<날짜>/<RUN_ID>/를 만든다(이미 있으면 실패).
-    3. run.json(state=starting)과 active.json을 기록한다. 이 시점부터 이 RUN은 OFF 대상이다.
-    4. 컨테이너가 필요한 항목이 있으면 docker inspect로 ID·PID·StartedAt과 그 PID의 시작 ticks를
-       기록한다. 워커와 OFF는 이 값과 비교해 컨테이너 종료·재시작을 감지한다.
-    5. ON 시점 자료: network-limits.txt, nstat-before 스냅샷, JFR 시작.
-    6. COLLECTORS 항목마다 launch_worker. lifecycle 항목(jfr·app-log)은 워커를 만들지 않는다.
-    7. state를 running(오류 없음) 또는 running-partial로 저장한다.
+    """선택한 수집 항목을 시작하고 RUN 상태를 기록한다.
+
+    main()이 ON/OFF 락을 보유한 상태에서 실행한다.
+    워커의 시작 상태를 확인한 뒤 반환하며, 시작된 워커는 백그라운드에서 계속 수집한다.
+
+    실행 흐름
+    1. 입력값과 기존 활성 RUN을 검증한다.
+    2. 결과 폴더를 생성하고 run.json, active.json을 기록한다.
+    3. 선택한 항목에 따라 컨테이너 정보를 확인하고 시작 시점의 자료를 수집한다.
+    4. 수집 워커를 실행하고 시작 결과를 run.json에 기록한다.
 
     실패 처리
-    - 5·6번의 항목별 실패는 run["errors"]에 적고 나머지를 계속 시작한다(반환코드 2).
-      이미 시작된 워커는 계속 돌므로 OFF로 마무리해야 한다.
-    - 그 밖의 예외(4번 docker inspect 실패·컨테이너 미실행, KeyboardInterrupt 등)는 롤백 후 다시 던진다.
-      롤백은 띄운 워커 그룹에 SIGTERM → stop_workers로 정지 확인 → 정지가 확인되고 run["jfr"]가
-      없을 때만 active.json 삭제 순이다. run.json에는 이 예외 내용이 기록되지 않는다(stderr 출력만).
+    - 개별 수집 항목의 실패는 errors에 기록하고 나머지 작업을 계속한다.
+    - 처리되지 않은 예외가 발생하면 시작한 워커의 정리를 시도하고 예외를 다시 발생시킨다.
+    - 정상적으로 반환할 경우, 오류 기록이 없으면 0, 있으면 2를 반환한다.
+    - 시작된 수집은 collect off로 마무리한다.
     """
+
     if not Path("/proc/self/stat").exists():
         raise ValueError("앱 EC2의 Linux에서 실행하세요.")
+
+    # RUN_ID가 추후에 폴더로 쓰이기 때문에 백슬레시와, 오타가 없어야한다.
     run_id = args.run_id
     if (run_id in (".", "..") or not run_id or "/" in run_id or "\\" in run_id
             or any(ord(char) < 32 or ord(char) == 127 for char in run_id)):
         raise ValueError("RUN_ID는 폴더 이름 한 칸으로 지정하세요.")
+
+
+    # 이전 RUN을 종료하지 않으면, 새 수집을 하지 않습니다!!
     active = STATE / "active.json"
     if active.exists():
         raise ValueError("활성 RUN이 있습니다. collect off로 먼저 종료하세요.")
+
+    # 선택한 수집 항목의 중복 및 유효성 검사
     selected = args.only.split(",")
+
     if len(set(selected)) != len(selected) or any(
             name not in (*COLLECTORS, *LIFECYCLE_COLLECTORS) for name in selected):
         raise ValueError("--only에 알 수 없거나 중복된 수집 항목이 있습니다.")
+
+    #  수집 옵션 정리 및 값 검증
+    # main 에서 정한 --port ~  등 option 값을 가져옵니다.
     options = {key: getattr(args, key) for key in (
         "port", "ss_interval", "nstat_interval", "snaplen", "peer_ip",
         "pcap_max_mb", "jcmd", "jvm_pid", "jfr_settings", "jfr_max_mb")}
@@ -173,6 +178,8 @@ def on(args):
         raise ValueError("수집 간격은 유한한 양수여야 합니다.")
     if any(options[key] <= 0 for key in ("snaplen", "pcap_max_mb", "jvm_pid", "jfr_max_mb")):
         raise ValueError("캡처·JFR 크기와 JVM PID는 양수여야 합니다.")
+
+    #  RUN 시작 시각 기록 및 결과 폴더 생성
     started_at = now()
     date = datetime.datetime.fromisoformat(started_at).strftime("%Y%m%d")
     folder = ROOT / "test-results" / date / run_id
@@ -180,27 +187,36 @@ def on(args):
     run = {"run_id": run_id, "container": args.container, "started_at": started_at,
            "date": date, "output": str(folder), "state": "starting", "workers": {},
            "selected": selected, "options": options, "errors": {}, "outcomes": {}}
+
+    # # RUN별 상세 정보는 결과 폴더의 run.json에 기록
     save(folder / "run.json", run)
+
+    # OFF가 이 RUN을 찾을 수 있도록 결과 폴더 경로를 active.json에 저장한다. !!
     save(active, {"output": str(folder)})
-    # Retain process handles until startup completes so rollback also handles
-    # a worker whose ready status has not appeared yet.
+
+    # 시작한 워커 프로세스를 기록
     launched = {}
     try:
-        # (4) 여기서 나는 예외는 항목별로 잡지 않으므로 아래 except의 롤백으로 간다.
+        # 선택한 수집 항목 중 컨테이너가 필요한 항목이 있으면  실행 중인지 확인한다.
         if any(name in selected for name in ("ss", "nstat", "tcpdump", "jfr", "app-log")):
             info = json.loads(command(["docker", "inspect", args.container]))[0]
             if not info["State"]["Running"]:
                 raise ValueError("대상 앱 컨테이너가 실행 중이어야 합니다.")
+
+            # 컨테이너 ID와 프로세스 식별 정보를 run에 업데이트하고, run.json으로 저장한다.
             run.update(container_id=info["Id"], container_pid=info["State"]["Pid"],
                        container_started_at=info["State"]["StartedAt"],
                        container_ticks=process(info["State"]["Pid"])["ticks"])
             save(folder / "run.json", run)
-        # (5)·(6) 항목별 try: 실패는 errors에 남기고 다음 항목으로 넘어간다.
+
+        # 네트워크 기록
         if any(name in selected for name in ("ss", "nstat", "tcpdump")):
             try:
                 capture_limits(folder, run, now)
             except Exception as exc:
                 run["errors"]["network-limits"] = str(exc)
+
+        # nstat  시작 값 기록
         if "nstat" in selected:
             try:
                 snapshot = snapshot_nstat(folder, run, "before", now)
@@ -208,12 +224,17 @@ def on(args):
                     run["errors"]["nstat-before"] = "일부 namespace의 시작 스냅샷 실패"
             except Exception as exc:
                 run["errors"]["nstat-before"] = str(exc)
+
+        # jfr 캡쳐
         if "jfr" in selected:
             try:
                 start_jfr(run, lambda: save(folder / "run.json", run))
             except Exception as exc:
                 run["errors"]["jfr-start"] = str(exc)
         save(folder / "run.json", run)
+
+
+        # 워커 실행하고, 오류나면 기록
         for name in selected:
             if name not in COLLECTORS:
                 continue
@@ -222,21 +243,25 @@ def on(args):
             except Exception as exc:
                 run["errors"][name] = str(exc)
                 save(folder / "run.json", run)
+
+        # 수집 과정에 오류 있는지 없는지 기록
         run["state"] = "running" if not run["errors"] else "running-partial"
+
         save(folder / "run.json", run)
+
+    # 시작 실패 시 이미 실행 중인 워커 프로세스 그룹에 종료를 요청한다.
     except BaseException:
         for child in launched.values():
             if child.poll() is None:
                 try:
                     name = next(name for name, value in launched.items() if value is child)
-                    if COLLECTORS[name].get("privileged"):
+                    if COLLECTORS[name].get("privileged"): # 관리자 권한이 필요하다면
                         command(["sudo", "-n", "kill", "-TERM", "--", "-" + str(child.pid)], timeout=5)
-                    else:
+                    else: # 관리자 권이 필요하지 않는경우
                         os.killpg(child.pid, signal.SIGTERM)
                 except (OSError, RuntimeError):
                     pass
-        # run["jfr"]가 있으면(시작됐거나 시작 여부가 불확실하면) active.json을 남겨
-        # OFF가 같은 recording 이름으로 JFR.stop을 시도하게 한다.
+
         if stop_workers(folder, run) and not run.get("jfr"):
             active.unlink()
         raise
@@ -249,37 +274,67 @@ def on(args):
     return 2 if run["errors"] else 0
 
 
+# 워커  프로세스를 실행
 def launch_worker(name, folder, run, launched):
-    """워커 프로세스 하나를 띄우고 <name>.status.json이 running이 될 때까지 최대 5초 기다린다.
+    """ 선택한 수집 항목을 별도의 Python 워커 프로세스로 실행한다.
 
-    - 사전 확인: command 방식은 명령이 PATH에 있는지, privileged는 `sudo -n true`(비밀번호 없이 sudo 가능).
-    - start_new_session=True라 워커가 새 세션·프로세스 그룹의 리더가 된다(pgid = 워커 pid).
-      OFF는 이 그룹 단위로 신호를 보낸다. 제어 터미널이 없어 SSH 접속이 끊겨도 SIGHUP을 받지 않는다.
-    - stdout·stderr는 <name>.worker.log로 간다. "xb" 모드라 같은 항목을 같은 폴더에 두 번 시작하지 못한다.
-    - pid·시작 ticks는 ready 대기 전에 run.json에 저장한다. 그래서 시작 확인이 실패해도 프로세스가
-      살아 있으면 OFF가 정지 대상으로 삼는다. 이 함수는 실패해도 띄운 프로세스를 죽이지 않는다.
+    실행 흐름
+    1. 워커 실행에 필요한 명령어와 권한을 확인한다.
+    2. run.json을 저장하고, 워커 로그 파일을 생성한 뒤 새 프로세스를 실행한다.
+    3. 워커의 PID와 시작 ticks를 run.json에 기록한다.
+    4. 워커의 status.json이 running 상태인지 최대 5초 동안 확인한다.
+
+    실패 처리
+    - 실패하면 예외를 발생시키며, 여기서 워커를 직접 종료하지는 않는다.
+    - 정리는 on()의 오류 처리 또는 off에서 수행한다.
+
     """
+
     spec = COLLECTORS[name]
+
+    #  워커에 대한 필요한 명령어가 Path에 있는지 확인
     if spec.get("command") and shutil.which(spec["command"][0]) is None:
         raise RuntimeError("필요한 명령이 없습니다: " + spec["command"][0])
+    # 권한이 필요한 항목은 sudo -n true가 비밀번호 입력 없이 실행되는지 확인한다.
     if spec.get("privileged"):
         command(["sudo", "-n", "true"], timeout=5)
-    # Worker reads the immutable options/target from this run's manifest.
+
+    #  워커가 실행 설정과 수집 대상을 읽을 수 있도록 run.json에 저장
     save(folder / "run.json", run)
+
+    # manual_collect.py에서 별도의 Python 워커 프로세스 실행 및 로그 연결
+    # start_new_session=True새 세션·프로세스 그룹으로 워커를 실행해 부모 터미널과 분리하여 백그라운드 수집하도록함
     with (folder / (name + ".worker.log")).open("xb") as errors:
+
+        #  워커 실행
+        # main 에서 정의한 내부 워커용 인자값도 같이 넘긴다.
         child = subprocess.Popen(
             [sys.executable, str(HERE / "manual_collect.py"), "__worker",
              "--name", name, "--run-id", run["run_id"], "--folder", str(folder)],
             stdin=subprocess.DEVNULL, stdout=errors, stderr=errors,
             start_new_session=True, close_fds=True)
+
+    #  실행한 워커(child)를 부모 프로세스에 저장
     launched[name] = child
+
+    # 새로 실행한 워커의 PID로 프로세스 조회
     info = process(child.pid)
     if info is None:
         raise RuntimeError(name + " 프로세스 시작 확인 실패")
+
+    # 프로세스 OFF 할때 동일한 프로세스인지 확인 가능 하도록 pid랑 ticks(pid 생긴 tick 지점)을 저장
     run["workers"][name] = {"pid": child.pid, "ticks": info["ticks"]}
+    # 변경된 RUN 정보를
     save(folder / "run.json", run)
+
+
+    # 자식 워커가 생성할 상태 파일의 경로를 지정하고, 자식 워커가 바로 실행이 안될 수 있어서 5초까지 기다림
+    # 자식 프로세스가 생성할 파일의 경로를 정한다. 생존 여부와 상태 파일을 확인해 워커 시작
+    # 상태 파일이 아직 없다면 최대 5초 동안 대기한다.
     ready = folder / (name + ".status.json")
     deadline = time.monotonic() + 5
+
+    # 자식이 프로세스가 생기면
     while not ready.exists() and child.poll() is None and time.monotonic() < deadline:
         time.sleep(0.05)
     if not ready.exists() or read(ready).get("state") != "running" or child.poll() is not None:
@@ -290,10 +345,10 @@ def off():
     """활성 RUN을 끝낸다. 실패한 단계가 있으면 active.json을 남겨 같은 명령으로 다시 시도할 수 있다.
 
     순서
-    1. off_requested_at 기록. setdefault라 재시도해도 첫 OFF 시각이 유지된다(app.log 구간의 끝).
-    2. 워커를 멈추기 전에 nstat-after 스냅샷과 tcp-delta.txt를 만든다(파일이 이미 있으면 건너뜀).
+    1. 첫 OFF 요청 시각을 기록한다( (app.log 구간의 끝).
+    2. 워커 종료 전에 nstat 종료 스냅샷과 TCP 카운터 차이를 기록한다.
     3. stop_workers: 워커를 하나씩 멈추고 outcome을 모은다.
-    4. JFR 정지·복사(saved가 아닐 때), app.log 추출(started_at~off_requested_at, 이미 있으면 exists).
+    4. 결과를 run.json에 기록하고, 종료 처리가 완료되면 active.json을 지운다.
 
     최종 state
     - stop-incomplete: 워커 정지 미확인, 또는 JFR·app-log 저장 실패. active.json 유지 → OFF 재시도 가능.
@@ -301,9 +356,8 @@ def off():
     - stopped-with-errors: 그 밖(capture-limit-reached·failed·nstat 오류 등). active.json은 지운다.
     반환코드는 stopped일 때만 0, 나머지는 2.
 
-    주의: errors는 run.json에 누적되고 재시도 때 지우지 않는다. 앞선 시도의 오류가 남아 있으면
-    재시도가 성공해도 stopped-with-errors가 된다. nstat·tcp-delta 오류는 active.json 유지 조건이 아니다.
     """
+    #  현재 활성 RUN 확인
     active = STATE / "active.json"
     if not active.exists():
         print("활성 수집 RUN이 없습니다.")
@@ -312,7 +366,10 @@ def off():
     run = read(folder / "run.json")
     run.setdefault("off_requested_at", now())
     save(folder / "run.json", run)
+
+    # 현재 실행 중인 워커 기록하기
     selected = run.get("selected", list(run["workers"]))
+
     if "nstat" in selected and not (folder / "nstat-after.json").exists():
         try:
             same_container(run)
@@ -326,8 +383,11 @@ def off():
             write_delta(folder, run)
         except Exception as exc:
             run.setdefault("errors", {})["tcp-delta"] = str(exc)
+
+    # 워커 정지 처리
     complete = stop_workers(folder, run)
-    # lifecycle_ok: JFR·app-log 저장 성공 여부. complete와 함께 active.json 삭제 조건이다.
+
+    # 워커 정지(complete)와 이 처리가 모두 끝나면 active.json을 삭제할 수 있다.
     lifecycle_ok = True
     if run.get("jfr") and run["jfr"]["state"] != "saved":
         try:
@@ -356,8 +416,12 @@ def off():
                     "stopped" if successful else "stopped-with-errors")
     run["finished_at"] = now()
     save(folder / "run.json", run)
+
+    # 종료 작업이 완료되지 않았다면 active.json을 남겨 OFF를 재시도할 수 있게 한다.
+    # 워커 종료와 JFR·앱 로그 처리가 완료되면 active.json 삭제한다.
     if complete and lifecycle_ok:
         active.unlink()
+
     print("수집기 OFF · " + run["run_id"])
     for name, outcome in run["outcomes"].items():
         print(name + " · " + outcome)
@@ -369,6 +433,7 @@ def off():
         x in ("stopped", "saved", "exists") for x in run["outcomes"].values()) else 2
 
 
+# TODO: nstat 카운터 차이 계산과 예외 상황을 추가 검토한다.
 def write_delta(folder, run):
     """Preserve the whole counter inventory; missing/reset values stay explicit."""
     def counters(path):
@@ -396,21 +461,18 @@ def write_delta(folder, run):
 
 
 def worker(args):
-    """`__worker` 서브커맨드 본체. 수집 항목 하나를 OFF의 SIGTERM이 올 때까지 실행한다.
+    """ 각 수집 항목의 실제 수집 작업을 수행한다.
 
-    SIGTERM·SIGINT 핸들러는 stopping 플래그만 세운다. 워커는 바로 죽지 않고 수집 루프나 명령 출력이
-    끝난 뒤 최종 status를 쓰고 끝난다. OFF는 그룹 전체에 신호를 보내므로 측정 명령도 같은 신호를 받는다.
+    워커는 데이터를 계속 수집하다 종료 신호(SIGTERM·SIGINT)를 받으면 stopping을 True로 바꾼다.
+    수집이 끝나면 최종 상태를 <name>.status.json에 저장한다.
 
-    두 경로
-    - kind 방식(ss·nstat·tcpdump): run.json을 읽고 same_container로 컨테이너가 ON 때와 같은지 확인한 뒤
-      status=running을 쓰고, kind에 맞는 run_* 함수에 stopped 콜백을 넘겨 반복 수집을 맡긴다.
-    - command 방식(mpstat·vmstat): 장기 실행 명령 하나의 stdout을 줄 단위로 받아
-      "<한국 시각> <RUN_ID> " 접두어를 붙여 로그에 쓴다.
+    - kind 방식(ss·nstat·tcpdump): 해당 run_* 함수에 수집과 종료 확인을 맡긴다.
+    - command 방식(mpstat·vmstat): 측정 명령을 실행하고 출력 줄을 로그에 기록한다.
 
-    status.json state: running → stopped(종료 요청에 의한 종료) | ended-unexpectedly(요청 없이 끝남,
-    command 방식은 exit 코드가 0·-SIGTERM·-SIGINT 밖) | capture-limit-reached(tcpdump 크기 한도) |
-    failed(예외). 예외는 failed를 기록한 뒤 다시 던져 traceback이 <name>.worker.log에 남는다.
+    오류가 발생하면 failed를 기록하고 예외를 다시 발생시킨다.
+
     """
+    # 수집기 이름과 프로세스, 상태 값 세팅
     folder = Path(args.folder)
     spec = COLLECTORS[args.name]
     status_file = folder / (args.name + ".status.json")
@@ -420,8 +482,10 @@ def worker(args):
         nonlocal stopping
         stopping = True
 
+    # 종료 신호를 받으면 request_stop() 실행하도록 등록
     signal.signal(signal.SIGTERM, request_stop)
     signal.signal(signal.SIGINT, request_stop)
+
     kind = spec.get("kind")
     if kind:
         try:
@@ -433,37 +497,50 @@ def worker(args):
             result = functions[kind](folder, run, now, lambda: stopping)
             state = "stopped" if stopping else "ended-unexpectedly"
             # run_tcpdump는 한도 도달 시 자기 프로세스 그룹(이 워커 포함)에 SIGTERM을 보내므로
-            # stopping도 True가 된다. 그 경우 한도 도달을 우선 기록한다.
+            # stopping도 True가 된다. 그 경우 한도 도달을 우선 기록한다
+
+            # 제한 확인
             if result and result.get("limited"):
                 state = "capture-limit-reached"
             save(status_file, {"state": state, "ended_at": now(), "detail": result})
+
+        # 실패가 나면 기록하고, 호출부로
         except BaseException as exc:
             save(status_file, {"state": "failed", "ended_at": now(), "error": str(exc)})
-            raise
+            raise  # 토스
         return
-    # 여기부터 command 방식. 규칙은 common.sh stamp_run과 같다(LC_ALL=C·stdbuf·배너 가림·데이터 줄 스탬프).
+
+
     env = dict(os.environ, LC_ALL="C")
     command = list(spec["command"])
     # 파이프에서도 줄 단위로 내보내게 한다(common.sh 주석과 같은 이유). stdbuf가 없으면 그대로 실행.
     if shutil.which("stdbuf"):
         command = ["stdbuf", "-oL", *command]
     try:
+        # 측정 결과를 저장할 로그 파일을 생성한다.
         with (folder / spec["filename"]).open("x") as log:
             if stopping:
                 raise RuntimeError("시작 중 종료 요청")
+
             # start_new_session 없이 띄워 워커와 같은 프로세스 그룹에 둔다.
             # 그래서 OFF의 그룹 SIGTERM이 측정 명령에도 직접 간다.
             child = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                      text=True, errors="replace", env=env)
+            # 측정 시작 상태를 기록한다.
             save(status_file, {"state": "running", "started_at": now(), "pid": os.getpid()})
+
+            # TODO 고민 포인트 기록하는데 프로세스가 하나 더 필요할까? 개선 포인트  고민해보기
+            # 고민 포인트 log 출력할떄  RUN ID는 파일 단위로 한 번, 시각은 표본마다 남기는 설계도 고민해 보기
             for line in child.stdout:
                 # "Linux <커널> (<호스트명>) ..." 배너의 호스트명을 가린다
-                # (common.sh: EC2 호스트명에 사설 IP가 들어 있다).
                 if line.startswith("Linux ") and "(" in line and ")" in line:
                     before, rest = line.split("(", 1)
                     line = before + "(host)" + rest.split(")", 1)[1]
-                # 시각은 명령의 표본 시각이 아니라 이 줄을 읽은 시각이다. stamp_all=False(vmstat)는
-                # 숫자로 시작하는 데이터 줄에만 붙이고 헤더는 원문 그대로 둔다.
+
+                # 시각은 워커가 이 줄을 읽은 시각이다.
+                # mpstat는 모든 줄에 시각과 RUN ID를 붙인다.
+                # vmstat는 숫자로 시작하는 데이터 줄에만 접두어를 붙인다.
+
                 if spec["stamp_all"] or line.lstrip()[:1].isdigit():
                     line = now() + " " + args.run_id + " " + line
                 log.write(line)
@@ -475,20 +552,25 @@ def worker(args):
                       + " exit=" + str(code) + "\n")
         save(status_file, {"state": state, "ended_at": now(), "command_exit": code})
     except BaseException as exc:
+
         # 이 경로는 status에 예외 타입 이름만 남긴다(kind 경로는 메시지). 전체 traceback은 worker.log에 있다.
         save(status_file, {"state": "failed", "ended_at": now(), "error": type(exc).__name__})
         raise
 
-
+# main 함수 중요 옵션 설정
 def main():
+
     parser = argparse.ArgumentParser(description="앱 EC2 수집기 수동 ON/OFF")
     sub = parser.add_subparsers(dest="action", required=True)
+
+    # ON 명령어 및 옵션 정의
     start = sub.add_parser("on")
     start.add_argument("--run-id", required=True)
     start.add_argument("--container", required=True,
                        help="관측할 앱 컨테이너 이름")
     start.add_argument("--only", default=",".join((*COLLECTORS, "app-log")),
                        help="쉼표로 구분한 항목 (기본 mpstat,vmstat,ss,nstat,tcpdump,app-log; JFR은 명시 선택)")
+    # 수집 옵션 설정
     start.add_argument("--port", type=int, default=8080)
     start.add_argument("--ss-interval", type=float, default=0.3)
     start.add_argument("--nstat-interval", type=float, default=1.0)
@@ -496,35 +578,52 @@ def main():
     start.add_argument("--peer-ip", default="")
     start.add_argument("--pcap-max-mb", type=int, default=128,
                        help="PCAP 약정 크기 도달 시 캡처 종료 (마지막 버퍼만 초과 가능)")
+    # JFR 수집 옵션
     start.add_argument("--jcmd", default="jcmd", help="앱 컨테이너 안 jcmd 경로")
     start.add_argument("--jvm-pid", type=int, default=1)
     start.add_argument("--jfr-settings", default="default")
     start.add_argument("--jfr-max-mb", type=int, default=64)
+
+    # OFF 명령어 및 옵션 정의
     sub.add_parser("off")
-    internal = sub.add_parser("__worker", help=argparse.SUPPRESS)
-    internal.add_argument("--name", choices=COLLECTORS, required=True)
+
+    # 내부 워커 명령어 정의 , launch_worker에서 프로세스 새로 띄울때 사용
+    internal = sub.add_parser("__worker", help=argparse.SUPPRESS) # 명령어 등록
+    internal.add_argument("--name", choices=COLLECTORS, required=True) # 옵션등록
     internal.add_argument("--run-id", required=True)
     internal.add_argument("--folder", required=True)
+
+
     args = parser.parse_args()
-    # 이후 만드는 파일·폴더는 소유자만 읽고 쓸 수 있다(워커 프로세스에도 상속).
+
+    # 파일 권한과 접근 제한
     os.umask(0o077)
-    # 워커는 락을 잡지 않는다. ON이 락을 쥔 채 워커의 status=running을 기다리므로
-    # 워커가 같은 락을 기다리면 ON의 시작 확인이 시간 초과된다.
+
+
+    # 내부 워커는 락을 잡지 않고 바로 실행한다.
+    # ON이 락을 잡은 채 워커의 status=running을 기다리기 때문이다.
+    # 부모 프로세스가! 자식 프로세스 프로세스를 띄웠으면 args.action == "__worker" 이기에 worker 호출
     if args.action == "__worker":
         worker(args)
         return 0
+
+    #  ON/OFF 상태 파일을 관리할 상태 관리 디렉터리를 준비(.collector-state 디렉토리 )
+    #  lock 파일을 연다(없으면 만든다)
     STATE.mkdir(mode=0o700, exist_ok=True)
     with (STATE / "lock").open("a") as lock:
-        # on/off를 한 번에 하나만 실행한다. LOCK_NB가 없어 앞선 실행이 끝날 때까지 기다린다(거절 아님).
+        # lock 파일에 락을 걸어서  on/off를 한 번에 하나만 실행하도록하다.
+        # 배타락을 건다.
         fcntl.flock(lock, fcntl.LOCK_EX)
         if args.action == "on":
             return on(args)
         return off()
 
 
+# Python 파일을 직접 실행하면 main()을 호출한다.
+# 실행 중 예외가 발생하면 오류를 출력하고 종료한다.
 if __name__ == "__main__":
     try:
-        sys.exit(main())
+        sys.exit(main()) # main() 시작
     except (OSError, ValueError, RuntimeError, KeyboardInterrupt) as error:
         print("수집 오류 · " + str(error), file=sys.stderr)
         sys.exit(2)
