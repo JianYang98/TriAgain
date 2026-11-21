@@ -295,7 +295,7 @@ def launch_worker(name, folder, run, launched):
     #  워커에 대한 필요한 명령어가 Path에 있는지 확인
     if spec.get("command") and shutil.which(spec["command"][0]) is None:
         raise RuntimeError("필요한 명령이 없습니다: " + spec["command"][0])
-    #  관리자 권한이 필요한 워커에게  sudo 권한 부여
+    # 권한이 필요한 항목은 sudo -n true가 비밀번호 입력 없이 실행되는지 확인한다.
     if spec.get("privileged"):
         command(["sudo", "-n", "true"], timeout=5)
 
@@ -537,8 +537,9 @@ def worker(args):
                     before, rest = line.split("(", 1)
                     line = before + "(host)" + rest.split(")", 1)[1]
 
-                # 시각은 명령의 표본 시각이 아니라 이 줄을 읽은 시각이다.
-                # 숫자로 시작하는 데이터 줄에만 붙이고 헤더는 원문 그대로 둔다.
+                # 시각은 워커가 이 줄을 읽은 시각이다.
+                # mpstat는 모든 줄에 시각과 RUN ID를 붙인다.
+                # vmstat는 숫자로 시작하는 데이터 줄에만 접두어를 붙인다.
 
                 if spec["stamp_all"] or line.lstrip()[:1].isdigit():
                     line = now() + " " + args.run_id + " " + line
