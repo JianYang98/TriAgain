@@ -10,7 +10,7 @@
 // k6 run --out json=$OUT_DIR/k6.json \
 //   -e BASE_URL=... -e CREW_ID=... -e TARGET_RPS=50 -e TOTAL=10000 -e WARMUP=0 \
 //   -e TOKENS_FILE=... -e RUN_ID=... -e OUT_DIR=... \
-//   load-test/k6/db-baseline-b.js
+//   load-test/k6/archive/db-baseline-b.js
 // # 워밍업: 같은 스크립트, 워밍업 크루, WARMUP=1 (요약은 $OUT_DIR/warmup-summary.json, 본 측정 파일을 덮지 않는다)
 // #   예) -e CREW_ID=dbb-warm-01 -e TOTAL=1000 -e TARGET_RPS=50 (건수·RPS는 스모크에서 확정)
 // #   --out json은 k6.json과 다른 경로로 준다 (예: --out json=$OUT_DIR/warmup-k6.json)
@@ -23,8 +23,8 @@
 import http from 'k6/http';
 import { check } from 'k6';
 import exec from 'k6/execution';
-import { loadTokens } from './lib/b-tokens.js';
-import { COUNTER_BY_RESULT, RESULTS, record } from './lib/b-metrics.js';
+import { loadTokens } from '../lib/b-tokens.js';
+import { COUNTER_BY_RESULT, RESULTS, record } from '../lib/b-metrics.js';
 
 // ===== 환경변수 (잘못되면 init에서 throw → 요청 0건) =====
 function env(name, def) {

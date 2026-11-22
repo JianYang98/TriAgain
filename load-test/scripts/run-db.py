@@ -15,7 +15,7 @@ import threading
 import time
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / 'load-test/k6/db-baseline-b.js'
+SCRIPT = ROOT / 'load-test/k6/archive/db-baseline-b.js'
 KEY = Path(os.environ['APP_SSH_KEY'])
 TARGET = os.environ['APP_SSH_TARGET']
 BASE_URL = os.environ['BASE_URL']
