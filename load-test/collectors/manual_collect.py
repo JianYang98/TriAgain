@@ -14,6 +14,7 @@ import json
 import math
 import os
 from pathlib import Path
+import shlex
 import shutil
 import signal
 import subprocess
@@ -365,8 +366,13 @@ def off():
     print("결과 폴더 · " + str(folder))
     for name, error in run.get("errors", {}).items():
         print("FAIL " + name + " · " + str(error))
-    return 0 if complete and lifecycle_ok and not run.get("errors") and all(
-        x in ("stopped", "saved", "exists") for x in run["outcomes"].values()) else 2
+    if run["state"] == "stopped":
+        print("\n[회수창 · Mac] 아래 세 줄을 붙여넣으세요.")
+        print("APP_OUT=" + shlex.quote(str(folder)))
+        print("export START_AT=" + shlex.quote(run["started_at"]))
+        print("export END_AT=" + shlex.quote(run["finished_at"]))
+        return 0
+    return 2
 
 
 def write_delta(folder, run):
