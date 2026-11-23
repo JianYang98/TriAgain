@@ -1,12 +1,11 @@
-// DB Only C 단계 시연본(-d): db-baseline-c.js의 복제. 서로 다른 사용자 10,000명이 TARGET_RPS로 가입 시도한다.
-// 차이는 ALLOW_FRACTIONAL_ARRIVAL=1일 때 10,000이 RPS로 나누어떨어지지 않아도(300·600) 허용하는 것뿐이다. 기본 0이면 원본과 같다.
-// 실행·준비·ulimit 복원: ../runbooks/db-baseline-c.md
+// DB Only C: 서로 다른 사용자 10,000명이 1,000 RPS로 약 10초간 가입 시도.
+// 실행·준비·ulimit 복원: ../../runbooks/db-baseline-c.md
 // B의 토큰 검증·응답 분류를 재사용한다. 이 파일은 서버 준비/초기화/GC를 하지 않는다.
 import http from 'k6/http';
 import exec from 'k6/execution';
 import { Counter, Gauge, Rate, Trend } from 'k6/metrics';
-import { loadTokens } from './lib/b-tokens.js';
-import { COUNTER_BY_RESULT, RESULTS, record } from './lib/b-metrics.js';
+import { loadTokens } from '../lib/b-tokens.js';
+import { COUNTER_BY_RESULT, RESULTS, record } from '../lib/b-metrics.js';
 
 // 1. 설정: k6 run -e NAME=value로 기본값을 덮어쓴다.
 function readEnv(name, fallback) {
@@ -44,15 +43,15 @@ const REQ_TIMEOUT_SECONDS = positiveInteger('REQ_TIMEOUT_SECONDS', 60);
 const OUT_DIR = readEnv('OUT_DIR').replace(/\/+$/, '');
 const TOKENS_FILE = readEnv('TOKENS_FILE');
 const WARMUP = readEnv('WARMUP', 0);
-// 1이면 TOTAL이 TARGET_RPS로 나누어떨어지지 않아도 허용한다 (예: 10,000건 ÷ 300 RPS = 33.333초). 기본 0.
+// 1이면 TOTAL이 TARGET_RPS로 나누어떨어지지 않아도 허용한다 (예: 10,000건 ÷ 300 RPS = 33.333초). 기본 0 = 기존 동작.
 const FRACTIONAL_OK = readEnv('ALLOW_FRACTIONAL_ARRIVAL', 0);
 
 if (!/^https?:\/\/[^\s]+$/.test(BASE_URL)) throw new Error('BASE_URL은 HTTP(S) URL이어야 한다');
 if (!OUT_DIR.startsWith('/')) throw new Error('OUT_DIR은 새로 만든 폴더의 절대 경로여야 한다');
 if (!TOKENS_FILE.startsWith('/')) throw new Error('TOKENS_FILE은 절대 경로여야 한다');
 if (!['0', '1'].includes(WARMUP)) throw new Error('WARMUP은 0 또는 1이어야 한다');
-if (!['0', '1'].includes(FRACTIONAL_OK)) throw new Error('ALLOW_FRACTIONAL_ARRIVAL은 0 또는 1이어야 한다');
 if (MAX_VUS < PRE_VUS) throw new Error('MAX_VUS는 PRE_VUS 이상이어야 한다');
+if (!['0', '1'].includes(FRACTIONAL_OK)) throw new Error('ALLOW_FRACTIONAL_ARRIVAL은 0 또는 1이어야 한다');
 if (TARGET_RPS > 1000000 || (TOTAL % TARGET_RPS !== 0 && FRACTIONAL_OK !== '1')) {
 	throw new Error('TARGET_RPS는 1,000,000 이하이고 TOTAL을 나누어떨어지게 해야 한다 (나누어떨어지지 않으면 ALLOW_FRACTIONAL_ARRIVAL=1)');
 }
@@ -107,7 +106,7 @@ export default function () {
 	const index = exec.scenario.iterationInTest;
 	if (index === 0) {
 		scenarioStartedAt.add(exec.scenario.startTime);
-		// 덤프 예약용: run-db-c-d.py가 이 줄을 k6-c-console.log에 바로 flush한다 (scripts/dump-start-relay.py가 읽음).
+		// 덤프 예약용: run-db-c.py가 이 줄을 k6-c-console.log에 바로 flush한다 (scripts/dump-start-relay.py가 읽음).
 		console.log(`SCENARIO_START_MS=${exec.scenario.startTime}`);
 	}
 	if (index >= TOTAL) {

@@ -70,7 +70,7 @@ VU 개수가 충분해도 맥이나 네트워크 병목으로 요청이 누락�
     -e TOKENS_FILE="$TOKENS_FILE" -e OUT_DIR="$OUT_DIR" \
     -e TARGET_RPS=1000 -e TOTAL=10000 \
     -e PRE_VUS=10000 -e MAX_VUS=10000 -e REQ_TIMEOUT_SECONDS=60 \
-    load-test/k6/db-baseline-c.js
+    load-test/k6/archive/db-baseline-c.js
 )
 ulimit -S -n
 ```
@@ -118,8 +118,8 @@ ulimit -S -n
 
 ## 참조한 실제 파일
 
-- `load-test/k6/db-baseline-b.js`
-- `load-test/k6/db-baseline-c.js`
+- `load-test/k6/archive/db-baseline-b.js`
+- `load-test/k6/archive/db-baseline-c.js`
 - `load-test/k6/lib/b-tokens.js`
 - `load-test/k6/lib/b-metrics.js`
 - `load-test/scripts/run-db.py`

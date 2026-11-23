@@ -21,7 +21,7 @@ import time
 import unittest
 
 SCRIPTS = Path(__file__).resolve().parents[1]
-K6_SCRIPT = SCRIPTS.parents[0] / 'k6' / 'db-baseline-c.js'
+K6_SCRIPT = SCRIPTS.parents[0] / 'k6' / 'archive' / 'db-baseline-c.js'
 SCHEDULER, RELAY = SCRIPTS / 'dump-scheduler.py', SCRIPTS / 'dump-start-relay.py'
 spec = importlib.util.spec_from_file_location('dump_scheduler', SCHEDULER)
 scheduler = importlib.util.module_from_spec(spec)

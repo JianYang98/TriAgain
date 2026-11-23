@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # run 구간 Prometheus 덤프 (맥). query_range step=1s, queries.promql 한 줄 = 파일 하나. 이 덤프가 정본이다 (C8 §3-2).
 set -euo pipefail
-USAGE='사용법: START_MS=<UTC epoch ms> END_MS=<UTC epoch ms> OUT_DIR=<run 폴더> prom-export.sh
-  END_MS는 수집 종료 뒤 마지막 scrape까지 포함한다 (k6 종료 시각으로 자르지 않는다).
+USAGE='사용법: START_AT=<시간대 포함 시작 시각> END_AT=<시간대 포함 종료 시각> OUT_DIR=<run 폴더> prom-export.sh
+  2026-11-20T12:08:21.215+09:00 같은 형식을 사용한다. 앞뒤 공백은 제거한다 (python3 필요).
+  숫자 입력: START_MS=<13자리 UTC epoch ms> END_MS=<13자리 UTC epoch ms> OUT_DIR=<run 폴더> prom-export.sh
+  필요한 경우 종료 시각에 여유를 두어 마지막 scrape까지 포함한다.
   선택: PROM_URL(기본 http://127.0.0.1:9090) QUERIES(기본 이 폴더의 queries.promql)
   출력: $OUT_DIR/prom-<이름>.json (Prometheus API 응답 그대로). 실패한 쿼리는 prom-<이름>.json.failed로 남긴다.
   판정: HTTP≠200 또는 status≠success → 실패. 결과가 비어도 실패. 단 node_* 이름은 경고.
@@ -14,9 +16,44 @@ DIR=$(cd "$(dirname "$0")" && pwd)
 # shellcheck source=common.sh
 source "$DIR/common.sh"
 
-require_env START_MS END_MS OUT_DIR
+require_env OUT_DIR
+if [[ -n "${START_AT:-}${END_AT:-}" ]]; then
+	if [[ -n "${START_MS:-}${END_MS:-}" ]]; then
+		die 1 "START_AT·END_AT 또는 START_MS·END_MS 중 한 쌍만 지정하세요."
+	fi
+	command -v python3 >/dev/null 2>&1 || die 1 "START_AT·END_AT을 변환하려면 python3가 필요합니다."
+	range_ms=$(python3 - "${START_AT:-}" "${END_AT:-}" <<'PY'
+from datetime import datetime, timezone
+import re
+import sys
+
+timestamp = (
+    r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}"
+    r"(?:\.[0-9]{1,3})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])"
+)
+epoch = datetime(1970, 1, 1, tzinfo=timezone.utc)
+values = []
+for name, raw in zip(("START_AT", "END_AT"), sys.argv[1:]):
+    value = raw.strip()
+    if not value:
+        sys.exit(f"{name}에 시각을 지정하세요.")
+    if not re.fullmatch(timestamp, value):
+        sys.exit(f"{name}는 2026-11-20T12:08:21.215+09:00처럼 시간대를 포함해야 합니다.")
+    time_format = "%Y-%m-%dT%H:%M:%S" + (".%f" if "." in value else "") + "%z"
+    try:
+        elapsed = datetime.strptime(value, time_format) - epoch
+    except ValueError:
+        sys.exit(f"{name}에 유효한 날짜와 시각을 지정하세요.")
+    values.append((elapsed.days * 86400 + elapsed.seconds) * 1000 + elapsed.microseconds // 1000)
+print(*values)
+PY
+	) || exit 1
+	read -r START_MS END_MS <<< "$range_ms"
+else
+	require_env START_MS END_MS
+fi
 [[ "$START_MS" =~ ^[0-9]{13}$ && "$END_MS" =~ ^[0-9]{13}$ ]] || die 1 "START_MS·END_MS는 13자리 UTC epoch ms"
-((END_MS > START_MS)) || die 1 "END_MS가 START_MS보다 커야 한다"
+((10#$END_MS > 10#$START_MS)) || die 1 "종료 시각은 시작 시각보다 늦어야 합니다."
 PROM_URL=${PROM_URL:-http://127.0.0.1:9090}
 QUERIES=${QUERIES:-$DIR/queries.promql}
 [[ -f "$QUERIES" ]] || die 1 "쿼리 파일 없음: $QUERIES"
@@ -27,7 +64,7 @@ if compgen -G "$OUT_DIR/prom-*.json" >/dev/null || compgen -G "$OUT_DIR/prom-*.j
 fi
 mkdir -p "$OUT_DIR"
 
-sec() { printf '%d.%03d' $(($1 / 1000)) $(($1 % 1000)); }
+sec() { local ms=$((10#$1)); printf '%d.%03d' "$((ms / 1000))" "$((ms % 1000))"; }
 START=$(sec "$START_MS")
 END=$(sec "$END_MS")
 fails=0 warns=0 ok=0
