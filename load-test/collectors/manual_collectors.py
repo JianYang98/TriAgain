@@ -8,23 +8,19 @@ vmstat의 첫 데이터 행에서 CPU와 초당 변화량 항목은 부팅 이�
 평균이다. 이후 행은 직전 1초 구간의 값을 보여 준다.
 """
 
-
-#  워커가 실행할 수집 항목 설정
-# command: 실행할 명령어
-# filename: 결과 파일명 (kind 방식에서는 사용하지 않음)
-# stamp_all: 모든 출력 줄에 시각과 RUN ID를 붙일지 여부
-# kind: 실행할 수집 함수의 종류
-# privileged: 실행 전 sudo 권한 확인 여부
+# 워커 하나로 도는 수집 항목. 키 의미:
+# - command 방식: command(장기 실행 명령), filename(출력 파일). worker()는 stdout을 로그 파일에 직접 연결한다.
+# - kind 방식: kind(worker()의 functions에서 run_ss·run_nstat·run_tcpdump로 연결),
+#   privileged(sudo 필요 → launch_worker의 sudo 사전 확인, 정지 시 sudo kill).
+#   kind 항목의 filename은 코드가 읽지 않는다. 실제 파일명은 각 run_* 함수 안에 있다.
 COLLECTORS = {
     "mpstat": {
         "command": ("mpstat", "-P", "ALL", "1"),
         "filename": "mpstat.log",
-        "stamp_all": True,
     },
     "vmstat": {
-        "command": ("vmstat", "-n", "1"),
+        "command": ("vmstat", "-n", "-t", "1"),
         "filename": "vmstat.log",
-        "stamp_all": False,
     },
     "ss": {"kind": "ss", "filename": "ss-samples.jsonl", "privileged": True},
     "nstat": {"kind": "nstat", "filename": "nstat-ts.jsonl", "privileged": True},

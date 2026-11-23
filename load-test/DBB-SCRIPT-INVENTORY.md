@@ -5,7 +5,7 @@
 | 파일 | 실행 위치 | 입력 | 출력·주의 |
 |---|---|---|---|
 | [run-db.py](scripts/run-db.py) / [run-rd.py](scripts/run-rd.py) | Mac/부하 생성기 | READY JSON·BASE_URL·APP_SSH_KEY·APP_SSH_TARGET·EC2_RESULTS_ROOT·EC2_COLLECTORS_DIR | k6 콘솔/JSON/summary/종료시각, 자동 C8 stop. 기존 결과 있으면 거절 |
-| [db-baseline-b.js](k6/db-baseline-b.js) | k6 실행 위치 | BASE_URL CREW_ID TARGET_RPS TOTAL PRE_VUS MAX_VUS WARMUP TOKENS_FILE RUN_ID OUT_DIR | 응답 분류·summary. 사용자 풀 되감기 없음 |
+| [db-baseline-b.js](k6/archive/db-baseline-b.js) | k6 실행 위치 | BASE_URL CREW_ID TARGET_RPS TOTAL PRE_VUS MAX_VUS WARMUP TOKENS_FILE RUN_ID OUT_DIR | 응답 분류·summary. 사용자 풀 되감기 없음 |
 | [run-folder.sh](collectors/run-folder.sh) | Mac/앱 EC2 | RUN_ID ARM RPS OUT_DIR | 새 폴더·run-card. 기존 비어 있지 않은 경로 거절 |
 | [clock-check.sh](collectors/clock-check.sh) | Mac | APP_SSH_TARGET SSH | offset/RTT·chronyc. 매 run 새 표본 |
 | [box-app-start.sh](collectors/box-app-start.sh) | 앱 EC2 | RUN_ID ARM CREW_ID EXPECTED_TOTAL APP_CONTAINER OUT_DIR PG*, RD는 REDIS_CLI/NAMESPACE | 앱 CPU·DB·락·Redis·TCP 시작 |

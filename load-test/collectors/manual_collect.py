@@ -15,6 +15,7 @@ import json
 import math
 import os
 from pathlib import Path
+import shlex
 import shutil
 import signal
 import subprocess
@@ -429,8 +430,13 @@ def off():
     print("결과 폴더 · " + str(folder))
     for name, error in run.get("errors", {}).items():
         print("FAIL " + name + " · " + str(error))
-    return 0 if complete and lifecycle_ok and not run.get("errors") and all(
-        x in ("stopped", "saved", "exists") for x in run["outcomes"].values()) else 2
+    if run["state"] == "stopped":
+        print("\n[회수창 · Mac] 아래 세 줄을 붙여넣으세요.")
+        print("APP_OUT=" + shlex.quote(str(folder)))
+        print("export START_AT=" + shlex.quote(run["started_at"]))
+        print("export END_AT=" + shlex.quote(run["finished_at"]))
+        return 0
+    return 2
 
 
 # TODO: nstat 카운터 차이 계산과 예외 상황을 추가 검토한다.
@@ -469,7 +475,10 @@ def worker(args):
     - kind 방식(ss·nstat·tcpdump): 해당 run_* 함수에 수집과 종료 확인을 맡긴다.
     - command 방식(mpstat·vmstat): 측정 명령을 실행하고 출력 줄을 로그에 기록한다.
 
-    오류가 발생하면 failed를 기록하고 예외를 다시 발생시킨다.
+    두 경로
+    - kind 방식(ss·nstat·tcpdump): run.json을 읽고 same_container로 컨테이너가 ON 때와 같은지 확인한 뒤
+      status=running을 쓰고, kind에 맞는 run_* 함수에 stopped 콜백을 넘겨 반복 수집을 맡긴다.
+    - command 방식(mpstat·vmstat): 측정 명령의 표준 출력을 로그 파일에 직접 연결한다.
 
     """
     # 수집기 이름과 프로세스, 상태 값 세팅
@@ -509,47 +518,25 @@ def worker(args):
             save(status_file, {"state": "failed", "ended_at": now(), "error": str(exc)})
             raise  # 토스
         return
-
-
-    env = dict(os.environ, LC_ALL="C")
+    env = dict(os.environ, LC_ALL="C", TZ="Asia/Seoul")
     command = list(spec["command"])
-    # 파이프에서도 줄 단위로 내보내게 한다(common.sh 주석과 같은 이유). stdbuf가 없으면 그대로 실행.
+    # 수집 중 tail -f로 표본을 볼 수 있도록 줄 단위 출력을 사용한다.
     if shutil.which("stdbuf"):
         command = ["stdbuf", "-oL", *command]
     try:
         # 측정 결과를 저장할 로그 파일을 생성한다.
-        with (folder / spec["filename"]).open("x") as log:
+        with (folder / spec["filename"]).open("xb") as log:
             if stopping:
                 raise RuntimeError("시작 중 종료 요청")
 
             # start_new_session 없이 띄워 워커와 같은 프로세스 그룹에 둔다.
             # 그래서 OFF의 그룹 SIGTERM이 측정 명령에도 직접 간다.
-            child = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                     text=True, errors="replace", env=env)
+            child = subprocess.Popen(command, stdout=log, env=env)
             # 측정 시작 상태를 기록한다.
             save(status_file, {"state": "running", "started_at": now(), "pid": os.getpid()})
-
-            # TODO 고민 포인트 기록하는데 프로세스가 하나 더 필요할까? 개선 포인트  고민해보기
-            # 고민 포인트 log 출력할떄  RUN ID는 파일 단위로 한 번, 시각은 표본마다 남기는 설계도 고민해 보기
-            for line in child.stdout:
-                # "Linux <커널> (<호스트명>) ..." 배너의 호스트명을 가린다
-                if line.startswith("Linux ") and "(" in line and ")" in line:
-                    before, rest = line.split("(", 1)
-                    line = before + "(host)" + rest.split(")", 1)[1]
-
-                # 시각은 워커가 이 줄을 읽은 시각이다.
-                # mpstat는 모든 줄에 시각과 RUN ID를 붙인다.
-                # vmstat는 숫자로 시작하는 데이터 줄에만 접두어를 붙인다.
-
-                if spec["stamp_all"] or line.lstrip()[:1].isdigit():
-                    line = now() + " " + args.run_id + " " + line
-                log.write(line)
-                log.flush()
             code = child.wait()
             state = ("stopped" if stopping and code in (0, -signal.SIGTERM, -signal.SIGINT)
                      else "ended-unexpectedly")
-            log.write(now() + " " + args.run_id + (" STOP" if stopping else " END")
-                      + " exit=" + str(code) + "\n")
         save(status_file, {"state": state, "ended_at": now(), "command_exit": code})
     except BaseException as exc:
 
