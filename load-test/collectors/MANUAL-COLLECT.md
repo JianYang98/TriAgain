@@ -50,9 +50,9 @@ ON 당시의 한국 날짜를 사용해 ~/load-test/test-results/YYYYMMDD/RUN_ID
 RUN_ID는 날짜와 독립된 폴더 이름이며 공백·한글도 사용할 수 있다.  
 경로 구분자·제어문자와 단독 . 또는 ..는 입력 오류로 처리한다.
 
-- mpstat.log는 전체 평균·CPU별 1초 통계를 기록한다.
+- mpstat.log는 호스트명이 포함된 원래 배너와 전체 평균·CPU별 1초 통계를 기록한다.
 - vmstat.log는 헤더와 1초 통계를 기록한다. 첫 보고의 평균 통계는 이후 구간과 구분한다.
-- 시각은 2026-10-14T18:42:38.463+09:00 형식이다. 줄을 읽은 시각을 표시한다.
+- 두 로그의 표본 시각은 측정 명령이 한국 시간으로 표시한다. vmstat은 각 표본 끝에 날짜와 시각을 붙인다.
 - run.json은 RUN_ID·대상 이름·시작/종료 시각·프로세스 식별·결과를 보존한다.
 - 각 항목의 .status.json과 .worker.log는 실행 상태와 오류 확인용이다.
 
@@ -72,13 +72,14 @@ ls -lh
 tail -n 5 mpstat.log
 tail -n 5 vmstat.log
 cat run.json
+cat mpstat.status.json vmstat.status.json
 cat tcpdump.stderr.log
 ```
 
 
 | 파일                                           | 확인할 내용                        |
 | -------------------------------------------- | ----------------------------- |
-| mpstat.log / vmstat.log                      | 한국 시각·RUN\_ID·통계 표본, 마지막 STOP |
+| mpstat.log / vmstat.log                      | 명령이 출력한 헤더·표본 시각·통계 |
 | network-limits.txt                           | ON 당시 큐·커널 설정·소켓 상태           |
 | ss-samples.jsonl                             | 큐·SYN-RECV 표본과 조회 returncode  |
 | nstat-ts.jsonl                               | 관심 TCP 카운터·증분·표본 경과시간         |
@@ -92,7 +93,7 @@ cat tcpdump.stderr.log
 
 
 app.log가 0바이트라도 해당 구간에 앱 출력이 없었다면 정상이다.  
-STOP exit=-15는 SIGTERM으로 해당 명령을 종료했다는 의미다.  
+mpstat·vmstat의 .status.json에서 command_exit가 -15이면 측정 명령이 SIGTERM으로 종료된 것이다.
 stopped는 수집 종료, saved는 구간 자료 저장 결과다.  
 stopped-with-errors·stop-incomplete·FAIL은 항목별 원인을 확인한다.  
 worker.log는 별도 오류가 없으면 비어 있을 수 있다.  
@@ -151,7 +152,7 @@ mkdir "./$RUN_ID" && scp -r "${APP_HOST}:${APP_OUT}" "./$RUN_ID/app"
 
 ## 수집기 추가
 
-manual_collectors.py의 COLLECTORS에 이름·command·filename·stamp_all을 등록한다.  
+manual_collectors.py의 COLLECTORS에 이름·command·filename을 등록한다.
 이 연결 방식은 stdout에 주기적으로 출력하고 SIGTERM으로 종료하는 명령에 적용한다.  
 JFR recording과 OFF 시점의 앱 로그 추출은 각 수명에 맞는 추가 연결이 필요하다.  
 시간·날짜·RUN 경로·프로세스 관리는 manual_collect.py가 담당한다.  
@@ -203,8 +204,7 @@ OFF는 ON~OFF 요청 시각의 stdout·stderr를 Docker timestamp와 함께 app.
 
 
 common.sh·mpstat-run.sh·vmstat-run.sh는 이 경로에서 호출되지 않는다.  
-worker()의 command 방식이 common.sh stamp_run과 같은 규칙(LC_ALL=C·stdbuf·배너 호스트명 가림·데이터 줄 스탬프)을
-파이썬으로 다시 구현했고, 줄 앞 시각 형식이 다르다(셸=UTC epoch ms, 여기=한국 시각 ISO).
+worker()는 측정 명령의 stdout을 결과 로그에 직접 연결한다. stderr는 해당 항목의 .worker.log에 기록된다.
 
 ### ON → OFF 흐름
 
@@ -248,8 +248,8 @@ root 소유 자식이 있어 `sudo -n kill -TERM -- -<pgid>`를 쓴다.
 | ------- | ------------------------------ | --------------------------------------------------------------------------- | ------------------------------------------ |
 | 항목      | mpstat·vmstat                  | ss·nstat·tcpdump                                                            | jfr·app-log                                |
 | 정의      | COLLECTORS의 command            | COLLECTORS의 kind → worker()의 functions                                      | LIFECYCLE\_COLLECTORS (워커 없음)              |
-| 실행      | 장기 실행 명령 1개의 stdout을 줄마다 받아 기록 | 파이썬 루프가 간격마다 명령 실행. tcpdump는 장기 실행 1개 + 크기 한도                               | JFR은 ON 시작·OFF 정지·복사, app-log는 OFF에서 1회 추출 |
-| 행 시각    | 줄을 읽은 시각                       | ss=두 조회 후, nstat=조회 전                                                       | —                                          |
+| 실행      | 장기 실행 명령의 stdout을 로그에 직접 연결 | 파이썬 루프가 간격마다 명령 실행. tcpdump는 장기 실행 1개 + 크기 한도                               | JFR은 ON 시작·OFF 정지·복사, app-log는 OFF에서 1회 추출 |
+| 행 시각    | 명령이 출력하는 표본 시각                  | ss=두 조회 후, nstat=조회 전                                                       | —                                          |
 | 컨테이너 확인 | 없음(호스트 관측)                     | 시작 시 same\_container(docker inspect), ss·nstat은 표본마다 \_check\_target(/proc) | stop\_jfr에서 same\_container                |
 | 정상 종료   | 종료 요청 + exit 0·-15·-2          | 종료 요청 + 함수 정상 반환 (ss·nstat은 성공 표본 1개 이상, tcpdump는 exit 0·-15)               | OFF outcome saved·exists                   |
 
@@ -291,7 +291,6 @@ errors는 run.json에 쌓이고 OFF 재시도 때 지우지 않는다.
 - 컨테이너 고정: ON에서 기록한 컨테이너 ID·PID·StartedAt·ticks와 다르면 kind 워커와 OFF의 nstat-after·JFR 단계가 오류로 처리한다. app.log 추출은 이 확인을 하지 않는다.
 - 고정 간격: ss·nstat은 시작 시각 기준 눈금까지 자고, 밀리면 놓친 눈금을 몰아 찍지 않는다(지금 시각을 새 기준으로 삼는다).
 - 실패도 행으로: 실패한 ss·nstat 표본도 returncode·stderr와 함께 남는다. nstat delta는 직전 행이 성공일 때만 숫자다.
-- 호스트명 가림: mpstat·vmstat 배너의 호스트명을 (host)로 바꾼다. common.sh 주석에 적힌 이유는 EC2 호스트명에 사설 IP가 들어 있다는 것이다.
 - nstat `-s`: history 파일을 건드리지 않는다(tcp-collect.sh 주석).
 - 그 밖의 값(ss 0.3초·정지 대기 10초·ready 대기 5초 등)을 고른 이유는 코드·주석에 기록이 없다.
 
