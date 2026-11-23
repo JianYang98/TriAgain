@@ -114,16 +114,21 @@ const ARRIVAL_DURATION_US = arrivalDurationMicroseconds(REQUESTS, TARGET_RPS);
 
 // 2. 부하: 목표 RPS와 요청 수로 투입 시간을 계산한다.
 export const options = {
+	noConnectionReuse: true, // HTTP 요청 간 TCP 연결 재사용 비활성화
+
 	scenarios: {
 		constant_rps_test: {
 			// 초당 TARGET_RPS건의 가입 요청을 시작
 			executor: 'constant-arrival-rate',
-			rate: TARGET_RPS, // 목표 RPS 
+
+			// 초당 TARGET_RPS개의 Iteration 시작을 목표로 한다.
+			// Iteration당 가입 API를 1회 호출하면 목표 RPS와 일치한다.
+			rate: TARGET_RPS,
 			timeUnit: '1s',
 			duration: `${ARRIVAL_DURATION_US}us`, //  새 요청을 투입하는 기간
 			preAllocatedVUs: PRE_VUS,
 			maxVUs: MAX_VUS,
-			gracefulStop: `${REQ_TIMEOUT_SECONDS + 5}s`, // 진행 중인 반복의 종료 유예 시간
+			gracefulStop: `${REQ_TIMEOUT_SECONDS + 5}s` // 진행 중인 반복의 종료 유예 시간
 		},
 	},
 	summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(95)', 'p(99)'],

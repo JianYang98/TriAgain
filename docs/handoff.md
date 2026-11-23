@@ -195,11 +195,12 @@ emitter 하나만 저장하므로 타인의 구독과 emitter 덮어쓰기 가�
 ## 7. 배포 현행
 
 - PR에서는 `./gradlew build`와 `./gradlew e2eTest` 잡이 순서대로 실행된다.
-- push에서는 테스트 잡을 기다리지 않고 `main`, `develop` 모두 같은 운영 EC2에 배포된다.
-- Docker Hub에 `latest`와 SHA를 push하지만 EC2는 `latest`를 실행한다.
+- main push는 자동 배포하고, develop은 `workflow_dispatch`로 선택했을 때만 수동 운영 배포한다. 두 경로 모두 테스트 잡 의존성이 없으며 같은 운영 EC2의 `triagain` 컨테이너를 교체한다.
+- Docker Hub에 main은 `latest`, develop은 `develop` 태그와 각 커밋 SHA를 push한다. EC2는 선택한 브랜치의 태그를 실행한다.
+- 백엔드 job 전체는 공통 concurrency 그룹 `triagain-production-backend`에서 실행 중 배포를 취소하지 않고 직렬화한다. 기본 대기 슬롯은 하나이며 나중에 실행된 배포가 운영 버전이 된다.
 - 기존 컨테이너를 먼저 제거하며 health 실패 자동 rollback이 없다.
 - Firebase는 EC2 key 파일 존재 여부만 보고 활성화하며 배포 후 실제 FCM 스모크는 자동화되지 않았다.
-- Lambda GitHub Actions는 SAM stack을 배포하지만 S3 notification·invoke permission은 수동 스크립트
+- Lambda GitHub Actions는 main push의 `lambda/**` 변경에서만 SAM stack을 배포하고, develop 수동 실행에서는 생략한다. S3 notification·invoke permission은 수동 스크립트
   또는 저장소 밖 기존 설정에 의존한다.
 - Flyway는 별도 migration job이 아니라 애플리케이션 부팅 때 실행된다.
 

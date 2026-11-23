@@ -1,8 +1,11 @@
-"""Manual load-test collector command definitions.
+"""
+수동 부하 테스트에서 사용하는 수집 항목 정의
 
-The inventory includes Linux host CPU/memory and container network collectors.
-The CPU and rate fields of the first vmstat report describe the interval
-since boot; distinguish them from subsequent one-second reports.
+COLLECTORS는 항목별 워커 설정과 명령어 정의
+LIFECYCLE_COLLECTORS는 ON/OFF에서 직접 처리하는 JFR과 앱 로그를 담는다.
+
+vmstat의 첫 데이터 행에서 CPU와 초당 변화량 항목은 부팅 이후의
+평균이다. 이후 행은 직전 1초 구간의 값을 보여 준다.
 """
 
 # 워커 하나로 도는 수집 항목. 키 의미:
@@ -24,5 +27,5 @@ COLLECTORS = {
     "tcpdump": {"kind": "tcpdump", "filename": "network.pcap", "privileged": True},
 }
 
-# Lifecycle collectors are handled at ON/OFF instead of as logging workers.
+# 이 두 항목은 별도 워커 없이 On OFF 시 수집
 LIFECYCLE_COLLECTORS = ("jfr", "app-log")

@@ -1,6 +1,6 @@
 # 운영 배포 체크리스트
 
-> 2026-08-20 저장소 기준. 설정·워크플로·Dockerfile에서 확인한 사실과 저장소 밖 운영 확인을
+> 2026-11-14 배포 정책 기준. 설정·워크플로·Dockerfile에서 확인한 사실과 저장소 밖 운영 확인을
 > 구분한다. 체크 표시가 없는 항목은 코드 미구현을 뜻하지 않고 배포 때 확인해야 하는 작업일 수 있다.
 
 ---
@@ -34,19 +34,41 @@
 | 이벤트 | 브랜치 | 실행 잡 | 잡 의존 관계 |
 |---|---|---|---|
 | Pull Request | `main`, `develop` | `ci` → `e2e` | `e2e`가 `ci`를 기다림. 배포 잡은 실행되지 않음 |
-| Push | `main`, `develop` | `deploy-backend`, `check-lambda-changes` | 백엔드 배포가 테스트 잡을 기다리지 않음 |
-| Push + `lambda/**` 변경 | `main`, `develop` | 위 잡 + `deploy-lambda` | Lambda 배포는 변경 감지 잡만 기다림 |
+| Push | `main` | `deploy-backend`, `check-lambda-changes` | 백엔드 배포가 테스트 잡을 기다리지 않음 |
+| Push + `lambda/**` 변경 | `main` | 위 잡 + `deploy-lambda` | Lambda 배포는 변경 감지 잡만 기다림 |
+| Push | `develop`·기타 | 실행 없음 | 자동 배포하지 않음 |
+| 수동 `workflow_dispatch` | `develop` | `deploy-backend` | CI·E2E·Lambda 변경 감지·Lambda 배포는 생략 |
+| 수동 `workflow_dispatch` | `main`·기타 브랜치·태그 | 배포 생략 | 백엔드 job의 이벤트·ref 조건으로 차단 |
+
+### develop 수동 운영 배포
+
+1. 기본 브랜치 `main`에도 이 워크플로 변경이 반영되어 있는지 확인한다.
+2. 배포하려는 develop 커밋과 해당 PR의 CI·E2E 성공을 확인한다.
+3. Actions → CI/CD → Run workflow에서 `develop`을 선택하고 실행한다.
+4. `deploy-backend` 로그에서 선택 커밋과 `develop` 이미지 태그, health를 확인한다.
+
+main 이미지는 `devjian/triagain:latest`, develop 이미지는 `devjian/triagain:develop`이다.
+두 배포는 같은 EC2의 `triagain` 컨테이너를 교체하고 `prod` 프로필을 사용한다.
+수동 배포는 별도 개발 서버 배포가 아니며, 나중에 실행된 배포가 운영 버전이 된다.
+
+백엔드 job의 공통 concurrency 그룹 `triagain-production-backend`는 빌드·업로드·EC2 교체를
+한 번에 하나씩 실행한다. `cancel-in-progress: false`로 실행 중인 배포를 취소하지 않는다.
+기본 대기 슬롯은 하나라 새 요청이 기존 대기 요청을 대체할 수 있다.
+기존 버전 워크플로 실행과 EC2에서 직접 수행하는 배포는 이 제어의 적용 대상이 아니다.
+
+변경을 develop에 병합하면 develop 자동 배포는 중단되지만, 수동 실행 버튼은 기본 브랜치
+main에도 변경이 반영되어야 나타난다. develop → main PR은 기존 미릴리스 변경까지 검토한다.
 
 ### 확인된 배포 게이트 공백
 
 - `deploy-backend`에는 `needs: ci` 또는 `needs: e2e`가 없다.
 - `ci`와 `e2e`는 `pull_request`에서만 실행된다.
-- 따라서 push 경로에서 자동 실행되는 테스트는 0개다.
-- `develop` push도 `main`과 같은 Docker Hub 저장소, `latest` 태그, EC2 host, `prod` 프로필로 배포된다.
+- 따라서 main push·develop 수동 배포 경로에서 자동 실행되는 테스트는 0개다.
+- develop은 수동 배포만 허용하며 이미지 태그는 분리하지만, EC2 host·컨테이너·prod 프로필은 공유한다.
 - 브랜치 보호와 required check는 저장소 밖 GitHub 설정이다. Actions YAML만으로는 보호 상태를
   보장할 수 없다.
 
-이 문서는 현행 위험을 기록할 뿐 배포 브랜치·게이트 정책을 임의로 변경하지 않는다.
+배포 정책과 이번 변경 범위는 [결정 기록](decisions/2026-11-14-develop-manual-deploy.md)을 따른다.
 
 ---
 
@@ -57,7 +79,7 @@
 1. Docker Hub 로그인
 2. Dockerfile builder에서 `./gradlew bootJar --no-daemon` 실행
 3. 다음 태그 두 개 push
-   - `devjian/triagain:latest`
+   - main: `devjian/triagain:latest` / develop: `devjian/triagain:develop`
    - `devjian/triagain:${GITHUB_SHA}`
 
 `bootJar`는 애플리케이션 JAR를 만들지만 이 Docker build 경로에는 `checkstyle`, `test`, `e2eTest`
@@ -66,7 +88,7 @@
 ### EC2 교체 배포
 
 1. Firebase 서비스 계정 파일이 존재하는지만 확인해 `FIREBASE_ENABLED` 결정
-2. `devjian/triagain:latest` pull
+2. 선택 브랜치의 `IMAGE_TAG`(`latest` 또는 `develop`)로 이미지 pull
 3. 기존 `triagain` 컨테이너 stop·remove
 4. 새 `triagain` 컨테이너 run
 5. 15초 대기
@@ -75,7 +97,7 @@
 
 ### 현재 배포 특성
 
-- 실제 실행 이미지는 SHA 태그가 아니라 `latest`다.
+- 실제 실행 이미지는 SHA 태그가 아니라 브랜치별 `latest` 또는 `develop` 태그다.
 - 기존 컨테이너를 먼저 중단하므로 무중단 배포가 아니다.
 - 새 컨테이너의 health check가 실패해도 이전 컨테이너를 자동 복구하는 rollback 단계가 없다.
 - SHA 이미지는 push되지만 자동 rollback·재배포에 사용되지 않는다.
@@ -162,6 +184,7 @@
 - [x] 나머지 보호 API는 Bearer JWT와 DB `tokenVersion` 검증
 - [x] `/internal/**`는 운영에서 `InternalApiKeyFilter`가 `X-Internal-Api-Key` 검증
 - [x] `/health`, `/actuator/health` 공개
+- [x] `/actuator/prometheus` 앱 레벨 공개(permitAll) — 외부 차단은 아래 "지표 경로 외부 차단"이 맡는다
 - [x] Swagger UI와 `/v3/api-docs/**` 운영 공개
 - [x] `/upload-sessions/*/events` 운영 공개 — 현재 SSE 인증·소유권 구현 전
 - [x] `server.forward-headers-strategy: framework` 설정됨
@@ -179,6 +202,41 @@
 Flutter iOS/Android 네이티브 HTTP 클라이언트에는 브라우저 CORS 정책이 적용되지 않는다. 따라서
 “CORS 설정”을 모든 모바일 배포의 필수 완료 항목으로 단정하지 않는다.
 
+### 지표 경로 외부 차단 — `/actuator/prometheus` 포함 버전을 운영에 배포하기 전 필수
+
+앱은 `/actuator/prometheus`를 인증 없이 응답한다. 수집은 운영자 Mac의 Prometheus가 EC2 공인 IP의
+8080으로 직접 하므로, 외부 차단은 두 경로를 각각 막아야 한다. 둘 다 저장소 밖 수동 인프라다.
+
+| 경로 | 차단 수단 | 2026-11-16 확인 상태 |
+|---|---|---|
+| 도메인(443 → nginx → 8080) | nginx 443 서버 블록(`api.triagain.kr`·`triagain.kr`) **둘 다**에 아래 규칙 | **미적용** — 두 블록 모두 `location /` 하나로 전부 8080에 넘긴다(`sudo nginx -T` 확인) |
+| 8080 직접 접근 | 보안그룹 인바운드 TCP 8080을 운영자 IP `/32`만 허용 | **미적용** — 적용 전 현재 인바운드 규칙과 8080을 직접 부르는 호출자(Lambda `BACKEND_URL` 등)를 먼저 확인 |
+
+```nginx
+# 운영 지표는 도메인으로 내보내지 않는다 — 수집은 8080 직접(보안그룹 IP 제한)
+location ^~ /actuator/ {
+    return 404;
+}
+location = /actuator/health {
+    proxy_pass http://localhost:8080;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+- `/actuator/` 접두 경로 전체를 막고 health만 남긴다. `/actuator/prometheus/` 같은 변형 경로와
+  나중에 노출될 엔드포인트까지 덮기 위해서다. health는 배포 후 도메인 경유 수동 확인 경로라 유지한다.
+- 적용: 설정 파일 백업 → 편집 → `sudo nginx -t` → `sudo systemctl reload nginx`. 롤백은 백업 복원 후 같은 순서.
+- 배포 헬스체크(`curl http://localhost:8080/actuator/health`, EC2 안에서 실행)와 nginx → 8080(루프백)은
+  보안그룹의 영향을 받지 않는다.
+- 운영자 IP가 바뀌면 Mac 수집이 끊긴다(fail-closed). 그때 `/32` 규칙을 고친다.
+
+- [ ] 두 도메인과 IP 직접 https 접속에서 `/actuator/prometheus`·`/actuator/prometheus/`가 nginx 404인지 확인
+- [ ] 도메인 경유 `/actuator/health`가 200인지 확인
+- [ ] 허용 IP가 아닌 출발지에서 `:8080` 접속이 차단되는지 확인 (예: EC2에서 자기 공인 IP:8080 → timeout, 대조군 443은 200)
+
 ---
 
 ## 7. Health check와 관측
@@ -187,6 +245,7 @@ Flutter iOS/Android 네이티브 HTTP 클라이언트에는 브라우저 CORS �
 |---|---|
 | `/actuator/health` | 배포 워크플로가 `curl -f`로 확인하는 Spring Boot health |
 | `/health` | 항상 HTTP 200이며 body의 `database`가 `UP` 또는 `DOWN` |
+| `/actuator/prometheus` | Micrometer 지표. 공통 태그 `application="triagain"`. 지연 히스토그램(HTTP 요청·Hikari 커넥션 대기)과 Tomcat MBean 지표(`tomcat_threads_*` 등) 포함. 외부 차단은 §6 |
 
 - 배포 성공 판정은 현재 `/actuator/health` HTTP 상태만 본다.
 - 애플리케이션 로그는 CloudWatch Logs `/triagain/app`, stream `triagain`으로 고정한다.
@@ -210,6 +269,9 @@ Flutter iOS/Android 네이티브 HTTP 클라이언트에는 브라우저 CORS �
 ### GitHub Actions 자동 배포 범위
 
 - `lambda/**` 변경 push를 `dorny/paths-filter`로 감지한다.
+- 변경 감지·배포는 main push에서만 실행하며 develop 수동 배포에서는 모두 생략한다.
+- Lambda 코드·템플릿·호출 계약·주소·키가 그대로라면 백엔드 재배포마다 Lambda를 재배포할 필요는 없다.
+  Secrets 변경은 파일 필터가 감지하지 못하므로 URL·Internal API Key 변경은 별도 반영을 확인한다.
 - SAM build와 CloudFormation deploy를 실행한다.
 - workflow는 `BackendUrl`, `InternalApiKey`만 전달하며 `S3BucketName`은 템플릿 기본값을 사용한다.
 - SAM 템플릿에는 S3 Event가 없으므로 workflow 자체는 새 버킷 알림과 Lambda invoke 권한을 만들지 않는다.
@@ -294,11 +356,11 @@ Flutter iOS/Android 네이티브 HTTP 클라이언트에는 브라우저 CORS �
 
 ### 최종 배포 전 체크
 
-- [ ] 배포 대상이 `main`인지 `develop`인지와 둘 다 같은 운영 EC2로 가는 현행을 인지
+- [ ] main 자동 배포인지 develop 수동 배포인지, 둘 다 같은 운영 EC2·컨테이너를 교체함을 확인
 - [ ] PR의 `CI (Unit + Cucumber)`와 `E2E Tests` 성공 확인
 - [ ] Docker Hub·EC2·애플리케이션 필수 Secrets 확인
 - [ ] DB migration·백업 확인
 - [ ] Firebase·Apple·AWS 외부 자격 증명 유효성 확인
-- [ ] 현재 운영 이미지 식별 정보 기록(SHA 태그는 push되지만 실행은 `latest`)
+- [ ] 현재 운영 이미지 식별 정보 기록(SHA 태그는 push되지만 실행은 main=`latest` / develop=`develop`)
 - [ ] 장애 시 되돌릴 SHA 이미지와 수동 rollback 명령 준비
 - [ ] 배포 후 health·로그·핵심 API·업로드 완료·FCM 스모크 확인
