@@ -404,8 +404,7 @@ def worker(args):
     두 경로
     - kind 방식(ss·nstat·tcpdump): run.json을 읽고 same_container로 컨테이너가 ON 때와 같은지 확인한 뒤
       status=running을 쓰고, kind에 맞는 run_* 함수에 stopped 콜백을 넘겨 반복 수집을 맡긴다.
-    - command 방식(mpstat·vmstat): 장기 실행 명령 하나의 stdout을 줄 단위로 받아
-      "<한국 시각> <RUN_ID> " 접두어를 붙여 로그에 쓴다.
+    - command 방식(mpstat·vmstat): 측정 명령의 표준 출력을 로그 파일에 직접 연결한다.
 
     status.json state: running → stopped(종료 요청에 의한 종료) | ended-unexpectedly(요청 없이 끝남,
     command 방식은 exit 코드가 0·-SIGTERM·-SIGINT 밖) | capture-limit-reached(tcpdump 크기 한도) |
@@ -441,38 +440,25 @@ def worker(args):
             save(status_file, {"state": "failed", "ended_at": now(), "error": str(exc)})
             raise
         return
-    # 여기부터 command 방식. 규칙은 common.sh stamp_run과 같다(LC_ALL=C·stdbuf·배너 가림·데이터 줄 스탬프).
-    env = dict(os.environ, LC_ALL="C")
+    env = dict(os.environ, LC_ALL="C", TZ="Asia/Seoul")
     command = list(spec["command"])
-    # 파이프에서도 줄 단위로 내보내게 한다(common.sh 주석과 같은 이유). stdbuf가 없으면 그대로 실행.
+    # 수집 중 tail -f로 표본을 볼 수 있도록 줄 단위 출력을 사용한다.
     if shutil.which("stdbuf"):
         command = ["stdbuf", "-oL", *command]
     try:
-        with (folder / spec["filename"]).open("x") as log:
+        # 측정 결과를 저장할 로그 파일을 생성한다.
+        with (folder / spec["filename"]).open("xb") as log:
             if stopping:
                 raise RuntimeError("시작 중 종료 요청")
+
             # start_new_session 없이 띄워 워커와 같은 프로세스 그룹에 둔다.
             # 그래서 OFF의 그룹 SIGTERM이 측정 명령에도 직접 간다.
-            child = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                     text=True, errors="replace", env=env)
+            child = subprocess.Popen(command, stdout=log, env=env)
+            # 측정 시작 상태를 기록한다.
             save(status_file, {"state": "running", "started_at": now(), "pid": os.getpid()})
-            for line in child.stdout:
-                # "Linux <커널> (<호스트명>) ..." 배너의 호스트명을 가린다
-                # (common.sh: EC2 호스트명에 사설 IP가 들어 있다).
-                if line.startswith("Linux ") and "(" in line and ")" in line:
-                    before, rest = line.split("(", 1)
-                    line = before + "(host)" + rest.split(")", 1)[1]
-                # 시각은 명령의 표본 시각이 아니라 이 줄을 읽은 시각이다. stamp_all=False(vmstat)는
-                # 숫자로 시작하는 데이터 줄에만 붙이고 헤더는 원문 그대로 둔다.
-                if spec["stamp_all"] or line.lstrip()[:1].isdigit():
-                    line = now() + " " + args.run_id + " " + line
-                log.write(line)
-                log.flush()
             code = child.wait()
             state = ("stopped" if stopping and code in (0, -signal.SIGTERM, -signal.SIGINT)
                      else "ended-unexpectedly")
-            log.write(now() + " " + args.run_id + (" STOP" if stopping else " END")
-                      + " exit=" + str(code) + "\n")
         save(status_file, {"state": state, "ended_at": now(), "command_exit": code})
     except BaseException as exc:
         # 이 경로는 status에 예외 타입 이름만 남긴다(kind 경로는 메시지). 전체 traceback은 worker.log에 있다.
