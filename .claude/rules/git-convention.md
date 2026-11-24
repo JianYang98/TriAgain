@@ -25,11 +25,16 @@ orchestrator가 BE `develop`에 직접 커밋했고 `branch -f`로 되돌렸다.
 ### BE · FE 브랜치
 
 - main: 운영 배포 브랜치 (직접 push 금지, develop에서 PR로만 병합)
-- develop: 통합 브랜치 (feat→develop PR, CI + E2E 통과 필수)
+- develop: 통합 브랜치 (작업 브랜치→develop PR, CI + E2E 통과 필수)
 - BE 배포: main push는 백엔드를 자동 배포한다. develop은 자동 배포하지 않고, 필요할 때 `workflow_dispatch`로 수동 운영 배포한다. 두 경로 모두 같은 운영 EC2의 `triagain` 컨테이너를 교체한다. FE 배포 정책을 변경하는 규칙은 아니다.
 - feat/*: 기능 개발 브랜치 (develop에서 분기, develop으로 PR)
 - fix/*: 버그 수정 브랜치 (develop에서 분기, develop으로 PR)
-- lab/*: 실험·측정 브랜치. 채택 여부를 판단하는 용도 (develop에서 분기, `--no-track`으로 만들어 로컬 작업)
+- docs/*: 문서 변경 브랜치 (develop에서 분기, develop으로 PR)
+- refactor/*: 외부 동작을 유지하는 코드 정리 브랜치 (develop에서 분기, develop으로 PR)
+- lab/*: 실험·측정 브랜치. 채택 여부를 판단하는 용도.
+  - 사용자가 기준 브랜치나 커밋을 지정했으면 그 기준에서 시작한다.
+  - 기준을 지정하지 않았으면 브랜치나 워크트리를 만들기 전에 추천 기준과 이유를 보여 주고 사용자에게 확인한다.
+    여러 기준이 타당하면 각 후보에서 무엇을 실험할 수 있는지 설명한다. 사용자가 기준을 확정한 뒤 `--no-track`으로 로컬 브랜치를 만든다.
   - 예) 조기 거절이 DB 부하를 줄이는지 비교 → `lab/early-reject`, 도입 결정·구현 → `feat/early-reject`, 기존 오류 수정 → `fix/early-reject`
   - `push -u` 의무·세션 마감 미push 경고에서 제외. push는 공유하거나 PR을 열 때만 (공개 저장소라 비공개 값 확인)
   - 끝나면 성공·실패와 관계없이 조건·핵심 결과를 짧게 적어 로컬 커밋. 워크트리 지우기 전에 다시 필요한 미추적 원본만 저장소 밖에 보관
@@ -39,6 +44,21 @@ orchestrator가 BE `develop`에 직접 커밋했고 `branch -f`로 되돌렸다.
 
 **언제 쓰나**: 메인 체크아웃이 다른 브랜치에 있거나 미커밋 변경이 붙어 있을 때.
 그 트리에서 브랜치를 바꾸지 말고 워크트리를 판다.
+
+### 이름과 생성 전 확인
+
+- 일반 작업 브랜치는 최신 `origin/develop`에서 시작한다. PR 대상이 따로 정해졌으면 해당 원격 브랜치를 받아 와서 그 커밋에서 시작한다.
+  `lab/*`는 실험마다 합의한 시작점을 사용한다.
+- 브랜치는 `<유형>/<작업명>`, 워크트리는 BE `.worktrees/be-<작업명>`, FE `.worktrees/fe-<작업명>`으로 짓는다.
+  같은 작업명을 쓰고, 작업자나 에이전트 이름 대신 바꾸는 대상과 핵심 변경을 적는다.
+  예: `feat/k6-prepare-print-commands` ↔ `.worktrees/be-k6-prepare-print-commands`.
+- 사용자가 이름을 지정했거나 작업 대상·핵심 변경·유형이 명확하면 그 이름으로 진행한다.
+- 이름을 정하려면 작업 유형이나 범위를 먼저 결정해야 하거나, 관련 내용을 확인해도 작업명을 하나로 좁히기 어려우면 생성 전에 후보 2~3개를 보여 준다.
+  추천안을 먼저 쓰고 각 후보의 브랜치 이름·워크트리 경로·의미를 한 줄씩 적는다. 사용자가 고른 뒤 생성한다.
+
+### 생성 명령
+
+아래는 일반 작업 예시다. `lab/*`는 `git worktree add --no-track -b <lab/브랜치> <경로> <합의한 기준>`으로 만든다.
 
 ```bash
 git fetch origin develop                # ← origin/develop 이 낡으면 낡은 커밋에서 갈라진다
