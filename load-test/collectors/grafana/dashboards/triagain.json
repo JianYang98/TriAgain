@@ -8,7 +8,7 @@
   "links": [],
   "panels": [
     {
-      "title": "Join Requests Completed",
+      "title": "HTTP Requests Completed",
       "type": "timeseries",
       "gridPos": {
         "h": 8,
@@ -26,7 +26,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (status) (rate(http_server_requests_seconds_count{application=\"triagain\", method=\"POST\", uri=\"/crews/{crewId}/join\"}[5s]))",
+          "expr": "sum by (status) (rate(http_server_requests_seconds_count{application=\"triagain\", method=~\"$method\", uri=~\"$api\", uri!~\"/actuator.*\"}[5s]))",
           "legendFormat": "HTTP {{status}}",
           "datasource": {
             "type": "prometheus",
@@ -35,11 +35,11 @@
           "interval": "1s"
         }
       ],
-      "description": "선착순 가입 POST /crews/{crewId}/join의 상태별 완료율입니다. 409의 업무 코드와 전송 실패는 k6 상세 결과에서 확인하세요.",
+      "description": "선택한 Method/API의 상태별 초당 완료 요청 수입니다. All/All은 Actuator를 제외한 전체 HTTP를 집계합니다. Method/API 선택은 이 두 HTTP 패널에만 적용됩니다. 업무 오류 코드와 전송 실패는 k6 상세 결과에서 확인하세요.",
       "id": 4
     },
     {
-      "title": "Join HTTP Latency",
+      "title": "HTTP Latency",
       "type": "timeseries",
       "gridPos": {
         "h": 8,
@@ -57,7 +57,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.50, sum by (status, le) (rate(http_server_requests_seconds_bucket{application=\"triagain\", method=\"POST\", uri=\"/crews/{crewId}/join\"}[5s])))",
+          "expr": "histogram_quantile(0.50, sum by (status, le) (rate(http_server_requests_seconds_bucket{application=\"triagain\", method=~\"$method\", uri=~\"$api\", uri!~\"/actuator.*\"}[5s])))",
           "legendFormat": "p50 · {{status}}",
           "datasource": {
             "type": "prometheus",
@@ -67,7 +67,7 @@
         },
         {
           "refId": "B",
-          "expr": "histogram_quantile(0.95, sum by (status, le) (rate(http_server_requests_seconds_bucket{application=\"triagain\", method=\"POST\", uri=\"/crews/{crewId}/join\"}[5s])))",
+          "expr": "histogram_quantile(0.95, sum by (status, le) (rate(http_server_requests_seconds_bucket{application=\"triagain\", method=~\"$method\", uri=~\"$api\", uri!~\"/actuator.*\"}[5s])))",
           "legendFormat": "p95 · {{status}}",
           "datasource": {
             "type": "prometheus",
@@ -77,7 +77,7 @@
         },
         {
           "refId": "C",
-          "expr": "histogram_quantile(0.99, sum by (status, le) (rate(http_server_requests_seconds_bucket{application=\"triagain\", method=\"POST\", uri=\"/crews/{crewId}/join\"}[5s])))",
+          "expr": "histogram_quantile(0.99, sum by (status, le) (rate(http_server_requests_seconds_bucket{application=\"triagain\", method=~\"$method\", uri=~\"$api\", uri!~\"/actuator.*\"}[5s])))",
           "legendFormat": "p99 · {{status}}",
           "datasource": {
             "type": "prometheus",
@@ -87,7 +87,7 @@
         },
         {
           "refId": "D",
-          "expr": "sum by (status) (rate(http_server_requests_seconds_sum{application=\"triagain\", method=\"POST\", uri=\"/crews/{crewId}/join\"}[5s])) / sum by (status) (rate(http_server_requests_seconds_count{application=\"triagain\", method=\"POST\", uri=\"/crews/{crewId}/join\"}[5s]))",
+          "expr": "sum by (status) (rate(http_server_requests_seconds_sum{application=\"triagain\", method=~\"$method\", uri=~\"$api\", uri!~\"/actuator.*\"}[5s])) / sum by (status) (rate(http_server_requests_seconds_count{application=\"triagain\", method=~\"$method\", uri=~\"$api\", uri!~\"/actuator.*\"}[5s]))",
           "legendFormat": "avg · {{status}}",
           "datasource": {
             "type": "prometheus",
@@ -96,7 +96,7 @@
           "interval": "1s"
         }
       ],
-      "description": "선착순 가입의 상태별 서버 지연입니다. p50·p95·p99는 5초 창의 버킷 증가량으로 추정하고, 평균은 총 소요 시간을 완료 건수로 나눕니다. 완료 건수가 적거나 수집이 누락된 창의 분위수는 주의해서 해석하세요.",
+      "description": "선택한 Method/API의 상태별 서버 응답시간입니다. 선택 범위의 5초 버킷 증가량을 상태별로 합친 뒤 p50·p95·p99를 계산합니다. 평균은 총 소요 시간을 완료 건수로 나눕니다. 완료 건수가 적거나 수집이 누락된 창의 분위수는 주의해서 해석하세요.",
       "id": 3
     },
     {
@@ -144,7 +144,8 @@
           "interval": "1s"
         }
       ],
-      "id": 9
+      "id": 9,
+      "description": "애플리케이션 전체의 Tomcat HTTP 워커 수입니다."
     },
     {
       "title": "HikariCP Connection Pool",
@@ -201,7 +202,7 @@
         }
       ],
       "id": 5,
-      "description": "Active·Idle·Max는 커넥션 수입니다. Pending은 커넥션을 기다리는 스레드 수입니다."
+      "description": "풀별 지표입니다. Active·Idle·Max는 커넥션 수입니다. Pending은 커넥션을 기다리는 스레드 수입니다."
     },
     {
       "title": "HikariCP Acquire Latency",
@@ -242,7 +243,7 @@
         }
       ],
       "id": 10,
-      "description": "풀별 커넥션 획득 소요 시간입니다. 평균과 p95는 5초 창으로 계산합니다. 이 창에 획득 관측이 없으면 지연값이 그려지지 않습니다."
+      "description": "각 풀 전체의 커넥션 획득 소요 시간입니다. 평균과 p95는 5초 창으로 계산합니다. 이 창에 획득 관측이 없으면 지연값이 그려지지 않습니다."
     },
     {
       "id": 17,
@@ -498,7 +499,7 @@
         }
       ],
       "id": 7,
-      "description": "왼쪽은 GC 원인·동작(cause/action)별로 최근 5초 동안 정지에 사용한 시간의 비율입니다. 오른쪽은 Micrometer가 최근 시간창에서 관측한 최대 pause입니다. 개별 정지 시각은 GC 로그나 JFR에서 확인하세요."
+      "description": "애플리케이션 JVM의 GC 지표입니다. 왼쪽은 GC 원인·동작(cause/action)별로 최근 5초 동안 정지에 사용한 시간의 비율입니다. 오른쪽은 Micrometer가 최근 시간창에서 관측한 최대 pause입니다. 개별 정지 시각은 GC 로그나 JFR에서 확인하세요."
     },
     {
       "title": "JVM & Host Diagnostics",
@@ -545,7 +546,8 @@
               }
             }
           ],
-          "id": 6
+          "id": 6,
+          "description": "애플리케이션 전체의 스케줄러 스레드 지표입니다."
         },
         {
           "title": "JVM Heap Memory",
@@ -592,7 +594,8 @@
               }
             }
           ],
-          "id": 2
+          "id": 2,
+          "description": "애플리케이션 JVM의 힙 메모리 지표입니다."
         },
         {
           "title": "Host CPU by mode (user·system·iowait·steal)",
@@ -760,7 +763,58 @@
     "loadtest"
   ],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "name": "method",
+        "label": "Method",
+        "type": "query",
+        "description": "HTTP 완료율과 응답시간에 적용할 메서드를 선택합니다.",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(http_server_requests_seconds_count{application=\"triagain\", uri!~\"/actuator.*\"}, method)",
+        "query": {
+          "query": "label_values(http_server_requests_seconds_count{application=\"triagain\", uri!~\"/actuator.*\"}, method)",
+          "refId": "StandardVariableQuery"
+        },
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [],
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "refresh": 2,
+        "sort": 1
+      },
+      {
+        "name": "api",
+        "label": "API",
+        "type": "query",
+        "description": "선택한 메서드에서 관측된 API 경로를 선택합니다.",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(http_server_requests_seconds_count{application=\"triagain\", uri!~\"/actuator.*\", method=~\"$method\"}, uri)",
+        "query": {
+          "query": "label_values(http_server_requests_seconds_count{application=\"triagain\", uri!~\"/actuator.*\", method=~\"$method\"}, uri)",
+          "refId": "StandardVariableQuery"
+        },
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [],
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "refresh": 2,
+        "sort": 1
+      }
+    ]
   },
   "time": {
     "from": "now-2m",
