@@ -331,52 +331,9 @@
         "defaults": {
           "unit": "percentunit",
           "min": 0,
-          "custom": {
-            "axisPlacement": "left"
-          }
+          "max": 1
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byFrameRefID",
-              "options": "A"
-            },
-            "properties": [
-              {
-                "id": "max",
-                "value": 1
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byFrameRefID",
-              "options": "B"
-            },
-            "properties": [
-              {
-                "id": "max",
-                "value": 1
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byFrameRefID",
-              "options": "C"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "suffix: 코어"
-              },
-              {
-                "id": "custom.axisPlacement",
-                "value": "right"
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "targets": [
         {
@@ -398,20 +355,10 @@
           },
           "refId": "B",
           "interval": "1s"
-        },
-        {
-          "refId": "C",
-          "expr": "rate(process_cpu_time_ns_total{application=\"triagain\"}[5s]) / 1e9",
-          "legendFormat": "JVM 사용 코어 수",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "interval": "1s"
         }
       ],
       "id": 1,
-      "description": "왼쪽은 JVM 프로세스와 JVM 실행 환경의 최근 CPU 사용 비율입니다. 오른쪽은 5초 창에서 JVM이 사용한 CPU 코어 수입니다. 컨테이너 한도와 throttling은 앱 호스트에서 확인하세요."
+      "description": "JVM 프로세스와 JVM 실행 환경의 최근 CPU 사용 비율입니다. 코어 사용량은 JVM & Host Diagnostics에서 확인할 수 있습니다."
     },
     {
       "title": "GC Pause",
@@ -751,6 +698,37 @@
             }
           ],
           "id": 16
+        },
+        {
+          "id": 18,
+          "title": "JVM CPU Usage (cores)",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 57
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "suffix: 코어",
+              "min": 0
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "rate(process_cpu_time_ns_total{application=\"triagain\"}[5s]) / 1e9",
+              "legendFormat": "JVM 사용 코어 수",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "interval": "1s"
+            }
+          ],
+          "description": "5초 창에서 JVM이 사용한 CPU 시간을 코어 수로 환산합니다. 컨테이너 한도와 throttling은 앱 호스트에서 확인하세요."
         }
       ],
       "id": 12
