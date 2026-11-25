@@ -79,7 +79,8 @@ fi
 
 k6_command=(
     # 셸에 K6_HTTP_DEBUG가 남아 있어도 HTTP 디버그 출력이 켜지지 않게 지우고 k6를 실행한다.
-    env -u K6_HTTP_DEBUG
+    # TZ는 k6가 직접 찍는 time="..." 로그를 한국시간(+09:00)으로 남기기 위한 것이다.
+    env -u K6_HTTP_DEBUG TZ=Asia/Seoul
     k6 run
     --no-color
     --quiet=false
