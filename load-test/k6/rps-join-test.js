@@ -238,6 +238,7 @@ export default function () {
 
 // 4. 요약: HTTP 지연과 시나리오 시작 이후의 응답 관측 시각을 구분
 export function handleSummary(data) {
+	const endAt = new Date().toISOString();
 	
 	//  테스트 결과에서 메트릭 추출
 	const metrics = data.metrics;
@@ -355,6 +356,13 @@ export function handleSummary(data) {
 	for (const reason of failureReasons) {
 			stdout += `실패 사유: ${reason}\n`;
 	}
+
+	stdout += '\n=== k6 실행 구간 ===\n';
+	const startMs = report.scenario_start_epoch_ms;
+	if (Number.isFinite(startMs)) {
+		stdout += `START_AT=${new Date(startMs).toISOString()}\n`;
+	}
+	stdout += `END_AT=${endAt}\n`;
 
 	// 콘솔 요약과 JSON 보고서 저장 경로
 	const summaryTextFile = `${OUT_DIR}/k6-summary.txt`;
