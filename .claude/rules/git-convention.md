@@ -25,7 +25,7 @@ orchestrator가 BE `develop`에 직접 커밋했고 `branch -f`로 되돌렸다.
 ### BE · FE 브랜치
 
 - main: 운영 배포 브랜치 (직접 push 금지, develop에서 PR로만 병합)
-- develop: 통합 브랜치 (작업 브랜치→develop PR, CI + E2E 통과 필수)
+- develop: 통합 브랜치 (작업 브랜치→develop PR, CI + E2E 통과 필수) (`paths-ignore` 파일만 바꾼 PR은 제외)
 - BE 배포: main push는 백엔드를 자동 배포한다. develop은 자동 배포하지 않고, 필요할 때 `workflow_dispatch`로 수동 운영 배포한다. 두 경로 모두 같은 운영 EC2의 `triagain` 컨테이너를 교체한다. FE 배포 정책을 변경하는 규칙은 아니다.
 - feat/*: 기능 개발 브랜치 (develop에서 분기, develop으로 PR)
 - fix/*: 버그 수정 브랜치 (develop에서 분기, develop으로 PR)
