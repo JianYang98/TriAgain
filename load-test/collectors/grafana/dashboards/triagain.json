@@ -498,7 +498,7 @@
         }
       ],
       "id": 7,
-      "description": "왼쪽은 5초 창에서 GC에 정지한 시간의 비율입니다. 오른쪽은 Micrometer가 최근 시간창에서 관측한 최대 pause입니다. 개별 정지 시각은 GC 로그나 JFR에서 확인하세요."
+      "description": "왼쪽은 GC 원인·동작(cause/action)별로 최근 5초 동안 정지에 사용한 시간의 비율입니다. 오른쪽은 Micrometer가 최근 시간창에서 관측한 최대 pause입니다. 개별 정지 시각은 GC 로그나 JFR에서 확인하세요."
     },
     {
       "title": "JVM & Host Diagnostics",
