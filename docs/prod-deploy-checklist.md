@@ -62,7 +62,7 @@ main에도 변경이 반영되어야 나타난다. develop → main PR은 기존
 ### 확인된 배포 게이트 공백
 
 - `deploy-backend`에는 `needs: ci` 또는 `needs: e2e`가 없다.
-- `ci`와 `e2e`는 `pull_request`에서만 실행된다.
+- `ci`와 `e2e`는 `pull_request`에서만 실행된다 (`paths-ignore` 파일만 바꾼 PR은 제외).
 - 따라서 main push·develop 수동 배포 경로에서 자동 실행되는 테스트는 0개다.
 - develop은 수동 배포만 허용하며 이미지 태그는 분리하지만, EC2 host·컨테이너·prod 프로필은 공유한다.
 - 브랜치 보호와 required check는 저장소 밖 GitHub 설정이다. Actions YAML만으로는 보호 상태를

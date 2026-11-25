@@ -5,6 +5,14 @@ on:
     branches: [main]
   pull_request:
     branches: [main, develop]
+    # 이 목록의 파일만 바꾼 PR은 ci·e2e를 건너뛴다. scripts/는 E2E 테스트 입력이라 넣지 않는다.
+    paths-ignore:
+      - '*.md'          # 루트의 AGENTS.md, CLAUDE.md
+      - 'docs/**'
+      - 'load-test/**'
+      - '.claude/**'
+      - '.agents/**'
+      - '.gitignore'
   workflow_dispatch:
 
 permissions:

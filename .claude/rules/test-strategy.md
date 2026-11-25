@@ -142,6 +142,10 @@ grep -rln "RANDOM_PORT\|webAppContextSetup\|AutoConfigureMockMvc" src/test/java/
 
 → PR CI는 main·develop 대상으로 실행되지만, 브랜치 보호와 required check가 없어 머지는 자동 차단되지 않는다. main push 배포 또는 develop 수동 운영 배포 전에 사람이 PR의 `CI (Unit + Cucumber)`와 `E2E Tests` 초록 상태를 확인한다. push·dispatch 배포 자체는 테스트 완료를 요구하지 않는다.
 
+단, `deploy.yml`의 `paths-ignore` 목록에 있는 파일만 바꾼 PR은 `ci`·`e2e`가 실행되지 않는다.
+- 체크가 없는 PR은 바뀐 파일 목록을 보고 머지한다.
+- required check를 켜기 전에 이 필터를 job 단위 조건으로 바꾼다.
+
 ## 부하 테스트 (별도 트랙)
 
 - 도구: k6 (`load-test/`). JUnit 스위트가 아니라 `./gradlew test`/`e2eTest`와 무관하다.

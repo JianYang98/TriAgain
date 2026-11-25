@@ -33,7 +33,7 @@ paths: "src/main/resources/application*.yml, src/test/resources/application*.yml
   command grep -nE '^  [A-Za-z0-9_-]+:|needs:|if: ' .github/workflows/*.yml
   ```
 - 과거(2026-08-11): `deploy-backend`에 `needs:`가 없어 push 경로 테스트가 0개였고, `develop` push가 운영 배포였다. 이 상태가 2026-11-14 정책 변경 전까지의 운영이었다. 당시 선택지·불일치는 위 TODO에 기록돼 있다.
-- 현재(2026-11-14): 운영 배포는 **main push의 backend 자동 배포** 또는 **develop을 대상으로 한 `workflow_dispatch` 수동 backend 배포**로만 한다. develop push, main 수동 실행, 그 밖의 브랜치에서의 실행은 backend 배포를 건너뛴다. PR의 `CI (Unit + Cucumber)` → `E2E Tests` 흐름은 main·develop 대상으로 유지한다. 수동 develop 배포도 동일한 운영 EC2에서 `prod` 프로파일의 `triagain` 컨테이너를 교체하므로, 운영에 반영되는 작업이다.
+- 현재(2026-11-14): 운영 배포는 **main push의 backend 자동 배포** 또는 **develop을 대상으로 한 `workflow_dispatch` 수동 backend 배포**로만 한다. develop push, main 수동 실행, 그 밖의 브랜치에서의 실행은 backend 배포를 건너뛴다. PR의 `CI (Unit + Cucumber)` → `E2E Tests` 흐름은 main·develop 대상으로 유지한다 (`paths-ignore` 파일만 바꾼 PR은 제외). 수동 develop 배포도 동일한 운영 EC2에서 `prod` 프로파일의 `triagain` 컨테이너를 교체하므로, 운영에 반영되는 작업이다.
 - backend 빌드·push·배포는 공통 concurrency 그룹 `triagain-production-backend`에서 `cancel-in-progress: false`로 직렬화한다. 실행 중인 배포 뒤에는 대기 실행을 하나만 둔다. 새 대기 실행이 들어오면 이전 대기 실행을 교체한다.
 - Lambda는 main push에서 `lambda/**` 변경이 있을 때만 자동 감지·배포한다. `workflow_dispatch`에서는 Lambda 감지와 배포를 건너뛴다.
 - ⏳ 배포 경로·트리거를 바꾸면 같은 PR에서 이 설명을 갱신하고, `needs:`·`if:`의 실제 조건은 반드시 최종 워크플로 파일에서 다시 확인한다. 위 grep 결과와 어긋나면 grep이 맞다.
