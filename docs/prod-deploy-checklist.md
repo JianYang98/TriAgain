@@ -43,7 +43,7 @@
 ### develop 수동 운영 배포
 
 1. 기본 브랜치 `main`에도 이 워크플로 변경이 반영되어 있는지 확인한다.
-2. 배포하려는 develop 커밋과 해당 PR의 CI·E2E 성공을 확인한다.
+2. 배포하려는 develop 커밋과 해당 PR의 CI·E2E 성공을 확인한다. `paths-ignore` 파일만 바꾼 PR은 체크가 없으므로, 그 전에 코드를 바꾼 마지막 PR의 성공을 확인한다.
 3. Actions → CI/CD → Run workflow에서 `develop`을 선택하고 실행한다.
 4. `deploy-backend` 로그에서 선택 커밋과 `develop` 이미지 태그, health를 확인한다.
 
@@ -357,7 +357,7 @@ location = /actuator/health {
 ### 최종 배포 전 체크
 
 - [ ] main 자동 배포인지 develop 수동 배포인지, 둘 다 같은 운영 EC2·컨테이너를 교체함을 확인
-- [ ] PR의 `CI (Unit + Cucumber)`와 `E2E Tests` 성공 확인
+- [ ] PR의 `CI (Unit + Cucumber)`와 `E2E Tests` 성공 확인 (`paths-ignore` 파일만 바꾼 PR이면 코드를 바꾼 마지막 PR 기준)
 - [ ] Docker Hub·EC2·애플리케이션 필수 Secrets 확인
 - [ ] DB migration·백업 확인
 - [ ] Firebase·Apple·AWS 외부 자격 증명 유효성 확인
