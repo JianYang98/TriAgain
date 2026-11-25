@@ -123,7 +123,7 @@
           }
         }
       ],
-      "description": "짧은 창([5s]) 분위수 — 1초 scrape에서 창마다 표본이 약 5개라 흔들린다(표본 부족). 판정은 prom-*.json 덤프로 한다. HTTP 식은 uri!~\"/actuator.*\"로 1초 scrape 요청 자체를 뺀다."
+      "description": "5초 창에서 누적 히스토그램 버킷의 증가량으로 분위수를 추정합니다. 1초 scrape는 버킷을 읽는 주기입니다. 창 내 완료 요청이 적으면 분위수가 흔들릴 수 있으므로 prom-*.json 덤프에서 요청 건수와 수집 누락을 함께 확인하세요. uri!~\"/actuator.*\"로 Actuator 요청을 제외합니다."
     },
     {
       "title": "TPS (Requests/sec)",
@@ -230,7 +230,7 @@
       },
       "targets": [
         {
-          "expr": "executor_active_threads{application=\"triagain\", name=~\".*sched.*\"}",
+          "expr": "executor_active_threads{application=\"triagain\", name=\"taskScheduler\"}",
           "legendFormat": "Active ({{name}})",
           "datasource": {
             "type": "prometheus",
@@ -238,7 +238,7 @@
           }
         },
         {
-          "expr": "executor_pool_size_threads{application=\"triagain\", name=~\".*sched.*\"}",
+          "expr": "executor_pool_size_threads{application=\"triagain\", name=\"taskScheduler\"}",
           "legendFormat": "Pool Size ({{name}})",
           "datasource": {
             "type": "prometheus",
@@ -248,7 +248,7 @@
       ]
     },
     {
-      "title": "GC Pause Time",
+      "title": "GC Pause & Frequency",
       "type": "timeseries",
       "gridPos": {
         "h": 8,
@@ -258,23 +258,45 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "s",
-          "min": 0
+          "unit": "percentunit",
+          "min": 0,
+          "custom": {
+            "axisPlacement": "left"
+          }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: 회/s"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              }
+            ]
+          }
+        ]
       },
       "targets": [
         {
+          "refId": "A",
           "expr": "rate(jvm_gc_pause_seconds_sum{application=\"triagain\"}[5s])",
-          "legendFormat": "GC Pause Rate ({{cause}} {{action}})",
+          "legendFormat": "GC 정지시간 비율 ({{cause}} {{action}})",
           "datasource": {
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           }
         },
         {
+          "refId": "B",
           "expr": "rate(jvm_gc_pause_seconds_count{application=\"triagain\"}[5s])",
-          "legendFormat": "GC Count/sec ({{cause}} {{action}})",
+          "legendFormat": "GC 발생 빈도 ({{cause}} {{action}})",
           "datasource": {
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
@@ -363,7 +385,7 @@
         },
         {
           "expr": "tomcat_threads_config_max_threads{application=\"triagain\"}",
-          "legendFormat": "Max (한계=200)",
+          "legendFormat": "Max (설정 한계)",
           "datasource": {
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
@@ -398,7 +420,7 @@
         },
         {
           "expr": "rate(hikaricp_connections_acquire_seconds_sum{application=\"triagain\"}[5s]) / rate(hikaricp_connections_acquire_seconds_count{application=\"triagain\"}[5s])",
-          "legendFormat": "acquire avg (1m)",
+          "legendFormat": "acquire avg (5s)",
           "datasource": {
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
@@ -440,7 +462,7 @@
           }
         }
       ],
-      "description": "짧은 창([5s]) 분위수 — 1초 scrape에서 창마다 표본이 약 5개라 흔들린다(표본 부족). 판정은 prom-*.json 덤프로 한다."
+      "description": "5초 창에서 누적 히스토그램 버킷의 증가량으로 분위수를 추정합니다. 1초 scrape는 버킷을 읽는 주기입니다. 창 내 커넥션 획득이 적으면 분위수가 흔들릴 수 있으므로 prom-*.json 덤프에서 획득 건수와 수집 누락을 함께 확인하세요."
     },
     {
       "title": "Host",
