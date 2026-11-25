@@ -381,22 +381,6 @@
           {
             "matcher": {
               "id": "byFrameRefID",
-              "options": "B"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "suffix: 회/s"
-              },
-              {
-                "id": "custom.axisPlacement",
-                "value": "right"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byFrameRefID",
               "options": "C"
             },
             "properties": [
@@ -424,17 +408,6 @@
           "interval": "1s"
         },
         {
-          "refId": "B",
-          "expr": "rate(jvm_gc_pause_seconds_count{application=\"triagain\"}[5s])",
-          "legendFormat": "GC 발생 빈도 ({{cause}} {{action}})",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "hide": true,
-          "interval": "1s"
-        },
-        {
           "refId": "C",
           "expr": "jvm_gc_pause_seconds_max{application=\"triagain\"}",
           "legendFormat": "GC 최대 pause ({{cause}} {{action}})",
@@ -449,6 +422,37 @@
       "description": "애플리케이션 JVM의 GC 지표입니다. 왼쪽은 GC 원인·동작(cause/action)별로 최근 5초 동안 정지에 사용한 시간의 비율입니다. 오른쪽은 Micrometer가 최근 시간창에서 관측한 최대 pause입니다. 개별 정지 시각은 GC 로그나 JFR에서 확인하세요."
     },
     {
+      "title": "GC 빈도 (최근 5초 기준)",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: 회/초",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "B",
+          "expr": "rate(jvm_gc_pause_seconds_count{application=\"triagain\"}[5s])",
+          "legendFormat": "GC 발생 빈도 ({{cause}} {{action}})",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "interval": "1s"
+        }
+      ],
+      "description": "최근 5초의 누적 GC 카운터 변화로 계산한 초당 추정값입니다. GC 한 번이 연속된 여러 계산 구간에 잡혀 봉우리가 이어질 수 있습니다. 범례의 cause/action으로 발생 원인과 Minor/Major를 구분할 수 있습니다.",
+      "id": 19
+    },
+    {
       "title": "JVM & Host Diagnostics",
       "type": "row",
       "collapsed": true,
@@ -456,7 +460,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 32
+        "y": 40
       },
       "panels": [
         {
@@ -466,7 +470,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 33
+            "y": 41
           },
           "fieldConfig": {
             "defaults": {
@@ -503,7 +507,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 33
+            "y": 41
           },
           "fieldConfig": {
             "defaults": {
@@ -551,7 +555,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 41
+            "y": 49
           },
           "description": "node_exporter (I5 ◐). CPU 평균 비율. 정본은 mpstat.log·vmstat.log.",
           "fieldConfig": {
@@ -580,7 +584,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 41
+            "y": 49
           },
           "fieldConfig": {
             "defaults": {
@@ -616,7 +620,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 49
+            "y": 57
           },
           "description": "왼쪽 축 bytes = SwapTotal-SwapFree, 오른쪽 축 pages/s = rate(pswpin|pswpout[5s]).",
           "fieldConfig": {
@@ -678,7 +682,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 49
+            "y": 57
           },
           "fieldConfig": {
             "defaults": {
@@ -707,7 +711,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 57
+            "y": 65
           },
           "fieldConfig": {
             "defaults": {
