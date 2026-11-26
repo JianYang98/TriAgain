@@ -338,7 +338,7 @@
       "targets": [
         {
           "expr": "system_cpu_usage{application=\"triagain\"}",
-          "legendFormat": "JVM 실행 환경",
+          "legendFormat": "시스템 전체 CPU (system_cpu_usage)",
           "datasource": {
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
@@ -348,7 +348,7 @@
         },
         {
           "expr": "process_cpu_usage{application=\"triagain\"}",
-          "legendFormat": "JVM 프로세스",
+          "legendFormat": "JVM 프로세스 CPU (process_cpu_usage)",
           "datasource": {
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
@@ -361,7 +361,7 @@
       "description": "JVM 프로세스와 JVM 실행 환경의 최근 CPU 사용 비율입니다. 코어 사용량은 JVM & Host Diagnostics에서 확인할 수 있습니다."
     },
     {
-      "title": "GC Pause",
+      "title": "GC 정지시간 (비율 · 최대)",
       "type": "timeseries",
       "gridPos": {
         "h": 8,
@@ -378,22 +378,6 @@
           }
         },
         "overrides": [
-          {
-            "matcher": {
-              "id": "byFrameRefID",
-              "options": "B"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "suffix: 회/s"
-              },
-              {
-                "id": "custom.axisPlacement",
-                "value": "right"
-              }
-            ]
-          },
           {
             "matcher": {
               "id": "byFrameRefID",
@@ -416,28 +400,17 @@
         {
           "refId": "A",
           "expr": "rate(jvm_gc_pause_seconds_sum{application=\"triagain\"}[5s])",
-          "legendFormat": "GC 정지시간 비율 ({{cause}} {{action}})",
+          "legendFormat": "GC 정지시간 비율 ({{cause}} / {{action}})",
           "datasource": {
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "interval": "1s"
-        },
-        {
-          "refId": "B",
-          "expr": "rate(jvm_gc_pause_seconds_count{application=\"triagain\"}[5s])",
-          "legendFormat": "GC 발생 빈도 ({{cause}} {{action}})",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "hide": true,
           "interval": "1s"
         },
         {
           "refId": "C",
           "expr": "jvm_gc_pause_seconds_max{application=\"triagain\"}",
-          "legendFormat": "GC 최대 pause ({{cause}} {{action}})",
+          "legendFormat": "GC 1회 최대 정지시간 ({{cause}} / {{action}})",
           "datasource": {
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
@@ -446,7 +419,38 @@
         }
       ],
       "id": 7,
-      "description": "애플리케이션 JVM의 GC 지표입니다. 왼쪽은 GC 원인·동작(cause/action)별로 최근 5초 동안 정지에 사용한 시간의 비율입니다. 오른쪽은 Micrometer가 최근 시간창에서 관측한 최대 pause입니다. 개별 정지 시각은 GC 로그나 JFR에서 확인하세요."
+      "description": "GC로 인해 애플리케이션의 실행이 얼마나 오래 멈췄는지 확인합니다.\n\n• 정지시간 비율(%, 왼쪽 축): 최근 5초 동안 전체 시간 중 GC로 인해 멈춘 시간의 비율입니다. 1%라면 5초 중 약 50ms를 GC로 인해 멈췄다는 의미입니다.\n\n• 최대 정지시간(ms, 오른쪽 축): Micrometer의 관측 기간 내 GC 한 번으로 가장 오래 멈춘 시간입니다. 새로운 GC가 발생하지 않아도 이전 최대값이 유지될 수 있습니다.\n\n정지시간 비율이 높으면 전체적인 실행 시간 손실을, 최대 정지시간이 길면 순간적인 응답 지연 가능성을 확인합니다.\n\nGC가 자주 발생해서 정지시간이 증가한 것인지, GC 한 번이 오래 걸린 것인지는 GC 발생 빈도 패널과 함께 판단합니다."
+    },
+    {
+      "title": "GC 발생 빈도 (최근 5초)",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: 회/초",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "B",
+          "expr": "rate(jvm_gc_pause_seconds_count{application=\"triagain\"}[5s])",
+          "legendFormat": "GC 초당 발생 빈도 ({{cause}} / {{action}})",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "interval": "1s"
+        }
+      ],
+      "description": "JVM이 메모리를 회수하기 위해 GC를 얼마나 자주 수행하는지 확인합니다.\n\n최근 5초 동안 누적 GC 발생 횟수의 변화를 초당 발생 횟수로 환산한 추정값입니다.\n\n• 0회/초: 새로운 GC 발생이 관측되지 않음  \n• 0.25회/초: 평균적으로 약 4초에 1회에 해당하는 발생률  \n• 2회/초: 평균적으로 초당 2회에 해당하는 발생률\n\n최근 5초를 반복해서 계산하므로 GC가 한 번만 발생해도 그래프의 봉우리가 몇 초간 유지될 수 있습니다. 봉우리의 지속시간은 GC 실행시간이나 실제 발생 횟수를 의미하지 않습니다.\n\n발생 빈도가 증가하면 객체 생성량 증가 또는 메모리 압박 가능성을 확인합니다. 단, 잦은 GC가 반드시 성능 저하를 의미하지는 않으므로 정지시간 및 HTTP 응답시간과 함께 판단합니다.",
+      "id": 19
     },
     {
       "title": "JVM & Host Diagnostics",
@@ -456,7 +460,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 32
+        "y": 40
       },
       "panels": [
         {
@@ -466,7 +470,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 33
+            "y": 41
           },
           "fieldConfig": {
             "defaults": {
@@ -503,7 +507,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 33
+            "y": 41
           },
           "fieldConfig": {
             "defaults": {
@@ -551,7 +555,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 41
+            "y": 49
           },
           "description": "node_exporter (I5 ◐). CPU 평균 비율. 정본은 mpstat.log·vmstat.log.",
           "fieldConfig": {
@@ -580,7 +584,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 41
+            "y": 49
           },
           "fieldConfig": {
             "defaults": {
@@ -616,7 +620,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 49
+            "y": 57
           },
           "description": "왼쪽 축 bytes = SwapTotal-SwapFree, 오른쪽 축 pages/s = rate(pswpin|pswpout[5s]).",
           "fieldConfig": {
@@ -678,7 +682,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 49
+            "y": 57
           },
           "fieldConfig": {
             "defaults": {
@@ -707,7 +711,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 57
+            "y": 65
           },
           "fieldConfig": {
             "defaults": {
