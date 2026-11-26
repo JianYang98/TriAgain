@@ -361,7 +361,7 @@
       "description": "JVM 프로세스와 JVM 실행 환경의 최근 CPU 사용 비율입니다. 코어 사용량은 JVM & Host Diagnostics에서 확인할 수 있습니다."
     },
     {
-      "title": "GC Pause",
+      "title": "GC 정지시간 (비율 · 최대)",
       "type": "timeseries",
       "gridPos": {
         "h": 8,
@@ -400,7 +400,7 @@
         {
           "refId": "A",
           "expr": "rate(jvm_gc_pause_seconds_sum{application=\"triagain\"}[5s])",
-          "legendFormat": "GC 정지시간 비율 ({{cause}} {{action}})",
+          "legendFormat": "GC 정지시간 비율 ({{cause}} / {{action}})",
           "datasource": {
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
@@ -410,7 +410,7 @@
         {
           "refId": "C",
           "expr": "jvm_gc_pause_seconds_max{application=\"triagain\"}",
-          "legendFormat": "GC 최대 pause ({{cause}} {{action}})",
+          "legendFormat": "GC 1회 최대 정지시간 ({{cause}} / {{action}})",
           "datasource": {
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
@@ -419,10 +419,10 @@
         }
       ],
       "id": 7,
-      "description": "애플리케이션 JVM의 GC 지표입니다. 왼쪽은 GC 원인·동작(cause/action)별로 최근 5초 동안 정지에 사용한 시간의 비율입니다. 오른쪽은 Micrometer가 최근 시간창에서 관측한 최대 pause입니다. 개별 정지 시각은 GC 로그나 JFR에서 확인하세요."
+      "description": "GC로 인해 애플리케이션의 실행이 얼마나 오래 멈췄는지 확인합니다.\n\n• 정지시간 비율(%, 왼쪽 축): 최근 5초 동안 전체 시간 중 GC로 인해 멈춘 시간의 비율입니다. 1%라면 5초 중 약 50ms를 GC로 인해 멈췄다는 의미입니다.\n\n• 최대 정지시간(ms, 오른쪽 축): Micrometer의 관측 기간 내 GC 한 번으로 가장 오래 멈춘 시간입니다. 새로운 GC가 발생하지 않아도 이전 최대값이 유지될 수 있습니다.\n\n정지시간 비율이 높으면 전체적인 실행 시간 손실을, 최대 정지시간이 길면 순간적인 응답 지연 가능성을 확인합니다.\n\nGC가 자주 발생해서 정지시간이 증가한 것인지, GC 한 번이 오래 걸린 것인지는 GC 발생 빈도 패널과 함께 판단합니다."
     },
     {
-      "title": "GC 빈도 (최근 5초 기준)",
+      "title": "GC 발생 빈도 (최근 5초)",
       "type": "timeseries",
       "gridPos": {
         "h": 8,
@@ -441,7 +441,7 @@
         {
           "refId": "B",
           "expr": "rate(jvm_gc_pause_seconds_count{application=\"triagain\"}[5s])",
-          "legendFormat": "GC 발생 빈도 ({{cause}} {{action}})",
+          "legendFormat": "GC 초당 발생 빈도 ({{cause}} / {{action}})",
           "datasource": {
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
@@ -449,7 +449,7 @@
           "interval": "1s"
         }
       ],
-      "description": "최근 5초의 누적 GC 카운터 변화로 계산한 초당 추정값입니다. GC 한 번이 연속된 여러 계산 구간에 잡혀 봉우리가 이어질 수 있습니다. 범례의 cause/action으로 발생 원인과 Minor/Major를 구분할 수 있습니다.",
+      "description": "JVM이 메모리를 회수하기 위해 GC를 얼마나 자주 수행하는지 확인합니다.\n\n최근 5초 동안 누적 GC 발생 횟수의 변화를 초당 발생 횟수로 환산한 추정값입니다.\n\n• 0회/초: 새로운 GC 발생이 관측되지 않음  \n• 0.25회/초: 평균적으로 약 4초에 1회에 해당하는 발생률  \n• 2회/초: 평균적으로 초당 2회에 해당하는 발생률\n\n최근 5초를 반복해서 계산하므로 GC가 한 번만 발생해도 그래프의 봉우리가 몇 초간 유지될 수 있습니다. 봉우리의 지속시간은 GC 실행시간이나 실제 발생 횟수를 의미하지 않습니다.\n\n발생 빈도가 증가하면 객체 생성량 증가 또는 메모리 압박 가능성을 확인합니다. 단, 잦은 GC가 반드시 성능 저하를 의미하지는 않으므로 정지시간 및 HTTP 응답시간과 함께 판단합니다.",
       "id": 19
     },
     {
