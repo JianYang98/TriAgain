@@ -4,8 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.test.autoconfigure.actuate.observability.AutoConfigureObservability;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalManagementPort;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -36,11 +39,14 @@ class ProdSecurityApiTest {
 	@LocalServerPort
 	private int port;
 
+	@LocalManagementPort
+	private int managementPort;
+
 	@Test
 	@DisplayName("운영에서 /actuator/prometheus는 인증 없이 200을 반환한다 — 외부 차단은 nginx·보안그룹이 맡는다")
 	void prometheusIsPermittedWithoutAuthInProd() {
 		// when
-		Response response = RestAssured.given().port(port).when().get("/actuator/prometheus");
+		Response response = RestAssured.given().port(managementPort).when().get("/actuator/prometheus");
 
 		// then
 		assertThat(response.statusCode()).isEqualTo(200);
@@ -51,21 +57,32 @@ class ProdSecurityApiTest {
 	@DisplayName("운영에서 /actuator/health는 인증 없이 200 UP이다 — 배포 헬스체크 유지")
 	void healthStaysPublicInProd() {
 		// when
-		Response response = RestAssured.given().port(port).when().get("/actuator/health");
+		Response response = RestAssured.given().port(managementPort).when().get("/actuator/health");
 
 		// then
 		assertThat(response.statusCode()).isEqualTo(200);
 		assertThat(response.jsonPath().getString("status")).isEqualTo("UP");
 	}
 
-	@Test
+	@ParameterizedTest
+	@ValueSource(strings = {"/actuator/env", "/actuator/configprops"})
 	@DisplayName("운영에서 노출 목록 밖의 actuator 경로는 인증 없이 열리지 않는다")
-	void otherActuatorEndpointsStayClosedInProd() {
+	void otherActuatorEndpointsStayClosedInProd(String path) {
 		// when
-		Response response = RestAssured.given().port(port).when().get("/actuator/env");
+		Response response = RestAssured.given().port(managementPort).when().get(path);
 
 		// then
 		assertThat(response.statusCode()).isEqualTo(401);
+	}
+
+	@Test
+	@DisplayName("서비스 포트에서는 /actuator/prometheus를 응답하지 않는다 — 지표는 관리 포트 전용")
+	void prometheusIsNotServedOnServicePort() {
+		// when
+		Response response = RestAssured.given().port(port).when().get("/actuator/prometheus");
+
+		// then
+		assertThat(response.statusCode()).isNotEqualTo(200);
 	}
 
 	@Test

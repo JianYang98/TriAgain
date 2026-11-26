@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import io.restassured.RestAssured;
 import io.restassured.response.ExtractableResponse;
 import io.restassured.response.Response;
 
@@ -17,7 +18,8 @@ class ActuatorHealthWithoutRedisE2eTest extends E2eTestBase {
 		// Given: application-integration.yml이 Redis를 닫힌 포트(port: 1)로 지정 (integration 프로필 = PESSIMISTIC)
 
 		// When
-		ExtractableResponse<Response> response = givenRequest().when().get("/actuator/health").then().extract();
+		ExtractableResponse<Response> response = RestAssured.given().port(managementPort)
+				.when().get("/actuator/health").then().extract();
 
 		// Then
 		assertThat(response.statusCode()).isEqualTo(200);
