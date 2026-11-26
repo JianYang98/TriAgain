@@ -338,7 +338,7 @@
       "targets": [
         {
           "expr": "system_cpu_usage{application=\"triagain\"}",
-          "legendFormat": "JVM 실행 환경",
+          "legendFormat": "시스템 전체 CPU (system_cpu_usage)",
           "datasource": {
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
@@ -348,7 +348,7 @@
         },
         {
           "expr": "process_cpu_usage{application=\"triagain\"}",
-          "legendFormat": "JVM 프로세스",
+          "legendFormat": "JVM 프로세스 CPU (process_cpu_usage)",
           "datasource": {
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
