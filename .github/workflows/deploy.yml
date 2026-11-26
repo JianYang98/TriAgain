@@ -154,6 +154,9 @@ jobs:
             # 호스트에 공개하는 서비스 포트. -p의 컨테이너 쪽 8080은 앱 기본값이라 고정이다.
             SERVICE_PORT=8080
 
+            # 관리 포트 -p 은 8081로 설정
+            MANAGEMENT_PORT=8081
+
             # Firebase 키 파일 존재 체크
             FIREBASE_KEY_PATH="/home/ec2-user/triagain/config/triagain-firebase-service-account.json"
             if [ -f "$FIREBASE_KEY_PATH" ]; then
@@ -189,6 +192,7 @@ jobs:
 
             NEW_CONTAINER_ID="$(docker run -d --name triagain --restart unless-stopped \
               -p "${SERVICE_PORT}:8080" \
+              -p "${MANAGEMENT_PORT}:8081" \
               --cpus 1.4 \
               --memory 700m \
               --memory-swap 700m \
@@ -223,7 +227,7 @@ jobs:
 
             HEALTHY=false
             for ATTEMPT in {1..30}; do
-              if curl --fail --silent --show-error --max-time 3 --output /dev/null "http://localhost:${SERVICE_PORT}/actuator/health"; then
+              if curl --fail --silent --show-error --max-time 3 --output /dev/null "http://localhost:${MANAGEMENT_PORT}/actuator/health"; then
                 HEALTHY=true
                 echo "[INFO] New triagain container ${NEW_CONTAINER_ID} passed health check on attempt ${ATTEMPT}."
                 break
