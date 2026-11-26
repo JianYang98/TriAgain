@@ -201,7 +201,7 @@ Spring ApplicationEvent는 현재 프로세스 안에서만 동작하며 메시�
 | `/internal/**` | Security matcher는 permitAll이지만 `InternalApiKeyFilter`가 `X-Internal-Api-Key` 검증 |
 | `/upload-sessions/*/events` | 현재 permitAll |
 | `/crews/search`, `/invite/**`, health·정적 경로 | permitAll |
-| `/actuator/prometheus` | permitAll. 앱은 인증하지 않으며 외부 차단은 네트워크가 맡는다 — 도메인 경로는 nginx, 8080 직접 접근은 보안그룹(`docs/prod-deploy-checklist.md` §6) |
+| `/actuator/health`, `/actuator/prometheus` | 관리 포트 8081 전용(서비스 포트 8080에는 없음). permitAll. 앱은 인증하지 않으며 외부 차단은 보안그룹(`docs/prod-deploy-checklist.md` §6) |
 | 나머지 | Bearer Access JWT + DB `tokenVersion` 검증 |
 
 ### 비운영 (`!prod`)

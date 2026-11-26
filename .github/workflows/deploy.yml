@@ -225,6 +225,9 @@ jobs:
               exit 1
             fi
 
+            # 앱이 뜨는 데 30초 이상 걸려, 첫 확인 전에 잠시 기다린다.
+            sleep 10
+
             HEALTHY=false
             for ATTEMPT in {1..30}; do
               if curl --fail --silent --show-error --max-time 3 --output /dev/null "http://localhost:${MANAGEMENT_PORT}/actuator/health"; then

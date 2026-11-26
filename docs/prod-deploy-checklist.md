@@ -90,10 +90,9 @@ main에도 변경이 반영되어야 나타난다. develop → main PR은 기존
 1. Firebase 서비스 계정 파일이 존재하는지만 확인해 `FIREBASE_ENABLED` 결정
 2. 선택 브랜치의 `IMAGE_TAG`(`latest` 또는 `develop`)로 이미지 pull
 3. 기존 `triagain` 컨테이너 stop·remove
-4. 새 `triagain` 컨테이너 run
-5. 15초 대기
-6. `curl -f http://localhost:8080/actuator/health`
-7. dangling Docker image prune
+4. 새 `triagain` 컨테이너 run (8080 서비스 포트, 8081 관리 포트 공개)
+5. 10초 대기 후 `http://localhost:8081/actuator/health`를 2초 간격으로 최대 30회 확인
+6. dangling Docker image prune
 
 ### 현재 배포 특성
 
@@ -183,8 +182,8 @@ main에도 변경이 반영되어야 나타난다. develop → main PR은 기존
 - [x] 운영에서 `XUserIdAuthenticationFilter` 미등록
 - [x] 나머지 보호 API는 Bearer JWT와 DB `tokenVersion` 검증
 - [x] `/internal/**`는 운영에서 `InternalApiKeyFilter`가 `X-Internal-Api-Key` 검증
-- [x] `/health`, `/actuator/health` 공개
-- [x] `/actuator/prometheus` 앱 레벨 공개(permitAll) — 외부 차단은 아래 "지표 경로 외부 차단"이 맡는다
+- [x] `/health`(8080), `/actuator/health`(8081) 공개
+- [x] actuator는 관리 포트 8081 전용, `health`·`prometheus`만 permitAll — 외부 차단은 아래 "관리 포트 외부 차단"이 맡는다
 - [x] Swagger UI와 `/v3/api-docs/**` 운영 공개
 - [x] `/upload-sessions/*/events` 운영 공개 — 현재 SSE 인증·소유권 구현 전
 - [x] `server.forward-headers-strategy: framework` 설정됨
@@ -202,40 +201,20 @@ main에도 변경이 반영되어야 나타난다. develop → main PR은 기존
 Flutter iOS/Android 네이티브 HTTP 클라이언트에는 브라우저 CORS 정책이 적용되지 않는다. 따라서
 “CORS 설정”을 모든 모바일 배포의 필수 완료 항목으로 단정하지 않는다.
 
-### 지표 경로 외부 차단 — `/actuator/prometheus` 포함 버전을 운영에 배포하기 전 필수
+### 관리 포트 외부 차단 — 8081 포함 버전을 운영에 배포하기 전 필수
 
-앱은 `/actuator/prometheus`를 인증 없이 응답한다. 수집은 운영자 Mac의 Prometheus가 EC2 공인 IP의
-8080으로 직접 하므로, 외부 차단은 두 경로를 각각 막아야 한다. 둘 다 저장소 밖 수동 인프라다.
+actuator(`health`·`prometheus`)는 관리 포트 8081에서만 응답하고 인증이 없다. 서비스 포트 8080에는 없으므로
+도메인(443 → nginx → 8080)으로는 나가지 않는다. 수집은 운영자 Mac의 Prometheus가 EC2 공인 IP의 8081로 직접 한다.
 
-| 경로 | 차단 수단 | 2026-11-16 확인 상태 |
-|---|---|---|
-| 도메인(443 → nginx → 8080) | nginx 443 서버 블록(`api.triagain.kr`·`triagain.kr`) **둘 다**에 아래 규칙 | **미적용** — 두 블록 모두 `location /` 하나로 전부 8080에 넘긴다(`sudo nginx -T` 확인) |
-| 8080 직접 접근 | 보안그룹 인바운드 TCP 8080을 운영자 IP `/32`만 허용 | **미적용** — 적용 전 현재 인바운드 규칙과 8080을 직접 부르는 호출자(Lambda `BACKEND_URL` 등)를 먼저 확인 |
-
-```nginx
-# 운영 지표는 도메인으로 내보내지 않는다 — 수집은 8080 직접(보안그룹 IP 제한)
-location ^~ /actuator/ {
-    return 404;
-}
-location = /actuator/health {
-    proxy_pass http://localhost:8080;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-}
-```
-
-- `/actuator/` 접두 경로 전체를 막고 health만 남긴다. `/actuator/prometheus/` 같은 변형 경로와
-  나중에 노출될 엔드포인트까지 덮기 위해서다. health는 배포 후 도메인 경유 수동 확인 경로라 유지한다.
-- 적용: 설정 파일 백업 → 편집 → `sudo nginx -t` → `sudo systemctl reload nginx`. 롤백은 백업 복원 후 같은 순서.
-- 배포 헬스체크(`curl http://localhost:8080/actuator/health`, EC2 안에서 실행)와 nginx → 8080(루프백)은
-  보안그룹의 영향을 받지 않는다.
+- 보안그룹 인바운드 TCP 8081은 운영자 IP `/32`만 허용한다. 저장소 밖 수동 인프라다.
+- 배포 헬스체크(`localhost:8081/actuator/health`, EC2 안에서 실행)는 보안그룹의 영향을 받지 않는다.
+- 외부에서의 상태 확인은 도메인 `/health`를 쓴다.
 - 운영자 IP가 바뀌면 Mac 수집이 끊긴다(fail-closed). 그때 `/32` 규칙을 고친다.
 
-- [ ] 두 도메인과 IP 직접 https 접속에서 `/actuator/prometheus`·`/actuator/prometheus/`가 nginx 404인지 확인
-- [ ] 도메인 경유 `/actuator/health`가 200인지 확인
-- [ ] 허용 IP가 아닌 출발지에서 `:8080` 접속이 차단되는지 확인 (예: EC2에서 자기 공인 IP:8080 → timeout, 대조군 443은 200)
+- [ ] 도메인 `/health`가 200이고 `database=UP`인지 확인
+- [ ] 도메인 `/actuator/prometheus`가 200이 아닌지 확인
+- [ ] 허용 IP에서 `:8081/actuator/prometheus`가 200인지 확인
+- [ ] 허용 IP가 아닌 출발지에서 `:8081` 접속이 차단되는지 확인
 
 ---
 
@@ -243,9 +222,9 @@ location = /actuator/health {
 
 | 경로 | 현재 의미 |
 |---|---|
-| `/actuator/health` | 배포 워크플로가 `curl -f`로 확인하는 Spring Boot health |
+| `/actuator/health` | 관리 포트 8081. 배포 워크플로가 `curl -f`로 확인하는 Spring Boot health |
 | `/health` | 항상 HTTP 200이며 body의 `database`가 `UP` 또는 `DOWN` |
-| `/actuator/prometheus` | Micrometer 지표. 공통 태그 `application="triagain"`. 지연 히스토그램(HTTP 요청·Hikari 커넥션 대기)과 Tomcat MBean 지표(`tomcat_threads_*` 등) 포함. 외부 차단은 §6 |
+| `/actuator/prometheus` | 관리 포트 8081. Micrometer 지표. 공통 태그 `application="triagain"`. 지연 히스토그램(HTTP 요청·Hikari 커넥션 대기·점유)과 Tomcat MBean 지표(`tomcat_threads_*` 등) 포함. 외부 차단은 §6 |
 
 - 배포 성공 판정은 현재 `/actuator/health` HTTP 상태만 본다.
 - 애플리케이션 로그는 CloudWatch Logs `/triagain/app`, stream `triagain`으로 고정한다.
@@ -256,7 +235,7 @@ location = /actuator/health {
 
 ### 배포 후 확인
 
-- [ ] `/actuator/health`가 정상이고 DB health가 포함되는지 확인
+- [ ] EC2에서 `localhost:8081/actuator/health`가 정상이고 DB health가 포함되는지 확인
 - [ ] `/health` body의 `database=UP` 확인
 - [ ] CloudWatch Logs에 새 컨테이너 로그 유입 확인
 - [ ] 주요 로그인·조회 API 최소 스모크 확인
