@@ -28,9 +28,12 @@ spring:
 # Boot 기본 Redis health를 끈다 — 켜 두면 DB 전략에서도 Redis 부재로 /actuator/health가 503(실측).
 # REDIS_ASYNC는 CrewJoinRedisConfiguration이 같은 이름의 indicator를 직접 등록한다.
 management:
+  server:
+    port: 8081
   health:
     redis:
       enabled: false
+
   # 운영도 이 공통 설정으로 /actuator/prometheus를 연다. 외부 차단은 앱이 아니라 네트워크가 맡는다
   # (도메인 경로는 nginx, 8080 직접 접근은 보안그룹) — docs/prod-deploy-checklist.md §6.
   endpoints:
