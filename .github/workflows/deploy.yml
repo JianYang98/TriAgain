@@ -210,7 +210,6 @@ jobs:
               -e "APPLE_REFRESH_KEY=$APPLE_REFRESH_KEY" \
               -e "FIREBASE_ENABLED=$FIREBASE_ENABLED" \
               -e "FIREBASE_SERVICE_ACCOUNT_PATH=/opt/triagain/config/triagain-firebase-service-account.json" \
-              -e "JAVA_TOOL_OPTIONS=-Xms128m -Xmx320m" \
               "$IMAGE")"
 
             NEW_CONTAINER_RUNNING="$(docker inspect --format '{{.State.Running}}' "$NEW_CONTAINER_ID")"
