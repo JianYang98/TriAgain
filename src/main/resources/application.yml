@@ -35,13 +35,12 @@ management:
     redis:
       enabled: false
 
-  # 운영도 이 공통 설정으로 /actuator/prometheus , /actuator/configprops를 연다.
-  # 외부 차단은 앱이 아니라 네트워크가 맡는다
-  # (도메인 경로는 nginx, 8080 직접 접근은 보안그룹) — docs/prod-deploy-checklist.md §6.
+  # 운영도 이 공통 설정으로 관리 포트 8081에서 health·prometheus를 연다. 서비스 포트(8080)에는 actuator가 없다.
+  # 8081의 외부 차단은 앱이 아니라 보안그룹이 맡는다 — docs/prod-deploy-checklist.md §6.
   endpoints:
     web:
       exposure:
-        include: health,prometheus,configprops
+        include: health,prometheus
   metrics:
     tags:
       application: triagain
