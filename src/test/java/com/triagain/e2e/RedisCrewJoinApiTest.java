@@ -48,6 +48,7 @@ import com.triagain.crew.infra.redis.CrewJoinRunConsistency;
 import com.triagain.crew.infra.redis.RedisTestContainer;
 import com.triagain.crew.port.out.CrewJoinRedisPort;
 
+import io.restassured.RestAssured;
 import io.restassured.response.ExtractableResponse;
 import io.restassured.response.Response;
 
@@ -188,7 +189,8 @@ class RedisCrewJoinApiTest extends E2eTestBase {
 		assertError(response, 500, "C002");
 		assertThat(redisSnapshot()).isEqualTo(before);
 		assertThat(redisKeys()).noneMatch(key -> key.contains(crew.getId()));
-		ExtractableResponse<Response> health = givenRequest().when().get("/actuator/health").then().extract();
+		ExtractableResponse<Response> health = RestAssured.given().port(managementPort)
+				.when().get("/actuator/health").then().extract();
 		assertThat(health.statusCode()).isEqualTo(200);
 		assertThat(health.jsonPath().getString("status")).isEqualTo("UP");
 	}

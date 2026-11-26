@@ -206,7 +206,7 @@ class RedisCrewJoinRecoveryE2eTest {
 		assertThat(boot.worker().isRunning()).isFalse();
 		assertThat(processing()).containsExactly(rawOf("u1"));
 		assertThat(pending()).containsExactly(rawOf("u2"));
-		var health = RestAssured.given().baseUri(boot.baseUri()).get("/actuator/health").then().extract();
+		var health = RestAssured.given().baseUri(boot.managementUri()).get("/actuator/health").then().extract();
 		assertThat(health.statusCode()).isEqualTo(200);
 		assertCompensationUntouched();
 	}
@@ -335,6 +335,7 @@ class RedisCrewJoinRecoveryE2eTest {
 			})
 			.registerShutdownHook(false)
 			.run("--spring.profiles.active=integration", "--spring.main.banner-mode=off", "--server.port=0",
+				"--management.server.port=0",
 				"--spring.datasource.url=" + jdbcUrl, "--spring.datasource.username=" + TestContainers.getUsername(),
 				"--spring.datasource.password=" + TestContainers.getPassword(),
 				"--spring.datasource.driver-class-name=org.postgresql.Driver",
@@ -372,6 +373,10 @@ class RedisCrewJoinRecoveryE2eTest {
 
 		String baseUri() {
 			return "http://localhost:" + context.getEnvironment().getProperty("local.server.port");
+		}
+
+		String managementUri() {
+			return "http://localhost:" + context.getEnvironment().getProperty("local.management.port");
 		}
 
 		List<String> logs() {

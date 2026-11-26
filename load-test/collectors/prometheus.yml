@@ -1,5 +1,5 @@
 # B 테스트 Prometheus 설정 (맥에서 실행) — prometheus-up.sh가 자리표시자를 치환해 $PROM_DATA_DIR/prometheus.yml로 쓴다.
-#   __APP_TARGET__   : APP_TARGET (기본 $APP_PUBLIC_IP:8080 — 앱 공인 IP. 로컬 컨테이너면 <컨테이너 이름>:<port>)
+#   __APP_TARGET__   : APP_TARGET (기본 $APP_PUBLIC_IP:8081 — 앱 공인 IP. 로컬 컨테이너면 <컨테이너 이름>:<port>)
 #   __NODE_TARGETS__ : NODE_TARGETS (기본 host.docker.internal:9100 — 맥에 연 SSH 터널)
 # 컨테이너 안의 localhost는 Prometheus 컨테이너 자신이다. 맥의 터널은 host.docker.internal:<port>로 긁는다.
 #

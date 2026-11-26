@@ -25,6 +25,7 @@ spring:
       connect-timeout: 1s
       timeout: 2s
 
+# management.server 설정을 8081로 변경하였다.
 # Boot 기본 Redis health를 끈다 — 켜 두면 DB 전략에서도 Redis 부재로 /actuator/health가 503(실측).
 # REDIS_ASYNC는 CrewJoinRedisConfiguration이 같은 이름의 indicator를 직접 등록한다.
 management:
@@ -34,8 +35,8 @@ management:
     redis:
       enabled: false
 
-  # 운영도 이 공통 설정으로 /actuator/prometheus를 연다. 외부 차단은 앱이 아니라 네트워크가 맡는다
-  # (도메인 경로는 nginx, 8080 직접 접근은 보안그룹) — docs/prod-deploy-checklist.md §6.
+  # 운영도 이 공통 설정으로 관리 포트 8081에서 health·prometheus를 연다. 서비스 포트(8080)에는 actuator가 없다.
+  # 8081의 외부 차단은 앱이 아니라 보안그룹이 맡는다 — docs/prod-deploy-checklist.md §6.
   endpoints:
     web:
       exposure:
@@ -44,10 +45,11 @@ management:
     tags:
       application: triagain
     distribution:
-      # 운영 병목 분석용 지연 분포 — HTTP 응답 p95/p99, 커넥션 획득 대기 p50/p95. 버킷은 Micrometer 기본(1ms~30s).
+      # 운영 병목 분석용 지연 분포 — HTTP 응답, 커넥션 획득 대기 및 점유 시간. 버킷은 Micrometer 기본(1ms~30s).
       percentiles-histogram:
         http.server.requests: true
         hikaricp.connections.acquire: true
+        hikaricp.connections.usage: true
 
 # 워커 스레드 지표(tomcat_threads_*)는 Tomcat MBean 레지스트리를 읽는다. Boot 기본값은 꺼짐.
 server:

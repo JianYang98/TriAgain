@@ -6,6 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.autoconfigure.actuate.observability.AutoConfigureObservability;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalManagementPort;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -24,6 +25,9 @@ class PrometheusEndpointApiTest {
 	@LocalServerPort
 	private int port;
 
+	@LocalManagementPort
+	private int managementPort;
+
 	@Test
 	@DisplayName("요청을 처리한 뒤 /actuator/prometheus를 인증 없이 부르면 200과 대시보드용 지표를 노출한다")
 	void prometheusExposesDashboardMetrics() {
@@ -31,7 +35,7 @@ class PrometheusEndpointApiTest {
 		RestAssured.given().port(port).when().get("/health").then().statusCode(200);
 
 		// when
-		Response response = RestAssured.given().port(port).when().get("/actuator/prometheus");
+		Response response = RestAssured.given().port(managementPort).when().get("/actuator/prometheus");
 
 		// then
 		assertThat(response.statusCode()).isEqualTo(200);

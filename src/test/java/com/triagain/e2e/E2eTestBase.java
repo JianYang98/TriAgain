@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalManagementPort;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -43,6 +44,9 @@ public abstract class E2eTestBase {
 
 	@LocalServerPort
 	protected int port;
+
+	@LocalManagementPort
+	protected int managementPort;
 
 	@Autowired
 	protected DatabaseCleanup databaseCleanup;

@@ -2,7 +2,7 @@
 # 맥에서 Prometheus(1초 scrape) + Grafana(기존 대시보드 복사본) 기동 — C8 §3-2. 세션 동안 켜 두고 run마다 재기동하지 않는다.
 set -euo pipefail
 USAGE='사용법: APP_PUBLIC_IP=<앱 공인 IP> PROM_DATA_DIR=<TSDB 보존 폴더> prometheus-up.sh
-  선택: APP_TARGET(기본 $APP_PUBLIC_IP:8080. 주면 APP_PUBLIC_IP 불필요)
+  선택: APP_TARGET(기본 $APP_PUBLIC_IP:8081. 주면 APP_PUBLIC_IP 불필요)
         NODE_TARGETS(기본 host.docker.internal:9100, 쉼표로 여러 개 — 9100=instance app, 9101=instance redis)
         DOCKER_NETWORK(기본 <접두어>-monitoring, 없으면 만든다) CONTAINER_PREFIX(기본 dbb) PROM_RETENTION(기본 14d)
         GF_SECURITY_ADMIN_PASSWORD(주면 Grafana admin 비밀번호로 넘긴다. 익명 Viewer로도 대시보드를 볼 수 있다)
@@ -20,7 +20,7 @@ GRAFANA_IMAGE=grafana/grafana:13.2.3 # 2026-09-28 빌드
 
 [[ -n "${APP_TARGET:-}${APP_PUBLIC_IP:-}" ]] || { printf '%s\n' "$USAGE" >&2; die 1 "APP_PUBLIC_IP 또는 APP_TARGET이 필요하다"; }
 require_env PROM_DATA_DIR
-APP_TARGET=${APP_TARGET:-$APP_PUBLIC_IP:8080}
+APP_TARGET=${APP_TARGET:-$APP_PUBLIC_IP:8081}
 NODE_TARGETS=${NODE_TARGETS:-host.docker.internal:9100}
 PREFIX=${CONTAINER_PREFIX:-dbb}
 NET=${DOCKER_NETWORK:-$PREFIX-monitoring}
