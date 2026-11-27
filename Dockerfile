@@ -5,7 +5,7 @@ COPY . .
 RUN ./gradlew bootJar --no-daemon
 
 # Stage 2: Runtime
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:17-jdk-alpine
 WORKDIR /app
 
 RUN apk add --no-cache tzdata curl \
